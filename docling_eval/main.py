@@ -57,7 +57,7 @@ def evaluate_ds(
         return
 
     # Save the evaluation
-    save_fn = "evaluation.json"
+    save_fn = save_path / "evaluation.json"
     with open(save_fn, "w") as fd:
         json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
         _log.info("The evaluation has been saved in '%s'", save_fn)
