@@ -25,8 +25,13 @@ packages = [{include = "docling_eval"}]
 # actual dependencies:
 ######################
 python = "^3.9"
-docling-core = { version = "^2.9.0", extras = ["chunking"] }
+# docling = "^2.12.0"
+docling-core = "^2.11.0"
 pydantic = "^2.0.0"
+lxml = "^5.3.0"
+datasets = "^3.2.0"
+apted = "^1.0.3"
+Distance = "^0.1.3"
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}
@@ -73,7 +78,12 @@ python_version = "3.10"
 
 [[tool.mypy.overrides]]
 module = [
-    "huggingface_hub.*"
+    "docling_core.*",
+    "lxml.*",
+    "distance.*",
+    "datasets.*",
+    "apted.*",
+    "nltk.*"
 ]
 ignore_missing_imports = true
 
