@@ -22,7 +22,7 @@ repos:
 #        files: '\.py$'
       - id: mypy
         name: MyPy
-        entry: poetry run mypy docling
+        entry: poetry run mypy docling_eval tests
         pass_filenames: false
         language: system
         files: '\.py$'
