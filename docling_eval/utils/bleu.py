@@ -1,0 +1,30 @@
+from nltk.translate.bleu_score import corpus_bleu
+
+
+def compute_bleu_score(
+    targets: list[list[str]], predictions: list[list[str]]
+) -> tuple[list[float], float]:
+    r"""
+    Compute the BLEU score for the given targets and predictions.
+
+    Parameters
+    ----------
+    targets : List[List[str]]
+        The ground truth target sequences.
+    predictions : List[List[str]]
+        The predicted sequences. Each prediction is a list of tokens.
+
+    Returns
+    -------
+    Tuple[List[float], float]
+        A tuple containing:
+        - bleu_scores (List[float]): The BLEU scores of the predictions.
+        - avg_bleu_score (float): The average BLEU score across all predictions.
+    """
+    weights = (0.25, 0.25, 0.25, 0.25)
+
+    bleu_scores = [
+        corpus_bleu([[tg]], [pred], weights=weights)
+        for tg, pred in zip(targets, predictions)
+    ]
+    return bleu_scores, sum(bleu_scores) / len(bleu_scores)
