@@ -13,6 +13,13 @@ from docling_eval.benchmarks.dpbench.create import (
     create_dpbench_e2e_dataset,
     create_dpbench_tableformer_dataset,
 )
+from docling_eval.benchmarks.omnidocbench.create import (
+    create_omnidocbench_layout_dataset,
+    create_omnidocbench_tableformer_dataset,
+)
+from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
+    create_fintabnet_tableformer_dataset,
+)
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
@@ -72,6 +79,21 @@ def create(
                 dpbench_dir=idir, output_dir=odir, image_scale=image_scale
             )
 
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.OMNIDOCBENCH:
+        if (
+            modality == EvaluationModality.END2END
+            or modality == EvaluationModality.LAYOUT
+        ):
+            create_omnidocbench_layout_dataset(
+                omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
+            )
+        elif modality == EvaluationModality.TABLEFORMER:
+            create_omnidocbench_tableformer_dataset(
+                omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
+            )
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
 

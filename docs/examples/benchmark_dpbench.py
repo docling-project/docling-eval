@@ -31,6 +31,7 @@ def main():
         clone_repository(REPO_URL, idir)
     else:
         logger.error("Please install Git LFS and try again.")
+        exit()
 
     odir = Path(f"./benchmarks/{BenchMarkNames.DPBENCH.value}-dataset")
 
