@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 from pathlib import Path
@@ -24,10 +25,7 @@ from docling_eval.docling.models.tableformer.tf_model_prediction import (
     PageTokens,
     TableFormerUpdater,
 )
-from docling_eval.docling.utils import (
-    docling_version,
-    save_shard_to_disk,
-)
+from docling_eval.docling.utils import docling_version, save_shard_to_disk
 
 HTML_EXPORT_LABELS = {
     DocItemLabel.TITLE,
@@ -93,11 +91,23 @@ def create_huggingface_otsl_tableformer_dataset(
     max_items: int = -1,
 ):
 
+    # Create the directories
     viz_dir = output_dir / "vizualisations"
     os.makedirs(viz_dir, exist_ok=True)
 
     test_dir = output_dir / f"{split}"
     os.makedirs(test_dir, exist_ok=True)
+
+    # Use glob to find all .parquet files in the directory
+    parquet_files = glob.glob(os.path.join(str(test_dir), "*.parquet"))
+
+    # Loop through and remove each file
+    for file in parquet_files:
+        try:
+            os.remove(file)
+            print(f"Deleted: {file}")
+        except Exception as e:
+            print(f"Error deleting {file}: {e}")
 
     # Init the TableFormer model
     tf_updater = TableFormerUpdater()
@@ -146,7 +156,9 @@ def create_huggingface_otsl_tableformer_dataset(
         )
 
         html = "<table>" + "".join(item["html"]) + "</table>"
-        table_data = convert_html_table_into_docling_tabledata(html)
+        table_data = convert_html_table_into_docling_tabledata(
+            html, text_cells=item["cells"][0]
+        )
 
         l = 0.0
         b = 0.0

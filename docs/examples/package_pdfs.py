@@ -4,9 +4,7 @@ import logging
 from pathlib import Path
 
 from docling.datamodel.base_models import ConversionStatus
-from docling_core.types.doc.document import (
-    ImageRefMode,
-)
+from docling_core.types.doc.document import ImageRefMode
 from docling_core.types.doc.labels import DocItemLabel
 from tqdm import tqdm  # type: ignore
 

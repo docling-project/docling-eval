@@ -5,15 +5,11 @@ import logging
 import os
 from pathlib import Path
 
-from PIL import Image  # as PILImage
 from bs4 import BeautifulSoup  # type: ignore
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
-from docling_core.types.doc.document import (
-    DoclingDocument,
-    ImageRef,
-    ProvenanceItem,
-)
+from docling_core.types.doc.document import DoclingDocument, ImageRef, ProvenanceItem
 from docling_core.types.doc.labels import DocItemLabel
+from PIL import Image  # as PILImage
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns

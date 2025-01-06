@@ -1,12 +1,10 @@
 import copy
-import copy
 import json
 import logging
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, List, Optional, Set
 
 import pypdfium2 as pdfium
-from PIL import Image, ImageDraw, ImageFont
 from bs4 import BeautifulSoup  # type: ignore
 from docling_core.types.doc.base import Size
 from docling_core.types.doc.document import (
@@ -19,6 +17,7 @@ from docling_core.types.doc.document import (
     TableData,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from PIL import Image, ImageDraw, ImageFont
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.docling.constants import (
@@ -105,7 +104,9 @@ def add_pages_to_true_doc(
     return true_doc, page_images
 
 
-def yield_cells_from_html_table(table_html: str):
+def yield_cells_from_html_table(
+    table_html: str, text_cells: Optional[List[Dict]] = None
+):
     soup = BeautifulSoup(table_html, "html.parser")
     table = soup.find("table") or soup  # Ensure table context
     rows = table.find_all("tr")
@@ -124,6 +125,7 @@ def yield_cells_from_html_table(table_html: str):
     # Create grid to track cell positions
     grid = [[None for _ in range(max_cols)] for _ in range(len(rows))]
 
+    text_cell_id = 0
     for row_idx, row in enumerate(rows):
         col_idx = 0  # Start from first column
         for cell in row.find_all(["td", "th"]):
@@ -133,6 +135,11 @@ def yield_cells_from_html_table(table_html: str):
 
             # Get text, rowspan, and colspan
             text = cell.get_text(strip=True)
+
+            if len(text) == 0 and text_cells is not None:
+                text_cell = text_cells[text_cell_id]
+                text = "".join(text_cell["tokens"])
+
             rowspan = int(cell.get("rowspan", 1))
             colspan = int(cell.get("colspan", 1))
 
@@ -146,8 +153,12 @@ def yield_cells_from_html_table(table_html: str):
 
             col_idx += colspan  # Move to next column after colspan
 
+            text_cell_id += 1
 
-def convert_html_table_into_docling_tabledata(table_html: str) -> TableData:
+
+def convert_html_table_into_docling_tabledata(
+    table_html: str, text_cells: Optional[List] = None
+) -> TableData:
 
     num_rows = -1
     num_cols = -1
@@ -156,7 +167,7 @@ def convert_html_table_into_docling_tabledata(table_html: str) -> TableData:
 
     try:
         for row_idx, col_idx, rowspan, colspan, text in yield_cells_from_html_table(
-            table_html=table_html
+            table_html=table_html, text_cells=text_cells
         ):
             cell = TableCell(
                 row_span=rowspan,

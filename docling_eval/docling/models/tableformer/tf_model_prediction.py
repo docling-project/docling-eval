@@ -5,8 +5,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-# import cv2
-from PIL import Image
 from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.document import (
     DoclingDocument,
@@ -17,6 +15,9 @@ from docling_core.types.doc.document import (
 from docling_ibm_models.tableformer.data_management.tf_predictor import TFPredictor
 from docling_parse.pdf_parsers import pdf_parser_v2
 from huggingface_hub import snapshot_download
+
+# import cv2
+from PIL import Image
 from pydantic import BaseModel
 
 from docling_eval.docling.models.tableformer.tf_constants import tf_config
