@@ -5,6 +5,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
+from docling.datamodel.base_models import Cluster, LayoutPrediction, Page, Table
+from docling.datamodel.document import ConversionResult, InputDocument
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.models.table_structure_model import TableStructureModel
+from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
+from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.document import (
     DoclingDocument,
@@ -20,6 +27,7 @@ from huggingface_hub import snapshot_download
 from PIL import Image
 from pydantic import BaseModel
 
+from docling_eval.benchmarks.utils import get_input_document
 from docling_eval.docling.models.tableformer.tf_constants import tf_config
 from docling_eval.docling.utils import crop_bounding_box, map_to_records
 
@@ -41,20 +49,6 @@ class PageTokens(BaseModel):
 
     height: float
     width: float
-
-
-def init_tf_model() -> dict:
-    r"""
-    Initialize the testing environment
-    """
-    config: Dict[str, Any] = tf_config
-
-    # Download models from HF
-    download_path = snapshot_download(repo_id="ds4sd/docling-models", revision="v2.1.0")
-    save_dir = os.path.join(download_path, "model_artifacts/tableformer/fast")
-
-    config["model"]["save_dir"] = save_dir
-    return config
 
 
 def get_iocr_page(parsed_page: Dict, table_bbox: Tuple[float, float, float, float]):
@@ -235,10 +229,36 @@ def tf_predict_with_page_tokens(
     return table_data
 
 
+# TODO remove this method once `replace_tabledata_with_page_tokens` does no longer need it.
+def init_tf_model() -> dict:
+    r"""
+    Initialize the testing environment
+    """
+    config: Dict[str, Any] = tf_config
+
+    # Download models from HF
+    download_path = snapshot_download(repo_id="ds4sd/docling-models", revision="v2.1.0")
+    save_dir = os.path.join(download_path, "model_artifacts/tableformer/fast")
+
+    config["model"]["save_dir"] = save_dir
+    return config
+
+
 class TableFormerUpdater:
 
     def __init__(self):
         # Init the TableFormer model
+        # Download models from HF
+        download_path = StandardPdfPipeline.download_models_hf()
+        pdf_pipeline_opts = PdfPipelineOptions()
+        self.docling_tf_model = TableStructureModel(
+            enabled=True,
+            artifacts_path=download_path / StandardPdfPipeline._table_model_path,
+            options=pdf_pipeline_opts.table_structure_options,
+            accelerator_options=pdf_pipeline_opts.accelerator_options,
+        )
+
+        # TODO make this obsolete, only needed for `replace_tabledata_with_page_tokens`
         self.tf_config = init_tf_model()
 
     def get_page_cells(self, filename: str):
@@ -259,11 +279,33 @@ class TableFormerUpdater:
 
         return None
 
+    def _make_internal_page(self, input_doc, prov):
+        page = Page(page_no=prov.page_no - 1)
+        page._backend = input_doc._backend.load_page(page.page_no)
+        page.cells = list(page._backend.get_text_cells())
+        page.size = page._backend.get_size()
+
+        if page._backend is not None and page._backend.is_valid():
+            cluster = Cluster(
+                id=0,
+                label=DocItemLabel.TABLE,
+                bbox=prov.bbox.to_top_left_origin(page.size.height),
+            )
+            for cell in page.cells:
+                overlap = cell.bbox.intersection_area_with(cluster.bbox)
+                overlap_ratio = overlap / cell.bbox.area()
+                if overlap_ratio > 0.2:
+                    cluster.cells.append(cell)
+
+            page.predictions.layout = LayoutPrediction(clusters=[cluster])
+
+        return page
+
     def replace_tabledata(
         self,
         pdf_path: Path,
         true_doc: DoclingDocument,
-        true_page_images: List[Image.Image],
+        # true_page_images: List[Image.Image],
     ) -> Tuple[bool, DoclingDocument]:
 
         updated = False
@@ -271,40 +313,34 @@ class TableFormerUpdater:
         # deep copy of the true-document
         pred_doc = copy.deepcopy(true_doc)
 
-        parsed_doc = self.get_page_cells(str(pdf_path))
-        if parsed_doc == None:
+        input_doc = get_input_document(pdf_path)
+        if not input_doc.valid:
             logging.error("could not parse pdf-file")
             return False, pred_doc
+
+        conv_res = ConversionResult(input=input_doc)
+
+        # parsed_doc = self.get_page_cells(str(pdf_path))
+        # if parsed_doc is None:
+        #    logging.error("could not parse pdf-file")
+        #    return False, pred_doc
 
         # Replace the groundtruth tables with predictions from TableFormer
         for item, level in pred_doc.iterate_items():
             if isinstance(item, TableItem):
                 for prov in item.prov:
+                    page = self._make_internal_page(input_doc, prov)
 
-                    # md = item.export_to_markdown()
-                    # print("groundtruth: \n\n", md)
-
-                    page_image = true_page_images[prov.page_no - 1]
-                    # page_image.show()
-
-                    table_image = crop_bounding_box(
-                        page_image=page_image,
-                        page=pred_doc.pages[prov.page_no],
-                        bbox=prov.bbox,
+                    page = next(self.docling_tf_model(conv_res, [page]))
+                    tbl: Table = page.predictions.tablestructure.table_map[0]
+                    table_data: TableData = TableData(
+                        num_rows=tbl.num_rows,
+                        num_cols=tbl.num_cols,
+                        table_cells=tbl.table_cells,
                     )
-                    table_json = item.model_dump(
-                        mode="json", by_alias=True, exclude_none=True
-                    )
-                    # print(json.dumps(table_json, indent=2))
-                    # table_image.show()
 
-                    table_data = tf_predict(
-                        config=self.tf_config,
-                        page_image=page_image,
-                        parsed_page=parsed_doc["pages"][prov.page_no - 1],
-                        table_bbox=(prov.bbox.l, prov.bbox.b, prov.bbox.r, prov.bbox.t),
-                    )
                     item.data = table_data
+                    page._backend.unload()
 
                     updated = True
 

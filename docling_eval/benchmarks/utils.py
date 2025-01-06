@@ -6,6 +6,9 @@ from typing import Dict, List, Optional, Set
 
 import pypdfium2 as pdfium
 from bs4 import BeautifulSoup  # type: ignore
+from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
+from docling.datamodel.base_models import InputFormat, Page
+from docling.datamodel.document import InputDocument
 from docling_core.types.doc.base import Size
 from docling_core.types.doc.document import (
     DocItem,
@@ -61,45 +64,53 @@ def write_datasets_info(
         fw.write(json.dumps(dataset_infos, indent=2))
 
 
+def get_input_document(file: Path):
+    return InputDocument(
+        path_or_stream=file,
+        format=InputFormat.PDF,  # type: ignore[arg-type]
+        filename=file.name,
+        backend=DoclingParseV2DocumentBackend,
+    )
+
+
 def add_pages_to_true_doc(
     pdf_path: Path, true_doc: DoclingDocument, image_scale: float = 1.0
 ):
-
-    pdf = pdfium.PdfDocument(pdf_path)
-    assert len(pdf) == 1, "len(pdf)==1"
+    in_doc = get_input_document(pdf_path)
+    assert in_doc.valid, "Input doc must be valid."
+    # assert in_doc.page_count == 1, "doc must have one page."
 
     # add the pages
     page_images: List[Image.Image] = []
 
-    pdf = pdfium.PdfDocument(pdf_path)
-    for page_index in range(len(pdf)):
-        # Get the page
-        page = pdf.get_page(page_index)
+    for page_no in range(0, in_doc.page_count):
+        page = Page(page_no=page_no)
+        page._backend = in_doc._backend.load_page(page.page_no)
 
-        # Get page dimensions
-        page_width, page_height = page.get_width(), page.get_height()
+        if page._backend is not None and page._backend.is_valid():
+            page.size = page._backend.get_size()
 
-        # Render the page to an image
-        page_image = page.render(scale=image_scale).to_pil()
+            page_width, page_height = page.size.width, page.size.height
 
-        page_images.append(page_image)
+            page_image = page.get_image(scale=image_scale)
+            page_images.append(page_image)
+            page._backend.unload()
 
-        # Close the page to free resources
-        page.close()
+            image_ref = ImageRef(
+                mimetype="image/png",
+                dpi=round(72 * image_scale),
+                size=Size(
+                    width=float(page_image.width), height=float(page_image.height)
+                ),
+                uri=Path(f"{BenchMarkColumns.PAGE_IMAGES}/{page_no}"),
+            )
+            page_item = PageItem(
+                page_no=page_no + 1,
+                size=Size(width=float(page_width), height=float(page_height)),
+                image=image_ref,
+            )
 
-        image_ref = ImageRef(
-            mimetype="image/png",
-            dpi=round(72 * image_scale),
-            size=Size(width=float(page_image.width), height=float(page_image.height)),
-            uri=Path(f"{BenchMarkColumns.PAGE_IMAGES}/{page_index}"),
-        )
-        page_item = PageItem(
-            page_no=page_index + 1,
-            size=Size(width=float(page_width), height=float(page_height)),
-            image=image_ref,
-        )
-
-        true_doc.pages[page_index + 1] = page_item
+            true_doc.pages[page_no + 1] = page_item
 
     return true_doc, page_images
 

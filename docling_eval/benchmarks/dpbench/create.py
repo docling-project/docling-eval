@@ -117,8 +117,8 @@ def update(
     bbox = BoundingBox(
         l=min_x * page_width,
         r=max_x * page_width,
-        b=min_y * page_height,
-        t=max_y * page_height,
+        t=min_y * page_height,
+        b=max_y * page_height,
         coord_origin=CoordOrigin.TOPLEFT,
     )
 
@@ -391,7 +391,7 @@ def create_dpbench_tableformer_dataset(
 
         # Create the updated Document
         updated, pred_doc = tf_updater.replace_tabledata(
-            pdf_path=pdf_path, true_doc=true_doc, true_page_images=true_page_images
+            pdf_path=pdf_path, true_doc=true_doc  # , true_page_images=true_page_images
         )
 
         if updated:
@@ -484,7 +484,7 @@ def main():
 
     odir_e2e = Path(output_dir) / "end_to_end"
     odir_tab = Path(output_dir) / "tables"
-    odir_eqn = Path(output_dir) / "formulas"
+    # odir_eqn = Path(output_dir) / "formulas"
 
     os.makedirs(odir_e2e, exist_ok=True)
     os.makedirs(odir_tab, exist_ok=True)

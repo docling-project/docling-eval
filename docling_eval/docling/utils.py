@@ -224,36 +224,22 @@ def crop_bounding_box(page_image: Image.Image, page: PageItem, bbox: BoundingBox
     width = float(page.size.width)
     height = float(page.size.height)
 
-    l = bbox.l
-    t = bbox.t
-    r = bbox.r
-    b = bbox.b
-
-    origin = bbox.coord_origin
-
-    img_height = float(page_image.height)
     img_width = float(page_image.width)
+    img_height = float(page_image.height)
 
     scale_x = img_width / width
     scale_y = img_height / height
 
-    pil_l = l * scale_x
-    pil_r = r * scale_x
+    bbox = bbox.to_top_left_origin(page.size.height)
 
-    pil_t = -1.0
-    pil_b = -1.0
+    l = bbox.l * scale_x
+    t = bbox.t * scale_y
+    r = bbox.r * scale_x
+    b = bbox.b * scale_y
 
-    # Convert top and bottom to PIL coordinate system
-    if origin == CoordOrigin.BOTTOMLEFT:
-        pil_t = img_height - b * scale_y
-        pil_b = img_height - t * scale_y
-    elif origin == CoordOrigin.TOPLEFT:
-        pil_t = t * scale_y
-        pil_b = b * scale_y
-    else:
-        raise ValueError(f"origin can not have another value: {origin}")
+    origin = bbox.coord_origin
 
     # Crop using the converted coordinates
-    cropped_image = page_image.crop((pil_l, pil_b, pil_r, pil_t))
+    cropped_image = page_image.crop((l, t, r, b))
 
     return cropped_image

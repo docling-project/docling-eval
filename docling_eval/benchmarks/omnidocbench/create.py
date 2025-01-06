@@ -134,8 +134,8 @@ def update_doc_with_gt(
         bbox = BoundingBox(
             l=min_x * page_width / gt_width,
             r=max_x * page_width / gt_width,
-            b=min_y * page_height / gt_height,
-            t=max_y * page_height / gt_height,
+            t=min_y * page_height / gt_height,
+            b=max_y * page_height / gt_height,
             coord_origin=CoordOrigin.TOPLEFT,
         )
 
