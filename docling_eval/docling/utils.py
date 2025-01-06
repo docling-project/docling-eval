@@ -1,25 +1,19 @@
 import base64
 import io
 import logging
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import version
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd  # import-untyped
+from PIL import Image  # as PILImage
 from datasets import Dataset, DatasetInfo, Features, concatenate_datasets
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import (
     DoclingDocument,
-    ImageRef,
     PageItem,
-    ProvenanceItem,
-    TableCell,
-    TableData,
-    TableItem,
 )
-from docling_core.types.doc.labels import DocItemLabel
-from PIL import Image  # as PILImage
 from pydantic import AnyUrl
 
 from docling_eval.docling.constants import HTML_DEFAULT_HEAD

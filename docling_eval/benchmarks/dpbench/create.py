@@ -1,12 +1,10 @@
 import argparse
-import copy
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
-import pypdfium2 as pdfium
 from tqdm import tqdm  # type: ignore
 
 # Configure logging
@@ -19,15 +17,11 @@ from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
     ImageRef,
-    PageItem,
-    PictureItem,
     ProvenanceItem,
     TableCell,
     TableData,
-    TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
-from docling_parse.pdf_parsers import pdf_parser_v2
 from PIL import Image  # as PILImage
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
@@ -244,9 +238,7 @@ def create_dpbench_e2e_dataset(
 ):
 
     # Create Converter
-    doc_converter = create_converter(
-        artifacts_path=output_dir / "artifacts", page_image_scale=image_scale
-    )
+    doc_converter = create_converter(page_image_scale=image_scale)
 
     # load the groundtruth
     with open(dpbench_dir / f"dataset/reference.json", "r") as fr:

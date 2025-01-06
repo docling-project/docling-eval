@@ -1,20 +1,17 @@
 import glob
 import logging
-import os
 import random
 import statistics
-import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
-import datasets
 import matplotlib.pyplot as plt
 import numpy as np
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument, TableItem
 from docling_core.types.doc.labels import DocItemLabel
 from lxml import html
-from pydantic import BaseModel, ValidationError, model_validator
+from pydantic import BaseModel, model_validator
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns

@@ -1,8 +1,7 @@
 import glob
 import logging
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from datasets import Dataset, load_dataset

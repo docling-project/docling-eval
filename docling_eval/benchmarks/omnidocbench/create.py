@@ -1,31 +1,19 @@
 import argparse
-import base64
-import copy
 import glob
-import io
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List
 
-import pypdfium2 as pdfium
+from PIL import Image  # as PILImage
 from bs4 import BeautifulSoup  # type: ignore
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
     ImageRef,
-    ImageRefMode,
-    PageItem,
-    PictureItem,
     ProvenanceItem,
-    TableCell,
-    TableData,
-    TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
-from PIL import Image  # as PILImage
-from pydantic import AnyUrl
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
@@ -35,10 +23,6 @@ from docling_eval.benchmarks.utils import (
     save_comparison_html,
     save_comparison_html_with_clusters,
     write_datasets_info,
-)
-from docling_eval.docling.constants import (
-    HTML_COMPARISON_PAGE,
-    HTML_DEFAULT_HEAD_FOR_COMP,
 )
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.models.tableformer.tf_model_prediction import (
@@ -269,9 +253,7 @@ def create_omnidocbench_e2e_dataset(
 ):
 
     # Create Converter
-    doc_converter = create_converter(
-        artifacts_path=output_dir / "artifacts", page_image_scale=image_scale
-    )
+    doc_converter = create_converter(page_image_scale=image_scale)
 
     # load the groundtruth
     with open(omnidocbench_dir / f"OmniDocBench.json", "r") as fr:

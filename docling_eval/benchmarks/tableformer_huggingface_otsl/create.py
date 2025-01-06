@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, List
 
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
@@ -9,36 +9,23 @@ from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
     ImageRef,
-    ImageRefMode,
     PageItem,
-    PictureItem,
     ProvenanceItem,
-    TableCell,
-    TableData,
-    TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.utils import (
-    add_pages_to_true_doc,
     convert_html_table_into_docling_tabledata,
     save_comparison_html,
-    save_comparison_html_with_clusters,
-    write_datasets_info,
 )
 from docling_eval.docling.models.tableformer.tf_model_prediction import (
-    PageToken,
     PageTokens,
     TableFormerUpdater,
 )
 from docling_eval.docling.utils import (
-    crop_bounding_box,
     docling_version,
-    extract_images,
-    from_pil_to_base64uri,
-    get_binary,
     save_shard_to_disk,
 )
 
@@ -97,7 +84,13 @@ def create_page_tokens(data: List[Any], height: float, width: float) -> PageToke
 
 
 def create_huggingface_otsl_tableformer_dataset(
-        output_dir: Path, image_scale: float = 1.0, max_records: int = 1000, name: str = "ds4sd/FinTabNet_OTSL", split:str = "test", do_viz:bool = False, max_items:int = -1
+    output_dir: Path,
+    image_scale: float = 1.0,
+    max_records: int = 1000,
+    name: str = "ds4sd/FinTabNet_OTSL",
+    split: str = "test",
+    do_viz: bool = False,
+    max_items: int = -1,
 ):
 
     viz_dir = output_dir / "vizualisations"
@@ -111,22 +104,22 @@ def create_huggingface_otsl_tableformer_dataset(
 
     ds = load_dataset(name, split=split)
 
-    if max_items==-1:
+    if max_items == -1:
         max_items = len(ds)
-    
+
     records = []
     tid, sid = 0, 0
 
-    for i,item in tqdm(
+    for i, item in tqdm(
         enumerate(ds),
         total=max_items,
         ncols=128,
         desc=f"create {name} tableformer dataset",
     ):
 
-        if i>=max_items:
+        if i >= max_items:
             break
-        
+
         filename = item["filename"]
         table_image = item["image"]
 
@@ -164,7 +157,7 @@ def create_huggingface_otsl_tableformer_dataset(
             b = table_image.height - item["table_bbox"][3]
             r = item["table_bbox"][2]
             t = table_image.height - item["table_bbox"][1]
-        
+
         bbox = BoundingBox(
             l=l,
             r=r,
@@ -245,20 +238,60 @@ def create_huggingface_otsl_tableformer_dataset(
         sid += 1
         records = []
 
+
 def create_fintabnet_tableformer_dataset(
-        output_dir: Path, image_scale: float = 1.0, max_records: int = 1000, do_viz:bool = False, max_items: int = 1000):
-    create_huggingface_otsl_tableformer_dataset(output_dir=output_dir, image_scale=image_scale, max_records=max_records, name="ds4sd/FinTabNet_OTSL", split="test", do_viz=do_viz, max_items=max_items)    
+    output_dir: Path,
+    image_scale: float = 1.0,
+    max_records: int = 1000,
+    do_viz: bool = False,
+    max_items: int = 1000,
+):
+    create_huggingface_otsl_tableformer_dataset(
+        output_dir=output_dir,
+        image_scale=image_scale,
+        max_records=max_records,
+        name="ds4sd/FinTabNet_OTSL",
+        split="test",
+        do_viz=do_viz,
+        max_items=max_items,
+    )
+
 
 def create_pubtabnet_tableformer_dataset(
-        output_dir: Path, image_scale: float = 1.0, max_records: int = 1000, do_viz:bool = False, max_items: int = 1000
+    output_dir: Path,
+    image_scale: float = 1.0,
+    max_records: int = 1000,
+    do_viz: bool = False,
+    max_items: int = 1000,
 ):
-    create_huggingface_otsl_tableformer_dataset(output_dir=output_dir, image_scale=image_scale, max_records=max_records, name="ds4sd/PubTabNet_OTSL", split="val", do_viz=do_viz, max_items=max_items)    
+    create_huggingface_otsl_tableformer_dataset(
+        output_dir=output_dir,
+        image_scale=image_scale,
+        max_records=max_records,
+        name="ds4sd/PubTabNet_OTSL",
+        split="val",
+        do_viz=do_viz,
+        max_items=max_items,
+    )
+
 
 def create_p1m_tableformer_dataset(
-        output_dir: Path, image_scale: float = 1.0, max_records: int = 1000, do_viz:bool = True, max_items: int = 1000
+    output_dir: Path,
+    image_scale: float = 1.0,
+    max_records: int = 1000,
+    do_viz: bool = True,
+    max_items: int = 1000,
 ):
-    create_huggingface_otsl_tableformer_dataset(output_dir=output_dir, image_scale=image_scale, max_records=max_records, name="ds4sd/PubTables-1M_OTSL", split="test", do_viz=do_viz, max_items=max_items)    
-    
+    create_huggingface_otsl_tableformer_dataset(
+        output_dir=output_dir,
+        image_scale=image_scale,
+        max_records=max_records,
+        name="ds4sd/PubTables-1M_OTSL",
+        split="test",
+        do_viz=do_viz,
+        max_items=max_items,
+    )
+
 
 def main():
 

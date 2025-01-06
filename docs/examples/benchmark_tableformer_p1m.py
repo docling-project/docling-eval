@@ -18,7 +18,7 @@ logging.basicConfig(
 def main():
 
     benchmark = BenchMarkNames.PUB1M
-    
+
     odir = Path(f"./benchmarks/{benchmark.value}-dataset")
 
     odir_tab = Path(odir) / "tableformer"

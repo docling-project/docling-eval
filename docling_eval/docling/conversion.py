@@ -1,6 +1,5 @@
 import logging
 import warnings
-from pathlib import Path
 from typing import List
 
 from docling.cli.main import OcrEngine
@@ -26,12 +25,11 @@ logging.getLogger("docling").setLevel(logging.WARNING)
 
 
 def create_converter(
-    artifacts_path: Path,
     page_image_scale: float = 2.0,
     do_ocr: bool = False,
     ocr_lang: List[str] = ["en"],
     ocr_engine: OcrEngine = OcrEngine.EASYOCR,
-    timings: bool = False,
+    timings: bool = True,
 ):
 
     force_ocr: bool = True
@@ -72,6 +70,6 @@ def create_converter(
     )
 
     # Enable the profiling to measure the time spent
-    settings.debug.profile_pipeline_timings = True
+    settings.debug.profile_pipeline_timings = timings
 
     return doc_converter

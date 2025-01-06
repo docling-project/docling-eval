@@ -1,30 +1,26 @@
-import base64
 import copy
-import io
+import copy
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import List, Set
 
 import pypdfium2 as pdfium
+from PIL import Image, ImageDraw, ImageFont
 from bs4 import BeautifulSoup  # type: ignore
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc.base import Size
 from docling_core.types.doc.document import (
     DocItem,
     DoclingDocument,
     ImageRef,
     ImageRefMode,
     PageItem,
-    PictureItem,
-    ProvenanceItem,
     TableCell,
     TableData,
-    TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
-from PIL import Image, ImageDraw, ImageFont
 
-from docling_eval.benchmarks.constants import BenchMarkColumns, BenchMarkNames
+from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.docling.constants import (
     HTML_COMPARISON_PAGE,
     HTML_COMPARISON_PAGE_WITH_CLUSTERS,

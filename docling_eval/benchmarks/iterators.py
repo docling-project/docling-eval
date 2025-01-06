@@ -1,5 +1,4 @@
 import argparse
-import copy
 import json
 import logging
 import os
@@ -7,19 +6,17 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Generator, List, Set, Tuple
 
+from PIL import Image as PILImage
 from datasets import Dataset
-from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import (
     DEFAULT_EXPORT_LABELS,
     ContentItem,
     DocItem,
     DoclingDocument,
-    PageItem,
     PictureItem,
     TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
-from PIL import Image as PILImage
 
 from docling_eval.docling.utils import create_styled_html, crop_bounding_box
 

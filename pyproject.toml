@@ -37,6 +37,7 @@ torch = "^2.5.1"
 torchmetrics = "^1.6.0"
 pycocotools = "^2.0.8"
 tabulate = "^0.9.0"
+nltk = "^3.9.1"
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}

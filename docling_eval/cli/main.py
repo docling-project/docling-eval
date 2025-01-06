@@ -1,11 +1,10 @@
 import json
 import logging
 import os
-from enum import Enum, auto
+from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
-import matplotlib.pyplot as plt
 import typer
 from tabulate import tabulate  # type: ignore
 

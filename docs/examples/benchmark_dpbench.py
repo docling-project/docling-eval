@@ -1,7 +1,5 @@
-import json
 import logging
 import os
-import subprocess
 from pathlib import Path
 
 from tabulate import tabulate  # type: ignore
@@ -12,14 +10,6 @@ from docling_eval.benchmarks.dpbench.create import (
     create_dpbench_tableformer_dataset,
 )
 from docling_eval.cli.main import evaluate, visualise
-from docling_eval.evaluators.layout_evaluator import (
-    DatasetLayoutEvaluation,
-    LayoutEvaluator,
-)
-from docling_eval.evaluators.table_evaluator import (
-    DatasetTableEvaluation,
-    TableEvaluator,
-)
 from docling_eval.utils.repository import clone_repository, is_git_lfs_installed
 
 # Configure logging

@@ -1,13 +1,3 @@
-DOCLING_VERSION = "docling_version"
-STATUS_COLUMN = "conversion_status"
-
-GROUNDTRUTH_DOC_COLUMN = "GroundTruthDoclingDocument"
-DOCUMENT_COLUMN = "DoclingDocument"
-BINARY_DOCCOLUMN = "BinaryDocument"
-
-PICTURES_COLUMN = "pictures"
-PAGE_IMAGES_COLUMN = "page_images"
-
 HTML_DEFAULT_HEAD: str = r"""<head>
 <link rel="icon" type="image/png"
 href="https://ds4sd.github.io/docling/assets/logo.png"/>

@@ -1,22 +1,11 @@
 import copy
-import glob
 import json
 import logging
-import os
-import subprocess
 from pathlib import Path
 
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.document import (
-    DoclingDocument,
-    ImageRef,
     ImageRefMode,
-    PageItem,
-    PictureItem,
-    ProvenanceItem,
-    TableCell,
-    TableData,
-    TableItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
 from tqdm import tqdm  # type: ignore
@@ -26,11 +15,8 @@ from docling_eval.benchmarks.utils import draw_clusters_with_reading_order
 from docling_eval.docling.constants import HTML_INSPECTION
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.utils import (
-    crop_bounding_box,
     docling_version,
-    extract_images,
     from_pil_to_base64,
-    from_pil_to_base64uri,
     get_binary,
     save_shard_to_disk,
 )
@@ -149,9 +135,7 @@ def main():
     os.makedirs(viz_dir, exist_ok=True)
 
     # Create Converter
-    doc_converter = create_converter(
-        artifacts_path=odir / "artifacts", page_image_scale=image_scale, do_ocr=do_ocr
-    )
+    doc_converter = create_converter(page_image_scale=image_scale, do_ocr=do_ocr)
 
     records = []
 
