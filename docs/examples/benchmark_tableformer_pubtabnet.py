@@ -18,7 +18,7 @@ logging.basicConfig(
 def main():
 
     benchmark = BenchMarkNames.PUBTABNET
-    
+
     odir = Path(f"./benchmarks/{BenchMarkNames.FINTABNET.value}-dataset")
 
     odir_tab = Path(odir) / "tableformer"
@@ -27,7 +27,9 @@ def main():
         os.makedirs(_, exist_ok=True)
 
     if True:
-        create_pubtabnet_tableformer_dataset(output_dir=odir_tab, max_items=1000, do_viz=True)
+        create_pubtabnet_tableformer_dataset(
+            output_dir=odir_tab, max_items=1000, do_viz=True
+        )
 
         evaluate(
             modality=EvaluationModality.TABLEFORMER,

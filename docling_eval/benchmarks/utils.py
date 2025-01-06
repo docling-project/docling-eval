@@ -4,7 +4,7 @@ import io
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Optional, Set
 
 import pypdfium2 as pdfium
 from bs4 import BeautifulSoup  # type: ignore
@@ -109,7 +109,9 @@ def add_pages_to_true_doc(
     return true_doc, page_images
 
 
-def yield_cells_from_html_table(table_html: str, text_cells: Optional[List[Dict]] = None):
+def yield_cells_from_html_table(
+    table_html: str, text_cells: Optional[List[Dict]] = None
+):
     soup = BeautifulSoup(table_html, "html.parser")
     table = soup.find("table") or soup  # Ensure table context
     rows = table.find_all("tr")
@@ -139,10 +141,10 @@ def yield_cells_from_html_table(table_html: str, text_cells: Optional[List[Dict]
             # Get text, rowspan, and colspan
             text = cell.get_text(strip=True)
 
-            if len(text)==0 and text_cells is not None:
+            if len(text) == 0 and text_cells is not None:
                 text_cell = text_cells[text_cell_id]
                 text = "".join(text_cell["tokens"])
-                
+
             rowspan = int(cell.get("rowspan", 1))
             colspan = int(cell.get("colspan", 1))
 
@@ -157,9 +159,11 @@ def yield_cells_from_html_table(table_html: str, text_cells: Optional[List[Dict]
             col_idx += colspan  # Move to next column after colspan
 
             text_cell_id += 1
-            
 
-def convert_html_table_into_docling_tabledata(table_html: str, text_cells: Optional[List] = None) -> TableData:
+
+def convert_html_table_into_docling_tabledata(
+    table_html: str, text_cells: Optional[List] = None
+) -> TableData:
 
     num_rows = -1
     num_cols = -1
@@ -168,7 +172,7 @@ def convert_html_table_into_docling_tabledata(table_html: str, text_cells: Optio
 
     try:
         for row_idx, col_idx, rowspan, colspan, text in yield_cells_from_html_table(
-                table_html=table_html, text_cells=text_cells
+            table_html=table_html, text_cells=text_cells
         ):
             cell = TableCell(
                 row_span=rowspan,
@@ -187,7 +191,7 @@ def convert_html_table_into_docling_tabledata(table_html: str, text_cells: Optio
     except:
         logging.error("No table-structure identified")
         exit(-1)
-        
+
     return TableData(num_rows=num_rows, num_cols=num_cols, table_cells=cells)
 
 
