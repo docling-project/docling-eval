@@ -357,7 +357,7 @@ HTML_COMPARISON_PAGE_WITH_CLUSTERS = """<!DOCTYPE html>
 
     <!-- Embedded Image -->
     <div class="container">
-        <div class="title">Page Image Groundtruth</div>
+        <div class="title">Page Image Prediction</div>
         <img src="data:image/png;base64,BASE64PREDPAGE" alt="Example Image">
     </div>
 
