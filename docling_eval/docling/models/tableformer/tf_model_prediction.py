@@ -349,6 +349,7 @@ class TableFormerUpdater:
 
         return updated, pred_doc
 
+    # TODO: This method must be re-written to use the TableStructureModel instance instead. See above.
     def replace_tabledata_with_page_tokens(
         self,
         page_tokens: PageTokens,

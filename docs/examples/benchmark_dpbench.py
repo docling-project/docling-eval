@@ -43,7 +43,7 @@ def main():
 
     image_scale = 1.0
 
-    if False:  # True:
+    if True:
         create_dpbench_layout_dataset(
             dpbench_dir=idir, output_dir=odir_lay, image_scale=image_scale
         )
