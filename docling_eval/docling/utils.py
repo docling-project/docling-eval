@@ -237,8 +237,6 @@ def crop_bounding_box(page_image: Image.Image, page: PageItem, bbox: BoundingBox
     r = bbox.r * scale_x
     b = bbox.b * scale_y
 
-    origin = bbox.coord_origin
-
     # Crop using the converted coordinates
     cropped_image = page_image.crop((l, t, r, b))
 

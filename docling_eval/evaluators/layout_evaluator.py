@@ -285,7 +285,7 @@ class LayoutEvaluator:
             for item in items:
                 for prov in item.prov:
 
-                    bbox = prov.bbox.to_bottom_left_origin(page_height=page_height)
+                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
 
@@ -314,13 +314,13 @@ class LayoutEvaluator:
             for item in items:
                 for prov in item.prov:
 
-                    bbox = prov.bbox.to_bottom_left_origin(page_height=page_height)
+                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
 
                     # logging.info(f"prediction {page_no}: {page_width, page_height} -> {item.label}, {bbox.coord_origin}: [{bbox.l}, {bbox.b}, {bbox.r}, {bbox.t}]")
 
-                    bboxes.append([bbox.l, bbox.b, bbox.r, bbox.t])
+                    bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
                     labels.append(filter_labels.index(item.label))
                     scores.append(1.0)  # FIXME
 
