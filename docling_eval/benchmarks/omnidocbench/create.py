@@ -274,7 +274,7 @@ def create_omnidocbench_e2e_dataset(
     ):
 
         jpg_path = page_tuple[0]
-        pdf_path = page_tuple[1]
+        pdf_path = Path(page_tuple[1])
 
         # logging.info(f"file: {pdf_path}")
         if not os.path.basename(jpg_path) in gt:
