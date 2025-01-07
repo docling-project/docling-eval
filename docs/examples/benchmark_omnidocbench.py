@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 
+from huggingface_hub import snapshot_download
 from tabulate import tabulate  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
@@ -10,7 +11,6 @@ from docling_eval.benchmarks.omnidocbench.create import (
     create_omnidocbench_tableformer_dataset,
 )
 from docling_eval.cli.main import evaluate, visualise
-from docling_eval.utils.repository import clone_repository, is_git_lfs_installed
 
 # Configure logging
 logging.basicConfig(
@@ -23,15 +23,13 @@ logger = logging.getLogger(__name__)
 
 def main():
 
-    REPO_URL = "https://huggingface.co/datasets/opendatalab/OmniDocBench"  # Replace with your repo URL
-
     idir = Path(f"./benchmarks/{BenchMarkNames.OMNIDOCBENCH.value}-original")
 
-    if is_git_lfs_installed():
-        clone_repository(REPO_URL, idir)
-    else:
-        logger.error("Please install Git LFS and try again.")
-        exit()
+    snapshot_download(
+        repo_id="opendatalab/OmniDocBench",
+        repo_type="dataset",
+        local_dir=idir,
+    )
 
     odir = Path(f"./benchmarks/{BenchMarkNames.OMNIDOCBENCH.value}-dataset")
 

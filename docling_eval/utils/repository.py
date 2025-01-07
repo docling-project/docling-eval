@@ -11,6 +11,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# TODO: Unused codes below.
+
 
 def is_git_lfs_installed():
     """
