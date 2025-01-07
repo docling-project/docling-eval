@@ -113,63 +113,6 @@ def to_np(pil_image: Image.Image):
     else:
         raise ValueError("Unsupported image format")
 
-
-def tf_predict(
-    config,
-    page_image: Image.Image,
-    parsed_page: dict,
-    table_bbox: Tuple[float, float, float, float],
-    viz: bool = True,
-    device: str = "cpu",
-    num_threads: int = 2,
-    image_scale: float = 1.0,
-):
-    r"""
-    Test the TFPredictor
-    """
-
-    table_bboxes = [[table_bbox[0], table_bbox[1], table_bbox[2], table_bbox[3]]]
-
-    iocr_page = get_iocr_page(parsed_page, table_bbox=table_bbox)
-
-    iocr_page["image"] = to_np(page_image)
-    iocr_page["table_bboxes"] = table_bboxes
-
-    # Loop over the iocr_pages
-    predictor = TFPredictor(config, device=device, num_threads=num_threads)
-
-    tf_output = predictor.multi_table_predict(
-        iocr_page,
-        table_bboxes=table_bboxes,
-        do_matching=True,
-        correct_overlapping_cells=False,
-        sort_row_col_indexes=True,
-    )
-    # print("tf-output: ", json.dumps(tf_output, indent=2))
-
-    table_out = tf_output[0]
-
-    do_cell_matching = True
-
-    table_cells = []
-    for element in table_out["tf_responses"]:
-
-        tc = TableCell.model_validate(element)
-        if do_cell_matching and tc.bbox is not None:
-            tc.bbox = tc.bbox.scaled(1 / image_scale)
-        table_cells.append(tc)
-
-    # Retrieving cols/rows, after post processing:
-    num_rows = table_out["predict_details"]["num_rows"]
-    num_cols = table_out["predict_details"]["num_cols"]
-    otsl_seq = table_out["predict_details"]["prediction"]["rs_seq"]
-
-    table_data = TableData(
-        num_rows=num_rows, num_cols=num_cols, table_cells=table_cells
-    )
-
-    return table_data
-
 # TODO: This method must be dropped.
 def tf_predict_with_page_tokens(
     config,
