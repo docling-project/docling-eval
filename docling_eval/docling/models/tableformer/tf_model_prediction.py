@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
 from docling.datamodel.base_models import Cluster, LayoutPrediction, Page, Table
 from docling.datamodel.document import ConversionResult, InputDocument
 from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -171,7 +170,7 @@ def tf_predict(
 
     return table_data
 
-
+# TODO: This method must be dropped.
 def tf_predict_with_page_tokens(
     config,
     page_image: Image.Image,
@@ -279,7 +278,7 @@ class TableFormerUpdater:
 
         return None
 
-    def _make_internal_page(self, input_doc, prov):
+    def _make_internal_page_with_table(self, input_doc, prov):
         page = Page(page_no=prov.page_no - 1)
         page._backend = input_doc._backend.load_page(page.page_no)
         page.cells = list(page._backend.get_text_cells())
@@ -329,7 +328,7 @@ class TableFormerUpdater:
         for item, level in pred_doc.iterate_items():
             if isinstance(item, TableItem):
                 for prov in item.prov:
-                    page = self._make_internal_page(input_doc, prov)
+                    page = self._make_internal_page_with_table(input_doc, prov)
 
                     page = next(self.docling_tf_model(conv_res, [page]))
                     tbl: Table = page.predictions.tablestructure.table_map[0]
@@ -372,17 +371,6 @@ class TableFormerUpdater:
 
                     page_image = true_page_images[prov.page_no - 1]
                     # page_image.show()
-
-                    table_image = crop_bounding_box(
-                        page_image=page_image,
-                        page=pred_doc.pages[prov.page_no],
-                        bbox=prov.bbox,
-                    )
-                    table_json = item.model_dump(
-                        mode="json", by_alias=True, exclude_none=True
-                    )
-                    # print(json.dumps(table_json, indent=2))
-                    # table_image.show()
 
                     table_data = tf_predict_with_page_tokens(
                         config=self.tf_config,
