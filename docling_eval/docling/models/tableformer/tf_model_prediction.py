@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
 from docling.datamodel.base_models import Cluster, LayoutPrediction, Page, Table
 from docling.datamodel.document import ConversionResult, InputDocument
 from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -171,7 +170,7 @@ def tf_predict(
 
     return table_data
 
-
+# TODO: This method must be dropped.
 def tf_predict_with_page_tokens(
     config,
     page_image: Image.Image,
@@ -372,17 +371,6 @@ class TableFormerUpdater:
 
                     page_image = true_page_images[prov.page_no - 1]
                     # page_image.show()
-
-                    table_image = crop_bounding_box(
-                        page_image=page_image,
-                        page=pred_doc.pages[prov.page_no],
-                        bbox=prov.bbox,
-                    )
-                    table_json = item.model_dump(
-                        mode="json", by_alias=True, exclude_none=True
-                    )
-                    # print(json.dumps(table_json, indent=2))
-                    # table_image.show()
 
                     table_data = tf_predict_with_page_tokens(
                         config=self.tf_config,
