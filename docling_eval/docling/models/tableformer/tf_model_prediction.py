@@ -236,9 +236,10 @@ class TableFormerUpdater:
             )
             for cell in page.cells:
                 overlap = cell.bbox.intersection_area_with(cluster.bbox)
-                overlap_ratio = overlap / cell.bbox.area()
-                if overlap_ratio > 0.2:
-                    cluster.cells.append(cell)
+                if cell.bbox.area() > 0:
+                    overlap_ratio = overlap / cell.bbox.area()
+                    if overlap_ratio > 0.2:
+                        cluster.cells.append(cell)
 
             page.predictions.layout = LayoutPrediction(clusters=[cluster])
 
