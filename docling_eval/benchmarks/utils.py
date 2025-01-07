@@ -64,7 +64,7 @@ def write_datasets_info(
         fw.write(json.dumps(dataset_infos, indent=2))
 
 
-def get_input_document(file: Path):
+def get_input_document(file: Path) -> InputDocument:
     return InputDocument(
         path_or_stream=file,
         format=InputFormat.PDF,  # type: ignore[arg-type]
@@ -85,7 +85,7 @@ def add_pages_to_true_doc(
 
     for page_no in range(0, in_doc.page_count):
         page = Page(page_no=page_no)
-        page._backend = in_doc._backend.load_page(page.page_no)
+        page._backend = in_doc._backend.load_page(page.page_no)  # type: ignore[attr-defined]
 
         if page._backend is not None and page._backend.is_valid():
             page.size = page._backend.get_size()

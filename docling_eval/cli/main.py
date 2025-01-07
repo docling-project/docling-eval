@@ -24,6 +24,7 @@ from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
 )
+from docling_eval.evaluators.readingorder_evaluator import ReadingOrderEvaluator
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
@@ -65,7 +66,6 @@ def create(
         odir = Path("./benchmarks") / benchmark.value / modality.value
 
     if benchmark == BenchMarkNames.DPBENCH:
-
         if (
             modality == EvaluationModality.END2END
             or modality == EvaluationModality.LAYOUT
@@ -127,6 +127,15 @@ def evaluate(
 
         with open(save_fn, "w") as fd:
             json.dump(table_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+
+    elif modality == EvaluationModality.READING_ORDER:
+        readingorder_evaluator = ReadingOrderEvaluator()
+        readingorder_evaluation = readingorder_evaluator(idir, split="test")
+
+        with open(save_fn, "w") as fd:
+            json.dump(
+                readingorder_evaluation.model_dump(), fd, indent=2, sort_keys=True
+            )
 
     elif modality == EvaluationModality.CODEFORMER:
         pass

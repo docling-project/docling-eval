@@ -23,6 +23,7 @@ class EvaluationModality(str, Enum):
     LAYOUT = "layout"
     TABLEFORMER = "tableformer"
     CODEFORMER = "codeformer"
+    READING_ORDER = "reading_order"
 
 
 class BenchMarkNames(str, Enum):
