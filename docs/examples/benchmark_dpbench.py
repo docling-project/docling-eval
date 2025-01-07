@@ -23,8 +23,6 @@ logger = logging.getLogger(__name__)
 
 def main():
 
-    # REPO_URL = "https://huggingface.co/datasets/upstage/dp-bench.git"  # Replace with your repo URL
-
     idir = Path(f"./benchmarks/{BenchMarkNames.DPBENCH.value}-original")
 
     snapshot_download(
