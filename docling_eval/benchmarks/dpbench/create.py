@@ -336,14 +336,6 @@ def create_dpbench_e2e_dataset(
     )
 
 
-def create_dpbench_layout_dataset(
-    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
-):
-    create_dpbench_e2e_dataset(
-        dpbench_dir=dpbench_dir, output_dir=output_dir, image_scale=image_scale
-    )
-
-
 def create_dpbench_tableformer_dataset(
     dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
 ):
@@ -391,7 +383,7 @@ def create_dpbench_tableformer_dataset(
 
         # Create the updated Document
         updated, pred_doc = tf_updater.replace_tabledata(
-            pdf_path=pdf_path, true_doc=true_doc  # , true_page_images=true_page_images
+            pdf_path=pdf_path, true_doc=true_doc
         )
 
         if updated:

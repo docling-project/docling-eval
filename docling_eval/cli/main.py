@@ -14,7 +14,7 @@ from docling_eval.benchmarks.dpbench.create import (
     create_dpbench_tableformer_dataset,
 )
 from docling_eval.benchmarks.omnidocbench.create import (
-    create_omnidocbench_layout_dataset,
+    create_omnidocbench_e2e_dataset,
     create_omnidocbench_tableformer_dataset,
 )
 from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
@@ -87,7 +87,7 @@ def create(
             modality == EvaluationModality.END2END
             or modality == EvaluationModality.LAYOUT
         ):
-            create_omnidocbench_layout_dataset(
+            create_omnidocbench_e2e_dataset(
                 omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
             )
         elif modality == EvaluationModality.TABLEFORMER:

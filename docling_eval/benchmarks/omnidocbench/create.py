@@ -360,16 +360,6 @@ def create_omnidocbench_e2e_dataset(
     )
 
 
-def create_omnidocbench_layout_dataset(
-    omnidocbench_dir: Path, output_dir: Path, image_scale: float = 1.0
-):
-    create_omnidocbench_e2e_dataset(
-        omnidocbench_dir=omnidocbench_dir,
-        output_dir=output_dir,
-        image_scale=image_scale,
-    )
-
-
 def create_omnidocbench_tableformer_dataset(
     omnidocbench_dir: Path, output_dir: Path, image_scale: float = 1.0
 ):
@@ -427,7 +417,7 @@ def create_omnidocbench_tableformer_dataset(
         )
 
         updated, pred_doc = tf_updater.replace_tabledata(
-            pdf_path=pdf_path, true_doc=true_doc, true_page_images=true_page_images
+            pdf_path=pdf_path, true_doc=true_doc
         )
 
         if updated:

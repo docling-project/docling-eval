@@ -93,24 +93,25 @@ def add_pages_to_true_doc(
             page_width, page_height = page.size.width, page.size.height
 
             page_image = page.get_image(scale=image_scale)
-            page_images.append(page_image)
+            if page_image is not None:
+                page_images.append(page_image)
+                image_ref = ImageRef(
+                    mimetype="image/png",
+                    dpi=round(72 * image_scale),
+                    size=Size(
+                        width=float(page_image.width), height=float(page_image.height)
+                    ),
+                    uri=Path(f"{BenchMarkColumns.PAGE_IMAGES}/{page_no}"),
+                )
+                page_item = PageItem(
+                    page_no=page_no + 1,
+                    size=Size(width=float(page_width), height=float(page_height)),
+                    image=image_ref,
+                )
+
+                true_doc.pages[page_no + 1] = page_item
+
             page._backend.unload()
-
-            image_ref = ImageRef(
-                mimetype="image/png",
-                dpi=round(72 * image_scale),
-                size=Size(
-                    width=float(page_image.width), height=float(page_image.height)
-                ),
-                uri=Path(f"{BenchMarkColumns.PAGE_IMAGES}/{page_no}"),
-            )
-            page_item = PageItem(
-                page_no=page_no + 1,
-                size=Size(width=float(page_width), height=float(page_height)),
-                image=image_ref,
-            )
-
-            true_doc.pages[page_no + 1] = page_item
 
     return true_doc, page_images
 

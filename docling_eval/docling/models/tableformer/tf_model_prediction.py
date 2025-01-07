@@ -113,6 +113,7 @@ def to_np(pil_image: Image.Image):
     else:
         raise ValueError("Unsupported image format")
 
+
 # TODO: This method must be dropped.
 def tf_predict_with_page_tokens(
     config,
@@ -247,7 +248,6 @@ class TableFormerUpdater:
         self,
         pdf_path: Path,
         true_doc: DoclingDocument,
-        # true_page_images: List[Image.Image],
     ) -> Tuple[bool, DoclingDocument]:
 
         updated = False

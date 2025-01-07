@@ -6,7 +6,7 @@ from tabulate import tabulate  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
 from docling_eval.benchmarks.omnidocbench.create import (
-    create_omnidocbench_layout_dataset,
+    create_omnidocbench_e2e_dataset,
     create_omnidocbench_tableformer_dataset,
 )
 from docling_eval.cli.main import evaluate, visualise
@@ -44,7 +44,8 @@ def main():
     image_scale = 1.0
 
     if True:
-        create_omnidocbench_layout_dataset(
+
+        create_omnidocbench_e2e_dataset(
             omnidocbench_dir=idir, output_dir=odir_lay, image_scale=image_scale
         )
 
