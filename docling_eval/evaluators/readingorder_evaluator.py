@@ -65,7 +65,7 @@ class ReadingOrderEvaluator:
             # print(f"\n{i} - doc_id: {doc_id}")
             # self._show_items(true_doc)
 
-            reading_order = self._get_reading_order_preds(doc_id, true_doc)
+            reading_order = self._get_reading_order_preds(true_doc)
             if reading_order is None:
                 print(f"Broken input: {doc_id}")
                 broken_inputs += 1
@@ -97,7 +97,7 @@ class ReadingOrderEvaluator:
 
         return ds_reading_order_evaluation
 
-    def _get_reading_order_preds(self, doc_id: str, true_doc: DoclingDocument):
+    def _get_reading_order_preds(self, true_doc: DoclingDocument):
         r""" """
         try:
             # Run the reading order model
