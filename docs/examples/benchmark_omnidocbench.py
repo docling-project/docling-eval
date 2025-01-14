@@ -59,6 +59,18 @@ def main():
             idir=odir_lay,
             odir=odir_lay,
         )
+        evaluate(
+            modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
+        visualise(
+            modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
 
     if True:
         create_omnidocbench_tableformer_dataset(

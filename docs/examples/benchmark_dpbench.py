@@ -58,6 +58,18 @@ def main():
             idir=odir_lay,
             odir=odir_lay,
         )
+        evaluate(
+            modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.DPBENCH,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
+        visualise(
+            modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.DPBENCH,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
 
     if True:
         create_dpbench_tableformer_dataset(

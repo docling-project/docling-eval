@@ -19,6 +19,8 @@ _log = logging.getLogger(__name__)
 
 
 class PageReadingOrderEvaluation(BaseModel):
+    doc_id: str
+
     # BBoxes are in BOTTOMLEFT origin and in the true order
     bboxes: List[Tuple[float, float, float, float]]
     pred_order: List[int]
@@ -75,6 +77,7 @@ class ReadingOrderEvaluator:
             ards.append(ard)
 
             page_evaluation = PageReadingOrderEvaluation(
+                doc_id=doc_id,
                 bboxes=[b.as_tuple() for b in reading_order["bboxes"]],
                 pred_order=reading_order["pred_order"],
                 ard=ard,
