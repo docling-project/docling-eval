@@ -85,7 +85,7 @@ def find_box(boxes: List, point: Tuple[float, float]):
             t = box["t"]
             b = box["b"]
 
-            logging.infor(
+            logging.info(
                 f"=> bbox: {l:.3f}, {r:.3f}, ({(l<x) and (x<r)}), {t:.3f}, {b:.3f}, ({(t<y) and (y<b)})"
             )
 
@@ -525,6 +525,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
     # ========== Create Ground Truth document
     true_doc = DoclingDocument(name=f"{basename}")
 
+    # Copy the page-images from the predicted pages
     for i, page_no in enumerate(desc["page_nos"]):
 
         # --- PDF
@@ -541,6 +542,17 @@ def create_true_document(basename: str, annot: dict, desc: dict):
         img_width = page_image.width
         img_height = page_image.height
 
+        if pred_doc.pages[page_no] is None:
+            logging.error(f"Page item is None, skipping ...")
+            continue
+
+        pred_page_item = pred_doc.pages[page_no]
+
+        pred_page_imageref = pred_page_item.image
+        if pred_page_imageref is None:
+            logging.error(f"Page ImageRef is None, skipping ...")
+            continue
+        
         assert pred_doc.pages[page_no].image.size.width == img_width
         assert pred_doc.pages[page_no].image.size.height == img_height
 
@@ -557,12 +569,10 @@ def create_true_document(basename: str, annot: dict, desc: dict):
         )
         true_doc.pages[page_no] = page_item
 
-    # Build the true-doc
+    # Build the true-doc 
+    logging.info(f"reading-oder from annotations: {reading_order}")
 
-    logging.info(reading_order)
-
-    already_added = []
-
+    already_added: List[int] = []
     for boxid in reading_order["boxids"]:
 
         if boxid in already_added:
@@ -571,13 +581,27 @@ def create_true_document(basename: str, annot: dict, desc: dict):
 
         # FIXME for later ...
         page_no = 1
-        page_image = true_doc.pages[page_no].image.pil_image
+
+        if true_doc.pages[page_no] is None:
+            logging.error(f"Page item is None, skipping ...")
+            continue
+
+        true_page_item = true_doc.pages[page_no]
+
+        true_page_imageref = true_page_item.image
+        if true_page_imageref is None:
+            logging.error(f"Page ImageRef is None, skipping ...")
+            continue
+
+        true_page_pilimage = true_page_imageref.pil_image
 
         label, prov, text = get_label_prov_and_text(
             box=boxes[boxid],
             page_no=page_no,
-            img_width=true_doc.pages[page_no].image.size.width,
-            img_height=true_doc.pages[page_no].image.size.height,
+            # img_width=true_doc.pages[page_no].image.size.width,
+            img_width=true_page_imageref.size.width,
+            # img_height=true_doc.pages[page_no].image.size.height,
+            img_height=true_page_imageref.size.height,
             pdf_width=true_doc.pages[page_no].size.width,
             pdf_height=true_doc.pages[page_no].size.height,
             parser=parser,
@@ -675,10 +699,13 @@ def create_true_document(basename: str, annot: dict, desc: dict):
 
             imgref = ImageRef(
                 mimetype="image/png",
-                dpi=true_doc.pages[page_no].image.dpi,
+                dpi=72,
                 size=Size(width=crop_image.width, height=crop_image.height),
                 uri=from_pil_to_base64uri(crop_image),
             )
+            if true_doc.pages[page_no].image is not None:
+                _ = true_doc.pages[page_no].image
+                imgref.dpi = _.dpi
 
             picture_item = true_doc.add_picture(prov=prov, image=imgref)
 
