@@ -108,7 +108,7 @@ def create_cvat_project_properties(project_file: Path):
                     "name": "latex",
                     "mutable": True,
                     "input_type": "text",
-                    "mutable": false,
+                    "mutable": False,
                     "values": [""],
                     "default_value": "",
                 }
@@ -120,7 +120,7 @@ def create_cvat_project_properties(project_file: Path):
                     "name": "code",
                     "mutable": True,
                     "input_type": "text",
-                    "mutable": false,
+                    "mutable": False,
                     "values": [""],
                     "default_value": "",
                 }
@@ -152,13 +152,13 @@ def create_cvat_project_properties(project_file: Path):
                 }
             )
 
-    for item in TableComponentLabel:
+    for table_item in TableComponentLabel:
 
-        r, g, b = TableComponentLabel.get_color(item)
+        r, g, b = TableComponentLabel.get_color(table_item)
 
         results.append(
             {
-                "name": item.value,
+                "name": table_item.value,
                 "color": rgb_to_hex(r, g, b),
                 "type": "rectangle",
                 "attributes": [],
@@ -178,13 +178,13 @@ def create_cvat_project_properties(project_file: Path):
         })
     """
 
-    for item in DocLinkLabel:
+    for link_item in DocLinkLabel:
 
-        r, g, b = DocLinkLabel.get_color(item)
+        r, g, b = DocLinkLabel.get_color(link_item)
 
         results.append(
             {
-                "name": item.value,
+                "name": link_item.value,
                 "color": rgb_to_hex(r, g, b),
                 "type": "polyline",
                 "attributes": [],
@@ -252,7 +252,10 @@ def create_cvat_preannotation_file_for_single_page(
                 "page_inds": [j - 1],
             }
 
-        page_bboxes = {i: [] for i, fname in enumerate(page_fnames)}
+        page_bboxes: Dict[int, List[dict]] = {}
+        for i, fname in enumerate(page_fnames):
+            page_bboxes[i] = []
+
         for item, level in doc.iterate_items():
             if isinstance(item, DocItem):  # and item.label in labels:
                 for prov in item.prov:

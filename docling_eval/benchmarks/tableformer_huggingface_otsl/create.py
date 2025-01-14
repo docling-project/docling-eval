@@ -190,6 +190,18 @@ def create_huggingface_otsl_tableformer_dataset(
             true_page_images=true_page_images,
         )
 
+        true_doc, true_pictures, true_page_images = extract_images(
+            document=true_doc,
+            pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
+            page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
+        )
+
+        pred_doc, pred_pictures, pred_page_images = extract_images(
+            document=pred_doc,
+            pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
+            page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
+        )
+
         if updated:
 
             if do_viz:

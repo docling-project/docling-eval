@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import xmltodict
+import xmltodict  # type: ignore[import]
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
@@ -75,7 +75,7 @@ def find_box(boxes: List, point: Tuple[float, float]):
             index = i
 
     if index == -1:
-        loggging.error(f"point {point} is not in a bounding-box!")
+        logging.error(f"point {point} is not in a bounding-box!")
         for i, box in enumerate(boxes):
             x = point[0]
             y = point[1]
@@ -94,21 +94,21 @@ def find_box(boxes: List, point: Tuple[float, float]):
 
 def parse_annotation(image_annot: dict):
 
-    basename = image_annot["@name"]
+    basename: str = image_annot["@name"]
 
-    keep = False
+    keep: bool = False
 
-    boxes = []
-    lines = []
+    boxes: List[dict] = []
+    lines: List[dict] = []
 
-    reading_order = None
+    reading_order: dict = {}
 
-    to_captions = []
-    to_footnotes = []
-    to_values = []
+    to_captions: List[dict] = []
+    to_footnotes: List[dict] = []
+    to_values: List[dict] = []
 
-    merges = []
-    group = []
+    merges: List[dict] = []
+    group: List[dict] = []
 
     if "box" not in image_annot or "polyline" not in image_annot:
         return (
@@ -119,7 +119,8 @@ def parse_annotation(image_annot: dict):
             reading_order,
             to_captions,
             to_footnotes,
-            next_text,
+            merges,
+            group,
         )
 
     if isinstance(image_annot["box"], dict):
@@ -136,7 +137,8 @@ def parse_annotation(image_annot: dict):
             reading_order,
             to_captions,
             to_footnotes,
-            next_text,
+            merges,
+            group,
         )
 
     if isinstance(image_annot["polyline"], dict):
@@ -153,7 +155,8 @@ def parse_annotation(image_annot: dict):
             reading_order,
             to_captions,
             to_footnotes,
-            next_text,
+            merges,
+            group,
         )
 
     for i, box in enumerate(boxes):
@@ -185,7 +188,7 @@ def parse_annotation(image_annot: dict):
 
     for i, line in enumerate(lines):
         if line["@label"] == "reading_order":
-            assert reading_order is None  # you can only have 1 reading order
+            assert len(reading_order) == 0  # you can only have 1 reading order
             keep = True
             reading_order = line
 
@@ -217,8 +220,8 @@ def parse_annotation(image_annot: dict):
 def create_prov(
     box: Dict,
     page_no: int,
-    img_width: int,
-    img_height: int,
+    img_width: float,
+    img_height: float,
     pdf_width: float,
     pdf_height: float,
     origin: CoordOrigin = CoordOrigin.TOPLEFT,
@@ -319,7 +322,9 @@ def compute_iou(box_1: BoundingBox, box_2: BoundingBox, page_height: float):
     return iou
 
 
-def find_table_data(doc: DoclingDocument, prov: BoundingBox, iou_cutoff: float = 0.90):
+def find_table_data(
+    doc: DoclingDocument, prov: ProvenanceItem, iou_cutoff: float = 0.90
+):
 
     # logging.info(f"annot-table: {prov}")
 
@@ -388,6 +393,7 @@ def get_next_provs(
 
 
 def add_captions_to_item(
+    basename: str,
     to_captions: list,
     item: FloatingItem,
     page_no: int,
@@ -398,6 +404,11 @@ def add_captions_to_item(
     parser: pdf_parser_v2,
     parsed_page: dict,
 ):
+
+    if true_doc.pages[page_no].image is None:
+        return
+
+    true_page_imageref = true_doc.pages[page_no].image
 
     for to_caption in to_captions:
         if to_caption["boxids"][0] == boxid:
@@ -410,8 +421,8 @@ def add_captions_to_item(
                 label, prov, text = get_label_prov_and_text(
                     box=caption_box,
                     page_no=page_no,
-                    img_width=true_doc.pages[page_no].image.size.width,
-                    img_height=true_doc.pages[page_no].image.size.height,
+                    img_width=true_page_imageref.size.width,
+                    img_height=true_page_imageref.size.height,
                     pdf_width=true_doc.pages[page_no].size.width,
                     pdf_height=true_doc.pages[page_no].size.height,
                     parser=parser,
@@ -430,6 +441,7 @@ def add_captions_to_item(
 
 
 def add_footnotes_to_item(
+    basename: str,
     to_footnotes: list,
     item: FloatingItem,
     page_no: int,
@@ -449,11 +461,16 @@ def add_footnotes_to_item(
 
                 footnote_box = boxes[boxid_]
 
+                if true_doc.pages[page_no].image is None:
+                    continue
+
+                true_page_imageref = true_doc.pages[page_no].image
+
                 label, prov, text = get_label_prov_and_text(
                     box=footnote_box,
                     page_no=page_no,
-                    img_width=true_doc.pages[page_no].image.size.width,
-                    img_height=true_doc.pages[page_no].image.size.height,
+                    img_width=true_page_imageref.size.width,
+                    img_height=true_page_imageref.size.height,
                     pdf_width=true_doc.pages[page_no].size.width,
                     pdf_height=true_doc.pages[page_no].size.height,
                     parser=parser,
@@ -502,7 +519,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
 
     # ========== Original Prediction (to pre-annotate)
     pred_file = Path(desc["pred_file"])
-    assert os.path.exists(pred_file)
+    assert os.path.exists(str(pred_file))
 
     with open(pred_file, "r") as fr:
         pred_doc = DoclingDocument.model_validate_json(json.load(fr))
@@ -552,13 +569,14 @@ def create_true_document(basename: str, annot: dict, desc: dict):
         if pred_page_imageref is None:
             logging.error(f"Page ImageRef is None, skipping ...")
             continue
-        
-        assert pred_doc.pages[page_no].image.size.width == img_width
-        assert pred_doc.pages[page_no].image.size.height == img_height
+
+        assert pred_page_imageref.size.width == img_width
+        assert pred_page_imageref.size.height == img_height
 
         image_ref = ImageRef(
             mimetype="image/png",
-            dpi=pred_doc.pages[page_no].image.dpi,
+            # dpi=pred_doc.pages[page_no].image.dpi,
+            dpi=pred_page_imageref.dpi,
             size=Size(width=float(img_width), height=float(img_height)),
             uri=from_pil_to_base64uri(page_image),
         )
@@ -569,7 +587,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
         )
         true_doc.pages[page_no] = page_item
 
-    # Build the true-doc 
+    # Build the true-doc
     logging.info(f"reading-oder from annotations: {reading_order}")
 
     already_added: List[int] = []
@@ -668,6 +686,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
             table_item = true_doc.add_table(label=label, data=table_data, prov=prov)
 
             true_doc, already_added = add_captions_to_item(
+                basename=basename,
                 to_captions=to_captions,
                 item=table_item,
                 page_no=page_no,
@@ -680,6 +699,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
             )
 
             true_doc, already_added = add_footnotes_to_item(
+                basename=basename,
                 to_footnotes=to_footnotes,
                 item=table_item,
                 page_no=page_no,
@@ -710,6 +730,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
             picture_item = true_doc.add_picture(prov=prov, image=imgref)
 
             true_doc, already_added = add_captions_to_item(
+                basename=basename,
                 to_captions=to_captions,
                 item=picture_item,
                 page_no=page_no,
@@ -722,6 +743,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
             )
 
             true_doc, already_added = add_footnotes_to_item(
+                basename=basename,
                 to_footnotes=to_footnotes,
                 item=picture_item,
                 page_no=page_no,

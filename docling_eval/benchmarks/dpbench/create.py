@@ -508,6 +508,18 @@ def create_dpbench_readingorder_dataset(
                     pred_labels=PRED_HTML_EXPORT_LABELS,
                 )
 
+            true_doc, true_pictures, true_page_images = extract_images(
+                document=true_doc,
+                pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
+                page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
+            )
+
+            pred_doc, pred_pictures, pred_page_images = extract_images(
+                document=pred_doc,
+                pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
+                page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
+            )
+
             record = {
                 BenchMarkColumns.DOCLING_VERSION: docling_version(),
                 BenchMarkColumns.STATUS: "SUCCESS",

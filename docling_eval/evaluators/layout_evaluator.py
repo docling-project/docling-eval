@@ -141,13 +141,15 @@ class LayoutEvaluator:
         # Update metric with predictions and ground truths
         metric.update(predictions, ground_truths)
 
-        # Compute mAP and other metrics
+        # Compute mAP and other metrics per class
         result = metric.compute()
 
-        evaluations: List[LayoutEvaluation] = []
+        evaluations: List[ClassLayoutEvaluation] = []
         for key, value in result.items():
             if isinstance(value, float):
-                evaluations.append(LayoutEvaluation(name=key, value=value, label=None))
+                evaluations.append(
+                    ClassLayoutEvaluation(name=key, value=value, label=None)
+                )
 
         if "map_per_class" in result:
             for label_idx, class_map in enumerate(result["map_per_class"]):
