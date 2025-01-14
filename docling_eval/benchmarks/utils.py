@@ -6,6 +6,9 @@ from typing import Dict, List, Optional, Set
 
 import pypdfium2 as pdfium
 from bs4 import BeautifulSoup  # type: ignore
+from datasets import Features
+from datasets import Image as Features_Image
+from datasets import Sequence, Value
 from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
@@ -24,16 +27,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.docling.constants import (
-    HTML_INSPECTION,
     HTML_COMPARISON_PAGE,
     HTML_COMPARISON_PAGE_WITH_CLUSTERS,
     HTML_DEFAULT_HEAD_FOR_COMP,
+    HTML_INSPECTION,
 )
 from docling_eval.docling.utils import from_pil_to_base64, from_pil_to_base64uri
-
-from datasets import Features, Value, Sequence
-from datasets import Image as Features_Image
-
 
 """
 def write_datasets_info(

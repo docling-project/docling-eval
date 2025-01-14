@@ -1,37 +1,33 @@
 import argparse
-import glob
 import copy
+import glob
 import json
 import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from tqdm import tqdm  # type: ignore
-
 from datasets import Dataset, load_dataset
-
-from docling_core.types.doc.labels import (
-    DocItemLabel,
-    GroupLabel,
-    TableCellLabel,
-    PictureClassificationLabel,
-)
-
 from docling_core.types.doc.document import (
-    DoclingDocument,
     DocItem,
+    DoclingDocument,
     PictureItem,
     TableItem,
 )
-
-from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.docling.utils import insert_images
+from docling_core.types.doc.labels import (
+    DocItemLabel,
+    GroupLabel,
+    PictureClassificationLabel,
+    TableCellLabel,
+)
+from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.annotation_formats.utils import (
     DocLinkLabel,
     TableComponentLabel,
 )
+from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.docling.utils import insert_images
 
 # Configure logging
 logging.basicConfig(

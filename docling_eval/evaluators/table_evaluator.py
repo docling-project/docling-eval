@@ -15,9 +15,8 @@ from pydantic import BaseModel, model_validator
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.utils.teds import TEDScorer
-
 from docling_eval.evaluators.utils import DatasetStatistics, compute_stats
+from docling_eval.utils.teds import TEDScorer
 
 _log = logging.getLogger(__name__)
 

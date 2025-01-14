@@ -1,13 +1,12 @@
+import logging
+import random
+import statistics
 from pathlib import Path
 from typing import Dict, List, Tuple
-from pydantic import BaseModel, model_validator
-import numpy as np
-import statistics
+
 import matplotlib.pyplot as plt
-
-import random
-
-import logging
+import numpy as np
+from pydantic import BaseModel, model_validator
 
 
 class DatasetStatistics(BaseModel):

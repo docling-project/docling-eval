@@ -1,6 +1,6 @@
 import argparse
-import glob
 import copy
+import glob
 import json
 import logging
 import os
@@ -8,53 +8,46 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import xmltodict
-
-from PIL import Image  # as PILImage
-
-from tqdm import tqdm  # type: ignore
-
 from datasets import Dataset, load_dataset
-
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc.document import (
+    DocItem,
+    DoclingDocument,
+    FloatingItem,
+    ImageRef,
+    PageItem,
+    PictureItem,
+    ProvenanceItem,
+    TableData,
+    TableItem,
+)
 from docling_core.types.doc.labels import (
     DocItemLabel,
     GroupLabel,
-    TableCellLabel,
     PictureClassificationLabel,
+    TableCellLabel,
 )
-
 from docling_parse.pdf_parsers import pdf_parser_v2  # type: ignore[import]
-
-from docling_core.types.doc.document import (
-    DoclingDocument,
-    DocItem,
-    FloatingItem,
-    PictureItem,
-    TableItem,
-    ImageRef,
-    PageItem,
-    ProvenanceItem,
-    TableData,
-)
-
-from docling_eval.docling.utils import from_pil_to_base64uri, crop_bounding_box
-from docling_eval.docling.utils import (
-    insert_images,
-    extract_images,
-    docling_version,
-    get_binary,
-    save_shard_to_disk,
-)
+from PIL import Image  # as PILImage
+from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.utils import (
     draw_clusters_with_reading_order,
-    save_inspection_html,
     save_comparison_html_with_clusters,
+    save_inspection_html,
     write_datasets_info,
 )
-
 from docling_eval.docling.conversion import create_converter
+from docling_eval.docling.utils import (
+    crop_bounding_box,
+    docling_version,
+    extract_images,
+    from_pil_to_base64uri,
+    get_binary,
+    insert_images,
+    save_shard_to_disk,
+)
 
 # Configure logging
 logging.basicConfig(

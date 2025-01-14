@@ -1,24 +1,14 @@
 import argparse
-import glob
 import copy
+import glob
 import json
 import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple
+
 import xmltodict
-
-from tqdm import tqdm  # type: ignore
-
-from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.docling.utils import insert_images
-
 from datasets import Dataset, load_dataset
-from pathlib import Path
-from PIL import Image  # as PILImage
-
-from docling_core.types.doc.labels import DocItemLabel, GroupLabel
-
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DocItem,
@@ -32,18 +22,22 @@ from docling_core.types.doc.document import (
     TableData,
     TableItem,
 )
+from docling_core.types.doc.labels import DocItemLabel, GroupLabel
+from docling_parse.pdf_parsers import pdf_parser_v2  # type: ignore[import]
+from PIL import Image  # as PILImage
+from tqdm import tqdm  # type: ignore
 
-from docling_eval.docling.utils import (
-    from_pil_to_base64,
-    from_pil_to_base64uri,
-    crop_bounding_box,
-)
+from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.utils import (
     draw_clusters_with_reading_order,
     save_inspection_html,
 )
-
-from docling_parse.pdf_parsers import pdf_parser_v2  # type: ignore[import]
+from docling_eval.docling.utils import (
+    crop_bounding_box,
+    from_pil_to_base64,
+    from_pil_to_base64uri,
+    insert_images,
+)
 
 # Configure logging
 logging.basicConfig(
