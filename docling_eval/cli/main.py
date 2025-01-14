@@ -141,7 +141,11 @@ def evaluate(
 
         with open(save_fn, "w") as fd:
             json.dump(
-                readingorder_evaluation.model_dump(), fd, indent=2, sort_keys=True
+                readingorder_evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
             )
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
@@ -149,7 +153,13 @@ def evaluate(
         md_evaluation = md_evaluator(idir, split="test")
 
         with open(save_fn, "w") as fd:
-            json.dump(md_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(
+                md_evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
 
     elif modality == EvaluationModality.CODEFORMER:
         pass
