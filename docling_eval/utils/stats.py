@@ -25,29 +25,27 @@ class DatasetStatistics(BaseModel):
             raise ValueError("`bins` must have exactly one more element than `hist`.")
         return values
 
-    def to_table(self) -> Tuple[List[List[str]], List[str]]:
+    def to_table(self, metric_name: str = "TEDS") -> Tuple[List[List[str]], List[str]]:
 
-        headers = ["x0<=TEDS", "TEDS<=x1", "prob [%]", "acc [%]", "1-acc [%]", "total"]
-
-        # Calculate bin widths
-        bin_widths = [
-            self.bins[i + 1] - self.bins[i] for i in range(len(self.bins) - 1)
+        headers = [
+            f"x0<={metric_name}",
+            f"{metric_name}<=x1",
+            "prob [%]",
+            "acc [%]",
+            "1-acc [%]",
+            "total",
         ]
-        bin_middle = [
-            (self.bins[i + 1] + self.bins[i]) / 2.0 for i in range(len(self.bins) - 1)
-        ]
-
         cumsum: float = 0.0
 
         table = []
         for i in range(len(self.bins) - 1):
             table.append(
                 [
-                    f"{self.bins[i+0]:.3f}",
-                    f"{self.bins[i+1]:.3f}",
-                    f"{100.0*float(self.hist[i])/float(self.total):.2f}",
-                    f"{100.0*cumsum:.2f}",
-                    f"{100.0*(1.0-cumsum):.2f}",
+                    f"{self.bins[i + 0]:.3f}",
+                    f"{self.bins[i + 1]:.3f}",
+                    f"{100.0 * float(self.hist[i]) / float(self.total):.2f}",
+                    f"{100.0 * cumsum:.2f}",
+                    f"{100.0 * (1.0-cumsum):.2f}",
                     f"{self.hist[i]}",
                 ]
             )
