@@ -16,7 +16,7 @@ class BenchMarkColumns(str, Enum):
 
     GROUNDTRUTH_PAGE_IMAGES = "GroundTruthPageImages"
     GROUNDTRUTH_PICTURES = "GroundTruthPictures"
-    
+
     PREDICTION_PAGE_IMAGES = "PredictionPageImages"
     PREDICTION_PICTURES = "PredictionPictures"
 

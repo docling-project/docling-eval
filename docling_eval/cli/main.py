@@ -160,8 +160,9 @@ def visualise(
         )
 
         figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        layout_evaluation.mAP_stats.save_histogram(figname=figname, name="struct-with-text")
-        
+        layout_evaluation.mAP_stats.save_histogram(
+            figname=figname, name="struct-with-text"
+        )
 
     elif modality == EvaluationModality.TABLEFORMER:
 

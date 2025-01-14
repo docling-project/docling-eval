@@ -9,6 +9,7 @@ import random
 
 import logging
 
+
 class DatasetStatistics(BaseModel):
     total: int
 
@@ -93,5 +94,3 @@ def compute_stats(values: List[float]) -> DatasetStatistics:
     return DatasetStatistics(
         total=total, mean=mean, median=median, std=std, hist=hist, bins=bins
     )
-
-

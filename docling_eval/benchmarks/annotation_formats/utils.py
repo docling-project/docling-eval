@@ -12,7 +12,7 @@ class DocLinkLabel(str, Enum):
     TO_CAPTION = "to_caption"
     TO_FOOTNOTE = "to_footnote"
     TO_VALUE = "to_value"
-   
+
     MERGE = "merge"
     GROUP = "group"
 
@@ -25,16 +25,15 @@ class DocLinkLabel(str, Enum):
         """Return the RGB color associated with a given label."""
         color_map = {
             DocLinkLabel.READING_ORDER: (255, 0, 0),
-            
             DocLinkLabel.TO_CAPTION: (0, 255, 0),
             DocLinkLabel.TO_FOOTNOTE: (0, 255, 0),
             DocLinkLabel.TO_VALUE: (0, 255, 0),
-               
             DocLinkLabel.MERGE: (255, 0, 255),
             DocLinkLabel.GROUP: (255, 255, 0),
         }
         return color_map[label]
-    
+
+
 class TableComponentLabel(str, Enum):
     """TableComponentLabel."""
 
@@ -56,5 +55,4 @@ class TableComponentLabel(str, Enum):
             TableComponentLabel.TABLE_COL: (0, 255, 0),
             TableComponentLabel.TABLE_GROUP: (0, 0, 255),
         }
-        return color_map[label]    
-    
+        return color_map[label]

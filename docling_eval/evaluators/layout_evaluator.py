@@ -25,9 +25,11 @@ class ClassLayoutEvaluation(BaseModel):
     label: str
     value: float
 
+
 class ImageLayoutEvaluation(BaseModel):
     name: str
     value: float
+
 
 class DatasetLayoutEvaluation(BaseModel):
     true_labels: Dict[str, int]
@@ -40,12 +42,14 @@ class DatasetLayoutEvaluation(BaseModel):
     evaluations_per_image: List[ImageLayoutEvaluation]
 
     mAP_stats: DatasetStatistics
-    
+
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
 
         headers = ["label", "Class mAP[0.5:0.95]"]
 
-        self.evaluations_per_class = sorted(self.evaluations_per_class, key=lambda x: x.value, reverse=True)
+        self.evaluations_per_class = sorted(
+            self.evaluations_per_class, key=lambda x: x.value, reverse=True
+        )
 
         table = []
         for i in range(len(self.evaluations_per_class)):
@@ -58,8 +62,6 @@ class DatasetLayoutEvaluation(BaseModel):
 
         return table, headers
 
-
-    
 
 class LayoutEvaluator:
 
@@ -124,19 +126,15 @@ class LayoutEvaluator:
             if len(gts) == len(preds):
                 for i in range(len(gts)):
                     doc_ids.append(data[BenchMarkColumns.DOC_ID] + f"-page-{i}")
-                    
+
                 ground_truths.extend(gts)
                 predictions.extend(preds)
             else:
                 logging.error("Ignoring predictions for document")
 
-        assert len(doc_ids) == len(
-            ground_truths
-        ), "doc_ids==len(ground_truths)"
-                
-        assert len(doc_ids) == len(
-            predictions
-        ), "doc_ids==len(predictions)"
+        assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
+
+        assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
 
         # Initialize Mean Average Precision metric
         metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
@@ -161,36 +159,35 @@ class LayoutEvaluator:
                         value=class_map,
                     )
                 )
-                
+
         # Compute mAP for each image individually
         map_values = []
-        
+
         evaluations_per_image: List[ImageLayoutEvaluation] = []
         for doc_id, pred, gt in zip(doc_ids, predictions, ground_truths):
-            # Reset the metric for the next image                
-            metric.reset()              
+            # Reset the metric for the next image
+            metric.reset()
 
             # Update with single image
             metric.update([pred], [gt])
-            
+
             # Compute metrics
-            result = metric.compute()   
+            result = metric.compute()
 
             # Extract mAP for this image
             map_value = float(result["map"].item())
-            
+
             map_values.append(map_value)
-            evaluations_per_image.append(ImageLayoutEvaluation(name=doc_id, value=map_value))
+            evaluations_per_image.append(
+                ImageLayoutEvaluation(name=doc_id, value=map_value)
+            )
 
         return DatasetLayoutEvaluation(
             evaluations_per_class=evaluations,
             evaluations_per_image=evaluations_per_image,
-
-            mAP_stats = compute_stats(map_values),
-            
+            mAP_stats=compute_stats(map_values),
             true_labels=true_labels,
             pred_labels=pred_labels,
-
             intersecting_labels=[_.value for _ in intersection_labels],
         )
 
