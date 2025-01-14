@@ -24,6 +24,10 @@ from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
 )
+from docling_eval.evaluators.markdown_text_evaluator import (
+    DatasetMarkdownEvaluation,
+    MarkdownTextEvaluator,
+)
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -140,6 +144,13 @@ def evaluate(
                 readingorder_evaluation.model_dump(), fd, indent=2, sort_keys=True
             )
 
+    elif modality == EvaluationModality.MARKDOWN_TEXT:
+        md_evaluator = MarkdownTextEvaluator()
+        md_evaluation = md_evaluator(idir, split="test")
+
+        with open(save_fn, "w") as fd:
+            json.dump(md_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+
     elif modality == EvaluationModality.CODEFORMER:
         pass
 
@@ -204,6 +215,17 @@ def visualise(
 
         logging.info(
             "Reading order (Average Relative Distance): \n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+    elif modality == EvaluationModality.MARKDOWN_TEXT:
+        with open(filename, "r") as fd:
+            markdown_evaluation = DatasetMarkdownEvaluation.parse_file(filename)
+
+        data, headers = markdown_evaluation.bleu_stats.to_table("BlEU")
+
+        logging.info(
+            "Markdown text (BLEU): \n\n"
             + tabulate(data, headers=headers, tablefmt="github")
         )
 

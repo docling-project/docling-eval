@@ -24,6 +24,7 @@ class EvaluationModality(str, Enum):
     TABLEFORMER = "tableformer"
     CODEFORMER = "codeformer"
     READING_ORDER = "reading_order"
+    MARKDOWN_TEXT = "markdown_text"
 
 
 class BenchMarkNames(str, Enum):
