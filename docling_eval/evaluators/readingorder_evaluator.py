@@ -131,6 +131,10 @@ class ReadingOrderEvaluator:
     def _compute_ard(self, reading_order: Dict) -> float:
         r"""
         Compute the Average Relative Distance (ARD)
+        0 is the best and 1 is the worst
+
+        ARD(A, B) = (1/n) * sum(e_k)
+        e_k = abs(pred_order_index  - gt_order_index)
         """
         n = len(reading_order["bboxes"])
         if n == 0:

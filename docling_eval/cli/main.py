@@ -24,7 +24,10 @@ from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
 )
-from docling_eval.evaluators.readingorder_evaluator import ReadingOrderEvaluator
+from docling_eval.evaluators.readingorder_evaluator import (
+    DatasetReadingOrderEvaluation,
+    ReadingOrderEvaluator,
+)
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
@@ -190,6 +193,19 @@ def visualise(
             odir / f"evaluation_{benchmark.value}_{modality.value}-struct-only.png"
         )
         table_evaluation.TEDS_struct.save_histogram(figname=figname, name="struct")
+
+    elif modality == EvaluationModality.READING_ORDER:
+        with open(filename, "r") as fd:
+            reading_order_evaluation = DatasetReadingOrderEvaluation.parse_file(
+                filename
+            )
+
+        data, headers = reading_order_evaluation.ard_stats.to_table("ARD")
+
+        logging.info(
+            "Reading order (Average Relative Distance): \n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
 
     elif modality == EvaluationModality.CODEFORMER:
         pass
