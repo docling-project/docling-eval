@@ -31,6 +31,7 @@ from docling_eval.evaluators.markdown_text_evaluator import (
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
+    ReadingOrderVisualizer,
 )
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
@@ -227,6 +228,8 @@ def visualise(
             "Reading order (Average Relative Distance): \n\n"
             + tabulate(data, headers=headers, tablefmt="github")
         )
+        ro_visualizer = ReadingOrderVisualizer()
+        ro_visualizer(idir, filename, odir, split="test")
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         with open(filename, "r") as fd:

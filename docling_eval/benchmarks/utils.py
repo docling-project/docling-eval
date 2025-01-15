@@ -249,6 +249,52 @@ def save_comparison_html(
         fw.write(comparison_page)
 
 
+def draw_arrow(
+    draw: ImageDraw,  # type: ignore
+    arrow_coords: tuple[float, float, float, float],
+    line_width: int = 2,
+    color: str = "red",
+):
+    r"""
+    Draw an arrow inside the given draw object
+    """
+    x0, y0, x1, y1 = arrow_coords
+
+    # Arrow parameters
+    start_point = (x0, y0)  # Starting point of the arrow
+    end_point = (x1, y1)  # Ending point of the arrow
+    arrowhead_length = 20  # Length of the arrowhead
+    arrowhead_width = 10  # Width of the arrowhead
+
+    # Draw the arrow shaft (line)
+    draw.line([start_point, end_point], fill=color, width=line_width)
+
+    # Calculate the arrowhead points
+    dx = end_point[0] - start_point[0]
+    dy = end_point[1] - start_point[1]
+    angle = (dx**2 + dy**2) ** 0.5 + 0.01  # Length of the arrow shaft
+
+    # Normalized direction vector for the arrow shaft
+    ux, uy = dx / angle, dy / angle
+
+    # Base of the arrowhead
+    base_x = end_point[0] - ux * arrowhead_length
+    base_y = end_point[1] - uy * arrowhead_length
+
+    # Left and right points of the arrowhead
+    left_x = base_x - uy * arrowhead_width
+    left_y = base_y + ux * arrowhead_width
+    right_x = base_x + uy * arrowhead_width
+    right_y = base_y - ux * arrowhead_width
+
+    # Draw the arrowhead (triangle)
+    draw.polygon(
+        [end_point, (left_x, left_y), (right_x, right_y)],
+        fill=color,
+    )
+    return draw
+
+
 def draw_clusters_with_reading_order(
     doc: DoclingDocument,
     page_image: Image.Image,
