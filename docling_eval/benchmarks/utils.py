@@ -578,18 +578,20 @@ def save_inspection_html(
     page_images = []
     page_template = '<div class="image-wrapper"><img src="data:image/png;base64,BASE64PAGE" alt="Example Image"></div>'
     for page_no, page in doc.pages.items():
-        page_img = page.image.pil_image
+        # page_img = page.image.pil_image
 
-        page_img = draw_clusters_with_reading_order(
-            doc=doc,
-            page_image=page_img,
-            labels=labels,
-            page_no=page_no,
-            reading_order=True,
-        )
+        if page.image is not None and page.image.pil_image is not None:
 
-        page_base64 = from_pil_to_base64(page_img)
-        page_images.append(page_template.replace("BASE64PAGE", page_base64))
+            page_img = draw_clusters_with_reading_order(
+                doc=doc,
+                page_image=page.image.pil_image,
+                labels=labels,
+                page_no=page_no,
+                reading_order=True,
+            )
+
+            page_base64 = from_pil_to_base64(page_img)
+            page_images.append(page_template.replace("BASE64PAGE", page_base64))
 
     html_viz = copy.deepcopy(HTML_INSPECTION)
     html_viz = html_viz.replace("PREDDOC", html_doc)

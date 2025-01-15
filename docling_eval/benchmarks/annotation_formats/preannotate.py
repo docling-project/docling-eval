@@ -294,12 +294,12 @@ def create_cvat_preannotation_file_for_single_page(
                 f'<image id="{img_id}" name="{page_file}" width="{img_w}" height="{img_h}">'
             )
 
-            for bbox_id, page_bbox in enumerate(page_bboxes[page_no]):
-                label = page_bbox["label"]
-                l = round(page_bbox["l"])
-                r = round(page_bbox["r"])
-                t = round(page_bbox["t"])
-                b = round(page_bbox["b"])
+            for bbox_id, bbox in enumerate(page_bboxes[page_no]):
+                label = bbox["label"]
+                l = round(bbox["l"])
+                r = round(bbox["r"])
+                t = round(bbox["t"])
+                b = round(bbox["b"])
                 results.append(
                     f'<box label="{label}" source="docling" occluded="0" xtl="{l}" ytl="{t}" xbr="{r}" ybr="{b}" z_order="{bbox_id}"></box>'
                 )

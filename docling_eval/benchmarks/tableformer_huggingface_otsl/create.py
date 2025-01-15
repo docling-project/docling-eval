@@ -25,7 +25,11 @@ from docling_eval.docling.models.tableformer.tf_model_prediction import (
     PageTokens,
     TableFormerUpdater,
 )
-from docling_eval.docling.utils import docling_version, save_shard_to_disk
+from docling_eval.docling.utils import (
+    docling_version,
+    extract_images,
+    save_shard_to_disk,
+)
 
 HTML_EXPORT_LABELS = {
     DocItemLabel.TITLE,
@@ -147,7 +151,7 @@ def create_huggingface_otsl_tableformer_dataset(
             mimetype="image/png",
             dpi=round(72 * image_scale),
             size=Size(width=float(table_image.width), height=float(table_image.height)),
-            uri=Path(f"{BenchMarkColumns.PAGE_IMAGES}/{page_index-1}"),
+            uri=Path(f"{BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES}/{page_index-1}"),
         )
         page_item = PageItem(
             page_no=page_index,

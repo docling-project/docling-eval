@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, cast
 
 import xmltodict  # type: ignore[import]
 from datasets import Dataset, load_dataset
@@ -352,6 +352,19 @@ def find_table_data(
     return table_data
 
 
+def get_page_imageref(page_no: int, true_doc: DoclingDocument) -> ImageRef:
+
+    if page_no not in true_doc.pages:
+        raise ValueError(f"{page_no} in not in the document")
+
+    if not isinstance(true_doc.pages[page_no].image, ImageRef):
+        raise ValueError(f"{page_no} in not in the document has no ImageRef")
+
+    true_page_imageref: ImageRef = cast(ImageRef, true_doc.pages[page_no].image)
+
+    return true_page_imageref
+
+
 def get_next_provs(
     page_no: int,
     boxid: int,
@@ -363,6 +376,15 @@ def get_next_provs(
     parser: pdf_parser_v2,
     parsed_page: dict,
 ):
+    """
+    if true_doc.pages[page_no].image is None:
+        logging.error("true_doc.pages[page_no].image is None, skipping ...")
+        return
+
+    true_page_imageref: ImageRef = true_doc.pages[page_no].image
+    """
+
+    true_page_imageref = get_page_imageref(page_no=page_no, true_doc=true_doc)
 
     next_provs = []
     for merge in merges:
@@ -375,8 +397,10 @@ def get_next_provs(
                 label_, prov_, text_ = get_label_prov_and_text(
                     box=boxes[boxid_],
                     page_no=page_no,
-                    img_width=true_doc.pages[page_no].image.size.width,
-                    img_height=true_doc.pages[page_no].image.size.height,
+                    # img_width=true_doc.pages[page_no].image.size.width,
+                    img_width=true_page_imageref.size.width,
+                    # img_height=true_doc.pages[page_no].image.size.height,
+                    img_height=true_page_imageref.size.height,
                     pdf_width=true_doc.pages[page_no].size.width,
                     pdf_height=true_doc.pages[page_no].size.height,
                     parser=parser,
@@ -404,11 +428,7 @@ def add_captions_to_item(
     parser: pdf_parser_v2,
     parsed_page: dict,
 ):
-
-    if true_doc.pages[page_no].image is None:
-        return
-
-    true_page_imageref = true_doc.pages[page_no].image
+    true_page_imageref = get_page_imageref(page_no=page_no, true_doc=true_doc)
 
     for to_caption in to_captions:
         if to_caption["boxids"][0] == boxid:
@@ -452,6 +472,7 @@ def add_footnotes_to_item(
     parser: pdf_parser_v2,
     parsed_page: dict,
 ):
+    true_page_imageref = get_page_imageref(page_no=page_no, true_doc=true_doc)
 
     for to_footnote in to_footnotes:
         if to_footnote["boxids"][0] == boxid:
@@ -460,11 +481,6 @@ def add_footnotes_to_item(
                 already_added.append(boxid_)
 
                 footnote_box = boxes[boxid_]
-
-                if true_doc.pages[page_no].image is None:
-                    continue
-
-                true_page_imageref = true_doc.pages[page_no].image
 
                 label, prov, text = get_label_prov_and_text(
                     box=footnote_box,
