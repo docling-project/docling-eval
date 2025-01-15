@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns  # type: ignore
+from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 from docling_eval.utils.bleu import compute_bleu_score
-from docling_eval.utils.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)
 

@@ -21,9 +21,6 @@ from docling_eval.benchmarks.utils import (
     write_datasets_info,
 )
 from docling_eval.docling.conversion import create_converter
-from docling_eval.docling.models.reading_order.reading_order_updater import (
-    ReadingOrderUpdater,
-)
 from docling_eval.docling.models.tableformer.tf_model_prediction import (
     TableFormerUpdater,
 )

@@ -33,9 +33,6 @@ from docling_eval.benchmarks.utils import (
     write_datasets_info,
 )
 from docling_eval.docling.conversion import create_converter
-from docling_eval.docling.models.reading_order.reading_order_updater import (
-    ReadingOrderUpdater,
-)
 from docling_eval.docling.models.tableformer.tf_model_prediction import (
     TableFormerUpdater,
 )
@@ -443,108 +440,6 @@ def create_dpbench_tableformer_dataset(
 
     write_datasets_info(
         name="DPBench: tableformer",
-        output_dir=output_dir,
-        num_train_rows=0,
-        num_test_rows=len(records),
-    )
-
-
-def create_dpbench_readingorder_dataset(
-    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
-):
-    # Init the TableFormer model
-    tf_updater = TableFormerUpdater()
-
-    # load the groundtruth
-    with open(dpbench_dir / f"dataset/reference.json", "r") as fr:
-        gt = json.load(fr)
-
-    viz_dir = output_dir / "vizualisations"
-    os.makedirs(viz_dir, exist_ok=True)
-
-    records = []
-
-    for filename, annots in tqdm(
-        gt.items(),
-        desc="Processing files for DP-Bench with TableFormer",
-        total=len(gt),
-        ncols=128,
-    ):
-
-        pdf_path = dpbench_dir / f"dataset/pdfs/{filename}"
-
-        # Create the groundtruth Document
-        true_doc = DoclingDocument(name=f"ground-truth {os.path.basename(pdf_path)}")
-        true_doc, true_page_images = add_pages_to_true_doc(
-            pdf_path=pdf_path, true_doc=true_doc, image_scale=image_scale
-        )
-
-        assert len(true_page_images) == 1, "len(true_page_images)==1"
-
-        page_width = true_doc.pages[1].size.width
-        page_height = true_doc.pages[1].size.height
-
-        for elem in annots["elements"]:
-            update(
-                true_doc,
-                elem,
-                page=true_doc.pages[1],
-                page_image=true_page_images[0],
-                page_width=page_width,
-                page_height=page_height,
-            )
-
-        # Create the updated Document
-        updated, pred_doc = tf_updater.replace_tabledata(
-            pdf_path=pdf_path, true_doc=true_doc
-        )
-
-        if updated:
-
-            if True:
-                save_comparison_html(
-                    filename=viz_dir / f"{os.path.basename(pdf_path)}-comp.html",
-                    true_doc=true_doc,
-                    pred_doc=pred_doc,
-                    page_image=true_page_images[0],
-                    true_labels=TRUE_HTML_EXPORT_LABELS,
-                    pred_labels=PRED_HTML_EXPORT_LABELS,
-                )
-
-            true_doc, true_pictures, true_page_images = extract_images(
-                document=true_doc,
-                pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
-                page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
-            )
-
-            pred_doc, pred_pictures, pred_page_images = extract_images(
-                document=pred_doc,
-                pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
-                page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
-            )
-
-            record = {
-                BenchMarkColumns.DOCLING_VERSION: docling_version(),
-                BenchMarkColumns.STATUS: "SUCCESS",
-                BenchMarkColumns.DOC_ID: str(os.path.basename(pdf_path)),
-                BenchMarkColumns.GROUNDTRUTH: json.dumps(true_doc.export_to_dict()),
-                BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
-                BenchMarkColumns.ORIGINAL: get_binary(pdf_path),
-                BenchMarkColumns.MIMETYPE: "application/pdf",
-                BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
-                BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
-                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
-                BenchMarkColumns.GROUNDTRUTH_PICTURES: pred_pictures,
-            }
-            records.append(record)
-
-    test_dir = output_dir / "test"
-    os.makedirs(test_dir, exist_ok=True)
-
-    save_shard_to_disk(items=records, dataset_path=test_dir)
-
-    write_datasets_info(
-        name="DPBench: readingorder",
         output_dir=output_dir,
         num_train_rows=0,
         num_test_rows=len(records),

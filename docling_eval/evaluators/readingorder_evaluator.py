@@ -15,10 +15,9 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns  # type: ignore
-from docling_eval.benchmarks.dpbench.create import TRUE_HTML_EXPORT_LABELS
-from docling_eval.benchmarks.utils import draw_arrow, save_comparison_html_with_clusters
-from docling_eval.utils.stats import DatasetStatistics, compute_stats
+from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.utils import draw_arrow
+from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)
 
@@ -115,7 +114,7 @@ class ReadingOrderEvaluator:
             for item, level in true_doc.iterate_items():
                 # Convert the bbox to BOTTOM-LEFT origin
                 bbox = item.prov[0].bbox.to_bottom_left_origin(page_size.height)  # type: ignore
-                item.prov[0].bbox = bbox
+                item.prov[0].bbox = bbox  # type: ignore
                 bboxes.append(copy.deepcopy(bbox))
 
             # Run the reading order model
@@ -237,7 +236,7 @@ class ReadingOrderVisualizer:
             total=len(ds_selection),
         ):
             doc_id = data[BenchMarkColumns.DOC_ID]
-            page_images = data[BenchMarkColumns.PAGE_IMAGES]
+            page_images = data[BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES]
             true_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
             true_doc: DoclingDocument = DoclingDocument.model_validate_json(
                 true_doc_dict
@@ -259,7 +258,7 @@ class ReadingOrderVisualizer:
         page_image: Image.Image,
         doc: DoclingDocument,
         pred_order: list[int],
-    ) -> Image:
+    ) -> Image.Image:
         # TODO: Add the reading order also as labels
         bboxes = []
 
