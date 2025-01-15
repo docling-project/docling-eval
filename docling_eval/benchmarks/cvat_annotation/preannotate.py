@@ -22,7 +22,7 @@ from docling_core.types.doc.labels import (
 )
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.annotation_formats.utils import (
+from docling_eval.benchmarks.cvat_annotation.utils import (
     DocLinkLabel,
     TableComponentLabel,
 )
