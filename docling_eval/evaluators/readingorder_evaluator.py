@@ -108,27 +108,27 @@ class ReadingOrderEvaluator:
     def _get_reading_order_preds(self, true_doc: DoclingDocument):
         r""" """
         try:
+            page_size = true_doc.pages[1].size
+
+            # Convert the bboxes to bottom-left coords before running the GLM
+            bboxes = []
+            for item, level in true_doc.iterate_items():
+                # Convert the bbox to BOTTOM-LEFT origin
+                bbox = item.prov[0].bbox.to_bottom_left_origin(page_size.height)  # type: ignore
+                item.prov[0].bbox = bbox
+                bboxes.append(copy.deepcopy(bbox))
+
             # Run the reading order model
             legacy_doc = docling_document_to_legacy(true_doc)
             legacy_doc_dict = legacy_doc.model_dump(by_alias=True, exclude_none=True)
             legacy_doc_dict = self._ensure_bboxes_in_legacy_tables(legacy_doc_dict)
             glm_doc = self._nlp_model.apply_on_doc(legacy_doc_dict)
 
-            # Prepare index origin to predicted reading order
+            # original reading order -> predicted reading order
             orig_to_pred_order: Dict[int, int] = {}
             for po, pe in enumerate(glm_doc["page-elements"]):
                 orig_to_pred_order[pe["orig-order"]] = po
-
-            # Make index with the bbox objects in BOTTOM-LEFT origin
-            # original_order -> bbox
-            page_size = true_doc.pages[1].size
-            bboxes = []
-            pred_order = []
-            for true_idx, (item, level) in enumerate(true_doc.iterate_items()):
-                # Convert the bbox to BOTTOM-LEFT origin
-                bbox = item.prov[0].bbox.to_bottom_left_origin(page_size.height)  # type: ignore
-                bboxes.append(bbox)
-                pred_order.append(orig_to_pred_order[true_idx])
+            pred_order = [orig_to_pred_order[x] for x in range(len(orig_to_pred_order))]
 
             reading_order = {"bboxes": bboxes, "pred_order": pred_order}
             return reading_order

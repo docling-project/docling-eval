@@ -250,7 +250,7 @@ def save_comparison_html(
 
 
 def draw_arrow(
-    draw: ImageDraw,  # type: ignore
+    draw: ImageDraw,
     arrow_coords: tuple[float, float, float, float],
     line_width: int = 2,
     color: str = "red",
