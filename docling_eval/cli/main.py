@@ -188,6 +188,16 @@ def visualise(
             + tabulate(data, headers=headers, tablefmt="github")
         )
 
+        data, headers = layout_evaluation.mAP_stats.to_table()
+        logging.info(
+            "TEDS table: \n\n" + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        layout_evaluation.mAP_stats.save_histogram(
+            figname=figname, name="struct-with-text"
+        )
+
     elif modality == EvaluationModality.TABLEFORMER:
 
         with open(filename, "r") as fd:

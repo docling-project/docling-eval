@@ -25,7 +25,11 @@ from docling_eval.docling.models.tableformer.tf_model_prediction import (
     PageTokens,
     TableFormerUpdater,
 )
-from docling_eval.docling.utils import docling_version, save_shard_to_disk
+from docling_eval.docling.utils import (
+    docling_version,
+    extract_images,
+    save_shard_to_disk,
+)
 
 HTML_EXPORT_LABELS = {
     DocItemLabel.TITLE,
@@ -147,7 +151,7 @@ def create_huggingface_otsl_tableformer_dataset(
             mimetype="image/png",
             dpi=round(72 * image_scale),
             size=Size(width=float(table_image.width), height=float(table_image.height)),
-            uri=Path(f"{BenchMarkColumns.PAGE_IMAGES}/{page_index-1}"),
+            uri=Path(f"{BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES}/{page_index-1}"),
         )
         page_item = PageItem(
             page_no=page_index,
@@ -190,6 +194,18 @@ def create_huggingface_otsl_tableformer_dataset(
             true_page_images=true_page_images,
         )
 
+        true_doc, true_pictures, true_page_images = extract_images(
+            document=true_doc,
+            pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
+            page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,  # page_images_column,
+        )
+
+        pred_doc, pred_pictures, pred_page_images = extract_images(
+            document=pred_doc,
+            pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,  # pictures_column,
+            page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,  # page_images_column,
+        )
+
         if updated:
 
             if do_viz:
@@ -210,8 +226,10 @@ def create_huggingface_otsl_tableformer_dataset(
                 BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
                 BenchMarkColumns.ORIGINAL: item["image"],
                 BenchMarkColumns.MIMETYPE: "image/png",
-                BenchMarkColumns.PAGE_IMAGES: true_page_images,
-                BenchMarkColumns.PICTURES: [],  # pred_pictures,
+                BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
+                BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
+                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
+                BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
             }
             records.append(record)
         else:
@@ -223,8 +241,10 @@ def create_huggingface_otsl_tableformer_dataset(
                 BenchMarkColumns.PREDICTION: json.dumps(None),
                 BenchMarkColumns.ORIGINAL: item["image"],
                 BenchMarkColumns.MIMETYPE: "image/png",
-                BenchMarkColumns.PAGE_IMAGES: true_page_images,
-                BenchMarkColumns.PICTURES: [],  # pred_pictures,
+                BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
+                BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
+                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
+                BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
             }
             records.append(record)
 

@@ -39,7 +39,7 @@ def main():
     for _ in [odir, odir_lay, odir_tab]:
         os.makedirs(_, exist_ok=True)
 
-    image_scale = 1.0
+    image_scale = 2.0
 
     if True:
         create_dpbench_e2e_dataset(

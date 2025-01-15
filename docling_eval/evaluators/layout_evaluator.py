@@ -16,11 +16,17 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.evaluators.utils import DatasetStatistics, compute_stats
 
 
-class LayoutEvaluation(BaseModel):
+class ClassLayoutEvaluation(BaseModel):
     name: str
     label: str
+    value: float
+
+
+class ImageLayoutEvaluation(BaseModel):
+    name: str
     value: float
 
 
@@ -30,20 +36,26 @@ class DatasetLayoutEvaluation(BaseModel):
 
     intersecting_labels: List[str]
 
-    evaluations: List[LayoutEvaluation]
+    evaluations_per_class: List[ClassLayoutEvaluation]
+
+    evaluations_per_image: List[ImageLayoutEvaluation]
+
+    mAP_stats: DatasetStatistics
 
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
 
         headers = ["label", "Class mAP[0.5:0.95]"]
 
-        self.evaluations = sorted(self.evaluations, key=lambda x: x.value, reverse=True)
+        self.evaluations_per_class = sorted(
+            self.evaluations_per_class, key=lambda x: x.value, reverse=True
+        )
 
         table = []
-        for i in range(len(self.evaluations)):
+        for i in range(len(self.evaluations_per_class)):
             table.append(
                 [
-                    f"{self.evaluations[i].label}",
-                    f"{100.0*self.evaluations[i].value:.2f}",
+                    f"{self.evaluations_per_class[i].label}",
+                    f"{100.0*self.evaluations_per_class[i].value:.2f}",
                 ]
             )
 
@@ -88,6 +100,7 @@ class LayoutEvaluator:
         )
         logging.info(f"Intersection labels: {intersection_labels}")
 
+        doc_ids = []
         ground_truths = []
         predictions = []
 
@@ -110,14 +123,17 @@ class LayoutEvaluator:
             )
 
             if len(gts) == len(preds):
+                for i in range(len(gts)):
+                    doc_ids.append(data[BenchMarkColumns.DOC_ID] + f"-page-{i}")
+
                 ground_truths.extend(gts)
                 predictions.extend(preds)
             else:
                 logging.error("Ignoring predictions for document")
 
-        assert len(ground_truths) == len(
-            predictions
-        ), "len(ground_truths)==len(predictions)"
+        assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
+
+        assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
 
         # Initialize Mean Average Precision metric
         metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
@@ -125,47 +141,52 @@ class LayoutEvaluator:
         # Update metric with predictions and ground truths
         metric.update(predictions, ground_truths)
 
-        # Compute mAP and other metrics
+        # Compute mAP and other metrics per class
         result = metric.compute()
 
-        evaluations: List[LayoutEvaluation] = []
+        evaluations: List[ClassLayoutEvaluation] = []
         for key, value in result.items():
             if isinstance(value, float):
-                evaluations.append(LayoutEvaluation(name=key, value=value, label=None))
+                evaluations.append(
+                    ClassLayoutEvaluation(name=key, value=value, label=None)
+                )
 
         if "map_per_class" in result:
             for label_idx, class_map in enumerate(result["map_per_class"]):
                 evaluations.append(
-                    LayoutEvaluation(
+                    ClassLayoutEvaluation(
                         name="Class mAP[0.5:0.95]",
                         label=intersection_labels[label_idx].value,
                         value=class_map,
                     )
                 )
 
-        """
-        # Print results
-        print("Results:")
-        for key, value in result.items():
-            try:
-                print(f"{key}: {value:.3f}")
-            except:
-                print(f"{key}: {value}")
+        # Compute mAP for each image individually
+        map_values = []
 
-        # Overall mAP
-        print(f"Overall mAP[0.5:0.95]: {result['map'].item():.3f}")
+        evaluations_per_image: List[ImageLayoutEvaluation] = []
+        for doc_id, pred, gt in zip(doc_ids, predictions, ground_truths):
+            # Reset the metric for the next image
+            metric.reset()
 
-        print("\nPer-Class mAP[0.5:0.95]:")
-        if "map_per_class" in result:
-            for label_idx, class_map in enumerate(result["map_per_class"]):
-                # label_name = self.label_names.get(label_idx, f"Class {label_idx}")  # Use label name or default
-                print(
-                    f" => {label_idx} {intersection_labels[label_idx].value}: {class_map:.3f}"
-                )
-        """
+            # Update with single image
+            metric.update([pred], [gt])
+
+            # Compute metrics
+            result = metric.compute()
+
+            # Extract mAP for this image
+            map_value = float(result["map"].item())
+
+            map_values.append(map_value)
+            evaluations_per_image.append(
+                ImageLayoutEvaluation(name=doc_id, value=map_value)
+            )
 
         return DatasetLayoutEvaluation(
-            evaluations=evaluations,
+            evaluations_per_class=evaluations,
+            evaluations_per_image=evaluations_per_image,
+            mAP_stats=compute_stats(map_values),
             true_labels=true_labels,
             pred_labels=pred_labels,
             intersecting_labels=[_.value for _ in intersection_labels],
@@ -271,7 +292,7 @@ class LayoutEvaluator:
         ground_truths = []
         predictions = []
 
-        # logging.info("\n\n ============================================ \n\n")
+        # logging.info(f"\n\n ================= {true_doc.name}, {pred_doc.name} ===================== \n\n")
 
         for page_no, items in true_pages_to_objects.items():
 

@@ -103,8 +103,8 @@ def to_pil(uri):
 
 def extract_images(
     document: DoclingDocument,
-    pictures_column: str = "pictures",
-    page_images_column: str = "page_images",
+    pictures_column: str,
+    page_images_column: str,
 ):
 
     pictures = []
@@ -113,13 +113,17 @@ def extract_images(
     # Save page images
     for img_no, picture in enumerate(document.pictures):
         if picture.image is not None:
-            pictures.append(to_pil(picture.image.uri))
+            # img = picture.image.pil_image
+            # pictures.append(to_pil(picture.image.uri))
+            pictures.append(picture.image.pil_image)
             picture.image.uri = Path(f"{pictures_column}/{img_no}")
 
     # Save page images
     for page_no, page in document.pages.items():
         if page.image is not None:
-            page_images.append(to_pil(page.image.uri))
+            # img = page.image.pil_image
+            # img.show()
+            page_images.append(page.image.pil_image)
             page.image.uri = Path(f"{page_images_column}/{page_no}")
 
     return document, pictures, page_images
@@ -134,13 +138,13 @@ def insert_images(
     # Save page images
     for pic_no, picture in enumerate(document.pictures):
         if picture.image is not None:
-            b64 = to_base64(pictures[pic_no])
+            b64 = to_base64(pictures[pic_no - 1])
             picture.image.uri = AnyUrl(f"data:image/png;base64,{b64}")
 
     # Save page images
     for page_no, page in document.pages.items():
         if page.image is not None:
-            b64 = to_base64(page_images[page_no])
+            b64 = to_base64(page_images[page_no - 1])
             page.image.uri = AnyUrl(f"data:image/png;base64,{b64}")
 
     return document

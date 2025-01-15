@@ -11,8 +11,14 @@ class BenchMarkColumns(str, Enum):
     PREDICTION = "PredictedDocument"
     ORIGINAL = "BinaryDocument"
 
-    PAGE_IMAGES = "page_images"
-    PICTURES = "pictures"
+    # PAGE_IMAGES = "page_images"
+    # PICTURES = "pictures"
+
+    GROUNDTRUTH_PAGE_IMAGES = "GroundTruthPageImages"
+    GROUNDTRUTH_PICTURES = "GroundTruthPictures"
+
+    PREDICTION_PAGE_IMAGES = "PredictionPageImages"
+    PREDICTION_PICTURES = "PredictionPictures"
 
     MIMETYPE = "mimetype"
     TIMINGS = "timings"
