@@ -103,6 +103,92 @@ The final result can be visualised as,
 ![DPBench_TEDS](./docs/evaluations/evaluation_DPBench_tableformer.png)
 </details>
 
+
+<details>
+<summary><b>Reading order evaluations for DP-Bench</b></summary>
+<br>
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m reading_order -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+👉 Visualise the reading order evaluations,
+
+```sh
+poetry run evaluate -t visualize -m reading_order -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+|   x0<=ARD |   ARD<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
+|-----------|-----------|------------|-----------|-------------|---------|
+|      0    |      0.05 |        0   |       0   |       100   |       0 |
+|      0.05 |      0.1  |        0   |       0   |       100   |       0 |
+|      0.1  |      0.15 |        0   |       0   |       100   |       0 |
+|      0.15 |      0.2  |        0   |       0   |       100   |       0 |
+|      0.2  |      0.25 |        0   |       0   |       100   |       0 |
+|      0.25 |      0.3  |        0   |       0   |       100   |       0 |
+|      0.3  |      0.35 |        0   |       0   |       100   |       0 |
+|      0.35 |      0.4  |        0   |       0   |       100   |       0 |
+|      0.4  |      0.45 |        0   |       0   |       100   |       0 |
+|      0.45 |      0.5  |        0   |       0   |       100   |       0 |
+|      0.5  |      0.55 |        0   |       0   |       100   |       0 |
+|      0.55 |      0.6  |        0   |       0   |       100   |       0 |
+|      0.6  |      0.65 |        0   |       0   |       100   |       0 |
+|      0.65 |      0.7  |        1   |       0   |       100   |       2 |
+|      0.7  |      0.75 |        0.5 |       1   |        99   |       1 |
+|      0.75 |      0.8  |        1   |       1.5 |        98.5 |       2 |
+|      0.8  |      0.85 |        2.5 |       2.5 |        97.5 |       5 |
+|      0.85 |      0.9  |        0.5 |       5   |        95   |       1 |
+|      0.9  |      0.95 |        1.5 |       5.5 |        94.5 |       3 |
+|      0.95 |      1    |       93   |       7   |        93   |     186 |
+
+Additionally, images with the actual reading order visualizations are placed in: `benchmarks/dpbench-layout/reading_order_viz`
+</details>
+
+
+<details>
+<summary><b>Markdown text evaluations for DP-Bench</b></summary>
+<br>
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m markdown_text -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+👉 Visualise the markdown text evaluations,
+
+```sh
+poetry run evaluate -t visualize -m markdown_text -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
+```
+
+|   x0<=BlEU |   BlEU<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
+|------------|------------|------------|-----------|-------------|---------|
+|       0    |       0.05 |       0    |      0    |      100    |       0 |
+|       0.05 |       0.1  |       0    |      0    |      100    |       0 |
+|       0.1  |       0.15 |       1.92 |      0    |      100    |       1 |
+|       0.15 |       0.2  |       0    |      1.92 |       98.08 |       0 |
+|       0.2  |       0.25 |       1.92 |      1.92 |       98.08 |       1 |
+|       0.25 |       0.3  |       0    |      3.85 |       96.15 |       0 |
+|       0.3  |       0.35 |       0    |      3.85 |       96.15 |       0 |
+|       0.35 |       0.4  |       0    |      3.85 |       96.15 |       0 |
+|       0.4  |       0.45 |       0    |      3.85 |       96.15 |       0 |
+|       0.45 |       0.5  |       0    |      3.85 |       96.15 |       0 |
+|       0.5  |       0.55 |       1.92 |      3.85 |       96.15 |       1 |
+|       0.55 |       0.6  |       3.85 |      5.77 |       94.23 |       2 |
+|       0.6  |       0.65 |       1.92 |      9.62 |       90.38 |       1 |
+|       0.65 |       0.7  |       3.85 |     11.54 |       88.46 |       2 |
+|       0.7  |       0.75 |       1.92 |     15.38 |       84.62 |       1 |
+|       0.75 |       0.8  |       1.92 |     17.31 |       82.69 |       1 |
+|       0.8  |       0.85 |       3.85 |     19.23 |       80.77 |       2 |
+|       0.85 |       0.9  |       0    |     23.08 |       76.92 |       0 |
+|       0.9  |       0.95 |      17.31 |     23.08 |       76.92 |       9 |
+|       0.95 |       1    |      59.62 |     40.38 |       59.62 |      31 |
+
+</details>
+
+
 ### OmniDocBench
 
 Using a single command,
@@ -192,6 +278,89 @@ The final result can be visualised as,
 |       0.85 |       0.9  |      13.33 |     47.58 |       52.42 |      44 |
 |       0.9  |       0.95 |      22.12 |     60.91 |       39.09 |      73 |
 |       0.95 |       1    |      16.97 |     83.03 |       16.97 |      56 |
+</details>
+
+<details>
+<summary><b>Reading order evaluations for OmniDocBench</b></summary>
+<br>
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m reading_order -b OmniDocBench -i ./benchmarks/omnidocbench-dataset/layout -o ./benchmarks/omnidocbench-dataset/layout
+```
+
+👉 Visualise the reading order evaluations,
+
+```sh
+poetry run evaluate -t visualize -m reading_order -b OmniDocBench -i ./benchmarks/omnidocbench-dataset/layout -o ./benchmarks/omnidocbench-dataset/layout 
+```
+|   x0<=ARD |   ARD<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
+|-----------|-----------|------------|-----------|-------------|---------|
+|      0    |      0.05 |       0    |      0    |      100    |       0 |
+|      0.05 |      0.1  |       0    |      0    |      100    |       0 |
+|      0.1  |      0.15 |       0    |      0    |      100    |       0 |
+|      0.15 |      0.2  |       0    |      0    |      100    |       0 |
+|      0.2  |      0.25 |       0    |      0    |      100    |       0 |
+|      0.25 |      0.3  |       0    |      0    |      100    |       0 |
+|      0.3  |      0.35 |       0    |      0    |      100    |       0 |
+|      0.35 |      0.4  |       0    |      0    |      100    |       0 |
+|      0.4  |      0.45 |       0    |      0    |      100    |       0 |
+|      0.45 |      0.5  |       0    |      0    |      100    |       0 |
+|      0.5  |      0.55 |       1.53 |      0    |      100    |      15 |
+|      0.55 |      0.6  |       2.24 |      1.53 |       98.47 |      22 |
+|      0.6  |      0.65 |       2.55 |      3.77 |       96.23 |      25 |
+|      0.65 |      0.7  |       4.89 |      6.32 |       93.68 |      48 |
+|      0.7  |      0.75 |       8.15 |     11.21 |       88.79 |      80 |
+|      0.75 |      0.8  |      17.74 |     19.37 |       80.63 |     174 |
+|      0.8  |      0.85 |      17.43 |     37.1  |       62.9  |     171 |
+|      0.85 |      0.9  |      17.13 |     54.54 |       45.46 |     168 |
+|      0.9  |      0.95 |       7.44 |     71.66 |       28.34 |      73 |
+|      0.95 |      1    |      20.9  |     79.1  |       20.9  |     205 |
+
+Additionally, images with the actual reading order visualizations are placed in: `/benchmarks/omnidocbench-dataset/layout/reading_order_viz`
+</details>
+
+
+<details>
+<summary><b>Markdown text evaluations for OmniDocBench</b></summary>
+<br>
+
+👉 Evaluate the dataset,
+
+```sh
+poetry run evaluate -t evaluate -m markdown_text -b OmniDocBench -i ./benchmarks/omnidocbench-dataset/layout -o ./benchmarks/omnidocbench-dataset/layout
+```
+
+👉 Visualise the markdown text evaluations,
+
+```sh
+poetry run evaluate -t visualize -m markdown_text -b OmniDocBench -i ./benchmarks/omnidocbench-dataset/layout -o ./benchmarks/omnidocbench-dataset/layout
+```
+
+|   x0<=BlEU |   BlEU<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
+|------------|------------|------------|-----------|-------------|---------|
+|       0    |       0.05 |       8.52 |      0    |      100    |      27 |
+|       0.05 |       0.1  |       2.52 |      8.52 |       91.48 |       8 |
+|       0.1  |       0.15 |       0.95 |     11.04 |       88.96 |       3 |
+|       0.15 |       0.2  |       1.26 |     11.99 |       88.01 |       4 |
+|       0.2  |       0.25 |       1.58 |     13.25 |       86.75 |       5 |
+|       0.25 |       0.3  |       1.26 |     14.83 |       85.17 |       4 |
+|       0.3  |       0.35 |       0.95 |     16.09 |       83.91 |       3 |
+|       0.35 |       0.4  |       2.84 |     17.03 |       82.97 |       9 |
+|       0.4  |       0.45 |       2.84 |     19.87 |       80.13 |       9 |
+|       0.45 |       0.5  |       5.68 |     22.71 |       77.29 |      18 |
+|       0.5  |       0.55 |       3.47 |     28.39 |       71.61 |      11 |
+|       0.55 |       0.6  |       3.15 |     31.86 |       68.14 |      10 |
+|       0.6  |       0.65 |       4.42 |     35.02 |       64.98 |      14 |
+|       0.65 |       0.7  |       3.47 |     39.43 |       60.57 |      11 |
+|       0.7  |       0.75 |       5.99 |     42.9  |       57.1  |      19 |
+|       0.75 |       0.8  |       6.94 |     48.9  |       51.1  |      22 |
+|       0.8  |       0.85 |       7.89 |     55.84 |       44.16 |      25 |
+|       0.85 |       0.9  |       7.89 |     63.72 |       36.28 |      25 |
+|       0.9  |       0.95 |      13.56 |     71.61 |       28.39 |      43 |
+|       0.95 |       1    |      14.83 |     85.17 |       14.83 |      47 |
+
 </details>
 
 ### FinTabNet
