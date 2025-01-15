@@ -22,11 +22,11 @@ from docling_core.types.doc.labels import (
 )
 from tqdm import tqdm  # type: ignore
 
+from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.cvat_annotation.utils import (
     DocLinkLabel,
     TableComponentLabel,
 )
-from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.docling.utils import insert_images
 
 # Configure logging
@@ -346,7 +346,9 @@ def export_from_dataset_supplementary_files(
         insert_images(pred_doc, page_images=page_images, pictures=pics_images)
 
         # Get the groundtruth document (to cherry pick table structure later ...)
-        true_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
+        true_doc_dict = pred_doc_dict
+        if BenchMarkColumns.GROUNDTRUTH in data:
+            true_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
 
         # FIXME: make the unique name in a column
         doc_name = f"{pred_doc.name}"
