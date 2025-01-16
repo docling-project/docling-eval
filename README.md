@@ -120,6 +120,8 @@ poetry run evaluate -t evaluate -m reading_order -b DPBench -i ./benchmarks/dpbe
 poetry run evaluate -t visualize -m reading_order -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
 ```
 
+Reading order (Norm Average Relative Distance) [mean|median|std]: [0.98|1.00|0.05]
+
 |   x0<=ARD |   ARD<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |-----------|-----------|------------|-----------|-------------|---------|
 |      0    |      0.05 |        0   |       0   |       100   |       0 |
@@ -143,6 +145,8 @@ poetry run evaluate -t visualize -m reading_order -b DPBench -i ./benchmarks/dpb
 |      0.9  |      0.95 |        1.5 |       5.5 |        94.5 |       3 |
 |      0.95 |      1    |       93   |       7   |        93   |     186 |
 
+The above quantiles have been also visualized as a histogram plot in: `benchmarks/dpbench-layout/evaluation_DPBench_reading_order.png`
+
 Additionally, images with the actual reading order visualizations are placed in: `benchmarks/dpbench-layout/reading_order_viz`
 </details>
 
@@ -163,28 +167,32 @@ poetry run evaluate -t evaluate -m markdown_text -b DPBench -i ./benchmarks/dpbe
 poetry run evaluate -t visualize -m markdown_text -b DPBench -i ./benchmarks/dpbench-layout -o ./benchmarks/dpbench-layout
 ```
 
+Markdown text (BLEU) [mean|median|std]: [0.81|0.87|0.20]
+
 |   x0<=BlEU |   BlEU<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |------------|------------|------------|-----------|-------------|---------|
-|       0    |       0.05 |       0    |      0    |      100    |       0 |
-|       0.05 |       0.1  |       0    |      0    |      100    |       0 |
-|       0.1  |       0.15 |       1.92 |      0    |      100    |       1 |
-|       0.15 |       0.2  |       0    |      1.92 |       98.08 |       0 |
-|       0.2  |       0.25 |       1.92 |      1.92 |       98.08 |       1 |
-|       0.25 |       0.3  |       0    |      3.85 |       96.15 |       0 |
-|       0.3  |       0.35 |       0    |      3.85 |       96.15 |       0 |
-|       0.35 |       0.4  |       0    |      3.85 |       96.15 |       0 |
-|       0.4  |       0.45 |       0    |      3.85 |       96.15 |       0 |
-|       0.45 |       0.5  |       0    |      3.85 |       96.15 |       0 |
-|       0.5  |       0.55 |       1.92 |      3.85 |       96.15 |       1 |
-|       0.55 |       0.6  |       3.85 |      5.77 |       94.23 |       2 |
-|       0.6  |       0.65 |       1.92 |      9.62 |       90.38 |       1 |
-|       0.65 |       0.7  |       3.85 |     11.54 |       88.46 |       2 |
-|       0.7  |       0.75 |       1.92 |     15.38 |       84.62 |       1 |
-|       0.75 |       0.8  |       1.92 |     17.31 |       82.69 |       1 |
-|       0.8  |       0.85 |       3.85 |     19.23 |       80.77 |       2 |
-|       0.85 |       0.9  |       0    |     23.08 |       76.92 |       0 |
-|       0.9  |       0.95 |      17.31 |     23.08 |       76.92 |       9 |
-|       0.95 |       1    |      59.62 |     40.38 |       59.62 |      31 |
+|       0    |       0.05 |        1   |       0   |       100   |       2 |
+|       0.05 |       0.1  |        0.5 |       1   |        99   |       1 |
+|       0.1  |       0.15 |        0.5 |       1.5 |        98.5 |       1 |
+|       0.15 |       0.2  |        1.5 |       2   |        98   |       3 |
+|       0.2  |       0.25 |        1   |       3.5 |        96.5 |       2 |
+|       0.25 |       0.3  |        0   |       4.5 |        95.5 |       0 |
+|       0.3  |       0.35 |        0.5 |       4.5 |        95.5 |       1 |
+|       0.35 |       0.4  |        0   |       5   |        95   |       0 |
+|       0.4  |       0.45 |        0.5 |       5   |        95   |       1 |
+|       0.45 |       0.5  |        0.5 |       5.5 |        94.5 |       1 |
+|       0.5  |       0.55 |        3.5 |       6   |        94   |       7 |
+|       0.55 |       0.6  |        1   |       9.5 |        90.5 |       2 |
+|       0.6  |       0.65 |        4   |      10.5 |        89.5 |       8 |
+|       0.65 |       0.7  |        2   |      14.5 |        85.5 |       4 |
+|       0.7  |       0.75 |        3.5 |      16.5 |        83.5 |       7 |
+|       0.75 |       0.8  |       10   |      20   |        80   |      20 |
+|       0.8  |       0.85 |        9.5 |      30   |        70   |      19 |
+|       0.85 |       0.9  |       21   |      39.5 |        60.5 |      42 |
+|       0.9  |       0.95 |       22.5 |      60.5 |        39.5 |      45 |
+|       0.95 |       1    |       17   |      83   |        17   |      34 |
+
+The above quantiles have been also visualized as a histogram plot in: `benchmarks/dpbench-layout/evaluation_DPBench_markdown_text.png`
 
 </details>
 
@@ -295,6 +303,9 @@ poetry run evaluate -t evaluate -m reading_order -b OmniDocBench -i ./benchmarks
 ```sh
 poetry run evaluate -t visualize -m reading_order -b OmniDocBench -i ./benchmarks/omnidocbench-dataset/layout -o ./benchmarks/omnidocbench-dataset/layout 
 ```
+
+Reading order (Norm Average Relative Distance) [mean|median|std]: [0.84|0.84|0.12]
+
 |   x0<=ARD |   ARD<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |-----------|-----------|------------|-----------|-------------|---------|
 |      0    |      0.05 |       0    |      0    |      100    |       0 |
@@ -318,6 +329,8 @@ poetry run evaluate -t visualize -m reading_order -b OmniDocBench -i ./benchmark
 |      0.9  |      0.95 |       7.44 |     71.66 |       28.34 |      73 |
 |      0.95 |      1    |      20.9  |     79.1  |       20.9  |     205 |
 
+The above quantiles have been also visualized as a histogram plot in: `benchmarks/omnidocbench-dataset/layout/evaluation_OmniDocBench_reading_order.png`
+
 Additionally, images with the actual reading order visualizations are placed in: `/benchmarks/omnidocbench-dataset/layout/reading_order_viz`
 </details>
 
@@ -338,28 +351,32 @@ poetry run evaluate -t evaluate -m markdown_text -b OmniDocBench -i ./benchmarks
 poetry run evaluate -t visualize -m markdown_text -b OmniDocBench -i ./benchmarks/omnidocbench-dataset/layout -o ./benchmarks/omnidocbench-dataset/layout
 ```
 
+Markdown text (BLEU) [mean|median|std]: [0.30|0.11|0.33]
+
 |   x0<=BlEU |   BlEU<=x1 |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |------------|------------|------------|-----------|-------------|---------|
-|       0    |       0.05 |       8.52 |      0    |      100    |      27 |
-|       0.05 |       0.1  |       2.52 |      8.52 |       91.48 |       8 |
-|       0.1  |       0.15 |       0.95 |     11.04 |       88.96 |       3 |
-|       0.15 |       0.2  |       1.26 |     11.99 |       88.01 |       4 |
-|       0.2  |       0.25 |       1.58 |     13.25 |       86.75 |       5 |
-|       0.25 |       0.3  |       1.26 |     14.83 |       85.17 |       4 |
-|       0.3  |       0.35 |       0.95 |     16.09 |       83.91 |       3 |
-|       0.35 |       0.4  |       2.84 |     17.03 |       82.97 |       9 |
-|       0.4  |       0.45 |       2.84 |     19.87 |       80.13 |       9 |
-|       0.45 |       0.5  |       5.68 |     22.71 |       77.29 |      18 |
-|       0.5  |       0.55 |       3.47 |     28.39 |       71.61 |      11 |
-|       0.55 |       0.6  |       3.15 |     31.86 |       68.14 |      10 |
-|       0.6  |       0.65 |       4.42 |     35.02 |       64.98 |      14 |
-|       0.65 |       0.7  |       3.47 |     39.43 |       60.57 |      11 |
-|       0.7  |       0.75 |       5.99 |     42.9  |       57.1  |      19 |
-|       0.75 |       0.8  |       6.94 |     48.9  |       51.1  |      22 |
-|       0.8  |       0.85 |       7.89 |     55.84 |       44.16 |      25 |
-|       0.85 |       0.9  |       7.89 |     63.72 |       36.28 |      25 |
-|       0.9  |       0.95 |      13.56 |     71.61 |       28.39 |      43 |
-|       0.95 |       1    |      14.83 |     85.17 |       14.83 |      47 |
+|       0    |       0.05 |      41.59 |      0    |      100    |     408 |
+|       0.05 |       0.1  |       6.83 |     41.59 |       58.41 |      67 |
+|       0.1  |       0.15 |       4.18 |     48.42 |       51.58 |      41 |
+|       0.15 |       0.2  |       3.26 |     52.6  |       47.4  |      32 |
+|       0.2  |       0.25 |       2.45 |     55.86 |       44.14 |      24 |
+|       0.25 |       0.3  |       1.83 |     58.31 |       41.69 |      18 |
+|       0.3  |       0.35 |       1.83 |     60.14 |       39.86 |      18 |
+|       0.35 |       0.4  |       2.04 |     61.98 |       38.02 |      20 |
+|       0.4  |       0.45 |       2.04 |     64.02 |       35.98 |      20 |
+|       0.45 |       0.5  |       2.55 |     66.06 |       33.94 |      25 |
+|       0.5  |       0.55 |       2.04 |     68.6  |       31.4  |      20 |
+|       0.55 |       0.6  |       2.04 |     70.64 |       29.36 |      20 |
+|       0.6  |       0.65 |       2.75 |     72.68 |       27.32 |      27 |
+|       0.65 |       0.7  |       2.96 |     75.43 |       24.57 |      29 |
+|       0.7  |       0.75 |       4.69 |     78.39 |       21.61 |      46 |
+|       0.75 |       0.8  |       4.28 |     83.08 |       16.92 |      42 |
+|       0.8  |       0.85 |       4.79 |     87.36 |       12.64 |      47 |
+|       0.85 |       0.9  |       4.59 |     92.15 |        7.85 |      45 |
+|       0.9  |       0.95 |       2.65 |     96.74 |        3.26 |      26 |
+|       0.95 |       1    |       0.61 |     99.39 |        0.61 |       6 |
+
+The above quantiles have been also visualized as a histogram plot in: `benchmarks/omnidocbench-dataset/layout/evaluation_OmniDocBench_markdown_text.png`
 
 </details>
 

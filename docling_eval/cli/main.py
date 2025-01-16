@@ -195,7 +195,7 @@ def visualise(
 
         figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
         layout_evaluation.mAP_stats.save_histogram(
-            figname=figname, name="struct-with-text"
+            figname=figname, name="TEDS struct-with-text"
         )
 
     elif modality == EvaluationModality.TABLEFORMER:
@@ -214,7 +214,9 @@ def visualise(
         )
 
         figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        table_evaluation.TEDS.save_histogram(figname=figname, name="struct-with-text")
+        table_evaluation.TEDS.save_histogram(
+            figname=figname, name="TEDS struct-with-text"
+        )
 
         data, headers = table_evaluation.TEDS_struct.to_table()
         logging.info(
@@ -224,33 +226,61 @@ def visualise(
         figname = (
             odir / f"evaluation_{benchmark.value}_{modality.value}-struct-only.png"
         )
-        table_evaluation.TEDS_struct.save_histogram(figname=figname, name="struct")
+        table_evaluation.TEDS_struct.save_histogram(figname=figname, name="TEDS struct")
 
     elif modality == EvaluationModality.READING_ORDER:
         with open(filename, "r") as fd:
-            reading_order_evaluation = DatasetReadingOrderEvaluation.parse_file(
-                filename
-            )
-
-        data, headers = reading_order_evaluation.ard_stats.to_table("ARD")
-
+            ro_evaluation = DatasetReadingOrderEvaluation.parse_file(filename)
+        # Log ARD mean/median/std
         logging.info(
-            "Reading order (Average Relative Distance): \n\n"
+            "Reading order (Norm Average Relative Distance)"
+            " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
+                ro_evaluation.ard_stats.mean,
+                ro_evaluation.ard_stats.median,
+                ro_evaluation.ard_stats.std,
+            )
+        )
+
+        # Log table with quantiles
+        data, headers = ro_evaluation.ard_stats.to_table("ARD")
+        logging.info(
+            "Reading order - Normalized Average Relative Distance: Quantiles\n\n"
             + tabulate(data, headers=headers, tablefmt="github")
         )
+
+        # Generate histogram plot
+        logging.info("Generate histogram plot for normalized ARD")
+        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        ro_evaluation.ard_stats.save_histogram(figname=figname, name="ARD_norm")
+
+        # Generate visualizations of the reading order across the GT and the prediction
         ro_visualizer = ReadingOrderVisualizer()
         ro_visualizer(idir, filename, odir, split="test")
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         with open(filename, "r") as fd:
-            markdown_evaluation = DatasetMarkdownEvaluation.parse_file(filename)
+            md_evaluation = DatasetMarkdownEvaluation.parse_file(filename)
 
-        data, headers = markdown_evaluation.bleu_stats.to_table("BlEU")
+        # Log BLEU mean/median/std
+        logging.info(
+            "Markdown text (BLEU) [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
+                md_evaluation.bleu_stats.mean,
+                md_evaluation.bleu_stats.median,
+                md_evaluation.bleu_stats.std,
+            )
+        )
 
+        # Log table with quantiles
+        data, headers = md_evaluation.bleu_stats.to_table("BlEU")
         logging.info(
             "Markdown text (BLEU): \n\n"
             + tabulate(data, headers=headers, tablefmt="github")
         )
+
+        # Generate histogram plot
+        logging.info("Generate histogram plot for BLEU")
+        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        md_evaluation.bleu_stats.save_histogram(figname=figname, name="BLEU")
 
     elif modality == EvaluationModality.CODEFORMER:
         pass

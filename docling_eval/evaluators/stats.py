@@ -67,10 +67,10 @@ class DatasetStatistics(BaseModel):
         plt.figure(fignum)
         plt.bar(bin_middle, self.hist, width=bin_widths, edgecolor="black")
 
-        plt.xlabel("TEDS")
+        plt.xlabel("Score")
         plt.ylabel("Frequency")
         plt.title(
-            f"TEDS {name} (mean: {self.mean:.2f}, median: {self.median:.2f}, std: {self.std:.2f}, total: {self.total})"
+            f"{name} (mean: {self.mean:.2f}, median: {self.median:.2f}, std: {self.std:.2f}, total: {self.total})"
         )
 
         logging.info(f"saving figure to {figname}")
