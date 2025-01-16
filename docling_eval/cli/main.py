@@ -231,7 +231,7 @@ def visualise(
     elif modality == EvaluationModality.READING_ORDER:
         with open(filename, "r") as fd:
             ro_evaluation = DatasetReadingOrderEvaluation.parse_file(filename)
-        # Log ARD mean/median/std
+        # ARD
         logging.info(
             "Reading order (Norm Average Relative Distance)"
             " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
@@ -241,17 +241,38 @@ def visualise(
             )
         )
 
-        # Log table with quantiles
         data, headers = ro_evaluation.ard_stats.to_table("ARD")
         logging.info(
             "Reading order - Normalized Average Relative Distance: Quantiles\n\n"
             + tabulate(data, headers=headers, tablefmt="github")
         )
 
-        # Generate histogram plot
-        logging.info("Generate histogram plot for normalized ARD")
-        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
+        logging.info("Generate histogram plot for ARD")
+        figname = odir / f"evaluation_{benchmark.value}_{modality.value}_ARD.png"
         ro_evaluation.ard_stats.save_histogram(figname=figname, name="ARD_norm")
+
+        # Weighted ARD
+        logging.info(
+            "Reading order (Weighted Normalized Average Relative Distance)"
+            " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
+                ro_evaluation.w_ard_stats.mean,
+                ro_evaluation.w_ard_stats.median,
+                ro_evaluation.w_ard_stats.std,
+            )
+        )
+        data, headers = ro_evaluation.w_ard_stats.to_table("Weighted ARD")
+        logging.info(
+            "Reading order - Weighted Normalized Average Relative Distance: Quantiles\n\n"
+            + tabulate(data, headers=headers, tablefmt="github")
+        )
+
+        logging.info("Generate histogram plot for weighted ARD")
+        figname = (
+            odir / f"evaluation_{benchmark.value}_{modality.value}_weighted_ARD.png"
+        )
+        ro_evaluation.w_ard_stats.save_histogram(
+            figname=figname, name="Weighted ARD_norm"
+        )
 
         # Generate visualizations of the reading order across the GT and the prediction
         ro_visualizer = ReadingOrderVisualizer()

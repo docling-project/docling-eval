@@ -29,11 +29,15 @@ class PageReadingOrderEvaluation(BaseModel):
     bboxes: List[Tuple[float, float, float, float]]
     pred_order: List[int]
     ard_norm: float  # Normalized ARD: 0 is the worst and 1 is the best
+    w_ard_norm: (
+        float  # Weighted normalized ARD. The weight is the (bbox_area / page_area)
+    )
 
 
 class DatasetReadingOrderEvaluation(BaseModel):
     evaluations: List[PageReadingOrderEvaluation]
     ard_stats: DatasetStatistics
+    w_ard_stats: DatasetStatistics
 
 
 class ReadingOrderEvaluator:
@@ -55,6 +59,7 @@ class ReadingOrderEvaluator:
 
         evaluations: list[PageReadingOrderEvaluation] = []
         ards = []
+        w_ards = []
 
         broken_inputs = 0
         for i, data in tqdm(
@@ -77,14 +82,18 @@ class ReadingOrderEvaluator:
                 broken_inputs += 1
                 continue
 
-            ard_norm = self._compute_ard_norm(reading_order)
+            # Compute metrics
+            # ard_norm = self._compute_ard_norm(reading_order)
+            ard_norm, w_ard_norm = self._compute_ard(reading_order)
             ards.append(ard_norm)
+            w_ards.append(w_ard_norm)
 
             page_evaluation = PageReadingOrderEvaluation(
                 doc_id=doc_id,
                 bboxes=[b.as_tuple() for b in reading_order["bboxes"]],
                 pred_order=reading_order["pred_order"],
                 ard_norm=ard_norm,
+                w_ard_norm=w_ard_norm,
             )
             # print("pred_reading_order")
             # print(page_evaluation)
@@ -97,15 +106,21 @@ class ReadingOrderEvaluator:
 
         # Compute statistics for metrics
         ard_stats = compute_stats(ards)
+        w_ard_stats = compute_stats(w_ards)
 
         ds_reading_order_evaluation = DatasetReadingOrderEvaluation(
-            evaluations=evaluations, ard_stats=ard_stats
+            evaluations=evaluations, ard_stats=ard_stats, w_ard_stats=w_ard_stats
         )
 
         return ds_reading_order_evaluation
 
     def _get_reading_order_preds(self, true_doc: DoclingDocument):
-        r""" """
+        r"""
+
+        Returns
+        -------
+        reading_order: Keys are "bboxes" and "pred_order"
+        """
         try:
             page_size = true_doc.pages[1].size
 
@@ -135,27 +150,71 @@ class ReadingOrderEvaluator:
             _log.error(str(ex))
             return None
 
-    def _compute_ard_norm(self, reading_order: Dict) -> float:
+    def _compute_ard(self, reading_order: Dict) -> tuple[float, float]:
         r"""
-        Compute the normalized Average Relative Distance (ARD)
+        Compute the metrics:
+        1. Normalized Average Relative Distance (ARD)
+        2. Weighted normalized Average Relative Distance.
 
-        ARD(A, B) = (1/n) * sum(e_k)
+        ARD = (1/n) * sum(e_k)
         e_k = abs(pred_order_index  - gt_order_index)
         0 is the best and n-1 is the worst where n is the number of bboxes
 
         ARD_norm = 1 - (ARD / n)
         0 is the worst and 1 is the best
+
+        weighted_ARD = (1/n) * sum(e_k * weight_k)
+        weight_k = area(bbox_k) / area(page)
+        weighted ARD_norm = 1 - (weighted_ARD / n)
+
+        Returns
+        -------
+        ard_norm: Normalized average relative distance
+        ward_norm: Normalized weighted average to the area of the bbox
         """
         n = len(reading_order["bboxes"])
         if n == 0:
-            return 0.0
-        ard = 0.0
-        for true_ro, pred_ro in enumerate(reading_order["pred_order"]):
-            ard += math.fabs(true_ro - pred_ro)
+            return 0.0, 0.0
 
-        ard /= n
-        ard_norm = 1 - (ard / n)
-        return ard_norm
+        # Compute bbox weights
+        bbox_areas = [b.area() for b in reading_order["bboxes"]]
+        total_bboxes = sum(bbox_areas)
+        weights = [(a / total_bboxes) for a in bbox_areas]
+
+        # Compute ARD and weighted ARD
+        ard = 0.0
+        w_ard = 0.0
+        for true_ro, pred_ro in enumerate(reading_order["pred_order"]):
+            dist = math.fabs(true_ro - pred_ro)
+            ard += dist
+            w_ard += dist * weights[true_ro]
+
+        n_sq = n * n
+        ard_norm = 1 - (ard / n_sq)
+        w_ard_norm = 1 - (w_ard / n_sq)
+        return ard_norm, w_ard_norm
+
+    # def _compute_ard_norm(self, reading_order: Dict) -> float:
+    #     r"""
+    #     Compute the normalized Average Relative Distance (ARD)
+
+    #     ARD(A, B) = (1/n) * sum(e_k)
+    #     e_k = abs(pred_order_index  - gt_order_index)
+    #     0 is the best and n-1 is the worst where n is the number of bboxes
+
+    #     ARD_norm = 1 - (ARD / n)
+    #     0 is the worst and 1 is the best
+    #     """
+    #     n = len(reading_order["bboxes"])
+    #     if n == 0:
+    #         return 0.0
+    #     ard = 0.0
+    #     for true_ro, pred_ro in enumerate(reading_order["pred_order"]):
+    #         ard += math.fabs(true_ro - pred_ro)
+
+    #     ard /= n
+    #     ard_norm = 1 - (ard / n)
+    #     return ard_norm
 
     def _ensure_bboxes_in_legacy_tables(self, legacy_doc_dict: Dict):
         r"""
