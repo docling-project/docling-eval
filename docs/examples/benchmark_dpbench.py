@@ -46,6 +46,7 @@ def main():
             dpbench_dir=idir, output_dir=odir_lay, image_scale=image_scale
         )
 
+        # Layout
         evaluate(
             modality=EvaluationModality.LAYOUT,
             benchmark=BenchMarkNames.DPBENCH,
@@ -58,6 +59,8 @@ def main():
             idir=odir_lay,
             odir=odir_lay,
         )
+
+        # Reading order
         evaluate(
             modality=EvaluationModality.READING_ORDER,
             benchmark=BenchMarkNames.DPBENCH,
@@ -66,6 +69,20 @@ def main():
         )
         visualise(
             modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.DPBENCH,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
+
+        # Markdown text
+        evaluate(
+            modality=EvaluationModality.MARKDOWN_TEXT,
+            benchmark=BenchMarkNames.DPBENCH,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
+        visualise(
+            modality=EvaluationModality.MARKDOWN_TEXT,
             benchmark=BenchMarkNames.DPBENCH,
             idir=odir_lay,
             odir=odir_lay,
