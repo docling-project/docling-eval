@@ -44,7 +44,10 @@ def main():
     if True:
 
         create_omnidocbench_e2e_dataset(
-            omnidocbench_dir=idir, output_dir=odir_lay, image_scale=image_scale
+            omnidocbench_dir=idir,
+            output_dir=odir_lay,
+            image_scale=image_scale,
+            do_viz=True,
         )
 
         evaluate(

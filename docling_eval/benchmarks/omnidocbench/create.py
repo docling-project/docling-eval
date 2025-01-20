@@ -245,7 +245,10 @@ def update_doc_with_gt(
 
 
 def create_omnidocbench_e2e_dataset(
-    omnidocbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+    omnidocbench_dir: Path,
+    output_dir: Path,
+    image_scale: float = 1.0,
+    do_viz: bool = False,
 ):
 
     # Create Converter
@@ -308,7 +311,7 @@ def create_omnidocbench_e2e_dataset(
             page_height=page_height,
         )
 
-        if True:
+        if do_viz:
             """
             save_comparison_html(
                 filename=viz_dir / f"{os.path.basename(pdf_path)}-comp.html",
