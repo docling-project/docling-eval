@@ -4,7 +4,7 @@ import logging
 import math
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from datasets import load_dataset
 from deepsearch_glm.andromeda_nlp import nlp_model  # type: ignore
@@ -61,7 +61,7 @@ class ReadingOrderEvaluator:
         ards = []
         w_ards = []
 
-        broken_inputs = 0
+        broken_docs = 0
         for i, data in tqdm(
             enumerate(ds_selection),
             desc="Reading order evaluations",
@@ -78,12 +78,11 @@ class ReadingOrderEvaluator:
 
             reading_order = self._get_reading_order_preds(doc_id, true_doc)
             if reading_order is None:
-                print(f"Broken input: {doc_id}")
-                broken_inputs += 1
+                print(f"Broken document: {doc_id}")
+                broken_docs += 1
                 continue
 
             # Compute metrics
-            # ard_norm = self._compute_ard_norm(reading_order)
             ard_norm, w_ard_norm = self._compute_ard(reading_order)
             ards.append(ard_norm)
             w_ards.append(w_ard_norm)
@@ -101,8 +100,8 @@ class ReadingOrderEvaluator:
 
             evaluations.append(page_evaluation)
 
-        if broken_inputs > 0:
-            _log.error(f"broken_inputs={broken_inputs}")
+        if broken_docs > 0:
+            _log.warning(f"Broken documents: {broken_docs}")
 
         # Compute statistics for metrics
         ard_stats = compute_stats(ards)
@@ -114,28 +113,31 @@ class ReadingOrderEvaluator:
 
         return ds_reading_order_evaluation
 
-    def _get_reading_order_preds(self, doc_id: str, true_doc: DoclingDocument):
+    def _get_reading_order_preds(
+        self, doc_id: str, true_doc: DoclingDocument
+    ) -> Optional[dict]:
         r"""
+        Return dict with the bboxes and the predicted reading order or None if something goes wrong.
+        None is also returned if the document contains items with multiple provenances
 
         Returns
         -------
-        reading_order: Keys are "bboxes" and "pred_order"
+        reading_order: Keys are "bboxes" and "pred_order". Return None if the document is broken.
         """
         try:
             page_size = true_doc.pages[1].size
 
             # Convert the bboxes to bottom-left coords before running the GLM
             bboxes = []
-            for item_id, (item, level) in enumerate(true_doc.iterate_items()):
+            for item, level in true_doc.iterate_items():
                 pred_len = len(item.prov)  # type: ignore
                 if pred_len > 1:
                     _log.warning(
-                        "Skipping element %s in document %s as it has %s provenances",
-                        item_id,
+                        "Skipping document %s as it has %s provenances",
                         doc_id,
                         pred_len,
                     )
-                    continue
+                    return None
 
                 # Convert the bbox to BOTTOM-LEFT origin
                 bbox = item.prov[0].bbox.to_bottom_left_origin(page_size.height)  # type: ignore
@@ -145,7 +147,6 @@ class ReadingOrderEvaluator:
             # Run the reading order model
             legacy_doc = docling_document_to_legacy(true_doc)
             legacy_doc_dict = legacy_doc.model_dump(by_alias=True, exclude_none=True)
-            legacy_doc_dict = self._filter_out_bboxes(legacy_doc_dict, bboxes)
             legacy_doc_dict = self._ensure_bboxes_in_legacy_tables(legacy_doc_dict)
             glm_doc = self._nlp_model.apply_on_doc(legacy_doc_dict)
 
@@ -216,36 +217,36 @@ class ReadingOrderEvaluator:
                         cell["bbox"] = [0, 0, 0, 0]
         return legacy_doc_dict
 
-    def _filter_out_bboxes(
-        self, legacy_doc_dict: Dict, bboxes: List[BoundingBox]
-    ) -> Dict:
-        r"""
-        Remove entries from "main-text" with bbox outside of the provided bboxes
-        """
-        # Make set of existing bboxes as tuples
-        existing_bboxes = set([b.as_tuple() for b in bboxes])
+    # def _filter_out_bboxes(
+    #     self, legacy_doc_dict: Dict, bboxes: List[BoundingBox]
+    # ) -> Dict:
+    #     r"""
+    #     Remove entries from "main-text" with bbox outside of the provided bboxes
+    #     """
+    #     # Make set of existing bboxes as tuples
+    #     existing_bboxes = set([b.as_tuple() for b in bboxes])
 
-        # Identify main ids to be deleted
-        main_ids_to_delete = set()
-        for main_id, main in enumerate(legacy_doc_dict["main-text"]):
-            if "prov" not in main:
-                continue
-            for prov in main["prov"]:
-                bbox = prov["bbox"]
-                # Check if bbox is a tuple or a list
-                if tuple(bbox) not in existing_bboxes:
-                    main_ids_to_delete.add(main_id)
+    #     # Identify main ids to be deleted
+    #     main_ids_to_delete = set()
+    #     for main_id, main in enumerate(legacy_doc_dict["main-text"]):
+    #         if "prov" not in main:
+    #             continue
+    #         for prov in main["prov"]:
+    #             bbox = prov["bbox"]
+    #             # Check if bbox is a tuple or a list
+    #             if tuple(bbox) not in existing_bboxes:
+    #                 main_ids_to_delete.add(main_id)
 
-        # Reconstruct the main
-        if main_ids_to_delete:
-            filtered_mains = []
-            for main_id, main in enumerate(legacy_doc_dict["main-text"]):
-                if main_id in main_ids_to_delete:
-                    continue
-                filtered_mains.append(main)
-            legacy_doc_dict["main-text"] = filtered_mains
+    #     # Reconstruct the main
+    #     if main_ids_to_delete:
+    #         filtered_mains = []
+    #         for main_id, main in enumerate(legacy_doc_dict["main-text"]):
+    #             if main_id in main_ids_to_delete:
+    #                 continue
+    #             filtered_mains.append(main)
+    #         legacy_doc_dict["main-text"] = filtered_mains
 
-        return legacy_doc_dict
+    #     return legacy_doc_dict
 
     def _show_items(self, true_doc: DoclingDocument):
         r""" """
