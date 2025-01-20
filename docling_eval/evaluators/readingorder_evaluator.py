@@ -78,7 +78,6 @@ class ReadingOrderEvaluator:
 
             reading_order = self._get_reading_order_preds(doc_id, true_doc)
             if reading_order is None:
-                print(f"Broken document: {doc_id}")
                 broken_docs += 1
                 continue
 
@@ -323,6 +322,8 @@ class ReadingOrderVisualizer:
             true_doc: DoclingDocument = DoclingDocument.model_validate_json(
                 true_doc_dict
             )
+            if doc_id not in ro_preds_idx:
+                continue
             pred_order = ro_preds_idx[doc_id]
 
             # Draw and save the visualization
