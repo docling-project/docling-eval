@@ -149,11 +149,16 @@ class ReadingOrderEvaluator:
             legacy_doc_dict = self._ensure_bboxes_in_legacy_tables(legacy_doc_dict)
             glm_doc = self._nlp_model.apply_on_doc(legacy_doc_dict)
 
-            # original reading order -> predicted reading order
-            orig_to_pred_order: Dict[int, int] = {}
+            # pred_to_origin_order: predicted order -> original order
+            pred_to_origin_order: Dict[int, int] = {}
             for po, pe in enumerate(glm_doc["page-elements"]):
-                orig_to_pred_order[pe["orig-order"]] = po
-            pred_order = [orig_to_pred_order[x] for x in range(len(orig_to_pred_order))]
+                oo = pe["orig-order"]
+                pred_to_origin_order[po] = oo
+
+            # pred_order: The index is the predicted order and the value is the original order
+            pred_order = [
+                pred_to_origin_order[x] for x in range(len(pred_to_origin_order))
+            ]
 
             reading_order = {"bboxes": bboxes, "pred_order": pred_order}
             return reading_order
