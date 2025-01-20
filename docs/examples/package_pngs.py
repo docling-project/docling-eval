@@ -85,26 +85,38 @@ def parse_arguments():
     if not os.path.isdir(args.directory):
         raise ValueError(f"The specified directory '{args.directory}' does not exist.")
 
-    # Collect PNG files
-    png_files = []
+    # Collect IMG files
+    img_files = []
     if args.recursive:
         for root, _, files in os.walk(args.directory):
-            png_files.extend(
+            img_files.extend(
                 [os.path.join(root, f) for f in files if f.lower().endswith(".png")]
             )
+
+        for root, _, files in os.walk(args.directory):
+            img_files.extend(
+                [os.path.join(root, f) for f in files if f.lower().endswith(".jpg")]
+            )
+
+        for root, _, files in os.walk(args.directory):
+            img_files.extend(
+                [os.path.join(root, f) for f in files if f.lower().endswith(".jpeg")]
+            )                        
     else:
-        png_files = [
+        img_files = [
             os.path.join(args.directory, f)
             for f in os.listdir(args.directory)
-            if f.lower().endswith(".png")
+            if (f.lower().endswith(".png") or f.lower().endswith(".jpg") or f.lower().endswith(".jpeg"))
         ]
 
-    # Return parsed arguments and the PNG files
+    img_files = sorted(img_files)
+        
+    # Return parsed arguments and the IMG files
     return (
         args.name,
         args.directory,
         args.recursive,
-        png_files,
+        img_files,
     )
 
 
@@ -113,7 +125,7 @@ def main():
     # Set logging level for the 'docling' package
     # logging.getLogger('docling').setLevel(logging.WARNING)
 
-    name, directory, recursive, png_files = parse_arguments()
+    name, directory, recursive, img_files = parse_arguments()
 
     odir = Path(f"./benchmarks/{name}")
 
@@ -132,22 +144,23 @@ def main():
 
     tid, sid = 0, 0
 
-    for png_file in tqdm(png_files, total=len(png_files), ncols=128):
+    for img_file in tqdm(img_files, total=len(img_files), ncols=128):
 
         # Create the predicted Document
         try:
-            conv_results = doc_converter.convert(source=png_file, raises_on_error=True)
+            conv_results = doc_converter.convert(source=img_file, raises_on_error=True)
             pred_doc = conv_results.document
         except:
             record = {
                 BenchMarkColumns.DOCLING_VERSION: docling_version(),
                 BenchMarkColumns.STATUS: str(ConversionStatus.FAILURE.value),
-                BenchMarkColumns.DOC_ID: str(os.path.basename(png_file)),
+                BenchMarkColumns.DOC_ID: str(os.path.basename(img_file)),
+                BenchMarkColumns.DOC_PATH: str(img_file),
                 BenchMarkColumns.PREDICTION: json.dumps(None),
                 BenchMarkColumns.PREDICTION_PAGE_IMAGES: [],
                 BenchMarkColumns.PREDICTION_PICTURES: [],
-                BenchMarkColumns.ORIGINAL: get_binary(png_file),
-                BenchMarkColumns.MIMETYPE: "image/png",
+                BenchMarkColumns.ORIGINAL: get_binary(img_file),
+                BenchMarkColumns.MIMETYPE: "image/img",
                 BenchMarkColumns.TIMINGS: json.dumps(None),
             }
             records.append(record)
@@ -191,7 +204,7 @@ def main():
         page = page.replace("PREDDOC", html_doc)
         page = page.replace("PAGE_IMAGES", "\n".join(page_images))
 
-        filename = viz_dir / f"{os.path.basename(png_file)}.html"
+        filename = viz_dir / f"{os.path.basename(img_file)}.html"
         with open(str(filename), "w") as fw:
             fw.write(page)
 
@@ -204,11 +217,11 @@ def main():
         record = {
             BenchMarkColumns.DOCLING_VERSION: docling_version(),
             BenchMarkColumns.STATUS: str(conv_results.status.value),
-            BenchMarkColumns.DOC_ID: str(os.path.basename(png_file)),
+            BenchMarkColumns.DOC_ID: str(os.path.basename(img_file)),
             BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
             BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
             BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
-            BenchMarkColumns.ORIGINAL: get_binary(png_file),
+            BenchMarkColumns.ORIGINAL: get_binary(img_file),
             BenchMarkColumns.MIMETYPE: "image/png",
             BenchMarkColumns.TIMINGS: json.dumps(timings),
         }
