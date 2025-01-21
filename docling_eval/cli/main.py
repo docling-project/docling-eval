@@ -243,12 +243,12 @@ def visualise(
 
         # TEDS struct-with-text
         log_and_save_stats(
-            odir, benchmark, modality, "TEDS struct-with-text", table_evaluation.TEDS
+            odir, benchmark, modality, "TEDS_struct-with-text", table_evaluation.TEDS
         )
 
         # TEDS struct-only
         log_and_save_stats(
-            odir, benchmark, modality, "TEDS struct-only", table_evaluation.TEDS_struct
+            odir, benchmark, modality, "TEDS_struct-only", table_evaluation.TEDS_struct
         )
 
     elif modality == EvaluationModality.READING_ORDER:

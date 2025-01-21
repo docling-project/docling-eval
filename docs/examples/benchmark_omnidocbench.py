@@ -84,14 +84,14 @@ def main():
         log.info("Evaluate the markdown text for the OmniDocBench dataset")
         evaluate(
             modality=EvaluationModality.MARKDOWN_TEXT,
-            benchmark=BenchMarkNames.DPBENCH,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_lay,
             odir=odir_lay,
         )
         log.info("Visualize the markdown text for the OmniDocBench dataset")
         visualise(
             modality=EvaluationModality.MARKDOWN_TEXT,
-            benchmark=BenchMarkNames.DPBENCH,
+            benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_lay,
             odir=odir_lay,
         )
