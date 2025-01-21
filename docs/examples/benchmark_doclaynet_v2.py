@@ -29,9 +29,7 @@ def main():
     os.makedirs(odir, exist_ok=True)
 
     if True:
-        create_dlnv2_e2e_dataset(
-            input_dir=idir, output_dir=odir
-        )
+        create_dlnv2_e2e_dataset(input_dir=idir, output_dir=odir)
 
         evaluate(
             modality=EvaluationModality.LAYOUT,
@@ -45,6 +43,7 @@ def main():
             idir=odir,
             odir=odir,
         )
+
 
 if __name__ == "__main__":
     main()

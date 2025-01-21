@@ -8,17 +8,32 @@ from pathlib import Path
 
 from datasets import load_from_disk
 from docling_core.types import DoclingDocument
-from docling_core.types.doc import ProvenanceItem, BoundingBox, CoordOrigin, DocItemLabel, TableCell, TableData, \
-    GroupLabel, ImageRef, Size, PageItem
+from docling_core.types.doc import (
+    BoundingBox,
+    CoordOrigin,
+    DocItemLabel,
+    GroupLabel,
+    ImageRef,
+    PageItem,
+    ProvenanceItem,
+    Size,
+    TableCell,
+    TableData,
+)
 from docling_core.types.doc.tokens import TableToken
 from docling_core.types.io import DocumentStream
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.utils import write_datasets_info
 from docling_eval.docling.conversion import create_converter
-from docling_eval.docling.utils import from_pil_to_base64uri, crop_bounding_box, extract_images, docling_version, \
-    save_shard_to_disk
+from docling_eval.docling.utils import (
+    crop_bounding_box,
+    docling_version,
+    extract_images,
+    from_pil_to_base64uri,
+    save_shard_to_disk,
+)
 
 
 def parse_arguments():
@@ -183,31 +198,34 @@ def parse_table_content(otsl_content: str) -> TableData:
 
     return TableData(
         num_rows=len(split_row_tokens),
-        num_cols=(
-            max(len(row) for row in split_row_tokens) if split_row_tokens else 0
-        ),
+        num_cols=(max(len(row) for row in split_row_tokens) if split_row_tokens else 0),
         table_cells=table_cells,
     )
 
 
 def update(true_doc, current_list, img, label, segment, bb):
-    bbox = BoundingBox.from_tuple(tuple(bb), CoordOrigin.TOPLEFT)
-    prov = ProvenanceItem(
-        page_no=1,
-        bbox=bbox,
-        charspan=(0, len(segment["text"]))
+    bbox = BoundingBox.from_tuple(tuple(bb), CoordOrigin.TOPLEFT).to_bottom_left_origin(
+        page_height=true_doc.pages[1].size.height
     )
+    prov = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, len(segment["text"])))
     img_elem = crop_bounding_box(page_image=img, page=true_doc.pages[1], bbox=bbox)
     if label == DocItemLabel.PICTURE:
         current_list = None
-        uri = from_pil_to_base64uri(img_elem)
-
-        imgref = ImageRef(
-            mimetype="image/png",
-            dpi=72,
-            size=Size(width=img_elem.width, height=img_elem.height),
-            uri=uri,
-        )
+        try:
+            uri = from_pil_to_base64uri(img_elem)
+            imgref = ImageRef(
+                mimetype="image/png",
+                dpi=72,
+                size=Size(width=img_elem.width, height=img_elem.height),
+                uri=uri,
+            )
+        except Exception as e:
+            print(
+                "Warning: failed to resolve image uri for segment {} of doc {}. Caught exception is {}:{}. Setting null ImageRef".format(
+                    str(segment), str(true_doc.name), type(e).__name__, e
+                )
+            )
+            imgref = None
 
         true_doc.add_picture(prov=prov, image=imgref)
     elif label in [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]:
@@ -239,19 +257,20 @@ def update(true_doc, current_list, img, label, segment, bb):
 
 
 def create_dlnv2_e2e_dataset(input_dir, output_dir):
-    image_scale = 1.0
-    converter = create_converter(page_image_scale=image_scale, do_ocr=True,
-                                 ocr_lang=["en", "fr", "es", "de", "jp", "cn"])
+    converter = create_converter(
+        page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
+    )
     ds = load_from_disk(input_dir)
     records = []
-    count = 0
     for doc in tqdm(ds):
         img = doc["image"]
         with io.BytesIO() as img_byte_stream:
             img.save(img_byte_stream, format=img.format)
             img_byte_stream.seek(0)
-            conv_results = converter.convert(source=DocumentStream(name="foo.png", stream=img_byte_stream),
-                                             raises_on_error=True)
+            conv_results = converter.convert(
+                source=DocumentStream(name="foo.png", stream=img_byte_stream),
+                raises_on_error=True,
+            )
             img_byte_stream.seek(0)
             img_bytes = img_byte_stream.getvalue()
 
@@ -260,15 +279,13 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
         true_doc = DoclingDocument(name=Path(doc["extra"]["filename"]).stem)
         image_ref = ImageRef(
             mimetype="image/png",
-            dpi=round(72 * image_scale),
-            size=Size(
-                width=float(img.width), height=float(img.height)
-            ),
+            dpi=72,
+            size=Size(width=float(img.width), height=float(img.height)),
             uri=from_pil_to_base64uri(img),
         )
         page_item = PageItem(
             page_no=1,
-            size=Size(width=float(img.width / image_scale), height=float(img.height / image_scale)),
+            size=Size(width=float(img.width), height=float(img.height)),
             image=image_ref,
         )
 
@@ -276,7 +293,12 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
 
         current_list = None
         boxes = doc["boxes"]
-        labels = list(map(lambda label: label.lower().replace("-", "_").replace(" ", "_"), doc["labels"]))
+        labels = list(
+            map(
+                lambda label: label.lower().replace("-", "_").replace(" ", "_"),
+                doc["labels"],
+            )
+        )
         segments = doc["segments"]
         for l, s, b in zip(labels, segments, boxes):
             update(true_doc, current_list, img, l, s, b)
@@ -307,9 +329,7 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
             BenchMarkColumns.MIMETYPE: "image/png",
         }
         records.append(record)
-        count += 1
-        if count > 2:
-            break
+
     test_dir = output_dir / "test"
     os.makedirs(test_dir, exist_ok=True)
     save_shard_to_disk(items=records, dataset_path=test_dir)
@@ -330,9 +350,7 @@ def main():
     for _ in ["test", "train"]:
         os.makedirs(odir_e2e / _, exist_ok=True)
 
-    create_dlnv2_e2e_dataset(
-        input_dir=input_dir, output_dir=odir_e2e
-    )
+    create_dlnv2_e2e_dataset(input_dir=input_dir, output_dir=odir_e2e)
 
 
 if __name__ == "__main__":
