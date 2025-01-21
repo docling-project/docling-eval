@@ -268,6 +268,39 @@ Using a single command,
 poetry run python ./docs/examples/benchmark_omnidocbench.py
 ```
 
+This command downloads runs the evaluations and produces the following files:
+
+Layout evaluation:
+
+- [Layout evaluation json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_layout.json)
+- [mAP[0.5:0.95] report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].txt)
+- [mAP[0.5:0.95] plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].png)
+
+Tableformer evaluation:
+
+- [Tableformer evaluation json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer.json)
+- [TEDS plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer-delta_row_col.png)
+- [TEDS struct only plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-only.png)
+- [TEDS struct only report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-only.txt)
+- [TEDS struct with text plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-with-text.png)
+- [TEDS struct with text report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-with-text.txt)
+
+Reading order evaluation:
+
+- [Reading order json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order.json)
+- [ARD plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.png)
+- [ARD report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.txt)
+- [Weighted ARD plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.png)
+- [Weighte ARD report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.txt)
+
+Markdown text evaluation:
+
+- [Markdown text json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text.json)
+- [BLEU plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.png)
+- [BLEU report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.txt)
+
+
+
 <!--
 <details>
 <summary><b>Layout evaluation for OmniDocBench</b></summary>
