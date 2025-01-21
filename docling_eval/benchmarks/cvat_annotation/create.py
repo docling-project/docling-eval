@@ -5,7 +5,9 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple, cast
+from typing import Dict, List, Tuple, cast, Optional
+
+#from pydantic import 
 
 import xmltodict  # type: ignore[import]
 from datasets import Dataset, load_dataset
@@ -47,6 +49,18 @@ from docling_eval.docling.utils import (
     get_binary,
     insert_images,
     save_shard_to_disk,
+)
+
+from docling_eval.benchmarks.cvat_annotation.utils import (
+    DocLinkLabel,
+    TableComponentLabel,
+    rgb_to_hex,   
+    BenchMarkDirs,
+    AnnotationBBox,
+    AnnotationLine,
+    AnnotatedDoc,
+    AnnotatedImage,
+    AnnotationOverview,
 )
 
 # Configure logging
@@ -504,8 +518,9 @@ def add_footnotes_to_item(
     return true_doc, already_added
 
 
-def create_true_document(basename: str, annot: dict, desc: dict):
+def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
 
+    logging.info(f"creating ground-truth document for {basename}")
     (
         _,
         keep,
@@ -527,21 +542,23 @@ def create_true_document(basename: str, annot: dict, desc: dict):
     logging.info(f"analyzing {basename}")
 
     # ========== Original Groundtruth
-    orig_file = Path(desc["true_file"])
+    orig_file = desc.true_file
     assert os.path.exists(orig_file)
 
-    with open(orig_file, "r") as fr:
-        orig_doc = DoclingDocument.model_validate_json(json.load(fr))
+    orig_doc = DoclingDocument.load_from_json(filename=orig_file)
+    #with open(orig_file, "r") as fr:
+    #    orig_doc = DoclingDocument.model_validate_json(json.load(fr))
 
     # ========== Original Prediction (to pre-annotate)
-    pred_file = Path(desc["pred_file"])
+    pred_file = desc.pred_file
     assert os.path.exists(str(pred_file))
 
-    with open(pred_file, "r") as fr:
-        pred_doc = DoclingDocument.model_validate_json(json.load(fr))
+    pred_doc = DoclingDocument.load_from_json(filename=pred_file)
+    # with open(pred_file, "r") as fr:
+    #    pred_doc = DoclingDocument.model_validate_json(json.load(fr))
 
     # ========== Original PDF page
-    pdf_file: Path = Path(desc["pdf_file"])
+    pdf_file: Path = desc.bin_file
     assert os.path.exists(pdf_file)
 
     # Init the parser to extract the text-cells
@@ -549,7 +566,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
     success = parser.load_document(key=basename, filename=str(pdf_file))
 
     parsed_pages = {}
-    for i, page_no in enumerate(desc["page_nos"]):
+    for i, page_no in enumerate(desc.page_nos):
         parsed_doc = parser.parse_pdf_from_key_on_page(key=basename, page=page_no - 1)
         parsed_pages[page_no] = parsed_doc["pages"][0]
 
@@ -559,7 +576,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
     true_doc = DoclingDocument(name=f"{basename}")
 
     # Copy the page-images from the predicted pages
-    for i, page_no in enumerate(desc["page_nos"]):
+    for i, page_no in enumerate(desc.page_nos):
 
         # --- PDF
         assert len(parsed_doc["pages"]) == 1
@@ -567,7 +584,7 @@ def create_true_document(basename: str, annot: dict, desc: dict):
         pdf_height = parsed_pages[page_no]["sanitized"]["dimension"]["height"]
 
         # --- PNG
-        img_file = desc["page_img_files"][i]
+        img_file = desc.page_img_files[i]
 
         page_image = Image.open(str(img_file))
         # page_image.show()
@@ -799,11 +816,9 @@ def contains_reading_order(image_annot: dict):
 
 def from_cvat_to_docling_document(
     annotation_filenames: List[Path],
-    overview: dict,
-    imgs_dir: Path,
-    pdfs_dir: Path,
+    overview: AnnotationOverview,
     image_scale: float = 1.0,
-):
+) -> Tuple[str, AnnotatedImage, Optional[DoclingDocument]]:
 
     for annot_file in annotation_filenames:
 
@@ -817,42 +832,33 @@ def from_cvat_to_docling_document(
 
             basename = image_annot["@name"]
 
-            if basename not in overview:
+            if basename not in overview.img_annotations:
                 logging.warning(f"Skipping {basename}: not in overview_file")
-                yield overview[basename], None
+                yield basename, overview.img_annotations[basename], None
 
             elif not contains_reading_order(image_annot):
                 logging.warning(f"Skipping {basename}: no reading-order detected")
-                yield overview[basename], None
+                yield basename, overview.img_annotations[basename], None
 
             else:
                 true_doc = create_true_document(
-                    basename=basename, annot=image_annot, desc=overview[basename]
+                    basename=basename, annot=image_annot, desc=overview.img_annotations[basename]
                 )
-                yield overview[basename], true_doc
+                yield basename, overview.img_annotations[basename], true_doc
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Create new evaluation dataset using annotation file."
+        description="Create new evaluation dataset using CVAT annotation files."
     )
 
     parser.add_argument(
         "-i", "--input_dir", required=True, help="Path to the input directory"
     )
-    parser.add_argument(
-        "-a",
-        "--annot_file",
-        required=False,
-        help="Path to the CVAT annotation file.",
-        default="annotations.xml",
-    )
 
     args = parser.parse_args()
-    return (
-        Path(args.input_dir),
-        Path(args.input_dir) / args.annot_file,
-    )
+    return Path(args.input_dir)
+    
 
 
 TRUE_HTML_EXPORT_LABELS = {
@@ -897,66 +903,34 @@ PRED_HTML_EXPORT_LABELS = {
 }
 
 
-def create_layout_dataset_from_annotations(input_dir: Path, annot_file: Path):
+def create_layout_dataset_from_annotations(benchmark_dirs: BenchMarkDirs, annot_files: List[Path]):
 
-    output_dir = input_dir / "layout"
-
-    imgs_dir = input_dir / "imgs"
-    page_imgs_dir = input_dir / "page_imgs"
-    pdfs_dir = input_dir / "pdfs"
-
-    json_true_dir = input_dir / "json-groundtruth"
-    json_pred_dir = input_dir / "json-predictions"
-    json_anno_dir = input_dir / "json-annotations"
-
-    html_anno_dir = input_dir / "html-annotations"
-    html_viz_dir = input_dir / "html-annotatations-viz"
-
-    overview_file = input_dir / "overview_map.json"
-
-    with open(overview_file, "r") as fr:
-        overview = json.load(fr)
-
-    for _ in [
-        input_dir,
-        output_dir,
-        imgs_dir,
-        page_imgs_dir,
-        pdfs_dir,
-        json_true_dir,
-        json_pred_dir,
-        json_anno_dir,
-        html_anno_dir,
-        html_viz_dir,
-    ]:
-        os.makedirs(_, exist_ok=True)
-
-    image_scale = 2.0
+    overview = AnnotationOverview.load_from_json(filename=benchmark_dirs.overview_file)
 
     # Create Converter
+    image_scale = 2.0        
     doc_converter = create_converter(page_image_scale=image_scale)
 
     records = []
-    for desc, true_doc in tqdm(
+    for basename, desc, true_doc in tqdm(
         from_cvat_to_docling_document(
-            annotation_filenames=[annot_file],
+            annotation_filenames=annot_files,
             overview=overview,
-            pdfs_dir=pdfs_dir,
-            imgs_dir=imgs_dir,
         ),
-        total=len(overview),
+        total=len(overview.img_annotations),
         ncols=128,
         desc="Creating documents from annotations",
     ):
 
-        basename = desc["basename"]
-
+        if true_doc is None:
+            continue
+        
         """
         save_inspection_html(filename=str(html_viz_dir / f"{basename}.html"), doc = true_doc,
                              labels=TRUE_HTML_EXPORT_LABELS)
         """
 
-        pdf_file = desc["pdf_file"]
+        pdf_file = desc.bin_file
 
         # Create the predicted Document
         conv_results = doc_converter.convert(source=pdf_file, raises_on_error=True)
@@ -975,8 +949,11 @@ def create_layout_dataset_from_annotations(input_dir: Path, annot_file: Path):
         )
 
         if True:
+            vizname = benchmark_dirs.html_viz_dir / f"{basename}-clusters.html"
+            logging.info(f"creating visualization: {vizname}")
+            
             save_comparison_html_with_clusters(
-                filename=html_viz_dir / f"{basename}-clusters.html",
+                filename=vizname,
                 true_doc=true_doc,
                 pred_doc=pred_doc,
                 page_image=true_page_images[0],
@@ -999,81 +976,88 @@ def create_layout_dataset_from_annotations(input_dir: Path, annot_file: Path):
         }
         records.append(record)
 
-    test_dir = output_dir / "test"
-    os.makedirs(test_dir, exist_ok=True)
-
-    save_shard_to_disk(items=records, dataset_path=test_dir)
+    save_shard_to_disk(items=records, dataset_path=benchmark_dirs.dataset_test_dir)
 
     write_datasets_info(
-        name="DPBench: end-to-end",
-        output_dir=output_dir,
+        name="CVAT: end-to-end",
+        output_dir=benchmark_dirs.dataset_dir,
         num_train_rows=0,
         num_test_rows=len(records),
     )
 
 
+import zipfile
+
+def unzip_files(zip_files, output_dir):
+    """
+    Unzips a list of zip files into a specified directory, avoiding filename collisions.
+    
+    Args:
+        zip_files (list): List of paths to zip files to unzip.
+        output_dir (str): Path to the directory where files will be unzipped.
+    
+    Returns:
+        list: List of paths to all unzipped files.
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    unzipped_files = []
+    
+    for zip_file in zip_files:
+        with zipfile.ZipFile(zip_file, 'r') as zf:
+            for file_name in zf.namelist():
+                # Resolve filename collisions
+                original_file_name = file_name
+                file_path = os.path.join(output_dir, file_name)
+                base, ext = os.path.splitext(file_name)
+                counter = 1
+                while os.path.exists(file_path):
+                    # Append a numeric suffix to resolve collisions
+                    file_name = f"{base}_{counter}{ext}"
+                    file_path = os.path.join(output_dir, file_name)
+                    counter += 1
+                
+                # Extract file and add to the list
+                with open(file_path, 'wb') as f:
+                    f.write(zf.read(original_file_name))
+                unzipped_files.append(file_path)
+    
+    return unzipped_files
+
+def get_annotation_files(benchmark_dirs):
+
+    xml_files = []
+    zip_files = sorted(glob.glob(str(benchmark_dirs.annotations_zip_dir / "*.zip")))
+    
+    if len(zip_files)>0:
+        logging.info(f"#-zips: {len(zip_files)}")
+        
+        xml_files = sorted(glob.glob(str(benchmark_dirs.annotations_xml_dir / "*.xml")))
+        logging.info(f"#-xml: {len(xml_files)}")
+    
+        for xml_file in xml_files:
+            os.remove(xml_file)
+        
+        xml_files = unzip_files(zip_files = zip_files, output_dir = benchmark_dirs.annotations_xml_dir)
+    else:
+        xml_files = sorted(glob.glob(str(benchmark_dirs.annotations_xml_dir / "*.xml")))
+
+    logging.info(f"#-xml: {len(xml_files)}")
+    return xml_files
+    
 def main():
 
-    input_dir, preannot_file = parse_args()
+    source_dir = parse_args()
 
-    imgs_dir = input_dir / "imgs"
-    page_imgs_dir = input_dir / "page_imgs"
-    pdfs_dir = input_dir / "pdfs"
+    benchmark_dirs = BenchMarkDirs()
+    benchmark_dirs.set_up_directory_structure(source=source_dir,
+                                              target=source_dir)
 
-    json_true_dir = input_dir / "json-groundtruth"
-    json_pred_dir = input_dir / "json-predictions"
-    json_anno_dir = input_dir / "json-annotations"
+    # Get all annotation files
+    annot_files = get_annotation_files(benchmark_dirs)
 
-    html_anno_dir = input_dir / "html-annotations"
-    html_viz_dir = input_dir / "html-annotatations-viz"
-
-    overview_file = input_dir / "overview_map.json"
-
-    with open(overview_file, "r") as fr:
-        overview = json.load(fr)
-
-    for _ in [
-        input_dir,
-        imgs_dir,
-        page_imgs_dir,
-        pdfs_dir,
-        json_true_dir,
-        json_pred_dir,
-        json_anno_dir,
-        html_anno_dir,
-        html_viz_dir,
-    ]:
-        os.makedirs(_, exist_ok=True)
-
-    image_scale = 2.0
-
-    # Create Converter
-    doc_converter = create_converter(page_image_scale=image_scale)
-
-    for desc, true_doc in tqdm(
-        from_cvat_to_docling_document(
-            annotation_filenames=[preannot_file],
-            overview=overview,
-            pdfs_dir=pdfs_dir,
-            imgs_dir=imgs_dir,
-        ),
-        total=len(overview),
-        ncols=128,
-        desc="Creating documents from annotations",
-    ):
-
-        basename = desc["basename"]
-
-        save_inspection_html(
-            filename=str(html_viz_dir / f"{basename}.html"),
-            doc=true_doc,
-            labels=TRUE_HTML_EXPORT_LABELS,
-        )
-
-
+    create_layout_dataset_from_annotations(benchmark_dirs=benchmark_dirs, annot_files=annot_files)    
+    
 if __name__ == "__main__":
-    # main()
-
-    input_dir, annot_file = parse_args()
-
-    create_layout_dataset_from_annotations(input_dir=input_dir, annot_file=annot_file)
+    main()

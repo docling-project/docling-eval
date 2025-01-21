@@ -33,9 +33,15 @@ from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.cvat_annotation.utils import (
     DocLinkLabel,
     TableComponentLabel,
-    BenchMarkDirs,
+    
     rgb_to_hex,
-    set_up_directory_structure,
+    
+    BenchMarkDirs,
+    AnnotationBBox,
+    AnnotationLine,
+    AnnotatedDoc,
+    AnnotatedImage,
+    AnnotationOverview,
 )
 from docling_eval.docling.utils import insert_images
 
@@ -44,95 +50,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-class AnnotationBBox(BaseModel):
-
-    bbox_id: int
-    bbox: BoundingBox
-    label: DocItemLabel
-
-    def to_cvat(self) -> str:
-        return f'<box label="{self.label.value}" source="docling" occluded="0" xtl="{self.bbox.l}" ytl="{self.bbox.t}" xbr="{self.bbox.r}" ybr="{self.bbox.b}" z_order="{self.bbox_id}"></box>'
-
-        
-class AnnotationLine(BaseModel):
-
-    line: List[AnnotationBBox]
-    label: DocLinkLabel    
-
-class AnnotatedDoc(BaseModel):
-
-    mime_type: str = ""
-
-    true_file: Path = ""
-    pred_file: Path = ""
-
-    bin_file: Path = ""
-
-    doc_hash: str = ""
-    doc_name: str = ""
-    
-class AnnotatedImage(BaseModel):
-
-    mime_type: str = ""
-
-    true_file: Path = ""
-    pred_file: Path = ""
-
-    bin_file: Path = ""
-    bucket_dir: Path = ""
-
-    doc_hash: str = ""
-    doc_name: str = ""
-
-    img_id: int = -1
-    img_w: int = -1
-    img_h: int = -1
-
-    img_file: Path = ""
-
-    page_nos: List[int] = []
-    page_img_files: List[Path] = []
-
-    pred_boxes: List[AnnotationBBox] = []
-    pred_lines: List[AnnotationLine] = []
-
-    cvat_boxes: List[AnnotationBBox] = []
-    cvat_lines: List[AnnotationLine] = []
-
-    def to_cvat(self) -> str:
-        tmp = [f'<image id="{self.img_id}" name="{os.path.basename(self.img_file)}" width="{self.img_w}" height="{self.img_h}">']
-        for item_id, item in enumerate(page_bboxes):
-            tmp.append(item.to_cvat())
-        tmp.append("</image>")
-
-        return "\n".join(tmp)
-        
-class AnnotationOverview(BaseModel):
-
-    doc_annotations: List[AnnotatedDoc] = []
-    img_annotations: Dict[str, AnnotatedImage] = {}
-
-    def export_to_dict(
-        self,
-        mode: str = "json",
-        by_alias: bool = True,
-        exclude_none: bool = True,
-    ) -> Dict:
-        """Export to dict."""
-        return self.model_dump(mode=mode, by_alias=by_alias, exclude_none=exclude_none)
-
-    def save_as_json(self, filename: Path, indent: int = 2):
-        """Save as json."""
-        out = self.export_to_dict()
-        with open(filename, "w", encoding="utf-8") as fw:
-            json.dump(out, fw, indent=indent)
-
-    @classmethod
-    def load_from_json(cls, filename: Path) -> "AnnotationOverview":
-        """load_from_json."""
-        with open(filename, "r", encoding="utf-8") as f:
-            return cls.model_validate_json(f.read())    
-    
 def create_cvat_project_properties(project_file: Path):
 
     results = []
@@ -273,12 +190,14 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
             img_cnt += 1
 
             bucket_id = int(img_cnt / float(ANNOT_PER_BUCKET))
-            bucket_dir = benchmark_dirs.imgs_dir / f"task_{bucket_id:06}"
+            bucket_dir = benchmark_dirs.tasks_dir / f"task_{bucket_id:02}"
 
             if not os.path.exists(bucket_dir) and len(cvat_annots)>0: # write the pre-annotation files
 
+                logging.info(f"#-annots: {len(cvat_annots)}")
+                
                 prev_bucket_id = int((img_cnt-1) / float(ANNOT_PER_BUCKET))
-                preannot_file = benchmark_dirs.imgs_dir / f"preannotate_{prev_bucket_id:06}.xml"
+                preannot_file = benchmark_dirs.tasks_dir / f"task_{prev_bucket_id:02}_preannotate.xml"
                 
                 fw = open(preannot_file, 'w')
                 fw.write('<?xml version="1.0" encoding="utf-8"?>\n')
@@ -287,8 +206,8 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
                     fw.write(f'{cvat_annot}\n')
                 fw.write('</annotations>\n')
                 fw.close()
-
-                cvat_annot = []
+                
+                cvat_annots = []
                 
             os.makedirs(bucket_dir, exist_ok=True)    
             
@@ -357,20 +276,13 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
 
             annotated_image.pred_boxes = page_bboxes
 
-            """
-            tmp = [f'<image id="{img_id}" name="{filename}" width="{img_w}" height="{img_h}">']
-            for item_id, item in enumerate(page_bboxes):
-                tmp.append(item.to_cvat())
-            tmp.append("</image>")
-                        
-            cvat_annots.append("\n".join(tmp))
-            """
-
             cvat_annots.append(annotated_image.to_cvat())            
 
     if os.path.exists(bucket_dir) and len(cvat_annots)>0: # write the pre-annotation files
 
-        preannot_file = benchmark_dirs.imgs_dir / f"preannotate_{bucket_id:06}.xml"
+        # logging.info(f"#-annots: {len(cvat_annots)}")
+        
+        preannot_file = benchmark_dirs.tasks_dir / f"task_{bucket_id:02}_preannotate.xml"
         
         fw = open(preannot_file, 'w')
         fw.write('<?xml version="1.0" encoding="utf-8"?>\n')
@@ -384,8 +296,6 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
 
 
 def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> AnnotationOverview:
-
-    # benchmark_path = Path("./benchmarks/DPBench-dataset/layout/test")
 
     test_files = sorted(glob.glob(str(benchmark_dirs.source_dir / "*.parquet")))
     #print(json.dumps(test_files, indent=2))
@@ -506,8 +416,9 @@ def main():
 
     source_dir, target_dir = parse_args()
 
-    benchmark_dirs = set_up_directory_structure(source_dir=source_dir,
-                                                target_dir=target_dir)
+    benchmark_dirs = BenchMarkDirs()
+    benchmark_dirs.set_up_directory_structure(source=source_dir,
+                                              target=target_dir)
     
     create_cvat_project_properties(project_file=benchmark_dirs.project_desc_file)
 

@@ -6,6 +6,18 @@ from typing import Tuple
 from pathlib import Path
 
 from pydantic import BaseModel
+from typing import Dict, List, Tuple
+
+
+from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc.base import ImageRefMode
+
+from docling_core.types.doc.labels import (
+    DocItemLabel,
+    GroupLabel,
+    PictureClassificationLabel,
+    TableCellLabel,
+)
 
 class DocLinkLabel(str, Enum):
     """DocLinkLabel."""
@@ -81,79 +93,182 @@ def rgb_to_hex(r, g, b):
 
 class BenchMarkDirs(BaseModel):
 
-    source_dir: Path
-    target_dir: Path
+    source_dir: Path = ""
+    target_dir: Path = ""
     
-    imgs_dir: Path
-    bins_dir: Path
+    tasks_dir: Path = ""
+    bins_dir: Path = ""
+
+    annotations_dir: Path = ""
+    annotations_zip_dir: Path = ""
+    annotations_xml_dir: Path = ""
+
+    dataset_dir: Path = ""
+    dataset_train_dir: Path = ""
+    dataset_test_dir: Path = ""
     
-    page_imgs_dir: Path
+    page_imgs_dir: Path = ""
 
-    json_true_dir: Path
-    json_pred_dir: Path
-    json_anno_dir: Path
+    json_true_dir: Path = ""
+    json_pred_dir: Path = ""
+    json_anno_dir: Path = ""
 
-    html_anno_dir: Path
-    html_viz_dir: Path
+    html_anno_dir: Path = ""
+    html_viz_dir: Path = ""
 
-    project_desc_file: Path
-    overview_file: Path
+    project_desc_file: Path = ""
+    overview_file: Path = ""
 
-def set_up_directory_structure(source_dir: Path, target_dir: Path) -> BenchMarkDirs:
+    def set_up_directory_structure(self, source: Path, target: Path) -> "BenchMarkDirs":
 
-    source_dir = source_dir
-    target_dir = target_dir
+        assert os.path.exists(str(source)), f"os.path.exists({source})"
+        
+        self.source_dir = source
+        self.target_dir = target
+        
+        self.tasks_dir = self.target_dir / "cvat_tasks"
+
+        self.annotations_dir = self.target_dir / "cvat_annotations"
+        self.annotations_zip_dir = self.annotations_dir / "zips"
+        self.annotations_xml_dir = self.annotations_dir / "xmls"
+
+        self.project_desc_file = self.target_dir / "cvat_description.json"
+        self.overview_file = self.target_dir / "cvat_overview.json"
+        
+        self.bins_dir = self.target_dir / "cvat_bins"
+
+        self.dataset_dir = self.target_dir / "datasets"
+        self.dataset_train_dir = self.dataset_dir / "test"
+        self.dataset_test_dir = self.dataset_dir / "train"
+        
+        self.page_imgs_dir = self.target_dir / "page_imgs"
+        
+        self.json_true_dir = self.target_dir / "json_groundtruth"
+        self.json_pred_dir = self.target_dir / "json_predictions"
+        self.json_anno_dir = self.target_dir / "json_annotations"
+        
+        self.html_anno_dir = self.target_dir / "html_annotations"
+        self.html_viz_dir = self.target_dir / "html_annotatations-viz"
+        
+        for _ in [
+            self.target_dir,
+                
+            self.tasks_dir,
+            self.bins_dir,
+
+            self.annotations_dir,
+            self.annotations_zip_dir,
+            self.annotations_xml_dir,
+
+            self.dataset_dir,
+            self.dataset_train_dir,
+            self.dataset_test_dir,
+            
+            self.page_imgs_dir,
+                
+            self.json_true_dir,
+            self.json_pred_dir,
+            self.json_anno_dir,
+            
+            self.html_anno_dir,
+            self.html_viz_dir,
+        ]:
+            os.makedirs(_, exist_ok=True)
+            
+        return self
     
-    imgs_dir = target_dir / "cvat_imgs"
-    bins_dir = target_dir / "cvat_bins"
+class AnnotationBBox(BaseModel):
 
-    page_imgs_dir = target_dir / "page_imgs"
+    bbox_id: int
+    bbox: BoundingBox
+    label: DocItemLabel
+
+    def to_cvat(self) -> str:
+        return f'<box label="{self.label.value}" source="docling" occluded="0" xtl="{self.bbox.l}" ytl="{self.bbox.t}" xbr="{self.bbox.r}" ybr="{self.bbox.b}" z_order="{self.bbox_id}"></box>'
+
+        
+class AnnotationLine(BaseModel):
+
+    line: List[AnnotationBBox]
+    label: DocLinkLabel    
+
+class AnnotatedDoc(BaseModel):
+
+    mime_type: str = ""
+
+    true_file: Path = ""
+    pred_file: Path = ""
+
+    bin_file: Path = ""
+
+    doc_hash: str = ""
+    doc_name: str = ""
     
-    json_true_dir = target_dir / "json_groundtruth"
-    json_pred_dir = target_dir / "json_predictions"
-    json_anno_dir = target_dir / "json_annotations"
+class AnnotatedImage(BaseModel):
 
-    html_anno_dir = target_dir / "html_annotations"
-    html_viz_dir = target_dir / "html_annotatations-viz"
+    mime_type: str = ""
 
-    project_desc_file = target_dir / "cvat_description.json"
-    overview_file = target_dir / "cvat_overview.json"
+    true_file: Path = ""
+    pred_file: Path = ""
 
-    for _ in [
-        target_dir,
+    bin_file: Path = ""
+    bucket_dir: Path = ""
 
-        imgs_dir,
-        bins_dir,
+    doc_hash: str = ""
+    doc_name: str = ""
 
-        page_imgs_dir,
+    img_id: int = -1
+    img_w: int = -1
+    img_h: int = -1
 
-        json_true_dir,
-        json_pred_dir,
-        json_anno_dir,
+    img_file: Path = ""
 
-        html_anno_dir,
-        html_viz_dir,
-    ]:
-        os.makedirs(_, exist_ok=True)    
+    page_nos: List[int] = []
+    page_img_files: List[Path] = []
 
-    result = BenchMarkDirs(
-        source_dir=source_dir,
-        target_dir=target_dir,
+    pred_boxes: List[AnnotationBBox] = []
+    pred_lines: List[AnnotationLine] = []
 
-        imgs_dir = imgs_dir,
-        bins_dir = bins_dir,
+    cvat_boxes: List[AnnotationBBox] = []
+    cvat_lines: List[AnnotationLine] = []
 
-        page_imgs_dir = page_imgs_dir,
+    def to_cvat(self, pred:bool=True, lines:bool=False) -> str:
+        tmp = [f'<image id="{self.img_id}" name="{os.path.basename(self.img_file)}" width="{self.img_w}" height="{self.img_h}">']
 
-        json_true_dir = json_true_dir,
-        json_pred_dir = json_pred_dir,
-        json_anno_dir = json_anno_dir,
+        if pred:
+            for item_id, item in enumerate(self.pred_boxes):
+                tmp.append(item.to_cvat())
+        else:
+            for item_id, item in enumerate(self.cvat_boxes):
+                tmp.append(item.to_cvat())
+                
+        tmp.append("</image>")
 
-        html_anno_dir = html_anno_dir,
-        html_viz_dir = html_viz_dir,
+        return "\n".join(tmp)
+        
+class AnnotationOverview(BaseModel):
 
-        project_desc_file = project_desc_file,
-        overview_file = overview_file,        
-    )
-    return result
+    doc_annotations: List[AnnotatedDoc] = []
+    img_annotations: Dict[str, AnnotatedImage] = {}
+
+    def export_to_dict(
+        self,
+        mode: str = "json",
+        by_alias: bool = True,
+        exclude_none: bool = True,
+    ) -> Dict:
+        """Export to dict."""
+        return self.model_dump(mode=mode, by_alias=by_alias, exclude_none=exclude_none)
+
+    def save_as_json(self, filename: Path, indent: int = 2):
+        """Save as json."""
+        out = self.export_to_dict()
+        with open(filename, "w", encoding="utf-8") as fw:
+            json.dump(out, fw, indent=indent)
+
+    @classmethod
+    def load_from_json(cls, filename: Path) -> "AnnotationOverview":
+        """load_from_json."""
+        with open(filename, "r", encoding="utf-8") as f:
+            return cls.model_validate_json(f.read())    
     

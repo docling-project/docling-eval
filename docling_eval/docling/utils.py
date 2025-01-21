@@ -143,7 +143,7 @@ def insert_images(
                 document.pictures[pic_no].image.uri = AnyUrl(f"data:image/png;base64,{b64}")
             else:
                 document.pictures[pic_no].image.uri = None
-                logging.warning(f"inconsistent number of images in the document ({len(pictures)} != {len(document.pictures)})")
+                #logging.warning(f"inconsistent number of images in the document ({len(pictures)} != {len(document.pictures)})")
                 
     # Save page images
     for page_no, page in document.pages.items():

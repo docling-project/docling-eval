@@ -73,7 +73,7 @@ def write_datasets_info(
     )
 
     schema = features.to_dict()
-    print(json.dumps(schema, indent=2))
+    #print(json.dumps(schema, indent=2))
 
     dataset_infos = {
         "train": {
