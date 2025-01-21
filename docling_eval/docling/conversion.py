@@ -54,7 +54,7 @@ def create_converter(
 
     pipeline_options = PdfPipelineOptions(
         do_ocr=do_ocr,
-        ocr_options=EasyOcrOptions(force_full_page_ocr=force_ocr),
+        ocr_options=ocr_options,
         do_table_structure=True,
         artifacts_path=artifacts_path,
     )
