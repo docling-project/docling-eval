@@ -7,13 +7,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from pydantic import BaseModel
-
 from datasets import Dataset, load_dataset
-
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
-from docling_core.types.doc.base import ImageRefMode
-
+from docling_core.types.doc.base import BoundingBox, CoordOrigin, ImageRefMode, Size
 from docling_core.types.doc.document import (
     DocItem,
     DoclingDocument,
@@ -26,29 +21,29 @@ from docling_core.types.doc.labels import (
     PictureClassificationLabel,
     TableCellLabel,
 )
+from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.utils import get_binhash
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.cvat_annotation.utils import (
-    DocLinkLabel,
-    TableComponentLabel,
-    
-    rgb_to_hex,
-    
-    BenchMarkDirs,
-    AnnotationBBox,
-    AnnotationLine,
     AnnotatedDoc,
     AnnotatedImage,
+    AnnotationBBox,
+    AnnotationLine,
     AnnotationOverview,
+    BenchMarkDirs,
+    DocLinkLabel,
+    TableComponentLabel,
+    rgb_to_hex,
 )
+from docling_eval.benchmarks.utils import get_binhash
 from docling_eval.docling.utils import insert_images
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
 
 def create_cvat_project_properties(project_file: Path):
 
@@ -172,63 +167,71 @@ def create_cvat_project_properties(project_file: Path):
         fw.write(json.dumps(results, indent=2))
 
 
-def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs,
-                                                   overview: AnnotationOverview,
-                                                   ANNOT_PER_BUCKET:int = 50):
+def create_cvat_preannotation_file_for_single_page(
+    benchmark_dirs: BenchMarkDirs,
+    overview: AnnotationOverview,
+    ANNOT_PER_BUCKET: int = 200,
+):
 
     cvat_annots: List[str] = []
-    
+
     img_id, img_cnt, bucket_id, bucket_cnt = 0, 0, 0, 0
     for doc_id, doc_overview in tqdm(
         enumerate(overview.doc_annotations),
-            ncols=128, desc="creating the CVAT file",
-            total=len(overview.doc_annotations)
+        ncols=128,
+        desc="creating the CVAT file",
+        total=len(overview.doc_annotations),
     ):
         doc = DoclingDocument.load_from_json(doc_overview.pred_file)
-        
+
         for page_no, page in doc.pages.items():
             img_cnt += 1
 
             bucket_id = int(img_cnt / float(ANNOT_PER_BUCKET))
             bucket_dir = benchmark_dirs.tasks_dir / f"task_{bucket_id:02}"
 
-            if not os.path.exists(bucket_dir) and len(cvat_annots)>0: # write the pre-annotation files
+            if (
+                not os.path.exists(bucket_dir) and len(cvat_annots) > 0
+            ):  # write the pre-annotation files
 
                 logging.info(f"#-annots: {len(cvat_annots)}")
-                
-                prev_bucket_id = int((img_cnt-1) / float(ANNOT_PER_BUCKET))
-                preannot_file = benchmark_dirs.tasks_dir / f"task_{prev_bucket_id:02}_preannotate.xml"
-                
-                fw = open(preannot_file, 'w')
+
+                prev_bucket_id = int((img_cnt - 1) / float(ANNOT_PER_BUCKET))
+                preannot_file = (
+                    benchmark_dirs.tasks_dir
+                    / f"task_{prev_bucket_id:02}_preannotate.xml"
+                )
+
+                fw = open(preannot_file, "w")
                 fw.write('<?xml version="1.0" encoding="utf-8"?>\n')
-                fw.write('<annotations>\n')
+                fw.write("<annotations>\n")
                 for cvat_annot in cvat_annots:
-                    fw.write(f'{cvat_annot}\n')
-                fw.write('</annotations>\n')
+                    fw.write(f"{cvat_annot}\n")
+                fw.write("</annotations>\n")
                 fw.close()
-                
+
                 cvat_annots = []
-                
-            os.makedirs(bucket_dir, exist_ok=True)    
-            
+
+            os.makedirs(bucket_dir, exist_ok=True)
+
             doc_name = doc_overview.doc_name
             doc_hash = doc_overview.doc_hash
 
-            #annotated_image = doc_overview.model_copy()
+            # annotated_image = doc_overview.model_copy()
             filename = f"doc_{doc_hash}_page_{page_no:06}.png"
 
-            annotated_image = AnnotatedImage(img_id = img_cnt,
-                                             mime_type = doc_overview.mime_type,
-                                             true_file = doc_overview.true_file,
-                                             pred_file = doc_overview.pred_file,
-                                             bin_file = doc_overview.bin_file,
+            annotated_image = AnnotatedImage(
+                img_id=img_cnt,
+                mime_type=doc_overview.mime_type,
+                true_file=doc_overview.true_file,
+                pred_file=doc_overview.pred_file,
+                bin_file=doc_overview.bin_file,
+                doc_name=doc_name,
+                doc_hash=doc_hash,
+                bucket_dir=bucket_dir,
+                filename=filename,
+            )
 
-                                             doc_name=doc_name,
-                                             doc_hash=doc_hash,
-
-                                             bucket_dir=bucket_dir,
-                                             filename=filename)
-            
             annotated_image.img_file = bucket_dir / filename
 
             page_img_file = benchmark_dirs.page_imgs_dir / filename
@@ -236,7 +239,7 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
 
             page_image = page.image.pil_image
 
-            page_image.save(annotated_image.img_file)            
+            page_image.save(annotated_image.img_file)
             page_image.save(annotated_image.page_img_files[0])
 
             annotated_image.img_w = page_image.width
@@ -246,7 +249,7 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
             overview.img_annotations[filename] = annotated_image
 
             page_bboxes: List[AnnotationBBox] = []
-            
+
             for item, level in doc.iterate_items():
                 if isinstance(item, DocItem):
                     for prov in item.prov:
@@ -255,59 +258,69 @@ def create_cvat_preannotation_file_for_single_page(benchmark_dirs: BenchMarkDirs
                             page_w = doc.pages[prov.page_no].size.width
                             page_h = doc.pages[prov.page_no].size.height
 
-                            img_w = annotated_image.img_w #page_images[page_no - 1].width
-                            img_h = annotated_image.img_h #page_images[page_no - 1].height
+                            img_w = (
+                                annotated_image.img_w
+                            )  # page_images[page_no - 1].width
+                            img_h = (
+                                annotated_image.img_h
+                            )  # page_images[page_no - 1].height
 
                             page_bbox = prov.bbox.to_top_left_origin(page_height=page_h)
 
                             page_bboxes.append(
                                 AnnotationBBox(
-                                    bbox_id = len(page_bboxes),
+                                    bbox_id=len(page_bboxes),
                                     label=item.label,
                                     bbox=BoundingBox(
-                                        l =  page_bbox.l / page_w * img_w,
-                                        r =  page_bbox.r / page_w * img_w,
-                                        t =  page_bbox.t / page_h * img_h,
-                                        b =  page_bbox.b / page_h * img_h,
-                                        coord_origin = page_bbox.coord_origin
-                                    )
+                                        l=page_bbox.l / page_w * img_w,
+                                        r=page_bbox.r / page_w * img_w,
+                                        t=page_bbox.t / page_h * img_h,
+                                        b=page_bbox.b / page_h * img_h,
+                                        coord_origin=page_bbox.coord_origin,
+                                    ),
                                 )
                             )
 
             annotated_image.pred_boxes = page_bboxes
 
-            cvat_annots.append(annotated_image.to_cvat())            
+            cvat_annots.append(annotated_image.to_cvat())
 
-    if os.path.exists(bucket_dir) and len(cvat_annots)>0: # write the pre-annotation files
+    if (
+        os.path.exists(bucket_dir) and len(cvat_annots) > 0
+    ):  # write the pre-annotation files
 
         # logging.info(f"#-annots: {len(cvat_annots)}")
-        
-        preannot_file = benchmark_dirs.tasks_dir / f"task_{bucket_id:02}_preannotate.xml"
-        
-        fw = open(preannot_file, 'w')
+
+        preannot_file = (
+            benchmark_dirs.tasks_dir / f"task_{bucket_id:02}_preannotate.xml"
+        )
+
+        fw = open(preannot_file, "w")
         fw.write('<?xml version="1.0" encoding="utf-8"?>\n')
-        fw.write('<annotations>\n')
+        fw.write("<annotations>\n")
         for cvat_annot in cvat_annots:
-            fw.write(f'{cvat_annot}\n')
-        fw.write('</annotations>\n')
+            fw.write(f"{cvat_annot}\n")
+        fw.write("</annotations>\n")
         fw.close()
-            
+
     overview.save_as_json(benchmark_dirs.overview_file)
 
 
-def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> AnnotationOverview:
+def export_from_dataset_supplementary_files(
+    benchmark_dirs: BenchMarkDirs,
+) -> AnnotationOverview:
 
     test_files = sorted(glob.glob(str(benchmark_dirs.source_dir / "*.parquet")))
-    #print(json.dumps(test_files, indent=2))
-    
-    ds = load_dataset("parquet", data_files={"test": test_files})    
-    #logging.info(f"oveview of dataset: {ds}")
+    # print(json.dumps(test_files, indent=2))
+
+    ds = load_dataset("parquet", data_files={"test": test_files})
+    # logging.info(f"oveview of dataset: {ds}")
 
     if ds is not None:
         ds_selection = ds["test"]
 
     overview = AnnotationOverview()
-    
+
     for i, data in tqdm(
         enumerate(ds_selection),
         desc="iterating dataset",
@@ -321,7 +334,9 @@ def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> An
         page_images = data[BenchMarkColumns.PREDICTION_PAGE_IMAGES]
         pics_images = data[BenchMarkColumns.PREDICTION_PICTURES]
 
-        pred_doc = insert_images(pred_doc, page_images=page_images, pictures=pics_images)
+        pred_doc = insert_images(
+            pred_doc, page_images=page_images, pictures=pics_images
+        )
 
         # Get the groundtruth document (to cherry pick table structure later ...)
         true_doc = pred_doc
@@ -331,9 +346,11 @@ def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> An
 
             true_page_images = data[BenchMarkColumns.PREDICTION_PAGE_IMAGES]
             true_pics_images = data[BenchMarkColumns.PREDICTION_PICTURES]
-            
-            true_doc = insert_images(true_doc, page_images=true_page_images, pictures=true_pics_images)
-            
+
+            true_doc = insert_images(
+                true_doc, page_images=true_page_images, pictures=true_pics_images
+            )
+
         # FIXME: make the unique name in a column
         doc_name = f"{pred_doc.name}"
 
@@ -342,7 +359,7 @@ def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> An
             doc_hash = data[BenchMarkColumns.DOC_HASH]
         else:
             doc_hash = get_binhash(binary_data=bin_doc)
-            
+
         # Write groundtruth and predicted document. The groundtruth will
         # be replaced/updated by the annoted ones later on
         true_file = benchmark_dirs.json_true_dir / f"{doc_name}.json"
@@ -358,19 +375,19 @@ def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> An
         with open(str(benchmark_dirs.json_pred_dir / f"{doc_name}.json"), "w") as fw:
             fw.write(json.dumps(pred_doc_dict, indent=2))
         """
-        
+
         mime_type = data[BenchMarkColumns.MIMETYPE]
 
         bin_name = None
-        if mime_type=="application/pdf": # Write original pdf ...
+        if mime_type == "application/pdf":  # Write original pdf ...
             bin_name = f"{doc_hash}.pdf"
-        elif mime_type=="image/png": # Write original pdf ...
+        elif mime_type == "image/png":  # Write original pdf ...
             bin_name = f"{doc_hash}.png"
-        elif mime_type=="image/jpg": # Write original pdf ...
+        elif mime_type == "image/jpg":  # Write original pdf ...
             bin_name = f"{doc_hash}.jpg"
         else:
             exit(-1)
-            
+
         bin_file = str(benchmark_dirs.bins_dir / bin_name)
         with open(bin_file, "wb") as fw:
             fw.write(data[BenchMarkColumns.ORIGINAL])
@@ -385,9 +402,10 @@ def export_from_dataset_supplementary_files(benchmark_dirs: BenchMarkDirs) -> An
                 doc_name=doc_name,
             )
         )
-        
+
     # return docs, overview
     return overview
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -417,14 +435,14 @@ def main():
     source_dir, target_dir = parse_args()
 
     benchmark_dirs = BenchMarkDirs()
-    benchmark_dirs.set_up_directory_structure(source=source_dir,
-                                              target=target_dir)
-    
+    benchmark_dirs.set_up_directory_structure(source=source_dir, target=target_dir)
+
     create_cvat_project_properties(project_file=benchmark_dirs.project_desc_file)
 
     overview = export_from_dataset_supplementary_files(benchmark_dirs)
-    
+
     create_cvat_preannotation_file_for_single_page(benchmark_dirs, overview)
-    
+
+
 if __name__ == "__main__":
     main()

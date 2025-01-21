@@ -101,16 +101,20 @@ def parse_arguments():
         for root, _, files in os.walk(args.directory):
             img_files.extend(
                 [os.path.join(root, f) for f in files if f.lower().endswith(".jpeg")]
-            )                        
+            )
     else:
         img_files = [
             os.path.join(args.directory, f)
             for f in os.listdir(args.directory)
-            if (f.lower().endswith(".png") or f.lower().endswith(".jpg") or f.lower().endswith(".jpeg"))
+            if (
+                f.lower().endswith(".png")
+                or f.lower().endswith(".jpg")
+                or f.lower().endswith(".jpeg")
+            )
         ]
 
     img_files = sorted(img_files)
-        
+
     # Return parsed arguments and the IMG files
     return (
         args.name,

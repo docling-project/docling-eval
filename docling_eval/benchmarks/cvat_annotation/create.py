@@ -5,9 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple, cast, Optional
-
-#from pydantic import 
+from typing import Dict, List, Optional, Tuple, cast
 
 import xmltodict  # type: ignore[import]
 from datasets import Dataset, load_dataset
@@ -34,6 +32,17 @@ from PIL import Image  # as PILImage
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.cvat_annotation.utils import (
+    AnnotatedDoc,
+    AnnotatedImage,
+    AnnotationBBox,
+    AnnotationLine,
+    AnnotationOverview,
+    BenchMarkDirs,
+    DocLinkLabel,
+    TableComponentLabel,
+    rgb_to_hex,
+)
 from docling_eval.benchmarks.utils import (
     draw_clusters_with_reading_order,
     save_comparison_html_with_clusters,
@@ -51,17 +60,8 @@ from docling_eval.docling.utils import (
     save_shard_to_disk,
 )
 
-from docling_eval.benchmarks.cvat_annotation.utils import (
-    DocLinkLabel,
-    TableComponentLabel,
-    rgb_to_hex,   
-    BenchMarkDirs,
-    AnnotationBBox,
-    AnnotationLine,
-    AnnotatedDoc,
-    AnnotatedImage,
-    AnnotationOverview,
-)
+# from pydantic import
+
 
 # Configure logging
 logging.basicConfig(
@@ -546,7 +546,7 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
     assert os.path.exists(orig_file)
 
     orig_doc = DoclingDocument.load_from_json(filename=orig_file)
-    #with open(orig_file, "r") as fr:
+    # with open(orig_file, "r") as fr:
     #    orig_doc = DoclingDocument.model_validate_json(json.load(fr))
 
     # ========== Original Prediction (to pre-annotate)
@@ -842,7 +842,9 @@ def from_cvat_to_docling_document(
 
             else:
                 true_doc = create_true_document(
-                    basename=basename, annot=image_annot, desc=overview.img_annotations[basename]
+                    basename=basename,
+                    annot=image_annot,
+                    desc=overview.img_annotations[basename],
                 )
                 yield basename, overview.img_annotations[basename], true_doc
 
@@ -858,7 +860,6 @@ def parse_args():
 
     args = parser.parse_args()
     return Path(args.input_dir)
-    
 
 
 TRUE_HTML_EXPORT_LABELS = {
@@ -903,12 +904,14 @@ PRED_HTML_EXPORT_LABELS = {
 }
 
 
-def create_layout_dataset_from_annotations(benchmark_dirs: BenchMarkDirs, annot_files: List[Path]):
+def create_layout_dataset_from_annotations(
+    benchmark_dirs: BenchMarkDirs, annot_files: List[Path]
+):
 
     overview = AnnotationOverview.load_from_json(filename=benchmark_dirs.overview_file)
 
     # Create Converter
-    image_scale = 2.0        
+    image_scale = 2.0
     doc_converter = create_converter(page_image_scale=image_scale)
 
     records = []
@@ -924,7 +927,7 @@ def create_layout_dataset_from_annotations(benchmark_dirs: BenchMarkDirs, annot_
 
         if true_doc is None:
             continue
-        
+
         """
         save_inspection_html(filename=str(html_viz_dir / f"{basename}.html"), doc = true_doc,
                              labels=TRUE_HTML_EXPORT_LABELS)
@@ -951,7 +954,7 @@ def create_layout_dataset_from_annotations(benchmark_dirs: BenchMarkDirs, annot_
         if True:
             vizname = benchmark_dirs.html_viz_dir / f"{basename}-clusters.html"
             logging.info(f"creating visualization: {vizname}")
-            
+
             save_comparison_html_with_clusters(
                 filename=vizname,
                 true_doc=true_doc,
@@ -988,24 +991,25 @@ def create_layout_dataset_from_annotations(benchmark_dirs: BenchMarkDirs, annot_
 
 import zipfile
 
+
 def unzip_files(zip_files, output_dir):
     """
     Unzips a list of zip files into a specified directory, avoiding filename collisions.
-    
+
     Args:
         zip_files (list): List of paths to zip files to unzip.
         output_dir (str): Path to the directory where files will be unzipped.
-    
+
     Returns:
         list: List of paths to all unzipped files.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    
+
     unzipped_files = []
-    
+
     for zip_file in zip_files:
-        with zipfile.ZipFile(zip_file, 'r') as zf:
+        with zipfile.ZipFile(zip_file, "r") as zf:
             for file_name in zf.namelist():
                 # Resolve filename collisions
                 original_file_name = file_name
@@ -1017,47 +1021,53 @@ def unzip_files(zip_files, output_dir):
                     file_name = f"{base}_{counter}{ext}"
                     file_path = os.path.join(output_dir, file_name)
                     counter += 1
-                
+
                 # Extract file and add to the list
-                with open(file_path, 'wb') as f:
+                with open(file_path, "wb") as f:
                     f.write(zf.read(original_file_name))
                 unzipped_files.append(file_path)
-    
+
     return unzipped_files
+
 
 def get_annotation_files(benchmark_dirs):
 
     xml_files = []
     zip_files = sorted(glob.glob(str(benchmark_dirs.annotations_zip_dir / "*.zip")))
-    
-    if len(zip_files)>0:
+
+    if len(zip_files) > 0:
         logging.info(f"#-zips: {len(zip_files)}")
-        
+
         xml_files = sorted(glob.glob(str(benchmark_dirs.annotations_xml_dir / "*.xml")))
         logging.info(f"#-xml: {len(xml_files)}")
-    
+
         for xml_file in xml_files:
             os.remove(xml_file)
-        
-        xml_files = unzip_files(zip_files = zip_files, output_dir = benchmark_dirs.annotations_xml_dir)
+
+        xml_files = unzip_files(
+            zip_files=zip_files, output_dir=benchmark_dirs.annotations_xml_dir
+        )
     else:
         xml_files = sorted(glob.glob(str(benchmark_dirs.annotations_xml_dir / "*.xml")))
 
     logging.info(f"#-xml: {len(xml_files)}")
     return xml_files
-    
+
+
 def main():
 
     source_dir = parse_args()
 
     benchmark_dirs = BenchMarkDirs()
-    benchmark_dirs.set_up_directory_structure(source=source_dir,
-                                              target=source_dir)
+    benchmark_dirs.set_up_directory_structure(source=source_dir, target=source_dir)
 
     # Get all annotation files
     annot_files = get_annotation_files(benchmark_dirs)
 
-    create_layout_dataset_from_annotations(benchmark_dirs=benchmark_dirs, annot_files=annot_files)    
-    
+    create_layout_dataset_from_annotations(
+        benchmark_dirs=benchmark_dirs, annot_files=annot_files
+    )
+
+
 if __name__ == "__main__":
     main()
