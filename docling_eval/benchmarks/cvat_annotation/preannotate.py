@@ -170,7 +170,7 @@ def create_cvat_project_properties(project_file: Path):
 def create_cvat_preannotation_file_for_single_page(
     benchmark_dirs: BenchMarkDirs,
     overview: AnnotationOverview,
-    ANNOT_PER_BUCKET: int = 200,
+    bucket_size: int = 200,
 ):
 
     cvat_annots: List[str] = []
@@ -187,7 +187,7 @@ def create_cvat_preannotation_file_for_single_page(
         for page_no, page in doc.pages.items():
             img_cnt += 1
 
-            bucket_id = int(img_cnt / float(ANNOT_PER_BUCKET))
+            bucket_id = int( (img_cnt-1) / float(bucket_size))
             bucket_dir = benchmark_dirs.tasks_dir / f"task_{bucket_id:02}"
 
             if (
@@ -196,7 +196,7 @@ def create_cvat_preannotation_file_for_single_page(
 
                 logging.info(f"#-annots: {len(cvat_annots)}")
 
-                prev_bucket_id = int((img_cnt - 1) / float(ANNOT_PER_BUCKET))
+                prev_bucket_id = int((img_cnt - 1) / float(bucket_size))
                 preannot_file = (
                     benchmark_dirs.tasks_dir
                     / f"task_{prev_bucket_id:02}_preannotate.xml"
@@ -344,8 +344,8 @@ def export_from_dataset_supplementary_files(
             true_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
             true_doc = DoclingDocument.model_validate_json(true_doc_dict)
 
-            true_page_images = data[BenchMarkColumns.PREDICTION_PAGE_IMAGES]
-            true_pics_images = data[BenchMarkColumns.PREDICTION_PICTURES]
+            true_page_images = data[BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES]
+            true_pics_images = data[BenchMarkColumns.GROUNDTRUTH_PICTURES]
 
             true_doc = insert_images(
                 true_doc, page_images=true_page_images, pictures=true_pics_images
@@ -364,26 +364,18 @@ def export_from_dataset_supplementary_files(
         # be replaced/updated by the annoted ones later on
         true_file = benchmark_dirs.json_true_dir / f"{doc_name}.json"
         true_doc.save_as_json(filename=true_file, image_mode=ImageRefMode.EMBEDDED)
-        """
-        with open(true_file, "w") as fw:
-            fw.write(json.dumps(true_doc, indent=2))
-        """
 
         pred_file = benchmark_dirs.json_pred_dir / f"{doc_name}.json"
         pred_doc.save_as_json(filename=pred_file, image_mode=ImageRefMode.EMBEDDED)
-        """
-        with open(str(benchmark_dirs.json_pred_dir / f"{doc_name}.json"), "w") as fw:
-            fw.write(json.dumps(pred_doc_dict, indent=2))
-        """
 
         mime_type = data[BenchMarkColumns.MIMETYPE]
 
         bin_name = None
         if mime_type == "application/pdf":  # Write original pdf ...
             bin_name = f"{doc_hash}.pdf"
-        elif mime_type == "image/png":  # Write original pdf ...
+        elif mime_type == "image/png":  # Write original png ...
             bin_name = f"{doc_hash}.png"
-        elif mime_type == "image/jpg":  # Write original pdf ...
+        elif mime_type == "image/jpg":  # Write original jpg ...
             bin_name = f"{doc_hash}.jpg"
         else:
             exit(-1)
@@ -403,7 +395,6 @@ def export_from_dataset_supplementary_files(
             )
         )
 
-    # return docs, overview
     return overview
 
 
@@ -421,18 +412,23 @@ def parse_args():
     parser.add_argument(
         "-o", "--output_dir", required=True, help="Path to the output directory."
     )
+    parser.add_argument(
+        "-b", "--bucket-size", required=True,
+        help="Numbers of documents in the bucket."
+    )
 
     args = parser.parse_args()
 
     return (
         Path(args.input_dir),
         Path(args.output_dir),
+        int(args.bucket_size)
     )
 
 
 def main():
 
-    source_dir, target_dir = parse_args()
+    source_dir, target_dir, bucket_size = parse_args()
 
     benchmark_dirs = BenchMarkDirs()
     benchmark_dirs.set_up_directory_structure(source=source_dir, target=target_dir)
@@ -441,7 +437,7 @@ def main():
 
     overview = export_from_dataset_supplementary_files(benchmark_dirs)
 
-    create_cvat_preannotation_file_for_single_page(benchmark_dirs, overview)
+    create_cvat_preannotation_file_for_single_page(benchmark_dirs, overview, bucket_size=bucket_size)
 
 
 if __name__ == "__main__":
