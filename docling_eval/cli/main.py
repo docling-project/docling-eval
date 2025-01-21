@@ -33,6 +33,7 @@ from docling_eval.evaluators.readingorder_evaluator import (
     ReadingOrderEvaluator,
     ReadingOrderVisualizer,
 )
+from docling_eval.evaluators.stats import DatasetStatistics
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
@@ -56,6 +57,43 @@ class EvaluationTask(str, Enum):
     CREATE = "create"
     EVALUATE = "evaluate"
     VISUALIZE = "visualize"
+
+
+def log_and_save_stats(
+    odir: Path,
+    benchmark: BenchMarkNames,
+    modality: EvaluationModality,
+    metric: str,
+    stats: DatasetStatistics,
+) -> tuple[Path, Path]:
+    r"""
+    For the given DatasetStatistics related to the provided benchmark/modality/metric:
+    - Generate a textual table. Log it and save it in a file.
+    - Generate a plot and save it in a file.
+
+    The filenames of the generated files are derived by the benchmark/modality/metric
+
+    Returns
+    -------
+    log_filename: Path of the saved log file
+    fig_filename: Path of the saved png file
+    """
+    log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.txt"
+    fig_filename = odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.png"
+
+    data, headers = stats.to_table(metric)
+    content = f"{benchmark.value} {modality.value} {metric}:\n\n"
+    content += "mean={:.2f} median={:.2f} std={:.2f}\n\n".format(
+        stats.mean, stats.median, stats.std
+    )
+    content += tabulate(data, headers=headers, tablefmt="github")
+
+    log.info(content)
+    with open(log_filename, "w") as fd:
+        fd.write(content)
+    stats.save_histogram(figname=fig_filename, name=metric)
+
+    return log_filename, fig_filename
 
 
 def create(
@@ -120,7 +158,7 @@ def evaluate(
     save_fn = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
     if modality == EvaluationModality.END2END:
-        logging.error("not supported")
+        log.error("not supported")
 
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
@@ -172,136 +210,68 @@ def visualise(
     modality: EvaluationModality, benchmark: BenchMarkNames, idir: Path, odir: Path
 ):
 
-    filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
+    metrics_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
     if modality == EvaluationModality.END2END:
         pass
 
     elif modality == EvaluationModality.LAYOUT:
-        with open(filename, "r") as fd:
-            layout_evaluation = DatasetLayoutEvaluation.parse_file(filename)
+        with open(metrics_filename, "r") as fd:
+            layout_evaluation = DatasetLayoutEvaluation.parse_file(metrics_filename)
 
+        # Save layout statistics for mAP
+        log_filename, _ = log_and_save_stats(
+            odir, benchmark, modality, "mAP[0.5_0.95]", layout_evaluation.mAP_stats
+        )
+
+        # Append to layout statistics the mAP classes
         data, headers = layout_evaluation.to_table()
-
-        logging.info(
-            "Class mAP[0.5:0.95] table: \n\n"
-            + tabulate(data, headers=headers, tablefmt="github")
-        )
-
-        data, headers = layout_evaluation.mAP_stats.to_table()
-        logging.info(
-            "TEDS table: \n\n" + tabulate(data, headers=headers, tablefmt="github")
-        )
-
-        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        layout_evaluation.mAP_stats.save_histogram(
-            figname=figname, name="TEDS struct-with-text"
-        )
+        content = "\n\n\nClass mAP[0.5:0.95] table:\n\n"
+        content += tabulate(data, headers=headers, tablefmt="github")
+        log.info(content)
+        with open(log_filename, "a") as fd:
+            fd.write(content)
 
     elif modality == EvaluationModality.TABLEFORMER:
-
-        with open(filename, "r") as fd:
-            table_evaluation = DatasetTableEvaluation.parse_file(filename)
+        with open(metrics_filename, "r") as fd:
+            table_evaluation = DatasetTableEvaluation.parse_file(metrics_filename)
 
         figname = (
             odir / f"evaluation_{benchmark.value}_{modality.value}-delta_row_col.png"
         )
         table_evaluation.save_histogram_delta_row_col(figname=figname)
 
-        data, headers = table_evaluation.TEDS.to_table()
-        logging.info(
-            "TEDS table: \n\n" + tabulate(data, headers=headers, tablefmt="github")
+        # TEDS struct-with-text
+        log_and_save_stats(
+            odir, benchmark, modality, "TEDS struct-with-text", table_evaluation.TEDS
         )
 
-        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        table_evaluation.TEDS.save_histogram(
-            figname=figname, name="TEDS struct-with-text"
+        # TEDS struct-only
+        log_and_save_stats(
+            odir, benchmark, modality, "TEDS struct-only", table_evaluation.TEDS_struct
         )
-
-        data, headers = table_evaluation.TEDS_struct.to_table()
-        logging.info(
-            "TEDS table: \n\n" + tabulate(data, headers=headers, tablefmt="github")
-        )
-
-        figname = (
-            odir / f"evaluation_{benchmark.value}_{modality.value}-struct-only.png"
-        )
-        table_evaluation.TEDS_struct.save_histogram(figname=figname, name="TEDS struct")
 
     elif modality == EvaluationModality.READING_ORDER:
-        with open(filename, "r") as fd:
-            ro_evaluation = DatasetReadingOrderEvaluation.parse_file(filename)
+        with open(metrics_filename, "r") as fd:
+            ro_evaluation = DatasetReadingOrderEvaluation.parse_file(metrics_filename)
         # ARD
-        logging.info(
-            "Reading order (Norm Average Relative Distance)"
-            " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
-                ro_evaluation.ard_stats.mean,
-                ro_evaluation.ard_stats.median,
-                ro_evaluation.ard_stats.std,
-            )
+        log_and_save_stats(
+            odir, benchmark, modality, "ARD_norm", ro_evaluation.ard_stats
         )
-
-        data, headers = ro_evaluation.ard_stats.to_table("ARD")
-        logging.info(
-            "Reading order - Normalized Average Relative Distance: Quantiles\n\n"
-            + tabulate(data, headers=headers, tablefmt="github")
-        )
-
-        logging.info("Generate histogram plot for ARD")
-        figname = odir / f"evaluation_{benchmark.value}_{modality.value}_ARD.png"
-        ro_evaluation.ard_stats.save_histogram(figname=figname, name="ARD_norm")
 
         # Weighted ARD
-        logging.info(
-            "Reading order (Weighted Normalized Average Relative Distance)"
-            " [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
-                ro_evaluation.w_ard_stats.mean,
-                ro_evaluation.w_ard_stats.median,
-                ro_evaluation.w_ard_stats.std,
-            )
-        )
-        data, headers = ro_evaluation.w_ard_stats.to_table("Weighted ARD")
-        logging.info(
-            "Reading order - Weighted Normalized Average Relative Distance: Quantiles\n\n"
-            + tabulate(data, headers=headers, tablefmt="github")
-        )
-
-        logging.info("Generate histogram plot for weighted ARD")
-        figname = (
-            odir / f"evaluation_{benchmark.value}_{modality.value}_weighted_ARD.png"
-        )
-        ro_evaluation.w_ard_stats.save_histogram(
-            figname=figname, name="Weighted ARD_norm"
+        log_and_save_stats(
+            odir, benchmark, modality, "weighted_ARD", ro_evaluation.w_ard_stats
         )
 
         # Generate visualizations of the reading order across the GT and the prediction
         ro_visualizer = ReadingOrderVisualizer()
-        ro_visualizer(idir, filename, odir, split="test")
+        ro_visualizer(idir, metrics_filename, odir, split="test")
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
-        with open(filename, "r") as fd:
-            md_evaluation = DatasetMarkdownEvaluation.parse_file(filename)
-
-        # Log BLEU mean/median/std
-        logging.info(
-            "Markdown text (BLEU) [mean|median|std]: [{:.2f}|{:.2f}|{:.2f}]".format(
-                md_evaluation.bleu_stats.mean,
-                md_evaluation.bleu_stats.median,
-                md_evaluation.bleu_stats.std,
-            )
-        )
-
-        # Log table with quantiles
-        data, headers = md_evaluation.bleu_stats.to_table("BlEU")
-        logging.info(
-            "Markdown text (BLEU): \n\n"
-            + tabulate(data, headers=headers, tablefmt="github")
-        )
-
-        # Generate histogram plot
-        logging.info("Generate histogram plot for BLEU")
-        figname = odir / f"evaluation_{benchmark.value}_{modality.value}.png"
-        md_evaluation.bleu_stats.save_histogram(figname=figname, name="BLEU")
+        with open(metrics_filename, "r") as fd:
+            md_evaluation = DatasetMarkdownEvaluation.parse_file(metrics_filename)
+        log_and_save_stats(odir, benchmark, modality, "BLEU", md_evaluation.bleu_stats)
 
     elif modality == EvaluationModality.CODEFORMER:
         pass
