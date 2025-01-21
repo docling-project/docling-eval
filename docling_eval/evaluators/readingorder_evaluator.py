@@ -4,7 +4,7 @@ import logging
 import math
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from datasets import load_dataset
 from deepsearch_glm.andromeda_nlp import nlp_model  # type: ignore
@@ -61,7 +61,7 @@ class ReadingOrderEvaluator:
         ards = []
         w_ards = []
 
-        broken_inputs = 0
+        broken_docs = 0
         for i, data in tqdm(
             enumerate(ds_selection),
             desc="Reading order evaluations",
@@ -76,14 +76,12 @@ class ReadingOrderEvaluator:
             # print(f"\n{i} - doc_id: {doc_id}")
             # self._show_items(true_doc)
 
-            reading_order = self._get_reading_order_preds(true_doc)
+            reading_order = self._get_reading_order_preds(doc_id, true_doc)
             if reading_order is None:
-                print(f"Broken input: {doc_id}")
-                broken_inputs += 1
+                broken_docs += 1
                 continue
 
             # Compute metrics
-            # ard_norm = self._compute_ard_norm(reading_order)
             ard_norm, w_ard_norm = self._compute_ard(reading_order)
             ards.append(ard_norm)
             w_ards.append(w_ard_norm)
@@ -101,8 +99,8 @@ class ReadingOrderEvaluator:
 
             evaluations.append(page_evaluation)
 
-        if broken_inputs > 0:
-            _log.error(f"broken_inputs={broken_inputs}")
+        if broken_docs > 0:
+            _log.warning(f"Broken documents: {broken_docs}")
 
         # Compute statistics for metrics
         ard_stats = compute_stats(ards)
@@ -114,12 +112,16 @@ class ReadingOrderEvaluator:
 
         return ds_reading_order_evaluation
 
-    def _get_reading_order_preds(self, true_doc: DoclingDocument):
+    def _get_reading_order_preds(
+        self, doc_id: str, true_doc: DoclingDocument
+    ) -> Optional[dict]:
         r"""
+        Return dict with the bboxes and the predicted reading order or None if something goes wrong.
+        None is also returned if the document contains items with multiple provenances
 
         Returns
         -------
-        reading_order: Keys are "bboxes" and "pred_order"
+        reading_order: Keys are "bboxes" and "pred_order". Return None if the document is broken.
         """
         try:
             page_size = true_doc.pages[1].size
@@ -127,6 +129,15 @@ class ReadingOrderEvaluator:
             # Convert the bboxes to bottom-left coords before running the GLM
             bboxes = []
             for item, level in true_doc.iterate_items():
+                pred_len = len(item.prov)  # type: ignore
+                if pred_len > 1:
+                    _log.warning(
+                        "Skipping document %s as it has %s provenances",
+                        doc_id,
+                        pred_len,
+                    )
+                    return None
+
                 # Convert the bbox to BOTTOM-LEFT origin
                 bbox = item.prov[0].bbox.to_bottom_left_origin(page_size.height)  # type: ignore
                 item.prov[0].bbox = bbox  # type: ignore
@@ -138,11 +149,16 @@ class ReadingOrderEvaluator:
             legacy_doc_dict = self._ensure_bboxes_in_legacy_tables(legacy_doc_dict)
             glm_doc = self._nlp_model.apply_on_doc(legacy_doc_dict)
 
-            # original reading order -> predicted reading order
-            orig_to_pred_order: Dict[int, int] = {}
+            # pred_to_origin_order: predicted order -> original order
+            pred_to_origin_order: Dict[int, int] = {}
             for po, pe in enumerate(glm_doc["page-elements"]):
-                orig_to_pred_order[pe["orig-order"]] = po
-            pred_order = [orig_to_pred_order[x] for x in range(len(orig_to_pred_order))]
+                oo = pe["orig-order"]
+                pred_to_origin_order[po] = oo
+
+            # pred_order: The index is the predicted order and the value is the original order
+            pred_order = [
+                pred_to_origin_order[x] for x in range(len(pred_to_origin_order))
+            ]
 
             reading_order = {"bboxes": bboxes, "pred_order": pred_order}
             return reading_order
@@ -194,28 +210,6 @@ class ReadingOrderEvaluator:
         w_ard_norm = 1 - (w_ard / n_sq)
         return ard_norm, w_ard_norm
 
-    # def _compute_ard_norm(self, reading_order: Dict) -> float:
-    #     r"""
-    #     Compute the normalized Average Relative Distance (ARD)
-
-    #     ARD(A, B) = (1/n) * sum(e_k)
-    #     e_k = abs(pred_order_index  - gt_order_index)
-    #     0 is the best and n-1 is the worst where n is the number of bboxes
-
-    #     ARD_norm = 1 - (ARD / n)
-    #     0 is the worst and 1 is the best
-    #     """
-    #     n = len(reading_order["bboxes"])
-    #     if n == 0:
-    #         return 0.0
-    #     ard = 0.0
-    #     for true_ro, pred_ro in enumerate(reading_order["pred_order"]):
-    #         ard += math.fabs(true_ro - pred_ro)
-
-    #     ard /= n
-    #     ard_norm = 1 - (ard / n)
-    #     return ard_norm
-
     def _ensure_bboxes_in_legacy_tables(self, legacy_doc_dict: Dict):
         r"""
         Ensure bboxes for all table cells
@@ -226,6 +220,37 @@ class ReadingOrderEvaluator:
                     if "bbox" not in cell:
                         cell["bbox"] = [0, 0, 0, 0]
         return legacy_doc_dict
+
+    # def _filter_out_bboxes(
+    #     self, legacy_doc_dict: Dict, bboxes: List[BoundingBox]
+    # ) -> Dict:
+    #     r"""
+    #     Remove entries from "main-text" with bbox outside of the provided bboxes
+    #     """
+    #     # Make set of existing bboxes as tuples
+    #     existing_bboxes = set([b.as_tuple() for b in bboxes])
+
+    #     # Identify main ids to be deleted
+    #     main_ids_to_delete = set()
+    #     for main_id, main in enumerate(legacy_doc_dict["main-text"]):
+    #         if "prov" not in main:
+    #             continue
+    #         for prov in main["prov"]:
+    #             bbox = prov["bbox"]
+    #             # Check if bbox is a tuple or a list
+    #             if tuple(bbox) not in existing_bboxes:
+    #                 main_ids_to_delete.add(main_id)
+
+    #     # Reconstruct the main
+    #     if main_ids_to_delete:
+    #         filtered_mains = []
+    #         for main_id, main in enumerate(legacy_doc_dict["main-text"]):
+    #             if main_id in main_ids_to_delete:
+    #                 continue
+    #             filtered_mains.append(main)
+    #         legacy_doc_dict["main-text"] = filtered_mains
+
+    #     return legacy_doc_dict
 
     def _show_items(self, true_doc: DoclingDocument):
         r""" """
@@ -242,7 +267,9 @@ class ReadingOrderEvaluator:
 
 
 class ReadingOrderVisualizer:
-    r""" """
+    r"""
+    Generate visualizations of the GT and predicted reading order
+    """
 
     def __init__(self):
         self._line_width = 2
@@ -300,12 +327,16 @@ class ReadingOrderVisualizer:
             true_doc: DoclingDocument = DoclingDocument.model_validate_json(
                 true_doc_dict
             )
+            if doc_id not in ro_preds_idx:
+                continue
             pred_order = ro_preds_idx[doc_id]
 
             # Draw and save the visualization
             image_bytes = page_images[0]["bytes"]
             image = Image.open(BytesIO(image_bytes))
-            viz_image = self._draw_permuted_reading_order(image, true_doc, pred_order)
+            viz_image = self._draw_permuted_reading_order(
+                doc_id, image, true_doc, pred_order
+            )
             viz_fn = save_dir / f"{doc_id}_reading_order_viz.png"
             viz_fns.append(viz_fn)
             viz_image.save(viz_fn)
@@ -314,6 +345,7 @@ class ReadingOrderVisualizer:
 
     def _draw_permuted_reading_order(
         self,
+        doc_id: str,
         page_image: Image.Image,
         doc: DoclingDocument,
         pred_order: list[int],
@@ -323,13 +355,19 @@ class ReadingOrderVisualizer:
 
         true_img = copy.deepcopy(page_image)
         true_draw = ImageDraw.Draw(true_img)
+
         # Draw the bboxes and true order
         x0, y0 = -1.0, -1.0
-        for item, level in doc.iterate_items():
+        for item_id, (item, level) in enumerate(doc.iterate_items()):
             if not isinstance(item, DocItem):
                 continue
 
-            assert len(item.prov) == 1
+            pred_len = len(item.prov)
+            if pred_len > 1:
+                # _log.warning("Skipping element %s in document %s as it has %s provenances",
+                #              item_id, doc_id, pred_len)
+                continue
+
             prov = item.prov[0]
 
             # Get the item's bbox in top-left origin for the image dimensions

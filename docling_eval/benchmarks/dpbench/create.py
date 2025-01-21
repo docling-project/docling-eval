@@ -234,7 +234,7 @@ def update(
 
 
 def create_dpbench_e2e_dataset(
-    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0, do_viz: bool = False
 ):
 
     # Create Converter
@@ -283,7 +283,7 @@ def create_dpbench_e2e_dataset(
                 page_height=page_height,
             )
 
-        if False:
+        if do_viz:
             """
             save_comparison_html(
                 filename=viz_dir / f"{os.path.basename(pdf_path)}-comp.html",

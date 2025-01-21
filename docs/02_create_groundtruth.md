@@ -9,7 +9,7 @@ poetry run python ./docs/examples/benchmark_dpbench.py
 ## Set up the necessary files
 
 ```sh
-poetry run python ./docling_eval/benchmarks/annotation_formats/preannotate.py -i ./benchmarks/DPBench-dataset/layout/test/ -o ./benchmarks/DPBench-annotations
+poetry run python docling_eval/benchmarks/cvat_annotation/preannotate.py -i ./benchmarks/DPBench-dataset/layout/test/ -o ./benchmarks/docling-DPBench
 ```
 
 ## Online annotation
@@ -18,17 +18,17 @@ poetry run python ./docling_eval/benchmarks/annotation_formats/preannotate.py -i
 ## Packaging the annotations into new dataset
 
 ```sh
-poetry run python ./docling_eval/benchmarks/annotation_formats/create.py -i ./benchmarks/DPBench-annotations
+poetry run python docling_eval/benchmarks/cvat_annotation/create.py -i ./benchmarks/docling-DPBench
 ```
 
 ## Running evaluation
 
-sh
-```
-poetry run evaluate -t evaluate -m layout -b DPBench -i ./benchmarks/DPBench-annotations/layout -o ./benchmarks/DPBench-annotations/layout
+
+```sh
+poetry run evaluate -t evaluate -m layout -b DPBench -i ./benchmarks/docling-DPBench/layout -o ./benchmarks/docling-DPBench/layout
 ```
 
-sh
-```
-poetry run evaluate -t visualize -m layout -b DPBench -i ./benchmarks/DPBench-annotations/layout -o ./benchmarks/DPBench-annotations/layout
+
+```sh
+poetry run evaluate -t visualize -m layout -b DPBench -i ./benchmarks/docling-DPBench/layout -o ./benchmarks/docling-DPBench/layout
 ```

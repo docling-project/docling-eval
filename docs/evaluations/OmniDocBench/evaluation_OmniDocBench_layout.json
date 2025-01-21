@@ -1,0 +1,3895 @@
+{
+  "evaluations_per_class": [
+    {
+      "label": "picture",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.2928728461265564
+    },
+    {
+      "label": "section_header",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.1308850347995758
+    },
+    {
+      "label": "text",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.23994316160678864
+    },
+    {
+      "label": "footnote",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.024840667843818665
+    },
+    {
+      "label": "caption",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.1074351891875267
+    },
+    {
+      "label": "table",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.6932412385940552
+    },
+    {
+      "label": "page_header",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.10019652545452118
+    },
+    {
+      "label": "page_footer",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.16139937937259674
+    },
+    {
+      "label": "formula",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.038262221962213516
+    }
+  ],
+  "evaluations_per_image": [
+    {
+      "name": "docstructbench_00039896.1983.10545823.pdf_1.jpg-page-0",
+      "value": 0.5261757373809814
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-60368448.pdf_343.jpg-page-0",
+      "value": 0.3108910918235779
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-60403612.pdf_179.jpg-page-0",
+      "value": 0.342079222202301
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-60482015.pdf_56.jpg-page-0",
+      "value": 0.2888889014720917
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-60599898.pdf_30.jpg-page-0",
+      "value": 0.3569660484790802
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-60832903.pdf_88.jpg-page-0",
+      "value": 0.9495049715042114
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61323717.pdf_203.jpg-page-0",
+      "value": 0.49191418290138245
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61465568.pdf_186.jpg-page-0",
+      "value": 0.125
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61467079.pdf_40.jpg-page-0",
+      "value": 0.36317381262779236
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61510621.pdf_161.jpg-page-0",
+      "value": 0.6000000238418579
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61510863.pdf_73.jpg-page-0",
+      "value": 0.19857309758663177
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61511646.pdf_188.jpg-page-0",
+      "value": 0.7666666507720947
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61513005.pdf_179.jpg-page-0",
+      "value": 0.5333333611488342
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61518266.pdf_149.jpg-page-0",
+      "value": 0.34057027101516724
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61520553.pdf_328.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61520612.pdf_140.jpg-page-0",
+      "value": 0.33041805028915405
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61520779.pdf_76.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61520788.pdf_391.jpg-page-0",
+      "value": 0.35825082659721375
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61520814.pdf_185.jpg-page-0",
+      "value": 0.6009193658828735
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61521185.pdf_167.jpg-page-0",
+      "value": 0.24804899096488953
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61521384.pdf_750.jpg-page-0",
+      "value": 0.5875412821769714
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61521429.pdf_358.jpg-page-0",
+      "value": 0.2750000059604645
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61521600.pdf_210.jpg-page-0",
+      "value": 0.46666666865348816
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61522126.pdf_206.jpg-page-0",
+      "value": 0.3654840588569641
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61522235.pdf_170.jpg-page-0",
+      "value": 0.5417491793632507
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61523162.pdf_276.jpg-page-0",
+      "value": 0.590806245803833
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61524043.pdf_156.jpg-page-0",
+      "value": 0.6007425785064697
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61562126.pdf_80.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61564860.pdf_81.jpg-page-0",
+      "value": 0.4754262864589691
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61566094.pdf_55.jpg-page-0",
+      "value": 0.5400000214576721
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61569294.pdf_128.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61569751.pdf_155.jpg-page-0",
+      "value": 0.3880245089530945
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61570078.pdf_315.jpg-page-0",
+      "value": 0.24504950642585754
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61570552.pdf_129.jpg-page-0",
+      "value": 0.42983391880989075
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61571237.pdf_81.jpg-page-0",
+      "value": 0.42781904339790344
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61571259.pdf_239.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-61571884.pdf_94.jpg-page-0",
+      "value": 0.7270098924636841
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63674848.pdf_101.jpg-page-0",
+      "value": 0.4627062678337097
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63675767.pdf_66.jpg-page-0",
+      "value": 0.5001650452613831
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63677793.pdf_332.jpg-page-0",
+      "value": 0.5
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63678132.pdf_161.jpg-page-0",
+      "value": 0.5206930637359619
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63684042.pdf_172.jpg-page-0",
+      "value": 0.41016972064971924
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63684502.pdf_263.jpg-page-0",
+      "value": 0.35137513279914856
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63685157.pdf_105.jpg-page-0",
+      "value": 0.2667927145957947
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63685611.pdf_222.jpg-page-0",
+      "value": 0.30627062916755676
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63686103.pdf_55.jpg-page-0",
+      "value": 0.34635862708091736
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63686436.pdf_57.jpg-page-0",
+      "value": 0.24009428918361664
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63687685.pdf_106.jpg-page-0",
+      "value": 0.7350494861602783
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63688043.pdf_110.jpg-page-0",
+      "value": 0.5780197978019714
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63688445.pdf_489.jpg-page-0",
+      "value": 0.37786972522735596
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63690689.pdf_134.jpg-page-0",
+      "value": 0.5655899047851562
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63708140.pdf_170.jpg-page-0",
+      "value": 0.5692794322967529
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63709763.pdf_72.jpg-page-0",
+      "value": 0.25999999046325684
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63710191.pdf_336.jpg-page-0",
+      "value": 0.497730016708374
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63710614.pdf_149.jpg-page-0",
+      "value": 0.3386138677597046
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63711094.pdf_34.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "docstructbench_dianzishu_zhongwenzaixian-o.O-63711094.pdf_56.jpg-page-0",
+      "value": 0.5600000023841858
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-15322190.pdf_138.jpg-page-0",
+      "value": 0.49980199337005615
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-17208435.pdf_105.jpg-page-0",
+      "value": 0.3501650094985962
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-17208435.pdf_57.jpg-page-0",
+      "value": 0.4003300368785858
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-17342542.pdf_25.jpg-page-0",
+      "value": 0.800000011920929
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-17761417.pdf_894.jpg-page-0",
+      "value": 0.4712164103984833
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-19091739.pdf_181.jpg-page-0",
+      "value": 0.4236986041069031
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-19221575.pdf_1173.jpg-page-0",
+      "value": 0.5359225273132324
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-21353024.pdf_39.jpg-page-0",
+      "value": 0.2692764401435852
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-21882649.pdf_3.jpg-page-0",
+      "value": 0.7935049533843994
+    },
+    {
+      "name": "docstructbench_enbook-zlib-o.O-22206811.pdf_5.jpg-page-0",
+      "value": 0.7300742864608765
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-adsc.201190003.pdf_6.jpg-page-0",
+      "value": 0.1271452158689499
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ajhb.10190.pdf_5.jpg-page-0",
+      "value": 0.5468316674232483
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ana.20363.pdf_5.jpg-page-0",
+      "value": 0.2897689640522003
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-bf00151572.pdf_3.jpg-page-0",
+      "value": 0.6200000047683716
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-bf00326833.pdf_3.jpg-page-0",
+      "value": 0.5403740406036377
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-bf03175144.pdf_4.jpg-page-0",
+      "value": 0.42500001192092896
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ceat.200407001.pdf_3.jpg-page-0",
+      "value": 0.5315384864807129
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ceat.200600266.pdf_2.jpg-page-0",
+      "value": 0.7672795653343201
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ceat.200600410.pdf_5.jpg-page-0",
+      "value": 0.643069326877594
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ceat.200600410.pdf_8.jpg-page-0",
+      "value": 0.50899338722229
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chem.200700118.pdf_7.jpg-page-0",
+      "value": 0.6953874230384827
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chem.200700133.pdf_6.jpg-page-0",
+      "value": 0.5372277498245239
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chem.200700285.pdf_4.jpg-page-0",
+      "value": 0.553575336933136
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chem.200701412.pdf_10.jpg-page-0",
+      "value": 0.42305800318717957
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chem.200701981.pdf_9.jpg-page-0",
+      "value": 0.46205994486808777
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chin.200305072.pdf_1.jpg-page-0",
+      "value": 0.3199999928474426
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chin.200427104.pdf_1.jpg-page-0",
+      "value": 0.3266666531562805
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chin.201023119.pdf_1.jpg-page-0",
+      "value": 0.07194719463586807
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-chin.201025015.pdf_1.jpg-page-0",
+      "value": 0.025247525423765182
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-dneu.20401.pdf_2.jpg-page-0",
+      "value": 0.6454845666885376
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-dneu.20833.pdf_13.jpg-page-0",
+      "value": 0.6149133443832397
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-dvdy.10165.pdf_7.jpg-page-0",
+      "value": 0.07260726392269135
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-hup.777.pdf_7.jpg-page-0",
+      "value": 0.49635589122772217
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-hup.777.pdf_8.jpg-page-0",
+      "value": 0.45541805028915405
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-hup.908.pdf_5.jpg-page-0",
+      "value": 0.4678767919540405
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-hyp.1040.pdf_9.jpg-page-0",
+      "value": 0.6741336584091187
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-hyp.1092.pdf_1.jpg-page-0",
+      "value": 0.3822286128997803
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ijc.22820.pdf_4.jpg-page-0",
+      "value": 0.7164191603660583
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ijc.22994.pdf_3.jpg-page-0",
+      "value": 0.3646864593029022
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-ijc.22999.pdf_3.jpg-page-0",
+      "value": 0.6499999761581421
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1365-2117.1999.00104.x.pdf_11.jpg-page-0",
+      "value": 0.6175742745399475
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1365-2117.2002.00179.x.pdf_10.jpg-page-0",
+      "value": 0.6374351978302002
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1365-2818.2000.00739.x.pdf_4.jpg-page-0",
+      "value": 0.7004950642585754
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1365-2818.2000.00739.x.pdf_8.jpg-page-0",
+      "value": 0.46219420433044434
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1365-2818.2003.01210.x.pdf_7.jpg-page-0",
+      "value": 0.6343234181404114
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1444-2906.2002.00466.x.pdf_4.jpg-page-0",
+      "value": 0.5821782350540161
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.1445-2197.2003.02751.x.pdf_3.jpg-page-0",
+      "value": 0.5663366317749023
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.ab.2007.10.021.pdf_3.jpg-page-0",
+      "value": 0.2840346395969391
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.ab.2007.11.016.pdf_5.jpg-page-0",
+      "value": 0.6910890936851501
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.ab.2008.05.027.pdf_7.jpg-page-0",
+      "value": 0.3875049650669098
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.apcata.2004.01.008.pdf_6.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.apcata.2006.05.010.pdf_2.jpg-page-0",
+      "value": 0.5151609182357788
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.apcata.2007.01.024.pdf_7.jpg-page-0",
+      "value": 0.6666666865348816
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.chroma.2005.02.018.pdf_6.jpg-page-0",
+      "value": 0.423473596572876
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.chroma.2005.03.134.pdf_6.jpg-page-0",
+      "value": 0.4000000059604645
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.chroma.2005.05.085.pdf_4.jpg-page-0",
+      "value": 0.5384763479232788
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.chroma.2005.08.021.pdf_7.jpg-page-0",
+      "value": 0.6371265649795532
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.chroma.2005.11.024.pdf_7.jpg-page-0",
+      "value": 0.591694176197052
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.ergon.2003.12.002.pdf_5.jpg-page-0",
+      "value": 0.5504920482635498
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.ergon.2004.09.009.pdf_13.jpg-page-0",
+      "value": 0.15234322845935822
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.ergon.2006.10.025.pdf_6.jpg-page-0",
+      "value": 0.5396658182144165
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.eswa.2008.01.070.pdf_5.jpg-page-0",
+      "value": 0.519059419631958
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.jcp.2010.12.006.pdf_14.jpg-page-0",
+      "value": 0.26274433732032776
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.jcp.2010.12.006.pdf_5.jpg-page-0",
+      "value": 0.17751215398311615
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.jcrimjus.2010.04.003.pdf_8.jpg-page-0",
+      "value": 0.09113036096096039
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.mseb.2009.12.004.pdf_2.jpg-page-0",
+      "value": 0.576798677444458
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.msec.2003.09.055.pdf_1.jpg-page-0",
+      "value": 0.3745591640472412
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.msec.2005.01.019.pdf_4.jpg-page-0",
+      "value": 0.6400989890098572
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.msec.2005.03.002.pdf_7.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.physletb.2004.02.015.pdf_4.jpg-page-0",
+      "value": 0.5983026623725891
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.physletb.2004.06.101.pdf_3.jpg-page-0",
+      "value": 0.14363890886306763
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.physletb.2004.11.060.pdf_2.jpg-page-0",
+      "value": 0.35013750195503235
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.snb.2004.05.025.pdf_5.jpg-page-0",
+      "value": 0.36629536747932434
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-j.snb.2004.06.022.pdf_2.jpg-page-0",
+      "value": 0.5776897668838501
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-007-9171-1.pdf_2.jpg-page-0",
+      "value": 0.7069637179374695
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-007-9171-1.pdf_3.jpg-page-0",
+      "value": 0.46419140696525574
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-007-9344-y.pdf_5.jpg-page-0",
+      "value": 0.4309405982494354
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-008-9367-z.pdf_4.jpg-page-0",
+      "value": 0.46595945954322815
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-009-9752-2.pdf_5.jpg-page-0",
+      "value": 0.3960671126842499
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-009-9772-y.pdf_1.jpg-page-0",
+      "value": 0.22762376070022583
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00128-010-0006-0.pdf_5.jpg-page-0",
+      "value": 0.6000838279724121
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s001280000131.pdf_5.jpg-page-0",
+      "value": 0.3499999940395355
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00348-003-0689-7.pdf_3.jpg-page-0",
+      "value": 0.34048405289649963
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00348-005-0004-x.pdf_3.jpg-page-0",
+      "value": 0.5099207758903503
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00348-006-0117-x.pdf_11.jpg-page-0",
+      "value": 0.5941300988197327
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00348-006-0148-3.pdf_5.jpg-page-0",
+      "value": 0.33415842056274414
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00348-006-0169-y.pdf_2.jpg-page-0",
+      "value": 0.48209965229034424
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00374-003-0583-8.pdf_1.jpg-page-0",
+      "value": 0.31403228640556335
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00374-003-0589-2.pdf_6.jpg-page-0",
+      "value": 0.6508250832557678
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00374-004-0768-9.pdf_2.jpg-page-0",
+      "value": 0.41683992743492126
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00374-006-0103-8.pdf_11.jpg-page-0",
+      "value": 0.45049506425857544
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00395-011-0222-8.pdf_10.jpg-page-0",
+      "value": 0.3191419243812561
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s003950050126.pdf_6.jpg-page-0",
+      "value": 0.4708745777606964
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s00396-003-0935-9.pdf_2.jpg-page-0",
+      "value": 0.6808146834373474
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s0167-8655%2800%2900107-0.pdf_6.jpg-page-0",
+      "value": 0.568128228187561
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s0167-8655%2801%2900019-8.pdf_10.jpg-page-0",
+      "value": 0.4783003330230713
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s0362-546x%2897%2900070-9.pdf_7.jpg-page-0",
+      "value": 0.3519856929779053
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s10555-005-1578-8.pdf_5.jpg-page-0",
+      "value": 0.45049506425857544
+    },
+    {
+      "name": "docstructbench_llm-raw-scihub-o.O-s10653-010-9369-8.pdf_11.jpg-page-0",
+      "value": 0.4271177053451538
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-1%20Excel.pdf_12.jpg-page-0",
+      "value": 0.42376238107681274
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-1995_2418.pdf_1.jpg-page-0",
+      "value": 0.5579701066017151
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Attitudes_Towards_Rainwater_Harvesting_1999.pdf_5.jpg-page-0",
+      "value": 0.42287954688072205
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Chapter14.pdf_2.jpg-page-0",
+      "value": 0.09418316930532455
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Character%20Sheet%20-%20Form%20Fillable.pdf_2.jpg-page-0",
+      "value": 0.08415841311216354
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Dragon%20Magazine%20-%20030.pdf_5.jpg-page-0",
+      "value": 0.4030042290687561
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Player%27s%20Options%20-%20Halflings.pdf_11.jpg-page-0",
+      "value": 0.7399669885635376
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-ST-169-R1-072694.pdf_76.jpg-page-0",
+      "value": 0.2800000011920929
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Screen%20Printing%20Booklet.pdf_8.jpg-page-0",
+      "value": 0.43079209327697754
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Something%27s%20Cooking.pdf_4.jpg-page-0",
+      "value": 0.3713471293449402
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-TFT-Traveller.pdf_6.jpg-page-0",
+      "value": 0.48762375116348267
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-Team%20Bravo%20-%20System%20Error.pdf_9.jpg-page-0",
+      "value": 0.43642592430114746
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-TraneGuide.pdf_7.jpg-page-0",
+      "value": 0.5
+    },
+    {
+      "name": "docstructbench_llm-raw-the-eye-o.O-chap08.pdf_12.jpg-page-0",
+      "value": 0.5274999737739563
+    },
+    {
+      "name": "eastmoney_0022ae8eddb0de117978289e16ba7fe995dddd3f64aca9e147bb07c848c84aa6.pdf_8.jpg-page-0",
+      "value": 0.39245638251304626
+    },
+    {
+      "name": "eastmoney_03e39833d520af7d1abb96dd624dcd15f2b57d061969d196e80922e2f590503f.pdf_22.jpg-page-0",
+      "value": 0.33568480610847473
+    },
+    {
+      "name": "eastmoney_1746461e6e00efee224a9209974b4bb6de3b11e339e4d86c41569eeddcc3c20e.pdf_8.jpg-page-0",
+      "value": 0.36202263832092285
+    },
+    {
+      "name": "eastmoney_1885ca41425d245551f3482457304f78b48186bff625fa91e675eaf6bba5229f.pdf_0.jpg-page-0",
+      "value": 0.099405936896801
+    },
+    {
+      "name": "eastmoney_2dea7cdb5a3e018ffec3c80eb4435de524f2a14bd32735b78f563adc355272ab.pdf_6.jpg-page-0",
+      "value": 0.30458274483680725
+    },
+    {
+      "name": "eastmoney_34d623c64d12b5f02ffe4bff74f464b368270b1d6930192876bfe353d8fd6c30.pdf_0.jpg-page-0",
+      "value": 0.3431822657585144
+    },
+    {
+      "name": "eastmoney_3ad44cb9fef0899c347e83dec4ce05b65deaa17bbe9324bde97c0916afc98e0a.pdf_2.jpg-page-0",
+      "value": 0.39188119769096375
+    },
+    {
+      "name": "eastmoney_59cde7e939acc3124df9d3f2c85b5a0ec41b9da1157d5be38e098672022b47cb.pdf_11.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "eastmoney_5c22c7d248262382ae63af18e9ef65bd26ffdf78c2f3af32137e0b4f92a0ba92.pdf_4.jpg-page-0",
+      "value": 0.42500001192092896
+    },
+    {
+      "name": "eastmoney_5f75d8df19ab34c706ae823d8ed54f845b6a693e31c0fae19b16cdd94c32a636.pdf_2.jpg-page-0",
+      "value": 0.13399340212345123
+    },
+    {
+      "name": "eastmoney_5f75d8df19ab34c706ae823d8ed54f845b6a693e31c0fae19b16cdd94c32a636.pdf_3.jpg-page-0",
+      "value": 0.4598381221294403
+    },
+    {
+      "name": "eastmoney_62b4149b1612ce28d20f26cd5c5b2e18f80b26fca6e4452e090376a2fe72eae3.pdf_0.jpg-page-0",
+      "value": 0.45002099871635437
+    },
+    {
+      "name": "eastmoney_66eea274d39b939da0f10253d279e119d87646f10fd21b3942eaf6c5d93b8134.pdf_0.jpg-page-0",
+      "value": 0.3112262785434723
+    },
+    {
+      "name": "eastmoney_6be3f3cd9e5361946ee49252f12dd57fe7c73df330116d6998e2198ec79a05c9.pdf_2.jpg-page-0",
+      "value": 0.34145215153694153
+    },
+    {
+      "name": "eastmoney_6e1cdb75430fe7d7a7757754d163d1a4a8a1c2a3fca38b74a8a2e8df009f2ce0.pdf_2.jpg-page-0",
+      "value": 0.2471122145652771
+    },
+    {
+      "name": "eastmoney_7c25f92e2ab21d83e1eada0e40a68e3151e7c1c2d673ddb12b0242fa3ab931ab.pdf_13.jpg-page-0",
+      "value": 0.42690879106521606
+    },
+    {
+      "name": "eastmoney_7cae1642250a3dbabfef7624d3424ec6e162ae91c8de4acfa89a9779092b0189.pdf_16.jpg-page-0",
+      "value": 0.521039605140686
+    },
+    {
+      "name": "eastmoney_7e9f2d3e6d80483c7556fe65fe39f432d669cee3dc80840f126db9c7d7140d52.pdf_1.jpg-page-0",
+      "value": 0.46254125237464905
+    },
+    {
+      "name": "eastmoney_7f55aa1223310144165074707803522240cf20120b15f5d78fdf61eb4dcefba3.pdf_2.jpg-page-0",
+      "value": 0.2943069338798523
+    },
+    {
+      "name": "eastmoney_8b3e01e3cd92a034f45945887a5170602774a8480effda5bd791451578a93b7d.pdf_5.jpg-page-0",
+      "value": 0.4171617031097412
+    },
+    {
+      "name": "eastmoney_8e0ecdad6ea6edd7014a328fa79e4b69230c1b4f82cc031dd247c3c1c39744cf.pdf_11.jpg-page-0",
+      "value": 0.4424092471599579
+    },
+    {
+      "name": "eastmoney_8f87670d793f4415afca95380e8e46cc8517d6f97fa65a6680308bfc34fa7b5e.pdf_4.jpg-page-0",
+      "value": 0.4199434220790863
+    },
+    {
+      "name": "eastmoney_944c06af0b176ef718ee34d3affee40554920f76210dfbf007972fe9c39074fc.pdf_0.jpg-page-0",
+      "value": 0.2684396505355835
+    },
+    {
+      "name": "eastmoney_a2542ccf95ec3bb51dcc6fb90a7c32b18f883e10a3cb301901a428882d8d2015.pdf_2.jpg-page-0",
+      "value": 0.6331859827041626
+    },
+    {
+      "name": "eastmoney_bd6c2b9aa7ca0ebf8672f8f50e3eacab7f67d0ffa15e0d94b1f3c0d1b5f179b8.pdf_19.jpg-page-0",
+      "value": 0.20938286185264587
+    },
+    {
+      "name": "eastmoney_bdbfdb8a6ab56be3ab1b40009ee648b6d250013ce653c146f2d2023bd8d14772.pdf_26.jpg-page-0",
+      "value": 0.2801837921142578
+    },
+    {
+      "name": "eastmoney_bef4bcf5f2faff08a78d49945e4ac8983320f367c450720c87ab8cc6ed5726e4.pdf_1.jpg-page-0",
+      "value": 0.43517208099365234
+    },
+    {
+      "name": "eastmoney_c07e6795bc92e8782d09bf3af7dc766960a1db2088262126a0856311d95361a2.pdf_6.jpg-page-0",
+      "value": 0.593806803226471
+    },
+    {
+      "name": "eastmoney_c1c12db90c6ecfae16a8eafa49caecfbc0e5f5654140320fe127f7c09bde96c9.pdf_1.jpg-page-0",
+      "value": 0.2516501545906067
+    },
+    {
+      "name": "eastmoney_c2abc680754ea4676c752cb3bda24323046ece560f8b23ce66b705887c9bcf9b.pdf_16.jpg-page-0",
+      "value": 0.23861385881900787
+    },
+    {
+      "name": "eastmoney_c683eb2923c442ad9fd8c1f25abb7b1b35b359611d5b8a07d1eede7a81983769.pdf_21.jpg-page-0",
+      "value": 0.3950439989566803
+    },
+    {
+      "name": "eastmoney_c87249cc61825e8bcd1e0ba5434d32606fecb2ff8302f8602f8d6860fd773252.pdf_1.jpg-page-0",
+      "value": 0.513861358165741
+    },
+    {
+      "name": "eastmoney_d0313ed730f58180b1f005a3607c2a77dc3672410e8f7ee1de3b814668da9bcb.pdf_5.jpg-page-0",
+      "value": 0.21252062916755676
+    },
+    {
+      "name": "eastmoney_d08a4020e49029cf68b5dbf69e5ecaa40e969f918819c62579e5f4b1a357422f.pdf_3.jpg-page-0",
+      "value": 0.4409900903701782
+    },
+    {
+      "name": "eastmoney_d09a006aa02ddc09299bbb9a1b5efa0d77408191f0c1ff1fca8c80bd6150f806.pdf_17.jpg-page-0",
+      "value": 0.38090524077415466
+    },
+    {
+      "name": "eastmoney_d201644f6fbc869ea857c5d9f8ec38adc54250a94b77d826280b0d1c25d13a13.pdf_4.jpg-page-0",
+      "value": 0.4005940556526184
+    },
+    {
+      "name": "eastmoney_d2bb183f5254ede5760932ac3118524aa7eddad551935713b435541f1525c1ee.pdf_3.jpg-page-0",
+      "value": 0.31707921624183655
+    },
+    {
+      "name": "eastmoney_d2bb183f5254ede5760932ac3118524aa7eddad551935713b435541f1525c1ee.pdf_7.jpg-page-0",
+      "value": 0.3147706687450409
+    },
+    {
+      "name": "eastmoney_d64a9204564ad81332a4dc3767365740a00228323d2862604d15cb15b318f3af.pdf_3.jpg-page-0",
+      "value": 0.3158368766307831
+    },
+    {
+      "name": "eastmoney_db7967d371df6e4fb5850f3583fcf255c2ed8ef153e11aa38e0bd020b65f13ac.pdf_1.jpg-page-0",
+      "value": 0.41811880469322205
+    },
+    {
+      "name": "eastmoney_dcf347592d4160dffacffdf00a9c39aa75cf9859205a7543c283d1df8bb14f90.pdf_1.jpg-page-0",
+      "value": 0.466970294713974
+    },
+    {
+      "name": "eastmoney_dd8f39ced2188b907304224a635ad605689270486020c34636003e57018c01d8.pdf_2.jpg-page-0",
+      "value": 0.32709020376205444
+    },
+    {
+      "name": "eastmoney_df74f4c5f5f8c96ec2c051d34ea5c51686a45b2f1822b2d94982f84c81d25aa3.pdf_17.jpg-page-0",
+      "value": 0.5399615168571472
+    },
+    {
+      "name": "eastmoney_e42b6e1cd2d48113ff4db8854e539d828d632bf9b1757e10cb8ddb2cfc7b1393.pdf_12.jpg-page-0",
+      "value": 0.40107262134552
+    },
+    {
+      "name": "eastmoney_e480008a65ea31d8c1a5e86900788b67d07422f02dbc5296aedf9423e1a23b4e.pdf_6.jpg-page-0",
+      "value": 0.43716996908187866
+    },
+    {
+      "name": "eastmoney_ea3eda50a04cf431d7412a567497c91e8cc52f72b4c5ccb554776c5c57b13e29.pdf_4.jpg-page-0",
+      "value": 0.30049505829811096
+    },
+    {
+      "name": "eastmoney_ea59610b9b1a8f0df46f7a89da1116cbf256c772e1148f26017991e28c8bca21.pdf_18.jpg-page-0",
+      "value": 0.050495050847530365
+    },
+    {
+      "name": "eastmoney_f4848e9d70d37f406f54c714024c5ef002832a1bf64290aa5c163665887a3e55.pdf_5.jpg-page-0",
+      "value": 0.5815841555595398
+    },
+    {
+      "name": "eastmoney_f671ab94bf8b8274d6736f1a3dc775b3b74fa68686df2946aa5307b6b2a32062.pdf_18.jpg-page-0",
+      "value": 0.2617965638637543
+    },
+    {
+      "name": "eastmoney_f72b162baf25f1a2060e4ce877071ec27e490ab16e9de1a2b18572b596d2bde8.pdf_2.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "eastmoney_fca0676d8b0c4d3926a2d02229fa3372f87a45dbfbf7472773c6dbe04d35af65.pdf_3.jpg-page-0",
+      "value": 0.4386747479438782
+    },
+    {
+      "name": "eastmoney_fcc1c7940f94c7f36157a4aa9c1c804fe16e6b681ca1cef589af39c6d3e0cb90.pdf_0.jpg-page-0",
+      "value": 0.15905527770519257
+    },
+    {
+      "name": "eastmoney_fdae27854b0cffed1364e2a4457189b2a10ad0b058242ee3c8c9ee8993d7f5c0.pdf_1.jpg-page-0",
+      "value": 0.44859737157821655
+    },
+    {
+      "name": "jiaocai_71434495.pdf_0.jpg-page-0",
+      "value": 0.20414365828037262
+    },
+    {
+      "name": "jiaocai_P0-9.pdf_9.jpg-page-0",
+      "value": 0.4399999976158142
+    },
+    {
+      "name": "jiaocai_c1-cn-10-q-06-lys.pdf_2.jpg-page-0",
+      "value": 0.34433168172836304
+    },
+    {
+      "name": "jiaocai_f32828acecb4282c87eaa554d2e1db74e418cd6845843012463a3324028bdd9d.pdf_9.jpg-page-0",
+      "value": 0.1635313481092453
+    },
+    {
+      "name": "jiaocai_jiaocai_en_117.jpg-page-0",
+      "value": 0.04207920655608177
+    },
+    {
+      "name": "jiaocai_jiaocai_en_310.jpg-page-0",
+      "value": 0.3809680938720703
+    },
+    {
+      "name": "jiaocai_jiaocai_en_37.jpg-page-0",
+      "value": 0.4757425785064697
+    },
+    {
+      "name": "jiaocai_jiaocai_en_518.jpg-page-0",
+      "value": 0.17707780003547668
+    },
+    {
+      "name": "jiaocai_jiaocai_en_595.jpg-page-0",
+      "value": 0.30049505829811096
+    },
+    {
+      "name": "jiaocai_jiaocai_en_6.jpg-page-0",
+      "value": 0.38321545720100403
+    },
+    {
+      "name": "jiaocai_jiaocai_en_91.jpg-page-0",
+      "value": 0.7424917221069336
+    },
+    {
+      "name": "jiaocai_jiaocai_en_932.jpg-page-0",
+      "value": 0.2100907564163208
+    },
+    {
+      "name": "jiaocaineedrop_2005_QP.pdf_5.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "jiaocaineedrop_2017.pdf_0.jpg-page-0",
+      "value": 0.4089769124984741
+    },
+    {
+      "name": "jiaocaineedrop_20608808.pdf_0.jpg-page-0",
+      "value": 0.17596594989299774
+    },
+    {
+      "name": "jiaocaineedrop_33137159.pdf_3.jpg-page-0",
+      "value": 0.1926371157169342
+    },
+    {
+      "name": "jiaocaineedrop_38247658.pdf_0.jpg-page-0",
+      "value": 0.2517940402030945
+    },
+    {
+      "name": "jiaocaineedrop_42351289.pdf_1.jpg-page-0",
+      "value": 0.1418897807598114
+    },
+    {
+      "name": "jiaocaineedrop_46.pdf_1.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "jiaocaineedrop_55196913.pdf_0.jpg-page-0",
+      "value": 0.30915290117263794
+    },
+    {
+      "name": "jiaocaineedrop_5f9c4ab08cac7457e9111a30e4664920607ea2c115a1433d7be98e97e64244ca.pdf_2.jpg-page-0",
+      "value": 0.7813240885734558
+    },
+    {
+      "name": "jiaocaineedrop_624b60c58c9d8bfb6ff1886c2fd605d2adeb6ea4da576068201b6c6958ce93f4.pdf_8.jpg-page-0",
+      "value": 0.4390745460987091
+    },
+    {
+      "name": "jiaocaineedrop_7bc671081823aec9e2a6ef2a011c3fbb.pdf_20.jpg-page-0",
+      "value": 0.672483503818512
+    },
+    {
+      "name": "jiaocaineedrop_96657786.pdf_0.jpg-page-0",
+      "value": 0.16664466261863708
+    },
+    {
+      "name": "jiaocaineedrop_AMC8_V5.pdf_64.jpg-page-0",
+      "value": 0.18795379996299744
+    },
+    {
+      "name": "jiaocaineedrop_Chap11.pdf_10.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_Chapter9.pdf_46.jpg-page-0",
+      "value": 0.21419142186641693
+    },
+    {
+      "name": "jiaocaineedrop_Evans_PDE_Solution_Chapter_6_Second-Order_Elliptic_Equations.pdf_5.jpg-page-0",
+      "value": 0.559459388256073
+    },
+    {
+      "name": "jiaocaineedrop_Proofs_From_The_Book(Aigner).pdf_54.jpg-page-0",
+      "value": 0.5332673192024231
+    },
+    {
+      "name": "jiaocaineedrop_bde81e42743067b574946698491d7f19.pdf_14.jpg-page-0",
+      "value": 0.042904291301965714
+    },
+    {
+      "name": "jiaocaineedrop_bio-113065.pdf_213.jpg-page-0",
+      "value": 0.5689603686332703
+    },
+    {
+      "name": "jiaocaineedrop_biz-96816.pdf_48.jpg-page-0",
+      "value": 0.5538519620895386
+    },
+    {
+      "name": "jiaocaineedrop_c04_874768_mt.pdf_6.jpg-page-0",
+      "value": 0.3970572054386139
+    },
+    {
+      "name": "jiaocaineedrop_c2-ma-11-q-11-cl.pdf_2.jpg-page-0",
+      "value": 0.2401188164949417
+    },
+    {
+      "name": "jiaocaineedrop_ced6f3c05e1dfefa8455fa60aacdd2d76ffd79489b631c2dbde22a74e927544b.pdf_84.jpg-page-0",
+      "value": 0.5333333611488342
+    },
+    {
+      "name": "jiaocaineedrop_chap02.pdf_16.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_chap10.pdf_8.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_chap15.pdf_3.jpg-page-0",
+      "value": 0.5892945528030396
+    },
+    {
+      "name": "jiaocaineedrop_chap5.pdf_4.jpg-page-0",
+      "value": 0.15813295543193817
+    },
+    {
+      "name": "jiaocaineedrop_chem-203343.pdf_121.jpg-page-0",
+      "value": 0.22114044427871704
+    },
+    {
+      "name": "jiaocaineedrop_chem-323236.pdf_183.jpg-page-0",
+      "value": 0.5511881113052368
+    },
+    {
+      "name": "jiaocaineedrop_chem-354334.pdf_20.jpg-page-0",
+      "value": 0.40302079916000366
+    },
+    {
+      "name": "jiaocaineedrop_chem-436205.pdf_793.jpg-page-0",
+      "value": 0.4633663296699524
+    },
+    {
+      "name": "jiaocaineedrop_chem-441760.pdf_165.jpg-page-0",
+      "value": 0.2618812024593353
+    },
+    {
+      "name": "jiaocaineedrop_chem-97961.pdf_128.jpg-page-0",
+      "value": 0.301272988319397
+    },
+    {
+      "name": "jiaocaineedrop_eng-45646.pdf_30.jpg-page-0",
+      "value": 0.5352035164833069
+    },
+    {
+      "name": "jiaocaineedrop_eng_gls.pdf_6.jpg-page-0",
+      "value": 0.28923267126083374
+    },
+    {
+      "name": "jiaocaineedrop_geo-12644.pdf_353.jpg-page-0",
+      "value": 0.47878360748291016
+    },
+    {
+      "name": "jiaocaineedrop_glossary.pdf_7.jpg-page-0",
+      "value": 0.15562376379966736
+    },
+    {
+      "name": "jiaocaineedrop_j70ke43p.pdf_69.jpg-page-0",
+      "value": 0.5450000166893005
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1000.jpg-page-0",
+      "value": 0.37128713726997375
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_101.jpg-page-0",
+      "value": 0.09000000357627869
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1041.jpg-page-0",
+      "value": 0.26765677332878113
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_108.jpg-page-0",
+      "value": 0.10019802302122116
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1118.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1141.jpg-page-0",
+      "value": 0.4000000059604645
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1175.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1198.jpg-page-0",
+      "value": 0.23502475023269653
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1249.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1253.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1271.jpg-page-0",
+      "value": 0.3166666626930237
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1276.jpg-page-0",
+      "value": 0.08613861352205276
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1290.jpg-page-0",
+      "value": 0.17540468275547028
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_13.jpg-page-0",
+      "value": 0.03366336598992348
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1303.jpg-page-0",
+      "value": 0.24589109420776367
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1308.jpg-page-0",
+      "value": 0.11049504578113556
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1344.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1349.jpg-page-0",
+      "value": 0.11428571492433548
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1358.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1381.jpg-page-0",
+      "value": 0.24174918234348297
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_14.jpg-page-0",
+      "value": 0.20891089737415314
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1408.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1417.jpg-page-0",
+      "value": 0.18095111846923828
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1426.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1435.jpg-page-0",
+      "value": 0.2926567792892456
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1449.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1458.jpg-page-0",
+      "value": 0.02500000037252903
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1473.jpg-page-0",
+      "value": 0.40593400597572327
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1478.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1496.jpg-page-0",
+      "value": 0.06706270575523376
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1509.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1523.jpg-page-0",
+      "value": 0.11102310568094254
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1539.jpg-page-0",
+      "value": 0.03214285895228386
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_155.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1564.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_16.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1608.jpg-page-0",
+      "value": 0.025247525423765182
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1669.jpg-page-0",
+      "value": 0.17425742745399475
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1719.jpg-page-0",
+      "value": 0.22499999403953552
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1751.jpg-page-0",
+      "value": 0.3752475380897522
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1761.jpg-page-0",
+      "value": 0.25297030806541443
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1776.jpg-page-0",
+      "value": 0.1881188154220581
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1812.jpg-page-0",
+      "value": 0.5049505233764648
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1826.jpg-page-0",
+      "value": 0.18333333730697632
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1836.jpg-page-0",
+      "value": 0.11999999731779099
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1840.jpg-page-0",
+      "value": 0.5798717141151428
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_188.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1884.jpg-page-0",
+      "value": 0.36666667461395264
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1898.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1910.jpg-page-0",
+      "value": 0.3508910834789276
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1920.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_194.jpg-page-0",
+      "value": 0.24088284373283386
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1959.jpg-page-0",
+      "value": 0.11999999731779099
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_1972.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2002.jpg-page-0",
+      "value": 0.4445544481277466
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2017.jpg-page-0",
+      "value": 0.4570309519767761
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2031.jpg-page-0",
+      "value": 0.5444719195365906
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2036.jpg-page-0",
+      "value": 0.024277226999402046
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_206.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2100.jpg-page-0",
+      "value": 0.39089107513427734
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2124.jpg-page-0",
+      "value": 0.3063916265964508
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2183.jpg-page-0",
+      "value": 0.4000000059604645
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2193.jpg-page-0",
+      "value": 0.14777228236198425
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2198.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2211.jpg-page-0",
+      "value": 0.23534654080867767
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_223.jpg-page-0",
+      "value": 0.2474147379398346
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2234.jpg-page-0",
+      "value": 0.1599999964237213
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2263.jpg-page-0",
+      "value": 0.03029702976346016
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2272.jpg-page-0",
+      "value": 0.07353135198354721
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2360.jpg-page-0",
+      "value": 0.19730472564697266
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_237.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2374.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2399.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2412.jpg-page-0",
+      "value": 0.4758237600326538
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2444.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2449.jpg-page-0",
+      "value": 0.08151815086603165
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2496.jpg-page-0",
+      "value": 0.2991299033164978
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_250.jpg-page-0",
+      "value": 0.06666667014360428
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2509.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2518.jpg-page-0",
+      "value": 0.03366336598992348
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2527.jpg-page-0",
+      "value": 0.35183581709861755
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2540.jpg-page-0",
+      "value": 0.4352475106716156
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2554.jpg-page-0",
+      "value": 0.12918435037136078
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2559.jpg-page-0",
+      "value": 0.6431353092193604
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2591.jpg-page-0",
+      "value": 0.4050765931606293
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2604.jpg-page-0",
+      "value": 0.18000000715255737
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2623.jpg-page-0",
+      "value": 0.037706270813941956
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2652.jpg-page-0",
+      "value": 0.1789250373840332
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2680.jpg-page-0",
+      "value": 0.40544554591178894
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2718.jpg-page-0",
+      "value": 0.30618810653686523
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2732.jpg-page-0",
+      "value": 0.09950494766235352
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2755.jpg-page-0",
+      "value": 0.1666666716337204
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_276.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2820.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2825.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2839.jpg-page-0",
+      "value": 0.18000000715255737
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2884.jpg-page-0",
+      "value": 0.6506600379943848
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2893.jpg-page-0",
+      "value": 0.025928625836968422
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2901.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2968.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2982.jpg-page-0",
+      "value": 0.1617678701877594
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_2991.jpg-page-0",
+      "value": 0.4525907635688782
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3009.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3013.jpg-page-0",
+      "value": 0.23333333432674408
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3063.jpg-page-0",
+      "value": 0.23999999463558197
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3114.jpg-page-0",
+      "value": 0.30891087651252747
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3146.jpg-page-0",
+      "value": 0.1314026415348053
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3173.jpg-page-0",
+      "value": 0.03366336598992348
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3274.jpg-page-0",
+      "value": 0.20181046426296234
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3303.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3313.jpg-page-0",
+      "value": 0.14653465151786804
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3341.jpg-page-0",
+      "value": 0.21136780083179474
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3361.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3375.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3399.jpg-page-0",
+      "value": 0.23415841162204742
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3458.jpg-page-0",
+      "value": 0.1556105613708496
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_349.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3685.jpg-page-0",
+      "value": 0.6376237869262695
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3713.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3718.jpg-page-0",
+      "value": 0.6812705993652344
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3738.jpg-page-0",
+      "value": 0.09000000357627869
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3747.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3751.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3810.jpg-page-0",
+      "value": 0.40055692195892334
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_383.jpg-page-0",
+      "value": 0.1105610579252243
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3928.jpg-page-0",
+      "value": 0.6066006422042847
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3937.jpg-page-0",
+      "value": 0.16694168746471405
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_397.jpg-page-0",
+      "value": 0.2535272240638733
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_3984.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_4065.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_419.jpg-page-0",
+      "value": 0.44644978642463684
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_429.jpg-page-0",
+      "value": 0.2957920730113983
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_439.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_443.jpg-page-0",
+      "value": 0.09908062219619751
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_453.jpg-page-0",
+      "value": 0.31819307804107666
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_458.jpg-page-0",
+      "value": 0.4248736798763275
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_467.jpg-page-0",
+      "value": 0.1666666716337204
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_472.jpg-page-0",
+      "value": 0.3106745183467865
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_482.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_541.jpg-page-0",
+      "value": 0.08916891366243362
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_546.jpg-page-0",
+      "value": 0.05000000074505806
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_574.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_601.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_620.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_625.jpg-page-0",
+      "value": 0.11238095164299011
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_664.jpg-page-0",
+      "value": 0.3502475321292877
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_669.jpg-page-0",
+      "value": 0.24676449596881866
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_673.jpg-page-0",
+      "value": 0.20033003389835358
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_678.jpg-page-0",
+      "value": 0.1666666716337204
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_693.jpg-page-0",
+      "value": 0.2538613975048065
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_715.jpg-page-0",
+      "value": 0.06803960353136063
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_769.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_782.jpg-page-0",
+      "value": 0.6259406208992004
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_809.jpg-page-0",
+      "value": 0.07500000298023224
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_835.jpg-page-0",
+      "value": 0.03029702976346016
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_85.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_854.jpg-page-0",
+      "value": 0.08415841311216354
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_887.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_909.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_913.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_918.jpg-page-0",
+      "value": 0.3216124475002289
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_922.jpg-page-0",
+      "value": 0.2361111044883728
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_942.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_947.jpg-page-0",
+      "value": 0.45653465390205383
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_952.jpg-page-0",
+      "value": 0.16657796502113342
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_961.jpg-page-0",
+      "value": 0.09252475202083588
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_980.jpg-page-0",
+      "value": 0.03915071487426758
+    },
+    {
+      "name": "jiaocaineedrop_jiaocai_needrop_en_999.jpg-page-0",
+      "value": 0.12149929255247116
+    },
+    {
+      "name": "jiaocaineedrop_math-134115.pdf_670.jpg-page-0",
+      "value": 0.3796463906764984
+    },
+    {
+      "name": "jiaocaineedrop_socialsci-74973.pdf_31.jpg-page-0",
+      "value": 0.5242848992347717
+    },
+    {
+      "name": "jiaocaineedrop_unit2t03.pdf_63.jpg-page-0",
+      "value": 0.35796689987182617
+    },
+    {
+      "name": "newspaper_019d4d5296ba8f1c21277d72fb0cf0db_1.jpg-page-0",
+      "value": 0.21241405606269836
+    },
+    {
+      "name": "newspaper_01f020903d7bc4b3fc69f500f41eb77e_1.jpg-page-0",
+      "value": 0.46700119972229004
+    },
+    {
+      "name": "newspaper_028a1dd5500fbd774e4d85df3c460c4d_1.jpg-page-0",
+      "value": 0.19669342041015625
+    },
+    {
+      "name": "newspaper_02912feb79994ae24665509d964ad9ce_1.jpg-page-0",
+      "value": 0.19803135097026825
+    },
+    {
+      "name": "newspaper_06b975dbc47dc2dc2a3a1468293f6a2c_1.jpg-page-0",
+      "value": 0.38135528564453125
+    },
+    {
+      "name": "newspaper_0b1bb8d03b4287eb95f67b68c2cf9f92_1.jpg-page-0",
+      "value": 0.051773928105831146
+    },
+    {
+      "name": "newspaper_0b86dae4d8f328a0e79d9ac394000dec_1.jpg-page-0",
+      "value": 0.30235740542411804
+    },
+    {
+      "name": "newspaper_0ce88e1e131aef7a59d0533be36870de_1.jpg-page-0",
+      "value": 0.17125052213668823
+    },
+    {
+      "name": "newspaper_0cfb8a42b5d4194d8c73dba0cdf6256c_1.jpg-page-0",
+      "value": 0.4022628664970398
+    },
+    {
+      "name": "newspaper_0edcd83c195557b43279fa73edaa59aa_1.jpg-page-0",
+      "value": 0.4947599470615387
+    },
+    {
+      "name": "newspaper_14b9d21f7fed39fb42849e9cde233930_1.jpg-page-0",
+      "value": 0.2119748443365097
+    },
+    {
+      "name": "newspaper_17f81b80831d8d58564b9c8e3cf79261_1.jpg-page-0",
+      "value": 0.25814443826675415
+    },
+    {
+      "name": "newspaper_1cddf9d22ca549f3a86cf1512a3110cc_1.jpg-page-0",
+      "value": 0.3681321144104004
+    },
+    {
+      "name": "newspaper_2140e879cd0d3c1b5ba2ea1e3a75aab6_1.jpg-page-0",
+      "value": 0.33230575919151306
+    },
+    {
+      "name": "newspaper_26f4ed67a5e8922e7d42b35d317ebf4b_1.jpg-page-0",
+      "value": 0.21309766173362732
+    },
+    {
+      "name": "newspaper_2a645bfcbcd473423581cd9f1ceb778e_1.jpg-page-0",
+      "value": 0.2468428909778595
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_1.jpg-page-0",
+      "value": 0.48826470971107483
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_10.jpg-page-0",
+      "value": 0.41474148631095886
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_11.jpg-page-0",
+      "value": 0.536592423915863
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_12.jpg-page-0",
+      "value": 0.5634632110595703
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_13.jpg-page-0",
+      "value": 0.4619944989681244
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_14.jpg-page-0",
+      "value": 0.4736633598804474
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_15.jpg-page-0",
+      "value": 0.41793179512023926
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_16.jpg-page-0",
+      "value": 0.3623495399951935
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_17.jpg-page-0",
+      "value": 0.30375298857688904
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_18.jpg-page-0",
+      "value": 0.4314747154712677
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_2.jpg-page-0",
+      "value": 0.4906077980995178
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_3.jpg-page-0",
+      "value": 0.6522408723831177
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_4.jpg-page-0",
+      "value": 0.44093766808509827
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_5.jpg-page-0",
+      "value": 0.4439336657524109
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_6.jpg-page-0",
+      "value": 0.5376677513122559
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_7.jpg-page-0",
+      "value": 0.4104467034339905
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_8.jpg-page-0",
+      "value": 0.5339356660842896
+    },
+    {
+      "name": "newspaper_2a6b4fa088699701a6fa9ccecfb5c25d_9.jpg-page-0",
+      "value": 0.6202883720397949
+    },
+    {
+      "name": "newspaper_2c69e142b52dbb30cac2cb11d3eb25e5_1.jpg-page-0",
+      "value": 0.38967910408973694
+    },
+    {
+      "name": "newspaper_2de954934f60ac538c5bd5dc40833a61_1.jpg-page-0",
+      "value": 0.2702447772026062
+    },
+    {
+      "name": "newspaper_35352f94db65d19e097395380498ec15_1.jpg-page-0",
+      "value": 0.2883739173412323
+    },
+    {
+      "name": "newspaper_354720d92a632709eb8e61795b191390_1.jpg-page-0",
+      "value": 0.42317095398902893
+    },
+    {
+      "name": "newspaper_35bdaa11dec104ccbdc9e19ac8527d21_1.jpg-page-0",
+      "value": 0.4573225677013397
+    },
+    {
+      "name": "newspaper_401c73055b88a62c479edd3d490cea8a_1.jpg-page-0",
+      "value": 0.37837615609169006
+    },
+    {
+      "name": "newspaper_41a09cb64841567c220d8cac3c1cc193_1.jpg-page-0",
+      "value": 0.24140048027038574
+    },
+    {
+      "name": "newspaper_4790b51e8fa793743699647c09a93ccb_1.jpg-page-0",
+      "value": 0.3152925670146942
+    },
+    {
+      "name": "newspaper_4b4ad1f6cba28a4844d7ffa9306223a4_1.jpg-page-0",
+      "value": 0.1441068947315216
+    },
+    {
+      "name": "newspaper_4cec63ef5a813c5a49dd8e577f3180e7_1.jpg-page-0",
+      "value": 0.2398175746202469
+    },
+    {
+      "name": "newspaper_571a946262006cd89199b67353c408b8_1.jpg-page-0",
+      "value": 0.15780964493751526
+    },
+    {
+      "name": "newspaper_5a8b7563a3262beecbecd7ddd3ef8827_1.jpg-page-0",
+      "value": 0.2567043900489807
+    },
+    {
+      "name": "newspaper_5aedf678eff04d8ebac3692d54103e19_1.jpg-page-0",
+      "value": 0.25200745463371277
+    },
+    {
+      "name": "newspaper_5bba361b0a5ca11745edbef140e2a431_1.jpg-page-0",
+      "value": 0.3797137141227722
+    },
+    {
+      "name": "newspaper_5c4e17f22cdc19d414a3c521f631c899_1.jpg-page-0",
+      "value": 0.17957110702991486
+    },
+    {
+      "name": "newspaper_5d4b8e73eacbc6ecac0d7b1396fd01d7_1.jpg-page-0",
+      "value": 0.26415616273880005
+    },
+    {
+      "name": "newspaper_5e266dfd9c498cab274e12a7b4a75755_1.jpg-page-0",
+      "value": 0.3146109879016876
+    },
+    {
+      "name": "newspaper_5e266dfd9c498cab274e12a7b4a75755_2.jpg-page-0",
+      "value": 0.5745149254798889
+    },
+    {
+      "name": "newspaper_5e266dfd9c498cab274e12a7b4a75755_3.jpg-page-0",
+      "value": 0.298450231552124
+    },
+    {
+      "name": "newspaper_5e266dfd9c498cab274e12a7b4a75755_4.jpg-page-0",
+      "value": 0.30695995688438416
+    },
+    {
+      "name": "newspaper_5e8bcc55b922fd521a667c6ef01027d5_1.jpg-page-0",
+      "value": 0.3139885365962982
+    },
+    {
+      "name": "newspaper_635e4e6a64cf2ccfb2560f9b6dfe24b5_1.jpg-page-0",
+      "value": 0.17779161036014557
+    },
+    {
+      "name": "newspaper_6d2b5f833fe20785bc395f757524cb05_1.jpg-page-0",
+      "value": 0.18738065659999847
+    },
+    {
+      "name": "newspaper_6fa919bfb48695bc785d9f326e3cdd36_1.jpg-page-0",
+      "value": 0.2510579526424408
+    },
+    {
+      "name": "newspaper_73fc8720a9b2798307ba43a8b8e47b5e_1.jpg-page-0",
+      "value": 0.19847708940505981
+    },
+    {
+      "name": "newspaper_74fc3b01b2cc4a7e6ca0f1af2b998187_1.jpg-page-0",
+      "value": 0.17682479321956635
+    },
+    {
+      "name": "newspaper_75bb60c3be9959e1be400d6b8281fea1_1.jpg-page-0",
+      "value": 0.2533697187900543
+    },
+    {
+      "name": "newspaper_7746db2ad2ea24c827eac60244375bbf_1.jpg-page-0",
+      "value": 0.23948527872562408
+    },
+    {
+      "name": "newspaper_7d8b25729455f1d061a95ec4269d72dc_1.jpg-page-0",
+      "value": 0.45774874091148376
+    },
+    {
+      "name": "newspaper_8076765115f6c402e81c6bfb48139bc2_1.jpg-page-0",
+      "value": 0.3004898428916931
+    },
+    {
+      "name": "newspaper_87769622e073730af94822416c60c710_1.jpg-page-0",
+      "value": 0.1257110983133316
+    },
+    {
+      "name": "newspaper_95f2062735b213b3d7d471a48d5ec71b_1.jpg-page-0",
+      "value": 0.24831506609916687
+    },
+    {
+      "name": "newspaper_9729b78cbf9f2820b9f257fff7e3171b_1.jpg-page-0",
+      "value": 0.3281099498271942
+    },
+    {
+      "name": "newspaper_9bb9e05d38b370251a4b0a8d070d1d55_1.jpg-page-0",
+      "value": 0.3923620283603668
+    },
+    {
+      "name": "newspaper_9eafddb83b0f7f99c42ff364b080e2c1_1.jpg-page-0",
+      "value": 0.26135778427124023
+    },
+    {
+      "name": "newspaper_a105e3b0ddb10be6a596f76407c79180_1.jpg-page-0",
+      "value": 0.3557109236717224
+    },
+    {
+      "name": "newspaper_a15057349a86850e55b084c235fa2f22_1.jpg-page-0",
+      "value": 0.2824908196926117
+    },
+    {
+      "name": "newspaper_a7666484ee01a811247e52f784164cbb_1.jpg-page-0",
+      "value": 0.17567595839500427
+    },
+    {
+      "name": "newspaper_a9c9e3816aa5cb6866d02c10273dc665_1.jpg-page-0",
+      "value": 0.25005754828453064
+    },
+    {
+      "name": "newspaper_b615618f3cdb0f2c13ffb5865dea799c_1.jpg-page-0",
+      "value": 0.1340922713279724
+    },
+    {
+      "name": "newspaper_b95d1d8eb0d756cc94a5d8b5db3cf69b_1.jpg-page-0",
+      "value": 0.2129243016242981
+    },
+    {
+      "name": "newspaper_baa51a22898f0d534a6c404ba8f12fb1_1.jpg-page-0",
+      "value": 0.5613582134246826
+    },
+    {
+      "name": "newspaper_baa51a22898f0d534a6c404ba8f12fb1_2.jpg-page-0",
+      "value": 0.42592018842697144
+    },
+    {
+      "name": "newspaper_bd75af5f4791aa56ef05ce2443e8a7e0_1.jpg-page-0",
+      "value": 0.32745561003685
+    },
+    {
+      "name": "newspaper_bf784eedb0c377adb9a0f286954af785_1.jpg-page-0",
+      "value": 0.4706547260284424
+    },
+    {
+      "name": "newspaper_bf784eedb0c377adb9a0f286954af785_2.jpg-page-0",
+      "value": 0.5467608571052551
+    },
+    {
+      "name": "newspaper_c0794b9574ba55a589418fa1ae160b9a_1.jpg-page-0",
+      "value": 0.43570592999458313
+    },
+    {
+      "name": "newspaper_c3c88b76543e2caf044c9f7689f23ec9_1.jpg-page-0",
+      "value": 0.24026209115982056
+    },
+    {
+      "name": "newspaper_c79c0c10a5df54b21bccad8f64063ffa_1.jpg-page-0",
+      "value": 0.22853104770183563
+    },
+    {
+      "name": "newspaper_c8e8e00e1b1a70aa44afd1fbdaf59430_1.jpg-page-0",
+      "value": 0.46741706132888794
+    },
+    {
+      "name": "newspaper_c9147e07a59fdd1194da22f2ec07dd1c_1.jpg-page-0",
+      "value": 0.42601099610328674
+    },
+    {
+      "name": "newspaper_c9e9b3e7b8a5f5a5b59304a9924c41b9_1.jpg-page-0",
+      "value": 0.3011879324913025
+    },
+    {
+      "name": "newspaper_d1716a12000a38e1e4c0bf66309558db_1.jpg-page-0",
+      "value": 0.26535364985466003
+    },
+    {
+      "name": "newspaper_d4ed0f39df940849b16439f49873ff5c_1.jpg-page-0",
+      "value": 0.3138486444950104
+    },
+    {
+      "name": "newspaper_d6cd76e5afe881630173bd4921531a4b_1.jpg-page-0",
+      "value": 0.16725966334342957
+    },
+    {
+      "name": "newspaper_d7fe1132386670993aae3dabc6247bc9_1.jpg-page-0",
+      "value": 0.4114091098308563
+    },
+    {
+      "name": "newspaper_d7fe1132386670993aae3dabc6247bc9_2.jpg-page-0",
+      "value": 0.372758150100708
+    },
+    {
+      "name": "newspaper_d84e38031cf03d3fd4649910cf0ecce1_1.jpg-page-0",
+      "value": 0.36075517535209656
+    },
+    {
+      "name": "newspaper_dd99f17cad0992a54fdf424b1c5e86ee_1.jpg-page-0",
+      "value": 0.34747058153152466
+    },
+    {
+      "name": "newspaper_e3842a5681ef54c62a58804adec06c3f_1.jpg-page-0",
+      "value": 0.21359604597091675
+    },
+    {
+      "name": "newspaper_e567840b2e327602422573ccdc1c4275_1.jpg-page-0",
+      "value": 0.3594360649585724
+    },
+    {
+      "name": "newspaper_e6083de4647ef28434cb6a598b073ae4_1.jpg-page-0",
+      "value": 0.33910036087036133
+    },
+    {
+      "name": "newspaper_e62730aaeb9b509119e0c3699ac18201_1.jpg-page-0",
+      "value": 0.24315041303634644
+    },
+    {
+      "name": "newspaper_e6cb1ce916e0b7e120c84db53541a3d3_1.jpg-page-0",
+      "value": 0.2982547879219055
+    },
+    {
+      "name": "newspaper_e6ddb0246224fb8bd8788e6cc7839021_1.jpg-page-0",
+      "value": 0.2791768014431
+    },
+    {
+      "name": "newspaper_e7246d706077d2064a6e667dfc73925e_1.jpg-page-0",
+      "value": 0.3749905526638031
+    },
+    {
+      "name": "newspaper_e81b9b3561d4d4e865ff6713782fd432_1.jpg-page-0",
+      "value": 0.2596793472766876
+    },
+    {
+      "name": "newspaper_eb569707cf5621d4c71d5898216cdb17_1.jpg-page-0",
+      "value": 0.20470724999904633
+    },
+    {
+      "name": "newspaper_ef5c785d9cc21ccf6b73d143f231b5c5_1.jpg-page-0",
+      "value": 0.08398636430501938
+    },
+    {
+      "name": "newspaper_f1de032fb6a25cf85c85c15cb2d2a63a_1.jpg-page-0",
+      "value": 0.3334476351737976
+    },
+    {
+      "name": "newspaper_f36d00fe3544ae72725aac9dc7f19aa8_1.jpg-page-0",
+      "value": 0.3386271893978119
+    },
+    {
+      "name": "newspaper_fe2c8b45b2a086cd75984640bb3080e1_1.jpg-page-0",
+      "value": 0.2137387990951538
+    },
+    {
+      "name": "newspaper_fe5ed29024932fad071afc53807b16ba_1.jpg-page-0",
+      "value": 0.42263510823249817
+    },
+    {
+      "name": "newspaper_fe5ed29024932fad071afc53807b16ba_2.jpg-page-0",
+      "value": 0.3523012697696686
+    },
+    {
+      "name": "newspaper_fe5ed29024932fad071afc53807b16ba_3.jpg-page-0",
+      "value": 0.6013776063919067
+    },
+    {
+      "name": "newspaper_fe5ed29024932fad071afc53807b16ba_4.jpg-page-0",
+      "value": 0.33217036724090576
+    },
+    {
+      "name": "newspaper_fe5ed29024932fad071afc53807b16ba_5.jpg-page-0",
+      "value": 0.5567927360534668
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_10.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_100.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_101.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_102.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_103.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_104.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_11.jpg-page-0",
+      "value": 0.1666666716337204
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_118.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_119.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_12.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_120.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_121.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_122.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_123.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_13.jpg-page-0",
+      "value": 0.12857143580913544
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_14.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_15.jpg-page-0",
+      "value": 0.05000000074505806
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_16.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_30.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_31.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_32.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_33.jpg-page-0",
+      "value": 0.06666667014360428
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_34.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_35.jpg-page-0",
+      "value": 0.11262376606464386
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_36.jpg-page-0",
+      "value": 0.15993399918079376
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_37.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_38.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_52.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_53.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_54.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_55.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_56.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_57.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_58.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_59.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_60.jpg-page-0",
+      "value": 0.1599999964237213
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_74.jpg-page-0",
+      "value": 0.11666666716337204
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_76.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_77.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_78.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_79.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_8.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_80.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_81.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_82.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_9.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_96.jpg-page-0",
+      "value": 0.1599999964237213
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_97.jpg-page-0",
+      "value": 0.11666666716337204
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_98.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_1ba14cb325bc448f7201b20502ecf2b5_99.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_10.jpg-page-0",
+      "value": 0.17673267424106598
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_11.jpg-page-0",
+      "value": 0.06059405952692032
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_12.jpg-page-0",
+      "value": 0.06732673197984695
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_13.jpg-page-0",
+      "value": 0.17673267424106598
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_14.jpg-page-0",
+      "value": 0.044884487986564636
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_15.jpg-page-0",
+      "value": 0.10099010169506073
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_16.jpg-page-0",
+      "value": 0.17673267424106598
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_17.jpg-page-0",
+      "value": 0.06059405952692032
+    },
+    {
+      "name": "notes_9e951846094758afac08c620144e3a76_9.jpg-page-0",
+      "value": 0.07069306820631027
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_118.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_119.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_2.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_23.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_25.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_28.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_29.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_3.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_30.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_4.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_48.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_49.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_50.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_52.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_53.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_68.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_69.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_7.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_70.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_71.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_72.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_73.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_74.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_75.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "notes_f7f010b78016aeebd76e56d9283eb67f_8.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "scihub_AEM.01420-09.pdf_3.jpg-page-0",
+      "value": 0.38085809350013733
+    },
+    {
+      "name": "scihub_TNANO.2007.893575.pdf_0.jpg-page-0",
+      "value": 0.5051249265670776
+    },
+    {
+      "name": "scihub_bloodadvances.2019030924.pdf_3.jpg-page-0",
+      "value": 0.504720151424408
+    },
+    {
+      "name": "scihub_c2gc35284b.pdf_6.jpg-page-0",
+      "value": 0.4696369767189026
+    },
+    {
+      "name": "scihub_carcin%2Fbgh032.pdf_2.jpg-page-0",
+      "value": 0.8086987137794495
+    },
+    {
+      "name": "scihub_fmicb.2019.01892.pdf_2.jpg-page-0",
+      "value": 0.5108636021614075
+    },
+    {
+      "name": "scihub_gbe%2Fevaa098.pdf_0.jpg-page-0",
+      "value": 0.41369637846946716
+    },
+    {
+      "name": "scihub_iccwamtip51612.2020.9317329.pdf_4.jpg-page-0",
+      "value": 0.7028712630271912
+    },
+    {
+      "name": "scihub_ie102256j.pdf_4.jpg-page-0",
+      "value": 0.8131188154220581
+    },
+    {
+      "name": "scihub_ijcac.2012040101.pdf_5.jpg-page-0",
+      "value": 0.7199670076370239
+    },
+    {
+      "name": "scihub_ijop.12033.pdf_5.jpg-page-0",
+      "value": 0.45828449726104736
+    },
+    {
+      "name": "scihub_j.1528-1167.2008.01552.x.pdf_3.jpg-page-0",
+      "value": 0.6135808825492859
+    },
+    {
+      "name": "scihub_j.cbpb.2019.110324.pdf_6.jpg-page-0",
+      "value": 0.5827440023422241
+    },
+    {
+      "name": "scihub_j.coisb.2017.11.013.pdf_0.jpg-page-0",
+      "value": 0.4324169158935547
+    },
+    {
+      "name": "scihub_j.conbuildmat.2019.117698.pdf_5.jpg-page-0",
+      "value": 0.33434486389160156
+    },
+    {
+      "name": "scihub_j.ejcts.2011.04.042.pdf_3.jpg-page-0",
+      "value": 0.6104269623756409
+    },
+    {
+      "name": "scihub_j.jallcom.2003.09.015.pdf_1.jpg-page-0",
+      "value": 0.5576379299163818
+    },
+    {
+      "name": "scihub_j.jmb.2003.10.009.pdf_4.jpg-page-0",
+      "value": 0.7857142686843872
+    },
+    {
+      "name": "scihub_j.jnutbio.2010.09.015.pdf_0.jpg-page-0",
+      "value": 0.4224347472190857
+    },
+    {
+      "name": "scihub_j.physe.2007.10.027.pdf_0.jpg-page-0",
+      "value": 0.5892003178596497
+    },
+    {
+      "name": "scihub_jai.12343.pdf_3.jpg-page-0",
+      "value": 0.4722065031528473
+    },
+    {
+      "name": "scihub_jb%2Fmvh022.pdf_1.jpg-page-0",
+      "value": 0.659174919128418
+    },
+    {
+      "name": "scihub_jee%2Ftoaa103.pdf_2.jpg-page-0",
+      "value": 0.6979097723960876
+    },
+    {
+      "name": "scihub_jgh.13044.pdf_2.jpg-page-0",
+      "value": 0.5879950523376465
+    },
+    {
+      "name": "scihub_jneurosci.16-15-04625.1996.pdf_2.jpg-page-0",
+      "value": 0.338156521320343
+    },
+    {
+      "name": "scihub_journal.pone.0166577.pdf_5.jpg-page-0",
+      "value": 0.2755775451660156
+    },
+    {
+      "name": "scihub_jp.2017.29.pdf_0.jpg-page-0",
+      "value": 0.33623936772346497
+    },
+    {
+      "name": "scihub_jps.21547.pdf_7.jpg-page-0",
+      "value": 0.8213578462600708
+    },
+    {
+      "name": "scihub_md.0000000000002934.pdf_0.jpg-page-0",
+      "value": 0.30453938245773315
+    },
+    {
+      "name": "scihub_mol.66.4.921.pdf_1.jpg-page-0",
+      "value": 0.635490357875824
+    },
+    {
+      "name": "scihub_prrv.2001.0150.pdf_0.jpg-page-0",
+      "value": 0.24476823210716248
+    },
+    {
+      "name": "scihub_pssa.201330411.pdf_0.jpg-page-0",
+      "value": 0.5500022768974304
+    },
+    {
+      "name": "scihub_s00381-021-05138-3.pdf_3.jpg-page-0",
+      "value": 0.47999998927116394
+    },
+    {
+      "name": "scihub_s00586-010-1656-7.pdf_3.jpg-page-0",
+      "value": 0.46971946954727173
+    },
+    {
+      "name": "scihub_s00784-003-0233-4.pdf_1.jpg-page-0",
+      "value": 0.5292673110961914
+    },
+    {
+      "name": "scihub_s00894-012-1568-z.pdf_2.jpg-page-0",
+      "value": 0.69785475730896
+    },
+    {
+      "name": "scihub_s11661-013-1726-7.pdf_2.jpg-page-0",
+      "value": 0.6003960371017456
+    },
+    {
+      "name": "scihub_s12237-014-9873-7.pdf_4.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "scihub_s12935-018-0683-z.pdf_0.jpg-page-0",
+      "value": 0.3005502223968506
+    },
+    {
+      "name": "yanbaopptmerge_0b41cf8ff07c565b2b3eed6b269c036bb41bc38effea5d0d11b90c69d07fac21.pdf_1.jpg-page-0",
+      "value": 0.5287128686904907
+    },
+    {
+      "name": "yanbaopptmerge_0c79d327060dbf9f1582d03c235dadb039533a19091d2c0d24f2ad95d267f79b.pdf_2.jpg-page-0",
+      "value": 0.57553631067276
+    },
+    {
+      "name": "yanbaopptmerge_0dd24976bcc395ad595cf73b411d627e14c19ba0299bb3fa0d8108993d079545.pdf_8.jpg-page-0",
+      "value": 0.4619801938533783
+    },
+    {
+      "name": "yanbaopptmerge_11eeaa31ab6171a9d1ea55aeb0b167e51bffeaa8a83a97cb5e2c3fb7963bf1bf.pdf_7.jpg-page-0",
+      "value": 0.1428571492433548
+    },
+    {
+      "name": "yanbaopptmerge_1c5f17c3dfa38c45b86802b9d014da18.pdf_1372.jpg-page-0",
+      "value": 0.4937058091163635
+    },
+    {
+      "name": "yanbaopptmerge_2325ef43385f09f3c8539d0f817edf9b39a086325d416958e4b481904f9867db.pdf_12.jpg-page-0",
+      "value": 0.38019803166389465
+    },
+    {
+      "name": "yanbaopptmerge_293df2702e017fa1e78f6fe9b42d64ce.pdf_928.jpg-page-0",
+      "value": 0.375
+    },
+    {
+      "name": "yanbaopptmerge_2b8553b00244437fa3e502aa2d3d319ed74459a1e264a4fdd9ecc14ce46609d5.pdf_2.jpg-page-0",
+      "value": 0.34106552600860596
+    },
+    {
+      "name": "yanbaopptmerge_2d0d871a074b4818b16b4425cafac8dd221d91fbde8deae28efba2af50359c50.pdf_1.jpg-page-0",
+      "value": 0.26478075981140137
+    },
+    {
+      "name": "yanbaopptmerge_2f4902871606698497c53ccb18d3fec2f83d05047d883cd65bbce26bfb27bcd2.pdf_1.jpg-page-0",
+      "value": 0.35049504041671753
+    },
+    {
+      "name": "yanbaopptmerge_3aa9b6677e17fd012b0a7a230b9f18db.pdf_1327.jpg-page-0",
+      "value": 0.28382837772369385
+    },
+    {
+      "name": "yanbaopptmerge_3f514841b9bba3e68710fde7af9562d36a424736a356ece18bb5eea86b43ada5.pdf_15.jpg-page-0",
+      "value": 0.37607261538505554
+    },
+    {
+      "name": "yanbaopptmerge_4304d65458262c3161cf5d0440c6a56851222ce1da3d7886cdd2320ce2222c4a.pdf_7.jpg-page-0",
+      "value": 0.3442244231700897
+    },
+    {
+      "name": "yanbaopptmerge_46f23989f000d2a83058955c99cdcc1220d6649f16db4f5719d356aa5ced01bc.pdf_7.jpg-page-0",
+      "value": 0.34240925312042236
+    },
+    {
+      "name": "yanbaopptmerge_51e549c0d1a2669ac976409fcf99ce91908b1e0a07f0fc70d92263abf6d07f18.pdf_1.jpg-page-0",
+      "value": 0.30099010467529297
+    },
+    {
+      "name": "yanbaopptmerge_5473246b8da789b9bfdeef53a70c4d72afd480415d5cbcedb83d105856710328.pdf_8.jpg-page-0",
+      "value": 0.5726072788238525
+    },
+    {
+      "name": "yanbaopptmerge_56df5dde920f95a11bf5b9d69353fbd82045f3fec4f553bc928a0b50c136f99a.pdf_3.jpg-page-0",
+      "value": 0.48882603645324707
+    },
+    {
+      "name": "yanbaopptmerge_593a9a157e4d56a5a57eb14f1d1beec5.pdf_944.jpg-page-0",
+      "value": 0.26386138796806335
+    },
+    {
+      "name": "yanbaopptmerge_6b6ed54523980841c1a28a656d0295ec638cf50c991c16cafec715237c83919f.pdf_31.jpg-page-0",
+      "value": 0.41463932394981384
+    },
+    {
+      "name": "yanbaopptmerge_6ffacf656934424ef14b39750f1d93926693dd8b7fa925859f1349d253ba2566.pdf_2.jpg-page-0",
+      "value": 0.45020169019699097
+    },
+    {
+      "name": "yanbaopptmerge_70a45bf10fb90ae0c91d44a11e0a97a8f9515d85626b54eb50a80b6146e5c2bf.pdf_10.jpg-page-0",
+      "value": 0.1864214986562729
+    },
+    {
+      "name": "yanbaopptmerge_7c6e8be0695a66c716176c95257a76e940f7d08d8227b37e9ee47142eca6b448.pdf_5.jpg-page-0",
+      "value": 0.4304455518722534
+    },
+    {
+      "name": "yanbaopptmerge_903cf6cd7820b5463e95c5aaab9f16134f9853cd7963567497337527e73b9bcc.pdf_7.jpg-page-0",
+      "value": 0.38886138796806335
+    },
+    {
+      "name": "yanbaopptmerge_9081a70ff98b3e7d640660a9412c447d.pdf_1287.jpg-page-0",
+      "value": 0.15079207718372345
+    },
+    {
+      "name": "yanbaopptmerge_9882208cc25205150eeb522e78541631.pdf_501.jpg-page-0",
+      "value": 0.3131188154220581
+    },
+    {
+      "name": "yanbaopptmerge_PattPatelCh12.pdf_27.jpg-page-0",
+      "value": 0.6000000238418579
+    },
+    {
+      "name": "yanbaopptmerge_SE05.pdf_7.jpg-page-0",
+      "value": 0.13333334028720856
+    },
+    {
+      "name": "yanbaopptmerge_SE14.pdf_1.jpg-page-0",
+      "value": 0.2666666805744171
+    },
+    {
+      "name": "yanbaopptmerge_SE17.pdf_10.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "yanbaopptmerge_SE20.pdf_2.jpg-page-0",
+      "value": 0.4099999964237213
+    },
+    {
+      "name": "yanbaopptmerge_a822e4cc59988e86ed9654dff1252cc3593961abf1aee12087c522068f2c54e2.pdf_2.jpg-page-0",
+      "value": 0.365965336561203
+    },
+    {
+      "name": "yanbaopptmerge_abef2a4978ae4d13e931f0392502bd40.pdf_1130.jpg-page-0",
+      "value": 0.22660891711711884
+    },
+    {
+      "name": "yanbaopptmerge_abef2a4978ae4d13e931f0392502bd40.pdf_1287.jpg-page-0",
+      "value": 0.1608910858631134
+    },
+    {
+      "name": "yanbaopptmerge_aec1bf4ddb8fb4996b0512e90b3bfb31c9b151919f5d7b4a4f658f4b1f762b9e.pdf_2.jpg-page-0",
+      "value": 0.35332390666007996
+    },
+    {
+      "name": "yanbaopptmerge_b96c77724a4dcf5e1c535d2d4e8f77b26255cf5c4561d37e11fcff640a74919a.pdf_7.jpg-page-0",
+      "value": 0.4019823670387268
+    },
+    {
+      "name": "yanbaopptmerge_ba38a4c7e8f15937f3ae537cf2de2cd5.pdf_104.jpg-page-0",
+      "value": 0.656105637550354
+    },
+    {
+      "name": "yanbaopptmerge_baa6d02928efcac46ccf7dfd3859de565cfb0bea918ae0ec0eed50944a7c20b4.pdf_11.jpg-page-0",
+      "value": 0.2706930637359619
+    },
+    {
+      "name": "yanbaopptmerge_bde265c4886a63cc9a96575991522f2abfce961325fcd4884fabd9a79c423ffa.pdf_2.jpg-page-0",
+      "value": 0.4813295602798462
+    },
+    {
+      "name": "yanbaopptmerge_c75b0a56d8f1b31d04fbe97f776244f25f5238f6cada15fb4007f8bfb17bdf9f.pdf_1.jpg-page-0",
+      "value": 0.08712871372699738
+    },
+    {
+      "name": "yanbaopptmerge_c894b375daca22d041c8a35946295d0a73d6589ad7c3d1d39d8664a2666372bf.pdf_10.jpg-page-0",
+      "value": 0.38349834084510803
+    },
+    {
+      "name": "yanbaopptmerge_cf41c3f5ddc7509959ef643ca6308d5ae90f3e87708855d6770df564b749fe7b.pdf_3.jpg-page-0",
+      "value": 0.4101828932762146
+    },
+    {
+      "name": "yanbaopptmerge_d346b889f1d85c61950a71d4b0ac2752.pdf_89.jpg-page-0",
+      "value": 0.6756600737571716
+    },
+    {
+      "name": "yanbaopptmerge_d4fc7cba428625974e93183edfccea73.pdf_89.jpg-page-0",
+      "value": 0.7237926721572876
+    },
+    {
+      "name": "yanbaopptmerge_e3b48594d5a2a6dc86b51244737f24867a0c1781e9f0e4fb52d96bbc6f9d95c7.pdf_3.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_e60b3b61281e87ddf42f9321a9e6ef9d.pdf_159.jpg-page-0",
+      "value": 0.47999998927116394
+    },
+    {
+      "name": "yanbaopptmerge_ee19df4a08e3d07ac1190446f5b3dd3f25438c661b87cf4fbb9040ac5fac443b.pdf_1.jpg-page-0",
+      "value": 0.4669966995716095
+    },
+    {
+      "name": "yanbaopptmerge_fa82190001969f29ed969fe5034956ba12f782219a8345468bb6593cba7ffc48.pdf_2.jpg-page-0",
+      "value": 0.3941727876663208
+    },
+    {
+      "name": "yanbaopptmerge_m3_Unit_1_Where_did_you_go.pdf_5.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1015.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1020.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1080.jpg-page-0",
+      "value": 0.1666666716337204
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1090.jpg-page-0",
+      "value": 0.5
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1120.jpg-page-0",
+      "value": 0.4818069338798523
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_120.jpg-page-0",
+      "value": 0.18052805960178375
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1220.jpg-page-0",
+      "value": 0.1666666716337204
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1225.jpg-page-0",
+      "value": 0.2429959625005722
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1235.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1360.jpg-page-0",
+      "value": 0.28267326951026917
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1375.jpg-page-0",
+      "value": 0.1262376308441162
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_145.jpg-page-0",
+      "value": 0.4333333373069763
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1465.jpg-page-0",
+      "value": 0.10148514807224274
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1475.jpg-page-0",
+      "value": 0.6752475500106812
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_150.jpg-page-0",
+      "value": 0.5767326951026917
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1615.jpg-page-0",
+      "value": 0.0750235766172409
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1685.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1695.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1710.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1745.jpg-page-0",
+      "value": 0.9554455280303955
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1810.jpg-page-0",
+      "value": 0.2666666805744171
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1820.jpg-page-0",
+      "value": 0.5
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1825.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_1835.jpg-page-0",
+      "value": 0.1262376308441162
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_2400.jpg-page-0",
+      "value": 0.4046204686164856
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_2460.jpg-page-0",
+      "value": 0.2800000011920929
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_2545.jpg-page-0",
+      "value": 0.15000000596046448
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_2825.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_2845.jpg-page-0",
+      "value": 0.10000000149011612
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_2950.jpg-page-0",
+      "value": 0.5910065770149231
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_3125.jpg-page-0",
+      "value": 0.037128712981939316
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_3150.jpg-page-0",
+      "value": 0.5
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_3215.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_3290.jpg-page-0",
+      "value": 0.591914176940918
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_335.jpg-page-0",
+      "value": 0.3478547930717468
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_3395.jpg-page-0",
+      "value": 0.9666666388511658
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_3930.jpg-page-0",
+      "value": 0.44999998807907104
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4000.jpg-page-0",
+      "value": 0.8999999761581421
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4010.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4020.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4050.jpg-page-0",
+      "value": 0.4193069338798523
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4095.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4115.jpg-page-0",
+      "value": 0.3499999940395355
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4125.jpg-page-0",
+      "value": 0.043316829949617386
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4150.jpg-page-0",
+      "value": 0.056105609983205795
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4185.jpg-page-0",
+      "value": 0.9252475500106812
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4245.jpg-page-0",
+      "value": 0.1507425755262375
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4275.jpg-page-0",
+      "value": 0.22499999403953552
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4285.jpg-page-0",
+      "value": 0.5
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4310.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4460.jpg-page-0",
+      "value": 0.5678218007087708
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_455.jpg-page-0",
+      "value": 0.15708070993423462
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4565.jpg-page-0",
+      "value": 0.4884488582611084
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4570.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4615.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4630.jpg-page-0",
+      "value": 0.3499999940395355
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4635.jpg-page-0",
+      "value": 0.15000000596046448
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4660.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4710.jpg-page-0",
+      "value": 0.012500000186264515
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4750.jpg-page-0",
+      "value": 0.4000000059604645
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4770.jpg-page-0",
+      "value": 0.6056105494499207
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4820.jpg-page-0",
+      "value": 0.30000001192092896
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_485.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4900.jpg-page-0",
+      "value": 0.3333333432674408
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_495.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_4975.jpg-page-0",
+      "value": 0.8500000238418579
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5.jpg-page-0",
+      "value": 0.03118811920285225
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5070.jpg-page-0",
+      "value": 0.004809052217751741
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5175.jpg-page-0",
+      "value": 1.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_520.jpg-page-0",
+      "value": 0.46666666865348816
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5205.jpg-page-0",
+      "value": 0.502970278263092
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5245.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5300.jpg-page-0",
+      "value": 0.0710396021604538
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5305.jpg-page-0",
+      "value": 0.15000000596046448
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5345.jpg-page-0",
+      "value": 0.8666666746139526
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5350.jpg-page-0",
+      "value": 0.8294554352760315
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5435.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5540.jpg-page-0",
+      "value": 0.8626237511634827
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5555.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5560.jpg-page-0",
+      "value": 0.5049505233764648
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5620.jpg-page-0",
+      "value": 0.2712046205997467
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5675.jpg-page-0",
+      "value": 0.28954896330833435
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5685.jpg-page-0",
+      "value": 0.21881188452243805
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5885.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5930.jpg-page-0",
+      "value": 0.949999988079071
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5940.jpg-page-0",
+      "value": 0.08836633712053299
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5945.jpg-page-0",
+      "value": 0.3499999940395355
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_5980.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_6025.jpg-page-0",
+      "value": 0.8666666746139526
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_6070.jpg-page-0",
+      "value": 0.23333333432674408
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_6130.jpg-page-0",
+      "value": 0.11361385881900787
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_6170.jpg-page-0",
+      "value": 0.3757425844669342
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_620.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_685.jpg-page-0",
+      "value": 1.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_70.jpg-page-0",
+      "value": 0.4000000059604645
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_725.jpg-page-0",
+      "value": 0.4833333194255829
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_745.jpg-page-0",
+      "value": 0.3499999940395355
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_750.jpg-page-0",
+      "value": 0.17673267424106598
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_770.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_805.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_820.jpg-page-0",
+      "value": 0.3013201355934143
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_825.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_840.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_870.jpg-page-0",
+      "value": 0.11221121996641159
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_90.jpg-page-0",
+      "value": 0.20000000298023224
+    },
+    {
+      "name": "yanbaopptmerge_yanbaoPPT_935.jpg-page-0",
+      "value": 0.22722771763801575
+    },
+    {
+      "name": "yanbaor2_001c0e4e970dcae8f91980266459d41aa0fd9c54245320b5d41d9651c4fc575d.pdf_26.jpg-page-0",
+      "value": 0.5360679030418396
+    },
+    {
+      "name": "yanbaor2_001c0e4e970dcae8f91980266459d41aa0fd9c54245320b5d41d9651c4fc575d.pdf_46.jpg-page-0",
+      "value": 0.38333332538604736
+    },
+    {
+      "name": "yanbaor2_0071908e787f90267682e19ef093bb18dda6e1c1614534c445ddd62c425b3a94.pdf_36.jpg-page-0",
+      "value": 0.43246111273765564
+    },
+    {
+      "name": "yanbaor2_0071908e787f90267682e19ef093bb18dda6e1c1614534c445ddd62c425b3a94.pdf_44.jpg-page-0",
+      "value": 0.6036294102668762
+    },
+    {
+      "name": "yanbaor2_07331c0c18a9d47c7318a99860c8ccf95726fefa629d6e446677b30938f2f14f.pdf_18.jpg-page-0",
+      "value": 0.4673149585723877
+    },
+    {
+      "name": "yanbaor2_0a47b1d6b03103a249101f13e89f2226a273a75378d8110d46eb42c1cfa65ffd.pdf_10.jpg-page-0",
+      "value": 0.3400000035762787
+    },
+    {
+      "name": "yanbaor2_0a49fd5fc362650bf30a0a9391a2d2f091e751ba3d51da18e630e23856905c63.pdf_8.jpg-page-0",
+      "value": 0.7938118577003479
+    },
+    {
+      "name": "yanbaor2_0aa9545ccbc482a37e3b55c96897f0f24cee08bb80c7addfb0c219814af44a3b.pdf_27.jpg-page-0",
+      "value": 0.42500001192092896
+    },
+    {
+      "name": "yanbaor2_0ef01b835238626f3589faa671abdfb832f2b98987eadad53cb2e35699dcc039.pdf_13.jpg-page-0",
+      "value": 0.5074257254600525
+    },
+    {
+      "name": "yanbaor2_0ef01b835238626f3589faa671abdfb832f2b98987eadad53cb2e35699dcc039.pdf_18.jpg-page-0",
+      "value": 0.35911551117897034
+    },
+    {
+      "name": "yanbaor2_1492d25d79af850815ea449254ea62418c3c7fd582792b5191e1879671ba1219.pdf_88.jpg-page-0",
+      "value": 0.32499998807907104
+    },
+    {
+      "name": "yanbaor2_1cb2b2a2c6e3a1157a6f2876205bbeaa4d3958d0482e9cdc88dd2c002ed1ffc1.pdf_61.jpg-page-0",
+      "value": 0.40429043769836426
+    },
+    {
+      "name": "yanbaor2_22297b092df74748ad1cd50ad9045024d5bac9f423854a04cc8dbfb428c4deb7.pdf_5.jpg-page-0",
+      "value": 0.17648515105247498
+    },
+    {
+      "name": "yanbaor2_2bb182d656d09ada0534548b3ed375c020750a3e5e949d4ea0ea20536bcbeb20.pdf_0.jpg-page-0",
+      "value": 0.22805280983448029
+    },
+    {
+      "name": "yanbaor2_2c5836d2ee86c7815050e5d75632777fb38f91911d81ddc758249c7c0b8a366a.pdf_9.jpg-page-0",
+      "value": 0.28886139392852783
+    },
+    {
+      "name": "yanbaor2_323ab38d3b3b9a44837779e3c7b4a2f7088d9e0eb6c966d4d596faf6c01011a6.pdf_2.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaor2_37eeaab2c1abfc6443b9781c9bca92468c4a8a9aac837e2523122b1ae632b74e.pdf_13.jpg-page-0",
+      "value": 0.6000000238418579
+    },
+    {
+      "name": "yanbaor2_3dbe3df8f74dd8f975a3b13ca378ecbdf8f8cc6ce37ffdce349004bdf5b4628c.pdf_11.jpg-page-0",
+      "value": 0.37607261538505554
+    },
+    {
+      "name": "yanbaor2_3e1be78252e2fdfe1adf12bba38ec2a7b30699e152d61269aa6e5827f5adcc35.pdf_13.jpg-page-0",
+      "value": 0.23799504339694977
+    },
+    {
+      "name": "yanbaor2_46d1322f4302f190a3c973320545b892f3a83f0931f1e3ac158069c324049979.pdf_8.jpg-page-0",
+      "value": 0.40177902579307556
+    },
+    {
+      "name": "yanbaor2_4862cd850679e945a98c54c8d4c37be0154b5790d2c32da35d0f5ca0be413693.pdf_9.jpg-page-0",
+      "value": 0.4126237630844116
+    },
+    {
+      "name": "yanbaor2_4e9a940b90058ba924ee3a9a659167960bfe5b595134f556aad6a9d2ff004f73.pdf_1.jpg-page-0",
+      "value": 0.3038283884525299
+    },
+    {
+      "name": "yanbaor2_4f58b4bb233e5ccdf512d286d177cb94e6f6ae91d5b089ac841727067a20a510.pdf_3.jpg-page-0",
+      "value": 0.550000011920929
+    },
+    {
+      "name": "yanbaor2_533f881f4aabe82c1477b97463169dc51256487aa3770f2f47a32c3a16723478.pdf_18.jpg-page-0",
+      "value": 0.36361387372016907
+    },
+    {
+      "name": "yanbaor2_5e0df1ef7b30d8982c5cd3665f60d5b7a92d3ba7bb1b76c61b8a01777cebc7a6.pdf_19.jpg-page-0",
+      "value": 0.25
+    },
+    {
+      "name": "yanbaor2_5e780ffd1efcf79950df199abb69a114dd782d5b549ecd025b640f29a4feabef.pdf_2.jpg-page-0",
+      "value": 0.675990104675293
+    },
+    {
+      "name": "yanbaor2_6895262fb7b86d4e1dbb324a50fae4294eaf0713d2e1796866cb9f7ecb88d644.pdf_11.jpg-page-0",
+      "value": 0.1820800006389618
+    },
+    {
+      "name": "yanbaor2_6a016aa81b2fc8281a2a51bae6417769e4cae7fbe161cbc4351596b82e7002fa.pdf_8.jpg-page-0",
+      "value": 0.45049506425857544
+    },
+    {
+      "name": "yanbaor2_75f9d788216f5e26469269defcd466aa8d250542b2142c72782103913bc6e61b.pdf_6.jpg-page-0",
+      "value": 0.4757425785064697
+    },
+    {
+      "name": "yanbaor2_782b0e71579c32d2a6c6c04494d8193c775e8c865b80b7252008ef661dae96b9.pdf_15.jpg-page-0",
+      "value": 0.46549779176712036
+    },
+    {
+      "name": "yanbaor2_7c46e933c6b7fa7ceab9503da9546f676d1175f4499cd8b1f90a58b1c33f4498.pdf_65.jpg-page-0",
+      "value": 0.20990099012851715
+    },
+    {
+      "name": "yanbaor2_7d1e64f512712a29658dd6c775c5120c90dda9a50698b42b953882a8a8020dbb.pdf_57.jpg-page-0",
+      "value": 0.3384752571582794
+    },
+    {
+      "name": "yanbaor2_7f386f737cb55cffa10c8321a94bd38d7169cd69b3b253b9e2e502c12a68feea.pdf_15.jpg-page-0",
+      "value": 0.03919141739606857
+    },
+    {
+      "name": "yanbaor2_8072f7ea9b3083ff5e8f9bfbba591771e61115039c96fda1c8ea391a7570f098.pdf_13.jpg-page-0",
+      "value": 0.5724422335624695
+    },
+    {
+      "name": "yanbaor2_8072f7ea9b3083ff5e8f9bfbba591771e61115039c96fda1c8ea391a7570f098.pdf_5.jpg-page-0",
+      "value": 0.443928062915802
+    },
+    {
+      "name": "yanbaor2_864cbd5f0adeb98dea6cf7105cc8dfb272a9be974757633b2db8cf3f9a11c92b.pdf_33.jpg-page-0",
+      "value": 0.3757875859737396
+    },
+    {
+      "name": "yanbaor2_864cbd5f0adeb98dea6cf7105cc8dfb272a9be974757633b2db8cf3f9a11c92b.pdf_40.jpg-page-0",
+      "value": 0.3223550319671631
+    },
+    {
+      "name": "yanbaor2_89c3718f5a45179ef57a5063c6df36fc2c9b7e3ab4275f4905ed89f1c17232ea.pdf_14.jpg-page-0",
+      "value": 0.5389371514320374
+    },
+    {
+      "name": "yanbaor2_8fc66512196d9d6f66f09955f83a7f693cf2e31c411da8ce6cdfbe9c39f90ff6.pdf_8.jpg-page-0",
+      "value": 0.2925742566585541
+    },
+    {
+      "name": "yanbaor2_930d8c81854d7450cd35af7b050fed88e4e461b4f0ac0dab07e3232a4e703a06.pdf_14.jpg-page-0",
+      "value": 0.35948020219802856
+    },
+    {
+      "name": "yanbaor2_965b491c51a8fcd511bcb12adcebca5836ab96fe8742a5d04d12669faec90531.pdf_2.jpg-page-0",
+      "value": 0.5259901285171509
+    },
+    {
+      "name": "yanbaor2_9674ff37a7d4ea8fb80538bf2d8193dd0dca8f838bdd51f4862769746e996126.pdf_26.jpg-page-0",
+      "value": 0.4475921094417572
+    },
+    {
+      "name": "yanbaor2_9be04f6bcbe2c6afc83f0751eb05e361872f9673ccd4bec49cf844c66f34bff0.pdf_19.jpg-page-0",
+      "value": 0.7015151381492615
+    },
+    {
+      "name": "yanbaor2_a019c26b871cb84ec8fecb95b55ec68f2edec0db3c504de5fdaa72caba95d995.pdf_3.jpg-page-0",
+      "value": 0.41699668765068054
+    },
+    {
+      "name": "yanbaor2_a6a80b48db3438977793c75185e980ee4aff22f79083427cb03ea4134f7b241f.pdf_67.jpg-page-0",
+      "value": 0.6339768767356873
+    },
+    {
+      "name": "yanbaor2_a6b1184da1f8167144544b92fff11726f5218e5ca106c86dc00436c14725d7b9.pdf_5.jpg-page-0",
+      "value": 0.3948019742965698
+    },
+    {
+      "name": "yanbaor2_afad9eb86f2a04271428aa988aec7d1949713bb5a5ce5c0cf26f320650b7966a.pdf_14.jpg-page-0",
+      "value": 0.48762375116348267
+    },
+    {
+      "name": "yanbaor2_b2f600a88fc341bdd0b2b58b8bd4b0ab448277b06e167aa879b838e8139db19d.pdf_17.jpg-page-0",
+      "value": 0.5157865881919861
+    },
+    {
+      "name": "yanbaor2_b5cf8249bdf8eebf7625f4b0e39ad38d684d7797ac7bf1617452cd0565ca28a2.pdf_29.jpg-page-0",
+      "value": 0.499858558177948
+    },
+    {
+      "name": "yanbaor2_b997efc056ce194205f46dbd1c669eb32da025c4a3055c88d5f19ce434040b7b.pdf_46.jpg-page-0",
+      "value": 0.3104431927204132
+    },
+    {
+      "name": "yanbaor2_bc193526614fd5857f7b5254e67bced76222cf3396b01e516303b92609a20075.pdf_14.jpg-page-0",
+      "value": 0.0
+    },
+    {
+      "name": "yanbaor2_bedda45af71c9703274cf8b2c62a772e6be615c355d2b255d9408b1b40b606de.pdf_3.jpg-page-0",
+      "value": 0.3055516183376312
+    },
+    {
+      "name": "yanbaor2_bfe5f11c4ad2e94d966ef6801dc992816f42c9150e2be42b008c95f59713e901.pdf_137.jpg-page-0",
+      "value": 0.16548389196395874
+    },
+    {
+      "name": "yanbaor2_bfe5f11c4ad2e94d966ef6801dc992816f42c9150e2be42b008c95f59713e901.pdf_139.jpg-page-0",
+      "value": 0.2130628228187561
+    },
+    {
+      "name": "yanbaor2_c1ba77569ecdcc4e0ce5903a503f817fe347683a893426dc4acefd8b8770f047.pdf_9.jpg-page-0",
+      "value": 0.5820721387863159
+    },
+    {
+      "name": "yanbaor2_c23ab881b15885d295fd4ea93d0c36a058ba1a53a36574087ddd39df2811d34d.pdf_3.jpg-page-0",
+      "value": 0.5222064852714539
+    },
+    {
+      "name": "yanbaor2_cb862501e720c830960aa5387f65d10961604a63f0491bbdc7fb71257cbd2112.pdf_96.jpg-page-0",
+      "value": 0.04592409357428551
+    },
+    {
+      "name": "yanbaor2_d2326887a8905dfa7f5745e04a3a526735a59d741feac1923a0c0926e48ed691.pdf_130.jpg-page-0",
+      "value": 0.11421499401330948
+    },
+    {
+      "name": "yanbaor2_d3c82bef4d6b8f3a9d1c1b3e7a02d8ba86c91e585d83766d70b6f540456a6a54.pdf_4.jpg-page-0",
+      "value": 0.4469943344593048
+    },
+    {
+      "name": "yanbaor2_d599e33e54376640020110ac1733ccdde8c6323d5d5f0c3ca8cb395dc6e46cf5.pdf_7.jpg-page-0",
+      "value": 0.07732927054166794
+    },
+    {
+      "name": "yanbaor2_decf70a006d6f8f66725ead2f27b248a911016d258a236cefcdd26c6aff1d463.pdf_40.jpg-page-0",
+      "value": 0.6199355721473694
+    },
+    {
+      "name": "yanbaor2_e2f6b15971d68a7f081216b0c0d8538cab413124fc8911f4db4fbb3d17f167c4.pdf_14.jpg-page-0",
+      "value": 0.3193069398403168
+    },
+    {
+      "name": "yanbaor2_ea86fd46182ff9b675775645ecaf43782b996ffaeeb09c679f56a47aabfbf6b7.pdf_9.jpg-page-0",
+      "value": 0.4452475309371948
+    },
+    {
+      "name": "yanbaor2_ec10ef335b55af1612e6ab51b5ebdff506d496da9eb8c17c74fe2751661c22f7.pdf_1.jpg-page-0",
+      "value": 0.1514851450920105
+    },
+    {
+      "name": "yanbaor2_ey-better-pension-outcomes-reimagined-20180926.pdf_1.jpg-page-0",
+      "value": 0.21831683814525604
+    },
+    {
+      "name": "yanbaor2_ey-beyond-traditional-corporate-governance.pdf_1.jpg-page-0",
+      "value": 0.2809900939464569
+    },
+    {
+      "name": "yanbaor2_ey-digital-state-tax-article.pdf_0.jpg-page-0",
+      "value": 0.3465346395969391
+    },
+    {
+      "name": "yanbaor2_ey-drug-device-combination-products-whitepaper.pdf_6.jpg-page-0",
+      "value": 0.5699669718742371
+    },
+    {
+      "name": "yanbaor2_ey-financial-sustainability-whitepaper.pdf_17.jpg-page-0",
+      "value": 0.6190904974937439
+    },
+    {
+      "name": "yanbaor2_ey-global-fintech-adoption-index.pdf_30.jpg-page-0",
+      "value": 0.5006600618362427
+    },
+    {
+      "name": "yanbaor2_ey-how-can-all-benefit-from-green-leadership-by-the-few.pdf_21.jpg-page-0",
+      "value": 0.5034836530685425
+    },
+    {
+      "name": "yanbaor2_ey-how-covid-19-has-triggered-a-sprint-toward-smarter-health-care.pdf_5.jpg-page-0",
+      "value": 0.40495049953460693
+    },
+    {
+      "name": "yanbaor2_ey-icl-barking-and-dagenham-case-study.pdf_10.jpg-page-0",
+      "value": 0.09020902216434479
+    },
+    {
+      "name": "yanbaor2_ey-icl-harnessing-the-power-of-data.pdf_13.jpg-page-0",
+      "value": 0.2752475142478943
+    },
+    {
+      "name": "yanbaor2_ey-is-your-next-step-about-changing-direction-or-directing-change.pdf_4.jpg-page-0",
+      "value": 0.5784653425216675
+    },
+    {
+      "name": "yanbaor2_ey-political-guidelines-next-commission.pdf_14.jpg-page-0",
+      "value": 0.7605184316635132
+    },
+    {
+      "name": "yanbaor2_ey-report-strategy-for-a-tech-driven-gba-zh.pdf_16.jpg-page-0",
+      "value": 0.14049504697322845
+    },
+    {
+      "name": "yanbaor2_f197117877bfd892faf3c89f14c35ae92c3150ec7affb49dd51d8f8ce202604a.pdf_22.jpg-page-0",
+      "value": 0.5342055559158325
+    },
+    {
+      "name": "yanbaor2_f285730f47c99283aba722e704b936c4362d8c175463dc13de640fc54e8887ac.pdf_75.jpg-page-0",
+      "value": 0.5715758800506592
+    },
+    {
+      "name": "yanbaor2_f832cad1f46c067198e9df95ae7b150213f16805037c1a5725e72245010d3e97.pdf_3.jpg-page-0",
+      "value": 0.21002475917339325
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_1295.jpg-page-0",
+      "value": 0.25312262773513794
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_1332.jpg-page-0",
+      "value": 0.2745874524116516
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_1517.jpg-page-0",
+      "value": 0.4992574155330658
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_1760.jpg-page-0",
+      "value": 0.18257425725460052
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_2098.jpg-page-0",
+      "value": 0.6333333253860474
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_2108.jpg-page-0",
+      "value": 0.6338613629341125
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_2172.jpg-page-0",
+      "value": 0.3240511417388916
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_2432.jpg-page-0",
+      "value": 0.18131187558174133
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_3074.jpg-page-0",
+      "value": 0.41080859303474426
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_3282.jpg-page-0",
+      "value": 0.19273534417152405
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_3302.jpg-page-0",
+      "value": 0.5955445766448975
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_3604.jpg-page-0",
+      "value": 0.2582089304924011
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_3745.jpg-page-0",
+      "value": 0.5127337574958801
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_4618.jpg-page-0",
+      "value": 0.19326183199882507
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_467.jpg-page-0",
+      "value": 0.4000000059604645
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_469.jpg-page-0",
+      "value": 0.2132602483034134
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_5.jpg-page-0",
+      "value": 0.46259626746177673
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_5544.jpg-page-0",
+      "value": 0.7925742864608765
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_5627.jpg-page-0",
+      "value": 0.18292079865932465
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_569.jpg-page-0",
+      "value": 0.4749999940395355
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_5846.jpg-page-0",
+      "value": 0.19476662576198578
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_5877.jpg-page-0",
+      "value": 0.6333333253860474
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_5946.jpg-page-0",
+      "value": 0.31111112236976624
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_6065.jpg-page-0",
+      "value": 0.08847241848707199
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_6148.jpg-page-0",
+      "value": 0.5893861651420593
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_6570.jpg-page-0",
+      "value": 0.17499999701976776
+    },
+    {
+      "name": "yanbaor2_yanbaoPPT_916.jpg-page-0",
+      "value": 0.5285714268684387
+    }
+  ],
+  "intersecting_labels": [
+    "picture",
+    "section_header",
+    "text",
+    "footnote",
+    "caption",
+    "table",
+    "page_header",
+    "page_footer",
+    "formula"
+  ],
+  "mAP_stats": {
+    "bins": [
+      0.0,
+      0.05,
+      0.1,
+      0.15000000000000002,
+      0.2,
+      0.25,
+      0.30000000000000004,
+      0.35000000000000003,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6000000000000001,
+      0.65,
+      0.7000000000000001,
+      0.75,
+      0.8,
+      0.8500000000000001,
+      0.9,
+      0.9500000000000001,
+      1.0
+    ],
+    "hist": [
+      143.0,
+      38.0,
+      51.0,
+      70.0,
+      66.0,
+      69.0,
+      94.0,
+      65.0,
+      84.0,
+      66.0,
+      56.0,
+      48.0,
+      35.0,
+      17.0,
+      12.0,
+      8.0,
+      5.0,
+      5.0,
+      3.0,
+      4.0
+    ],
+    "mean": 0.3158033474782904,
+    "median": 0.3131188154220581,
+    "std": 0.21519594393553176,
+    "total": 939
+  },
+  "pred_labels": {
+    "caption": 321,
+    "code": 1,
+    "document_index": 40,
+    "footnote": 54,
+    "formula": 181,
+    "list_item": 1342,
+    "page_footer": 601,
+    "page_header": 752,
+    "paragraph": 43,
+    "picture": 1827,
+    "section_header": 2529,
+    "table": 438,
+    "text": 14831
+  },
+  "true_labels": {
+    "caption": 1014,
+    "footnote": 333,
+    "formula": 353,
+    "page_footer": 1210,
+    "page_header": 1271,
+    "picture": 989,
+    "section_header": 2956,
+    "table": 428,
+    "text": 10698
+  }
+}
