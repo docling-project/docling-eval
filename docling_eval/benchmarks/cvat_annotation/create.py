@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, Generator, List, Optional, Tuple, cast
 
 import xmltodict  # type: ignore[import]
 from datasets import Dataset, load_dataset
@@ -818,7 +818,7 @@ def from_cvat_to_docling_document(
     annotation_filenames: List[Path],
     overview: AnnotationOverview,
     image_scale: float = 1.0,
-) -> Tuple[str, AnnotatedImage, Optional[DoclingDocument]]:
+) -> Generator[Tuple[str, AnnotatedImage, Optional[DoclingDocument]]]:
 
     for annot_file in annotation_filenames:
 

@@ -1,7 +1,7 @@
 """Models for the labels types."""
 
-import os
 import json
+import os
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -90,31 +90,31 @@ def rgb_to_hex(r, g, b):
 
 class BenchMarkDirs(BaseModel):
 
-    source_dir: Path = ""
-    target_dir: Path = ""
+    source_dir: Path = Path("")
+    target_dir: Path = Path("")
 
-    tasks_dir: Path = ""
-    bins_dir: Path = ""
+    tasks_dir: Path = Path("")
+    bins_dir: Path = Path("")
 
-    annotations_dir: Path = ""
-    annotations_zip_dir: Path = ""
-    annotations_xml_dir: Path = ""
+    annotations_dir: Path = Path("")
+    annotations_zip_dir: Path = Path("")
+    annotations_xml_dir: Path = Path("")
 
-    dataset_dir: Path = ""
-    dataset_train_dir: Path = ""
-    dataset_test_dir: Path = ""
+    dataset_dir: Path = Path("")
+    dataset_train_dir: Path = Path("")
+    dataset_test_dir: Path = Path("")
 
-    page_imgs_dir: Path = ""
+    page_imgs_dir: Path = Path("")
 
-    json_true_dir: Path = ""
-    json_pred_dir: Path = ""
-    json_anno_dir: Path = ""
+    json_true_dir: Path = Path("")
+    json_pred_dir: Path = Path("")
+    json_anno_dir: Path = Path("")
 
-    html_anno_dir: Path = ""
-    html_viz_dir: Path = ""
+    html_anno_dir: Path = Path("")
+    html_viz_dir: Path = Path("")
 
-    project_desc_file: Path = ""
-    overview_file: Path = ""
+    project_desc_file: Path = Path("")
+    overview_file: Path = Path("")
 
     def set_up_directory_structure(self, source: Path, target: Path) -> "BenchMarkDirs":
 
@@ -189,10 +189,10 @@ class AnnotatedDoc(BaseModel):
 
     mime_type: str = ""
 
-    true_file: Path = ""
-    pred_file: Path = ""
+    true_file: Path = Path("")
+    pred_file: Path = Path("")
 
-    bin_file: Path = ""
+    bin_file: Path = Path("")
 
     doc_hash: str = ""
     doc_name: str = ""
@@ -202,11 +202,11 @@ class AnnotatedImage(BaseModel):
 
     mime_type: str = ""
 
-    true_file: Path = ""
-    pred_file: Path = ""
+    true_file: Path = Path("")
+    pred_file: Path = Path("")
 
-    bin_file: Path = ""
-    bucket_dir: Path = ""
+    bin_file: Path = Path("")
+    bucket_dir: Path = Path("")
 
     doc_hash: str = ""
     doc_name: str = ""
@@ -215,7 +215,7 @@ class AnnotatedImage(BaseModel):
     img_w: int = -1
     img_h: int = -1
 
-    img_file: Path = ""
+    img_file: Path = Path("")
 
     page_nos: List[int] = []
     page_img_files: List[Path] = []

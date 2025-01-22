@@ -187,7 +187,7 @@ def create_cvat_preannotation_file_for_single_page(
         for page_no, page in doc.pages.items():
             img_cnt += 1
 
-            bucket_id = int( (img_cnt-1) / float(bucket_size))
+            bucket_id = int((img_cnt - 1) / float(bucket_size))
             bucket_dir = benchmark_dirs.tasks_dir / f"task_{bucket_id:02}"
 
             if (
@@ -237,16 +237,27 @@ def create_cvat_preannotation_file_for_single_page(
             page_img_file = benchmark_dirs.page_imgs_dir / filename
             annotated_image.page_img_files = [page_img_file]
 
-            page_image = page.image.pil_image
+            page_image_ref = page.image
+            if page_image_ref is not None:
 
-            page_image.save(annotated_image.img_file)
-            page_image.save(annotated_image.page_img_files[0])
+                page_image = page_image_ref.pil_image
 
-            annotated_image.img_w = page_image.width
-            annotated_image.img_h = page_image.height
+                if page_image is not None:
+                    page_image.save(annotated_image.img_file)
+                    page_image.save(annotated_image.page_img_files[0])
 
-            annotated_image.page_nos = [page_no]
-            overview.img_annotations[filename] = annotated_image
+                    annotated_image.img_w = page_image.width
+                    annotated_image.img_h = page_image.height
+
+                    annotated_image.page_nos = [page_no]
+                    overview.img_annotations[filename] = annotated_image
+                else:
+                    logging.warning(f"missing pillow image of the page, skipping ...")
+                    continue
+
+            else:
+                logging.warning(f"missing image-ref of the page, skipping ...")
+                continue
 
             page_bboxes: List[AnnotationBBox] = []
 
@@ -413,17 +424,12 @@ def parse_args():
         "-o", "--output_dir", required=True, help="Path to the output directory."
     )
     parser.add_argument(
-        "-b", "--bucket-size", required=True,
-        help="Numbers of documents in the bucket."
+        "-b", "--bucket-size", required=True, help="Numbers of documents in the bucket."
     )
 
     args = parser.parse_args()
 
-    return (
-        Path(args.input_dir),
-        Path(args.output_dir),
-        int(args.bucket_size)
-    )
+    return (Path(args.input_dir), Path(args.output_dir), int(args.bucket_size))
 
 
 def main():
@@ -437,7 +443,9 @@ def main():
 
     overview = export_from_dataset_supplementary_files(benchmark_dirs)
 
-    create_cvat_preannotation_file_for_single_page(benchmark_dirs, overview, bucket_size=bucket_size)
+    create_cvat_preannotation_file_for_single_page(
+        benchmark_dirs, overview, bucket_size=bucket_size
+    )
 
 
 if __name__ == "__main__":
