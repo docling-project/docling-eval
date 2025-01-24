@@ -268,7 +268,9 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
             img.save(img_byte_stream, format=img.format)
             img_byte_stream.seek(0)
             conv_results = converter.convert(
-                source=DocumentStream(name="foo.png", stream=img_byte_stream),
+                source=DocumentStream(
+                    name=Path(doc["extra"]["filename"]).stem, stream=img_byte_stream
+                ),
                 raises_on_error=True,
             )
             img_byte_stream.seek(0)
