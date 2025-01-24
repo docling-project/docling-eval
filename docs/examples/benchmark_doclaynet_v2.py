@@ -19,7 +19,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def main():
@@ -29,16 +29,35 @@ def main():
     os.makedirs(odir, exist_ok=True)
 
     if True:
+        log.info("Create the end-to-end converted DocLayNetV2 dataset")
         create_dlnv2_e2e_dataset(input_dir=idir, output_dir=odir)
 
+        # Layout
+        log.info("Evaluate the layout for the DocLayNet dataset")
         evaluate(
             modality=EvaluationModality.LAYOUT,
             benchmark=BenchMarkNames.DOCLAYNETV2,
             idir=odir,
             odir=odir,
         )
+        log.info("Visualize the layout for the DocLayNet dataset")
         visualise(
             modality=EvaluationModality.LAYOUT,
+            benchmark=BenchMarkNames.DOCLAYNETV2,
+            idir=odir,
+            odir=odir,
+        )
+        # Reading order
+        log.info("Evaluate the reading-order for the DocLayNet dataset")
+        evaluate(
+            modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.DOCLAYNETV2,
+            idir=odir,
+            odir=odir,
+        )
+        log.info("Visualize the reading-order for the DocLayNet dataset")
+        visualise(
+            modality=EvaluationModality.READING_ORDER,
             benchmark=BenchMarkNames.DOCLAYNETV2,
             idir=odir,
             odir=odir,
