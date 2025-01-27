@@ -35,6 +35,8 @@ from docling_eval.docling.utils import (
     save_shard_to_disk,
 )
 
+SHARD_SIZE = 1000
+
 
 def parse_arguments():
     """Parse arguments for DP-Bench parsing."""
@@ -261,7 +263,11 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
         page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
     )
     ds = load_from_disk(input_dir)
+
+    test_dir = output_dir / "test"
+    os.makedirs(test_dir, exist_ok=True)
     records = []
+    count = 0
     for doc in tqdm(ds):
         img = doc["image"]
         with io.BytesIO() as img_byte_stream:
@@ -331,15 +337,19 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
             BenchMarkColumns.MIMETYPE: "image/png",
         }
         records.append(record)
+        count += 1
+        if count % SHARD_SIZE == 0:
+            shard_id = count // SHARD_SIZE - 1
+            save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
+            records = []
 
-    test_dir = output_dir / "test"
-    os.makedirs(test_dir, exist_ok=True)
-    save_shard_to_disk(items=records, dataset_path=test_dir)
+    shard_id = count // SHARD_SIZE
+    save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
     write_datasets_info(
         name="DocLayNetV2: end-to-end",
         output_dir=output_dir,
         num_train_rows=0,
-        num_test_rows=len(records),
+        num_test_rows=len(records) + count,
     )
 
 
