@@ -45,7 +45,8 @@ class BenchMarkNames(str, Enum):
 
     # Layout
     PUBLAYNET = "PubLayNet"
-    DOCLAYNET = "DocLayNet"
+    DOCLAYNETV1 = "DocLayNetV1"
+    DOCLAYNETV2 = "DocLayNetV2"
 
     # Table
     PUB1M = "Pub1M"
