@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 def main():
     odir = Path(f"./benchmarks/{BenchMarkNames.DOCLAYNETV1.value}-dataset")
-    split = "train"
+    split = "test"
 
     os.makedirs(odir, exist_ok=True)
 
