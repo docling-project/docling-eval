@@ -24,7 +24,7 @@ def main():
     os.makedirs(odir, exist_ok=True)
 
     if True:
-        log.info("Create the end-to-end converted DocLayNetV2 dataset")
+        log.info("Create the end-to-end converted DocLayNetV1 dataset")
         create_dlnv1_e2e_dataset(split=split, output_dir=odir)
 
         # Layout
