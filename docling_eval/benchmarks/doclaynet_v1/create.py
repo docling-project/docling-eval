@@ -54,6 +54,12 @@ def parse_arguments():
         description="Convert DocLayNet v1 into DoclingDocument ground truth data"
     )
     parser.add_argument(
+        "-s",
+        "--split",
+        help="train test or val",
+        required=True,
+    )
+    parser.add_argument(
         "-o",
         "--output-directory",
         help="output directory with shards",
@@ -62,7 +68,7 @@ def parse_arguments():
     )
     args = parser.parse_args()
 
-    return Path(args.output_directory)
+    return args.split, Path(args.output_directory)
 
 
 def update(true_doc, current_list, img, label, box, content):
@@ -108,17 +114,17 @@ def update(true_doc, current_list, img, label, box, content):
         true_doc.add_text(label=label, text=content, prov=prov)
 
 
-def create_dlnv1_e2e_dataset(output_dir):
+def create_dlnv1_e2e_dataset(split, output_dir):
     converter = create_converter(
         page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
     )
     ds = load_dataset("ds4sd/DocLayNet-v1.1", trust_remote_code=True)
 
-    test_dir = output_dir / "test"
+    test_dir = output_dir / split
     os.makedirs(test_dir, exist_ok=True)
     records = []
     count = 0
-    for doc in tqdm(ds["train"]):
+    for doc in tqdm(ds[split]):
         img = doc["image"]
         with io.BytesIO() as img_byte_stream:
             img.save(img_byte_stream, format=img.format)
@@ -204,7 +210,7 @@ def create_dlnv1_e2e_dataset(output_dir):
 
 
 def main():
-    output_dir = parse_arguments()
+    split, output_dir = parse_arguments()
     os.makedirs(output_dir, exist_ok=True)
 
     odir_e2e = Path(output_dir) / "end_to_end"
@@ -212,7 +218,7 @@ def main():
     for _ in ["test", "train"]:
         os.makedirs(odir_e2e / _, exist_ok=True)
 
-    create_dlnv1_e2e_dataset(output_dir=odir_e2e)
+    create_dlnv1_e2e_dataset(split=split, output_dir=odir_e2e)
 
 
 if __name__ == "__main__":

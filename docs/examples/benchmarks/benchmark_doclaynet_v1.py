@@ -19,12 +19,13 @@ log = logging.getLogger(__name__)
 
 def main():
     odir = Path(f"./benchmarks/{BenchMarkNames.DOCLAYNETV1.value}-dataset")
+    split = "train"
 
     os.makedirs(odir, exist_ok=True)
 
     if True:
         log.info("Create the end-to-end converted DocLayNetV2 dataset")
-        create_dlnv1_e2e_dataset(output_dir=odir)
+        create_dlnv1_e2e_dataset(split=split, output_dir=odir)
 
         # Layout
         log.info("Evaluate the layout for the DocLayNet dataset")
