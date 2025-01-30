@@ -42,6 +42,7 @@ def main():
             idir=odir,
             odir=odir,
         )
+
         # Reading order
         log.info("Evaluate the reading-order for the DocLayNet dataset")
         evaluate(
@@ -53,6 +54,22 @@ def main():
         log.info("Visualize the reading-order for the DocLayNet dataset")
         visualise(
             modality=EvaluationModality.READING_ORDER,
+            benchmark=BenchMarkNames.DOCLAYNETV1,
+            idir=odir,
+            odir=odir,
+        )
+
+        # Markdown text
+        log.info("Evaluate the markdown text for the DocLayNet dataset")
+        evaluate(
+            modality=EvaluationModality.MARKDOWN_TEXT,
+            benchmark=BenchMarkNames.DOCLAYNETV1,
+            idir=odir,
+            odir=odir,
+        )
+        log.info("Visualize the markdown text for the DocLayNet dataset")
+        visualise(
+            modality=EvaluationModality.MARKDOWN_TEXT,
             benchmark=BenchMarkNames.DOCLAYNETV1,
             idir=odir,
             odir=odir,
