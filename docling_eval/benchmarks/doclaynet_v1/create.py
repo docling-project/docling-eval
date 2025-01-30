@@ -71,9 +71,19 @@ def parse_arguments():
     return args.split, Path(args.output_directory)
 
 
+def ltwh_to_ltrb(box):
+    l = box[0]
+    t = box[1]
+    w = box[2]
+    h = box[3]
+    r = l + w
+    b = t + h
+    return l, t, r, b
+
+
 def update(true_doc, current_list, img, label, box, content):
     bbox = BoundingBox.from_tuple(
-        tuple(box), CoordOrigin.TOPLEFT
+        tuple(ltwh_to_ltrb(box)), CoordOrigin.TOPLEFT
     ).to_bottom_left_origin(page_height=true_doc.pages[1].size.height)
     prov = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, len(content)))
     img_elem = crop_bounding_box(page_image=img, page=true_doc.pages[1], bbox=bbox)
