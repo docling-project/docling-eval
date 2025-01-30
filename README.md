@@ -582,6 +582,48 @@ The final result (struct only here) can be visualised as,
 |       0.95 |       1    |       27.9 |      72.1 |        27.9 |     279 |
 </details>
 
+### DocLayNet v1
+
+Using a single command,
+
+```sh
+poetry run python ./docs/examples/benchmark_doclaynet_v1.py
+```
+
+This command downloads the DocLayNet v1.1 dataset, runs the evaluations and produces the following files:
+
+<details>
+<summary><b>Layout evaluation</b></summary>
+<br>
+
+- [Layout evaluation json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout.json)
+- [mAP[0.5:0.95] report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP[0.5_0.95].txt)
+- [mAP[0.5:0.95] plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP[0.5_0.95].png)
+
+</details>
+
+<details>
+<summary><b>Reading order evaluation</b></summary>
+<br>
+
+- [Reading order json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order.json)
+- [ARD plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_ARD_norm.png)
+- [ARD report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_ARD_norm.txt)
+- [Weighted ARD plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_weighted_ARD.png)
+- [Weighte ARD report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_weighted_ARD.txt)
+
+</details>
+
+<details>
+<summary><b>Markdown text evaluation</b></summary>
+<br>
+
+- [Markdown text json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_markdown_text.json)
+- [BLEU plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_markdown_text_BLEU.png)
+- [BLEU report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_markdown_text_BLEU.txt)
+
+</details>
+
 ### Pub1M
 
 Using a single command (loading the dataset from Huggingface: [Pub1M_OTSL](https://huggingface.co/datasets/ds4sd/Pub1M_OTSL)),
