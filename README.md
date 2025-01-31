@@ -105,8 +105,8 @@ poetry run evaluate \
     -t evaluate \
     -m tableformer \
     -b Pub1M \
-    -i benchmarks/PubTabNet-dataset/tableformer \
-    -o benchmarks/PubTabNet-dataset/tableformer
+    -i benchmarks/Pub1M-dataset/tableformer \
+    -o benchmarks/Pub1M-dataset/tableformer
 ```
 
 [Tableformer evaluation json](docs/evaluations/Pub1M/evaluation_Pub1M_tableformer.json)
@@ -144,7 +144,7 @@ poetry run python ./docs/examples/benchmark_pubtabnet.py
 ```
 
 <details>
-<summary><b>Table evaluations for Pubtabnet</b></summary>
+<summary><b>Table evaluations for PubTabNet</b></summary>
 <br>
 
 👉 Evaluate the dataset:
