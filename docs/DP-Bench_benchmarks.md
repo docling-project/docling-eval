@@ -16,7 +16,29 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m layout \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/layout \
+    -o benchmarks/DPBench-dataset/layout
+```
+
 [Layout evaluation json](evaluations/DPBench/evaluation_DPBench_layout.json)
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m layout \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/layout \
+    -o benchmarks/DPBench-dataset/layout
+```
 
 [mAP[0.5:0.95] report](evaluations/DPBench/evaluation_DPBench_layout_mAP[0.5_0.95].txt)
 
@@ -26,6 +48,7 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 </details>
 -->
 
+
 ## TableFormer Evaluation
 
 <!--
@@ -34,7 +57,29 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m tableformer \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/tableformer \
+    -o benchmarks/DPBench-dataset/tableformer
+```
+
+Visualize the report:
+
 [Tableformer evaluation json](evaluations/DPBench/evaluation_DPBench_tableformer.json)
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m tableformer \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/tableformer \
+    -o benchmarks/DPBench-dataset/tableformer
+```
 
 ![TEDS plot](evaluations/DPBench/evaluation_DPBench_tableformer-delta_row_col.png)
 
@@ -50,6 +95,7 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 </details>
 -->
 
+
 ## Reading order Evaluation
 
 <!--
@@ -58,7 +104,29 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m reading_order \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/layout \
+    -o benchmarks/DPBench-dataset/layout
+```
+
 [Reading order json](evaluations/DPBench/evaluation_DPBench_reading_order.json)
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visulize \
+    -m reading_order \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/layout \
+    -o benchmarks/DPBench-dataset/layout
+```
 
 ![ARD plot](evaluations/DPBench/evaluation_DPBench_reading_order_ARD_norm.png)
 
@@ -66,13 +134,13 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 
 ![Weighted ARD plot](evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.png)
 
-[Weighte ARD report](evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.txt)
+[Weighted ARD report](evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.txt)
 
 <!--
 </details>
 -->
 
-## Reading order Evaluation
+## Markdown text Evaluation
 
 <!--
 <details>
@@ -80,7 +148,30 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m markdown_text \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/layout \
+    -o benchmarks/DPBench-dataset/layout
+```
+
 [Markdown text json](evaluations/DPBench/evaluation_DPBench_markdown_text.json)
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m markdown_text \
+    -b DPBench \
+    -i benchmarks/DPBench-dataset/layout \
+    -o benchmarks/DPBench-dataset/layout
+```
+
 
 ![BLEU plot](evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.png)
 

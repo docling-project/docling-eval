@@ -8,6 +8,7 @@ poetry run python ./docs/examples/benchmark_omnidocbench.py
 
 This command downloads runs the evaluations and produces the following files:
 
+
 ## Layout Evaluation
 
 <!--
@@ -16,7 +17,29 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m layout \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/layout \
+    -o benchmarks/OmniDocBench-dataset/layout
+```
+
 [Layout evaluation json](evaluations/OmniDocBench/evaluation_OmniDocBench_layout.json)
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m layout \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/layout \
+    -o benchmarks/OmniDocBench-dataset/layout
+```
 
 [mAP[0.5:0.95] report](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].txt)
 
@@ -26,7 +49,8 @@ This command downloads runs the evaluations and produces the following files:
 </details>
 -->
 
-## Layout Evaluation
+
+## Tableformer Evaluation
 
 <!--
 <details>
@@ -34,7 +58,30 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m tableformer \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/tableformer \
+    -o benchmarks/OmniDocBench-dataset/tableformer
+```
+
 [Tableformer evaluation json](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer.json)
+
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m tableformer \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/tableformer \
+    -o benchmarks/OmniDocBench-dataset/tableformer
+```
 
 ![TEDS plot](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer-delta_row_col.png)
 
@@ -50,6 +97,7 @@ This command downloads runs the evaluations and produces the following files:
 </details>
 -->
 
+
 ## Reading order Evaluation
 
 <!--
@@ -58,15 +106,39 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m reading_order \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/layout \
+    -o benchmarks/OmniDocBench-dataset/layout
+```
+
 [Reading order json](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order.json)
 
-![ARD plot](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.png)
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m reading_order \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/layout \
+    -o benchmarks/OmniDocBench-dataset/layout
+```
 
 [ARD report](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.txt)
 
+[Weighted ARD report](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.txt)
+
+![ARD plot](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.png)
+
 ![Weighted ARD plot](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.png)
 
-[Weighte ARD report](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.txt)
 
 <!--
 </details>
@@ -79,7 +151,30 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
+Create the report:
+
+```sh
+poetry run evaluate \
+    -t evaluate \
+    -m markdown_text \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/layout \
+    -o benchmarks/OmniDocBench-dataset/layout
+```
+
 [Markdown text json](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text.json)
+
+
+Visualize the report:
+
+```sh
+poetry run evaluate \
+    -t visualize \
+    -m markdown_text \
+    -b OmniDocBench \
+    -i benchmarks/OmniDocBench-dataset/layout \
+    -o benchmarks/OmniDocBench-dataset/layout
+```
 
 ![BLEU plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.png)
 
