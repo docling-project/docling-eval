@@ -208,7 +208,7 @@ def create_dlnv1_e2e_dataset(split, output_dir):
             records = []
 
     if len(records) > 0:
-        shard_id = count // SHARD_SIZE - 1
+        shard_id = count // SHARD_SIZE
         save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
 
     write_datasets_info(
