@@ -7,7 +7,13 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 from docling.datamodel.base_models import Cluster, LayoutPrediction, Page, Table
 from docling.datamodel.document import ConversionResult, InputDocument
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import (
+    AcceleratorDevice,
+    AcceleratorOptions,
+    PdfPipelineOptions,
+    TableFormerMode,
+    TableStructureOptions,
+)
 from docling.models.table_structure_model import TableStructureModel
 from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
 from docling_core.types.doc import DocItemLabel
@@ -21,19 +27,17 @@ from docling_core.types.doc.document import (
 from docling_ibm_models.tableformer.data_management.tf_predictor import TFPredictor
 from docling_parse.pdf_parsers import pdf_parser_v2
 from huggingface_hub import snapshot_download
-
-# import cv2
 from PIL import Image
 from pydantic import BaseModel
 
 from docling_eval.benchmarks.utils import get_input_document
-from docling_eval.docling.models.tableformer.tf_constants import tf_config
 from docling_eval.docling.utils import crop_bounding_box, map_to_records
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+log = logging.getLogger(__name__)
 
 
 class PageToken(BaseModel):
@@ -114,95 +118,30 @@ def to_np(pil_image: Image.Image):
         raise ValueError("Unsupported image format")
 
 
-# TODO: This method must be dropped.
-def tf_predict_with_page_tokens(
-    config,
-    page_image: Image.Image,
-    page_tokens: PageTokens,
-    table_bbox: Tuple[float, float, float, float],
-    viz: bool = True,
-    device: str = "cpu",
-    num_threads: int = 2,
-    image_scale: float = 1.0,
-):
-    r"""
-    Test the TFPredictor
-    """
-
-    table_bboxes = [[table_bbox[0], table_bbox[1], table_bbox[2], table_bbox[3]]]
-
-    ocr_page = page_tokens.dict()
-
-    ocr_page["image"] = to_np(page_image)
-    ocr_page["table_bboxes"] = table_bboxes
-
-    # Loop over the iocr_pages
-    predictor = TFPredictor(config, device=device, num_threads=num_threads)
-
-    tf_output = predictor.multi_table_predict(
-        ocr_page,
-        table_bboxes=table_bboxes,
-        do_matching=True,
-        correct_overlapping_cells=False,
-        sort_row_col_indexes=True,
-    )
-    # print("tf-output: ", json.dumps(tf_output, indent=2))
-
-    table_out = tf_output[0]
-
-    do_cell_matching = True
-
-    table_cells = []
-    for element in table_out["tf_responses"]:
-
-        tc = TableCell.model_validate(element)
-        if do_cell_matching and tc.bbox is not None:
-            tc.bbox = tc.bbox.scaled(1 / image_scale)
-        table_cells.append(tc)
-
-    # Retrieving cols/rows, after post processing:
-    num_rows = table_out["predict_details"]["num_rows"]
-    num_cols = table_out["predict_details"]["num_cols"]
-    otsl_seq = table_out["predict_details"]["prediction"]["rs_seq"]
-
-    table_data = TableData(
-        num_rows=num_rows, num_cols=num_cols, table_cells=table_cells
-    )
-
-    return table_data
-
-
-# TODO remove this method once `replace_tabledata_with_page_tokens` does no longer need it.
-def init_tf_model() -> dict:
-    r"""
-    Initialize the testing environment
-    """
-    config: Dict[str, Any] = tf_config
-
-    # Download models from HF
-    download_path = snapshot_download(repo_id="ds4sd/docling-models", revision="v2.1.0")
-    save_dir = os.path.join(download_path, "model_artifacts/tableformer/fast")
-
-    config["model"]["save_dir"] = save_dir
-    return config
-
-
 class TableFormerUpdater:
 
-    def __init__(self):
-        # Init the TableFormer model
+    def __init__(self, mode: TableFormerMode, num_threads: int = 16):
+        r""" """
         # Download models from HF
         download_path = StandardPdfPipeline.download_models_hf()
-        pdf_pipeline_opts = PdfPipelineOptions()
-        self.docling_tf_model = TableStructureModel(
+
+        # Init the TableFormer model
+        table_structure_options = TableStructureOptions(mode=mode)
+        accelerator_options = AcceleratorOptions(
+            num_threads=num_threads, device=AcceleratorDevice.AUTO
+        )
+        pdf_pipeline_opts = PdfPipelineOptions(
+            do_table_structure=True,
+            table_structure_options=table_structure_options,
+            accelerator_options=accelerator_options,
+        )
+        self._docling_tf_model = TableStructureModel(
             enabled=True,
             artifacts_path=download_path / StandardPdfPipeline._table_model_path,
             options=pdf_pipeline_opts.table_structure_options,
             accelerator_options=pdf_pipeline_opts.accelerator_options,
         )
-
-        # TODO make this obsolete, only needed for `replace_tabledata_with_page_tokens`
-        self.tf_config = init_tf_model()
+        log.info("Initialize %s", mode)
 
     def get_page_cells(self, filename: str):
 
@@ -218,7 +157,7 @@ class TableFormerUpdater:
             return parsed_doc
 
         except Exception as exc:
-            logging.error(exc)
+            log.error(exc)
 
         return None
 
@@ -258,14 +197,14 @@ class TableFormerUpdater:
 
         input_doc = get_input_document(pdf_path)
         if not input_doc.valid:
-            logging.error("could not parse pdf-file")
+            log.error("could not parse pdf-file")
             return False, pred_doc
 
         conv_res = ConversionResult(input=input_doc)
 
         # parsed_doc = self.get_page_cells(str(pdf_path))
         # if parsed_doc is None:
-        #    logging.error("could not parse pdf-file")
+        #    log.error("could not parse pdf-file")
         #    return False, pred_doc
 
         # Replace the groundtruth tables with predictions from TableFormer
@@ -274,7 +213,7 @@ class TableFormerUpdater:
                 for prov in item.prov:
                     page = self._make_internal_page_with_table(input_doc, prov)
 
-                    page = next(self.docling_tf_model(conv_res, [page]))
+                    page = next(self._docling_tf_model(conv_res, [page]))  # type: ignore
                     tbl: Table = page.predictions.tablestructure.table_map[0]
                     table_data: TableData = TableData(
                         num_rows=tbl.num_rows,
@@ -292,7 +231,58 @@ class TableFormerUpdater:
 
         return updated, pred_doc
 
-    # TODO: This method must be re-written to use the TableStructureModel instance instead. See above.
+    def _tf_predict_with_page_tokens(
+        self,
+        page_image: Image.Image,
+        page_tokens: PageTokens,
+        table_bbox: Tuple[float, float, float, float],
+        image_scale: float = 1.0,
+    ):
+        r"""
+        Test the TFPredictor
+        """
+        table_bboxes = [[table_bbox[0], table_bbox[1], table_bbox[2], table_bbox[3]]]
+
+        ocr_page = page_tokens.dict()
+
+        ocr_page["image"] = to_np(page_image)
+        ocr_page["table_bboxes"] = table_bboxes
+
+        # TODO: Here we bypass docling API and we steal the tf_preditor private object :-(
+        predictor = self._docling_tf_model.tf_predictor
+
+        # Loop over the iocr_pages
+        tf_output = predictor.multi_table_predict(
+            ocr_page,
+            table_bboxes=table_bboxes,
+            do_matching=True,
+            correct_overlapping_cells=False,
+            sort_row_col_indexes=True,
+        )
+        # print("tf-output: ", json.dumps(tf_output, indent=2))
+
+        table_out = tf_output[0]
+
+        do_cell_matching = True
+
+        table_cells = []
+        for element in table_out["tf_responses"]:
+
+            tc = TableCell.model_validate(element)
+            if do_cell_matching and tc.bbox is not None:
+                tc.bbox = tc.bbox.scaled(1 / image_scale)
+            table_cells.append(tc)
+
+        # Retrieving cols/rows, after post processing:
+        num_rows = table_out["predict_details"]["num_rows"]
+        num_cols = table_out["predict_details"]["num_cols"]
+
+        table_data = TableData(
+            num_rows=num_rows, num_cols=num_cols, table_cells=table_cells
+        )
+
+        return table_data
+
     def replace_tabledata_with_page_tokens(
         self,
         page_tokens: PageTokens,
@@ -316,8 +306,7 @@ class TableFormerUpdater:
                     page_image = true_page_images[prov.page_no - 1]
                     # page_image.show()
 
-                    table_data = tf_predict_with_page_tokens(
-                        config=self.tf_config,
+                    table_data = self._tf_predict_with_page_tokens(
                         page_image=page_image,
                         page_tokens=page_tokens,
                         table_bbox=(prov.bbox.l, prov.bbox.b, prov.bbox.r, prov.bbox.t),

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from bs4 import BeautifulSoup  # type: ignore
+from docling.datamodel.pipeline_options import TableFormerMode
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import DoclingDocument, ImageRef, ProvenanceItem
 from docling_core.types.doc.labels import DocItemLabel
@@ -374,10 +375,13 @@ def create_omnidocbench_e2e_dataset(
 
 
 def create_omnidocbench_tableformer_dataset(
-    omnidocbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+    omnidocbench_dir: Path,
+    output_dir: Path,
+    image_scale: float = 1.0,
+    mode: TableFormerMode = TableFormerMode.ACCURATE,
 ):
     # Init the TableFormer model
-    tf_updater = TableFormerUpdater()
+    tf_updater = TableFormerUpdater(mode)
 
     # load the groundtruth
     with open(omnidocbench_dir / f"OmniDocBench.json", "r") as fr:

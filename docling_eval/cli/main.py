@@ -19,6 +19,8 @@ from docling_eval.benchmarks.omnidocbench.create import (
 )
 from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
     create_fintabnet_tableformer_dataset,
+    create_p1m_tableformer_dataset,
+    create_pubtabnet_tableformer_dataset,
 )
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
@@ -141,6 +143,31 @@ def create(
             create_omnidocbench_tableformer_dataset(
                 omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
             )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.PUBTABNET:
+        if modality == EvaluationModality.TABLEFORMER:
+            log.info("Create the tableformer converted PubTabNet dataset")
+            create_pubtabnet_tableformer_dataset(
+                output_dir=odir, max_items=1000, do_viz=True
+            )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.FINTABNET:
+        if modality == EvaluationModality.TABLEFORMER:
+            log.info("Create the tableformer converted FinTabNet dataset")
+            create_fintabnet_tableformer_dataset(
+                output_dir=odir, max_items=1000, do_viz=True
+            )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.PUB1M:
+        if modality == EvaluationModality.TABLEFORMER:
+            log.info("Create the tableformer converted Pub1M dataset")
+            create_p1m_tableformer_dataset(output_dir=odir, max_items=1000, do_viz=True)
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
