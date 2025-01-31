@@ -16,11 +16,11 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
-- [Layout evaluation json](docs/evaluations/DPBench/evaluation_DPBench_layout.json)
+[Layout evaluation json](evaluations/DPBench/evaluation_DPBench_layout.json)
 
-- [mAP[0.5:0.95] report](docs/evaluations/DPBench/evaluation_DPBench_layout_mAP[0.5_0.95].txt)
+[mAP[0.5:0.95] report](evaluations/DPBench/evaluation_DPBench_layout_mAP[0.5_0.95].txt)
 
-![mAP[0.5:0.95] plot](docs/evaluations/DPBench/evaluation_DPBench_layout_mAP[0.5_0.95].png)
+![mAP[0.5:0.95] plot](evaluations/DPBench/evaluation_DPBench_layout_mAP[0.5_0.95].png)
 
 <!--
 </details>
@@ -34,17 +34,17 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
-[Tableformer evaluation json](docs/evaluations/DPBench/evaluation_DPBench_tableformer.json)
+[Tableformer evaluation json](evaluations/DPBench/evaluation_DPBench_tableformer.json)
 
-![TEDS plot](docs/evaluations/DPBench/evaluation_DPBench_tableformer-delta_row_col.png)
+![TEDS plot](evaluations/DPBench/evaluation_DPBench_tableformer-delta_row_col.png)
 
-![TEDS struct only plot](docs/evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-only.png)
+![TEDS struct only plot](evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-only.png)
 
-[TEDS struct only report](docs/evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-only.txt)
+[TEDS struct only report](evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-only.txt)
 
-![TEDS struct with text plot](docs/evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-with-text.png)
+![TEDS struct with text plot](evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-with-text.png)
 
-[TEDS struct with text report](docs/evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-with-text.txt)
+[TEDS struct with text report](evaluations/DPBench/evaluation_DPBench_tableformer_TEDS_struct-with-text.txt)
 
 <!--
 </details>
@@ -58,15 +58,15 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
-[Reading order json](docs/evaluations/DPBench/evaluation_DPBench_reading_order.json)
+[Reading order json](evaluations/DPBench/evaluation_DPBench_reading_order.json)
 
-![ARD plot](docs/evaluations/DPBench/evaluation_DPBench_reading_order_ARD_norm.png)
+![ARD plot](evaluations/DPBench/evaluation_DPBench_reading_order_ARD_norm.png)
 
-[ARD report](docs/evaluations/DPBench/evaluation_DPBench_reading_order_ARD_norm.txt)
+[ARD report](evaluations/DPBench/evaluation_DPBench_reading_order_ARD_norm.txt)
 
-![Weighted ARD plot](docs/evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.png)
+![Weighted ARD plot](evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.png)
 
-[Weighte ARD report](docs/evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.txt)
+[Weighte ARD report](evaluations/DPBench/evaluation_DPBench_reading_order_weighted_ARD.txt)
 
 <!--
 </details>
@@ -80,11 +80,11 @@ This command downloads the DP-Bench dataset, runs the evaluations and produces t
 <br>
 -->
 
-[Markdown text json](docs/evaluations/DPBench/evaluation_DPBench_markdown_text.json)
+[Markdown text json](evaluations/DPBench/evaluation_DPBench_markdown_text.json)
 
-![BLEU plot](docs/evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.png)
+![BLEU plot](evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.png)
 
-[BLEU report](docs/evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.txt)
+[BLEU report](evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.txt)
 
 <!--
 </details>

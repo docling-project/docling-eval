@@ -16,11 +16,11 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
-[Layout evaluation json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_layout.json)
+[Layout evaluation json](evaluations/OmniDocBench/evaluation_OmniDocBench_layout.json)
 
-[mAP[0.5:0.95] report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].txt)
+[mAP[0.5:0.95] report](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].txt)
 
-![mAP[0.5:0.95] plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].png)
+![mAP[0.5:0.95] plot](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].png)
 
 <!--
 </details>
@@ -34,17 +34,17 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
-[Tableformer evaluation json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer.json)
+[Tableformer evaluation json](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer.json)
 
-![TEDS plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer-delta_row_col.png)
+![TEDS plot](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer-delta_row_col.png)
 
-![TEDS struct only plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-only.png)
+![TEDS struct only plot](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-only.png)
 
-[TEDS struct only report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-only.txt)
+[TEDS struct only report](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-only.txt)
 
-![TEDS struct with text plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-with-text.png)
+![TEDS struct with text plot](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-with-text.png)
 
-[TEDS struct with text report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-with-text.txt)
+[TEDS struct with text report](evaluations/OmniDocBench/evaluation_OmniDocBench_tableformer_TEDS_struct-with-text.txt)
 
 <!--
 </details>
@@ -58,15 +58,15 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
-[Reading order json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order.json)
+[Reading order json](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order.json)
 
-![ARD plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.png)
+![ARD plot](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.png)
 
-[ARD report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.txt)
+[ARD report](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_ARD_norm.txt)
 
-![Weighted ARD plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.png)
+![Weighted ARD plot](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.png)
 
-[Weighte ARD report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.txt)
+[Weighte ARD report](evaluations/OmniDocBench/evaluation_OmniDocBench_reading_order_weighted_ARD.txt)
 
 <!--
 </details>
@@ -79,11 +79,11 @@ This command downloads runs the evaluations and produces the following files:
 <br>
 -->
 
-[Markdown text json](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text.json)
+[Markdown text json](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text.json)
 
-![BLEU plot](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.png)
+![BLEU plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.png)
 
-[BLEU report](docs/evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.txt)
+[BLEU report](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.txt)
 
 <!--
 </details>
