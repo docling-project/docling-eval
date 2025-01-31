@@ -37,7 +37,6 @@ docling-eval % poetry run evaluate --help
 
 ## End to End examples
 
-
 ### FinTabNet
 
 Using a single command (loading the dataset from Huggingface: [FinTabNet_OTSL](https://huggingface.co/datasets/ds4sd/FinTabNet_OTSL)),
