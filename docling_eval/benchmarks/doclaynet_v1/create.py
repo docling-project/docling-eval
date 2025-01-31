@@ -1,6 +1,7 @@
 import argparse
 import io
 import json
+import math
 import os
 from pathlib import Path
 
@@ -15,12 +16,17 @@ from docling_core.types.doc import (
     PageItem,
     ProvenanceItem,
     Size,
+    TableCell,
+    TableData,
 )
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.benchmarks.utils import write_datasets_info
+from docling_eval.benchmarks.utils import (
+    write_datasets_info,
+    save_comparison_html_with_clusters,
+)
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.utils import (
     crop_bounding_box,
@@ -29,6 +35,47 @@ from docling_eval.docling.utils import (
     from_pil_to_base64uri,
     save_shard_to_disk,
 )
+
+TRUE_HTML_EXPORT_LABELS = {
+    DocItemLabel.TITLE,
+    DocItemLabel.DOCUMENT_INDEX,
+    DocItemLabel.SECTION_HEADER,
+    DocItemLabel.PARAGRAPH,
+    DocItemLabel.TABLE,
+    DocItemLabel.PICTURE,
+    DocItemLabel.FORMULA,
+    DocItemLabel.CHECKBOX_UNSELECTED,
+    DocItemLabel.CHECKBOX_SELECTED,
+    DocItemLabel.TEXT,
+    DocItemLabel.LIST_ITEM,
+    DocItemLabel.CODE,
+    DocItemLabel.REFERENCE,
+    # Additional
+    DocItemLabel.CAPTION,
+    DocItemLabel.PAGE_HEADER,
+    DocItemLabel.PAGE_FOOTER,
+    DocItemLabel.FOOTNOTE,
+}
+
+PRED_HTML_EXPORT_LABELS = {
+    DocItemLabel.TITLE,
+    DocItemLabel.DOCUMENT_INDEX,
+    DocItemLabel.SECTION_HEADER,
+    DocItemLabel.PARAGRAPH,
+    DocItemLabel.TABLE,
+    DocItemLabel.PICTURE,
+    DocItemLabel.FORMULA,
+    DocItemLabel.CHECKBOX_UNSELECTED,
+    DocItemLabel.CHECKBOX_SELECTED,
+    DocItemLabel.TEXT,
+    DocItemLabel.LIST_ITEM,
+    DocItemLabel.CODE,
+    DocItemLabel.REFERENCE,
+    # Additional
+    DocItemLabel.PAGE_HEADER,
+    DocItemLabel.PAGE_FOOTER,
+    DocItemLabel.FOOTNOTE,
+}
 
 SHARD_SIZE = 1000
 
@@ -107,7 +154,17 @@ def update(true_doc, current_list, img, label, box, content):
 
         true_doc.add_picture(prov=prov, image=imgref)
     elif label in [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]:
-        pass
+        current_list = None
+        tbl_cell = TableCell(
+            start_row_offset_idx=0,
+            end_row_offset_idx=0,
+            start_col_offset_idx=0,
+            end_col_offset_idx=0,
+            text=content,
+        )
+        tbl_data = TableData(table_cells=[tbl_cell])
+
+        true_doc.add_table(data=tbl_data, prov=prov, label=label)
     elif label == DocItemLabel.LIST_ITEM:
         if current_list is None:
             current_list = true_doc.add_group(label=GroupLabel.LIST, name="list")
@@ -124,17 +181,24 @@ def update(true_doc, current_list, img, label, box, content):
         true_doc.add_text(label=label, text=content, prov=prov)
 
 
-def create_dlnv1_e2e_dataset(split, output_dir):
+def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
     converter = create_converter(
         page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
     )
     ds = load_dataset("ds4sd/DocLayNet-v1.1", trust_remote_code=True)
 
+    if do_viz:
+        viz_dir = output_dir / "visualizations"
+        os.makedirs(viz_dir, exist_ok=True)
+
     test_dir = output_dir / split
     os.makedirs(test_dir, exist_ok=True)
     records = []
     count = 0
-    for doc in tqdm(ds[split]):
+    for doc in tqdm(
+        ds[split],
+        total=min(len(ds[split]), max_items if max_items is not None else math.inf),
+    ):
         img = doc["image"]
         with io.BytesIO() as img_byte_stream:
             img.save(img_byte_stream, format=img.format)
@@ -175,6 +239,26 @@ def create_dlnv1_e2e_dataset(split, output_dir):
         for l, b, c in zip(labels, bboxes, contents):
             update(true_doc, current_list, img, l, b, c)
 
+        if do_viz:
+            """
+            save_comparison_html(
+                filename=viz_dir / f"{os.path.basename(pdf_path)}-comp.html",
+                true_doc=true_doc,
+                pred_doc=pred_doc,
+                page_image=true_page_images[0],
+                true_labels=TRUE_HTML_EXPORT_LABELS,
+                pred_labels=PRED_HTML_EXPORT_LABELS,
+            )
+            """
+
+            save_comparison_html_with_clusters(
+                filename=viz_dir / f"{true_doc.name}-clusters.html",
+                true_doc=true_doc,
+                pred_doc=pred_doc,
+                page_image=img,
+                true_labels=TRUE_HTML_EXPORT_LABELS,
+                pred_labels=PRED_HTML_EXPORT_LABELS,
+            )
         true_doc, true_pictures, true_page_images = extract_images(
             document=true_doc,
             pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
@@ -206,6 +290,8 @@ def create_dlnv1_e2e_dataset(split, output_dir):
             shard_id = count // SHARD_SIZE - 1
             save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
             records = []
+        if count is not None and count > max_items:
+            break
 
     if len(records) > 0:
         shard_id = count // SHARD_SIZE
