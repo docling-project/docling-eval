@@ -5,7 +5,7 @@ import math
 import os
 from pathlib import Path
 
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -26,6 +26,7 @@ from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.utils import (
     write_datasets_info,
     save_comparison_html_with_clusters,
+    add_pages_to_true_doc,
 )
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.utils import (
@@ -128,10 +129,14 @@ def ltwh_to_ltrb(box):
     return l, t, r, b
 
 
-def update(true_doc, current_list, img, label, box, content):
-    bbox = BoundingBox.from_tuple(
-        tuple(ltwh_to_ltrb(box)), CoordOrigin.TOPLEFT
-    ).to_bottom_left_origin(page_height=true_doc.pages[1].size.height)
+def update(true_doc, current_list, img, old_size, label, box, content):
+    w, h = img.size
+    new_size = Size(width=w, height=h)
+    bbox = (
+        BoundingBox.from_tuple(tuple(ltwh_to_ltrb(box)), CoordOrigin.TOPLEFT)
+        .to_bottom_left_origin(page_height=old_size.height)
+        .scale_to_size(old_size=old_size, new_size=new_size)
+    )
     prov = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, len(content)))
     img_elem = crop_bounding_box(page_image=img, page=true_doc.pages[1], bbox=bbox)
     if label == DocItemLabel.PICTURE:
@@ -182,10 +187,9 @@ def update(true_doc, current_list, img, label, box, content):
 
 
 def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
-    converter = create_converter(
-        page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
-    )
-    ds = load_dataset("ds4sd/DocLayNet-v1.1", trust_remote_code=True)
+    converter = create_converter(page_image_scale=1.0)
+    # ds = load_dataset("ds4sd/DocLayNet-v1.1", trust_remote_code=True)
+    ds = load_from_disk("data/DocLayNet_v1.2/data")
 
     if do_viz:
         viz_dir = output_dir / "visualizations"
@@ -199,35 +203,24 @@ def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
         ds[split],
         total=min(len(ds[split]), max_items if max_items is not None else math.inf),
     ):
-        img = doc["image"]
-        with io.BytesIO() as img_byte_stream:
-            img.save(img_byte_stream, format=img.format)
-            img_byte_stream.seek(0)
-            conv_results = converter.convert(
-                source=DocumentStream(
-                    name=doc["metadata"]["page_hash"], stream=img_byte_stream
-                ),
-                raises_on_error=True,
-            )
-            img_byte_stream.seek(0)
-            img_bytes = img_byte_stream.getvalue()
+        pdf = doc["pdf"]
+        pdf_stream = io.BytesIO(pdf)
+        pdf_stream.seek(0)
+        conv_results = converter.convert(
+            source=DocumentStream(name=doc["metadata"]["page_hash"], stream=pdf_stream),
+            raises_on_error=True,
+        )
+        pdf_stream = io.BytesIO(pdf)
 
         pred_doc = conv_results.document
 
         true_doc = DoclingDocument(name=doc["metadata"]["page_hash"])
-        image_ref = ImageRef(
-            mimetype="image/png",
-            dpi=72,
-            size=Size(width=float(img.width), height=float(img.height)),
-            uri=from_pil_to_base64uri(img),
+        true_doc, true_page_images = add_pages_to_true_doc(
+            pdf_path=pdf_stream, true_doc=true_doc, image_scale=1.0
         )
-        page_item = PageItem(
-            page_no=1,
-            size=Size(width=float(img.width), height=float(img.height)),
-            image=image_ref,
-        )
-
-        true_doc.pages[1] = page_item
+        img = true_page_images[0]
+        old_w, old_h = doc["image"].size
+        old_size = Size(width=old_w, height=old_h)
 
         current_list = None
         labels = list(map(lambda cid: category_map[int(cid)], doc["category_id"]))
@@ -237,7 +230,7 @@ def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
             " ".join(map(lambda cell: cell["text"], cells)) for cells in segments
         ]
         for l, b, c in zip(labels, bboxes, contents):
-            update(true_doc, current_list, img, l, b, c)
+            update(true_doc, current_list, img, old_size, l, b, c)
 
         if do_viz:
             """
@@ -281,9 +274,10 @@ def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
             BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
             BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
             BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
-            BenchMarkColumns.ORIGINAL: img_bytes,
+            BenchMarkColumns.ORIGINAL: pdf_stream.getvalue(),
             BenchMarkColumns.MIMETYPE: "image/png",
         }
+        pdf_stream.close()
         records.append(record)
         count += 1
         if count % SHARD_SIZE == 0:

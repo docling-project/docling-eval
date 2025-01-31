@@ -28,7 +28,7 @@ docling-eval % poetry run evaluate --help
 ╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │ *  --task        -t      [create|evaluate|visualize]                                                                Evaluation task [default: None] [required]                                                                              │
 │ *  --modality    -m      [end-to-end|layout|tableformer|codeformer]                                                 Evaluation modality [default: None] [required]                                                                          │
-│ *  --benchmark   -b      [DPBench|OmniDcoBench|WordScape|PubLayNet|DocLayNet|Pub1M|PubTabNet|FinTabNet|WikiTabNet]  Benchmark name [default: None] [required]                                                                               │
+│ *  --benchmark   -b      [DPBench|OmniDcoBench|WordScape|PubLayNet|DocLayNetV1|Pub1M|PubTabNet|FinTabNet|WikiTabNet]  Benchmark name [default: None] [required]                                                                               │
 │ *  --input-dir   -i      PATH                                                                                       Input directory [default: None] [required]                                                                              │
 │ *  --output-dir  -o      PATH                                                                                       Output directory [default: None] [required]                                                                             │
 │    --help                                                                                                           Show this message and exit.                                                                                             │
@@ -599,28 +599,6 @@ This command downloads the DocLayNet v1.1 dataset, runs the evaluations and prod
 - [Layout evaluation json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout.json)
 - [mAP[0.5:0.95] report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP[0.5_0.95].txt)
 - [mAP[0.5:0.95] plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_layout_mAP[0.5_0.95].png)
-
-</details>
-
-<details>
-<summary><b>Reading order evaluation</b></summary>
-<br>
-
-- [Reading order json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order.json)
-- [ARD plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_ARD_norm.png)
-- [ARD report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_ARD_norm.txt)
-- [Weighted ARD plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_weighted_ARD.png)
-- [Weighte ARD report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_reading_order_weighted_ARD.txt)
-
-</details>
-
-<details>
-<summary><b>Markdown text evaluation</b></summary>
-<br>
-
-- [Markdown text json](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_markdown_text.json)
-- [BLEU plot](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_markdown_text_BLEU.png)
-- [BLEU report](docs/evaluations/DocLayNetV1/evaluation_DocLayNetV1_markdown_text_BLEU.txt)
 
 </details>
 

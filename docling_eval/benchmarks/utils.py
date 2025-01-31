@@ -2,6 +2,7 @@ import copy
 import hashlib
 import json
 import logging
+from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
@@ -90,17 +91,17 @@ def write_datasets_info(
         json.dump(dataset_infos, fw, indent=2)
 
 
-def get_input_document(file: Path) -> InputDocument:
+def get_input_document(file: Path | BytesIO) -> InputDocument:
     return InputDocument(
         path_or_stream=file,
         format=InputFormat.PDF,  # type: ignore[arg-type]
-        filename=file.name,
+        filename=file.name if isinstance(file, Path) else "foo",
         backend=DoclingParseV2DocumentBackend,
     )
 
 
 def add_pages_to_true_doc(
-    pdf_path: Path, true_doc: DoclingDocument, image_scale: float = 1.0
+    pdf_path: Path | BytesIO, true_doc: DoclingDocument, image_scale: float = 1.0
 ):
     in_doc = get_input_document(pdf_path)
     assert in_doc.valid, "Input doc must be valid."
