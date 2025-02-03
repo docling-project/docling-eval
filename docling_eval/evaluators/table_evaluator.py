@@ -2,6 +2,7 @@ import glob
 import logging
 import random
 from pathlib import Path
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 from datasets import Dataset, load_dataset
@@ -106,46 +107,28 @@ class TableEvaluator:
         "GTDoclingDocument"
         "PredictionDoclingDocument"
         """
-        logging.info(f"loading from: {ds_path}")
+        logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
-        # Load the Parquet file
-        # dataset = Dataset.from_parquet("benchmarks/dpbench-tableformer/test/shard_000000_000000.parquet")
-        # dataset.save_to_disk("benchmarks/dpbench-tableformer-dataset")
+        # Load the dataset
+        split_path = str(ds_path / split / "*.parquet")
+        split_files = glob.glob(split_path)
+        logging.info("Files: %s", split_files)
+        ds = load_dataset("parquet", data_files={split: split_files})
+        logging.info("Overview of dataset: %s", ds)
 
-        test_path = str(ds_path / "test" / "*.parquet")
-        train_path = str(ds_path / "train" / "*.parquet")
-
-        test_files = glob.glob(test_path)
-        train_files = glob.glob(train_path)
-        logging.info(f"test-files: {test_files}, train-files: {train_files}")
-
-        # Load all files into the `test`-`train` split
-        ds = None
-        if len(test_files) > 0 and len(train_files) > 0:
-            ds = load_dataset(
-                "parquet", data_files={"test": test_files, "train": train_files}
-            )
-        elif len(test_files) > 0 and len(train_files) == 0:
-            ds = load_dataset("parquet", data_files={"test": test_files})
-
-        logging.info(f"oveview of dataset: {ds}")
+        # Select the split
+        ds_selection: Dataset = ds[split]
 
         table_evaluations = []
         table_struct_evaluations = []
-        # ds = datasets.load_from_disk(ds_path)
-        if ds is not None:
-            ds_selection: Dataset = ds[split]
-
         for i, data in tqdm(
             enumerate(ds_selection),
             desc="Table evaluations",
             ncols=120,
             total=len(ds_selection),
         ):
-            # gt_doc_dict = data["GroundTruthDoclingDocument"]
             gt_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
             gt_doc = DoclingDocument.model_validate_json(gt_doc_dict)
-            # pred_doc_dict = data["PredictedDoclingDocument"]
             pred_doc_dict = data[BenchMarkColumns.PREDICTION]
             pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
 

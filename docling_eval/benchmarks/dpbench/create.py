@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Dict
 
+from docling.datamodel.pipeline_options import TableFormerMode
 from tqdm import tqdm  # type: ignore
 
 # Configure logging
@@ -345,10 +346,13 @@ def create_dpbench_e2e_dataset(
 
 
 def create_dpbench_tableformer_dataset(
-    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0
+    dpbench_dir: Path,
+    output_dir: Path,
+    image_scale: float = 1.0,
+    mode: TableFormerMode = TableFormerMode.ACCURATE,
 ):
     # Init the TableFormer model
-    tf_updater = TableFormerUpdater()
+    tf_updater = TableFormerUpdater(mode)
 
     # load the groundtruth
     with open(dpbench_dir / f"dataset/reference.json", "r") as fr:

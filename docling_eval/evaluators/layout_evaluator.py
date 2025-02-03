@@ -84,27 +84,17 @@ class LayoutEvaluator:
             self.label_names[i] = _
 
     def __call__(self, ds_path: Path, split: str = "test") -> DatasetLayoutEvaluation:
+        logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
-        test_path = str(ds_path / "test" / "*.parquet")
-        train_path = str(ds_path / "train" / "*.parquet")
+        # Load the dataset
+        split_path = str(ds_path / split / "*.parquet")
+        split_files = glob.glob(split_path)
+        logging.info("Files: %s", split_files)
+        ds = load_dataset("parquet", data_files={split: split_files})
+        logging.info("Overview of dataset: %s", ds)
 
-        test_files = glob.glob(test_path)
-        train_files = glob.glob(train_path)
-        logging.info(f"test-files: {test_files}, train-files: {train_files}")
-
-        # Load all files into the `test`-`train` split
-        ds = None
-        if len(test_files) > 0 and len(train_files) > 0:
-            ds = load_dataset(
-                "parquet", data_files={"test": test_files, "train": train_files}
-            )
-        elif len(test_files) > 0 and len(train_files) == 0:
-            ds = load_dataset("parquet", data_files={"test": test_files})
-
-        logging.info(f"oveview of dataset: {ds}")
-
-        if ds is not None:
-            ds_selection = ds[split]
+        # Select the split
+        ds_selection: Dataset = ds[split]
 
         true_labels, pred_labels, intersection_labels = self._find_intersecting_labels(
             ds_selection

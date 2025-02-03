@@ -13,31 +13,32 @@ logging.basicConfig(
     level=logging.INFO,  # Set the logging level
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+log = logging.getLogger(__name__)
 
 
 def main():
-
-    benchmark = BenchMarkNames.PUB1M
-
-    odir = Path(f"./benchmarks/{benchmark.value}-dataset")
-
+    odir = Path(f"./benchmarks/{BenchMarkNames.PUB1M.value}-dataset")
     odir_tab = Path(odir) / "tableformer"
 
     for _ in [odir, odir_tab]:
         os.makedirs(_, exist_ok=True)
 
     if True:
+        log.info("Create the tableformer converted Pub1M dataset")
         create_p1m_tableformer_dataset(output_dir=odir_tab, max_items=1000, do_viz=True)
 
+        log.info("Evaluate the tableformer converted Pub1M dataset")
         evaluate(
             modality=EvaluationModality.TABLEFORMER,
-            benchmark=benchmark,
+            benchmark=BenchMarkNames.PUB1M,
             idir=odir_tab,
             odir=odir_tab,
         )
+
+        log.info("Visualize the tableformer converted Pub1M dataset")
         visualise(
             modality=EvaluationModality.TABLEFORMER,
-            benchmark=benchmark,
+            benchmark=BenchMarkNames.PUB1M,
             idir=odir_tab,
             odir=odir_tab,
         )

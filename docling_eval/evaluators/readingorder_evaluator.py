@@ -8,7 +8,8 @@ from typing import Dict, List, Optional, Tuple
 
 from datasets import load_dataset
 from deepsearch_glm.andromeda_nlp import nlp_model  # type: ignore
-from docling.datamodel.base_models import BoundingBox
+from docling.datamodel.base_models import BoundingBox, Cluster
+from docling.utils.visualization import draw_clusters
 from docling_core.types.doc.document import DocItem, DoclingDocument, TextItem
 from docling_core.utils.legacy import docling_document_to_legacy
 from PIL import Image, ImageDraw, ImageFont
@@ -334,6 +335,27 @@ class ReadingOrderVisualizer:
             # Draw and save the visualization
             image_bytes = page_images[0]["bytes"]
             image = Image.open(BytesIO(image_bytes))
+
+            clusters = []
+            for idx, (elem, _) in enumerate(true_doc.iterate_items()):
+                if not isinstance(elem, DocItem):
+                    continue
+                prov = elem.prov[0]
+                cluster = Cluster(
+                    id=idx,
+                    label=elem.label,
+                    bbox=BoundingBox.model_validate(
+                        prov.bbox.to_top_left_origin(
+                            page_height=true_doc.pages[prov.page_no].size.height
+                        )
+                    ),
+                    cells=[],
+                )
+                clusters.append(cluster)
+            scale_x = image.width / true_doc.pages[1].size.width
+            scale_y = image.height / true_doc.pages[1].size.height
+            draw_clusters(image, clusters, scale_x, scale_y)
+
             viz_image = self._draw_permuted_reading_order(
                 doc_id, image, true_doc, pred_order
             )

@@ -19,6 +19,8 @@ from docling_eval.benchmarks.omnidocbench.create import (
 )
 from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
     create_fintabnet_tableformer_dataset,
+    create_p1m_tableformer_dataset,
+    create_pubtabnet_tableformer_dataset,
 )
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
@@ -144,12 +146,41 @@ def create(
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
+    elif benchmark == BenchMarkNames.PUBTABNET:
+        if modality == EvaluationModality.TABLEFORMER:
+            log.info("Create the tableformer converted PubTabNet dataset")
+            create_pubtabnet_tableformer_dataset(
+                output_dir=odir, max_items=1000, do_viz=True
+            )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.FINTABNET:
+        if modality == EvaluationModality.TABLEFORMER:
+            log.info("Create the tableformer converted FinTabNet dataset")
+            create_fintabnet_tableformer_dataset(
+                output_dir=odir, max_items=1000, do_viz=True
+            )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.PUB1M:
+        if modality == EvaluationModality.TABLEFORMER:
+            log.info("Create the tableformer converted Pub1M dataset")
+            create_p1m_tableformer_dataset(output_dir=odir, max_items=1000, do_viz=True)
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
     else:
         log.error(f"{benchmark} is not yet implemented")
 
 
 def evaluate(
-    modality: EvaluationModality, benchmark: BenchMarkNames, idir: Path, odir: Path
+    modality: EvaluationModality,
+    benchmark: BenchMarkNames,
+    idir: Path,
+    odir: Path,
+    split: str = "test",
 ):
     r""""""
     if not os.path.exists(idir):
@@ -163,21 +194,21 @@ def evaluate(
 
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
-        layout_evaluation = layout_evaluator(idir, split="test")
+        layout_evaluation = layout_evaluator(idir, split=split)
 
         with open(save_fn, "w") as fd:
             json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.TABLEFORMER:
         table_evaluator = TableEvaluator()
-        table_evaluation = table_evaluator(idir, split="test")
+        table_evaluation = table_evaluator(idir, split=split)
 
         with open(save_fn, "w") as fd:
             json.dump(table_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
-        readingorder_evaluation = readingorder_evaluator(idir, split="test")
+        readingorder_evaluation = readingorder_evaluator(idir, split=split)
 
         with open(save_fn, "w") as fd:
             json.dump(
@@ -190,7 +221,7 @@ def evaluate(
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         md_evaluator = MarkdownTextEvaluator()
-        md_evaluation = md_evaluator(idir, split="test")
+        md_evaluation = md_evaluator(idir, split=split)
 
         with open(save_fn, "w") as fd:
             json.dump(
@@ -208,7 +239,11 @@ def evaluate(
 
 
 def visualise(
-    modality: EvaluationModality, benchmark: BenchMarkNames, idir: Path, odir: Path
+    modality: EvaluationModality,
+    benchmark: BenchMarkNames,
+    idir: Path,
+    odir: Path,
+    split: str = "test",
 ):
 
     metrics_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
@@ -267,7 +302,7 @@ def visualise(
 
         # Generate visualizations of the reading order across the GT and the prediction
         ro_visualizer = ReadingOrderVisualizer()
-        ro_visualizer(idir, metrics_filename, odir, split="test")
+        ro_visualizer(idir, metrics_filename, odir, split=split)
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         with open(metrics_filename, "r") as fd:
@@ -325,16 +360,25 @@ def main(
             help="Output directory",
         ),
     ],
+    split: Annotated[
+        str,
+        typer.Option(
+            ...,
+            "-s",  # Short name
+            "--split",  # Long name
+            help="Dataset split",
+        ),
+    ] = "test",
 ):
     # Dispatch the command
     if task == EvaluationTask.CREATE:
         create(modality, benchmark, idir, odir)
 
     elif task == EvaluationTask.EVALUATE:
-        evaluate(modality, benchmark, idir, odir)
+        evaluate(modality, benchmark, idir, odir, split)
 
     elif task == EvaluationTask.VISUALIZE:
-        visualise(modality, benchmark, idir, odir)
+        visualise(modality, benchmark, idir, odir, split)
 
     else:
         log.error("Unsupported command: '%s'", task.value)

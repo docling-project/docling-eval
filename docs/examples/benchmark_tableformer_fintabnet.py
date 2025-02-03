@@ -13,12 +13,10 @@ logging.basicConfig(
     level=logging.INFO,  # Set the logging level
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+log = logging.getLogger(__name__)
 
 
 def main():
-
-    benchmark = BenchMarkNames.FINTABNET
-
     odir = Path(f"./benchmarks/{BenchMarkNames.FINTABNET.value}-dataset")
 
     odir_tab = Path(odir) / "tableformer"
@@ -27,19 +25,23 @@ def main():
         os.makedirs(_, exist_ok=True)
 
     if True:
+        log.info("Create the tableformer converted FinTabNet dataset")
         create_fintabnet_tableformer_dataset(
             output_dir=odir_tab, max_items=1000, do_viz=True
         )
 
+        log.info("Evaluate the tableformer for the FinTabNet dataset")
         evaluate(
             modality=EvaluationModality.TABLEFORMER,
-            benchmark=benchmark,
+            benchmark=BenchMarkNames.FINTABNET,
             idir=odir_tab,
             odir=odir_tab,
         )
+
+        log.info("Visualize the tableformer for the FinTabNet dataset")
         visualise(
             modality=EvaluationModality.TABLEFORMER,
-            benchmark=benchmark,
+            benchmark=BenchMarkNames.FINTABNET,
             idir=odir_tab,
             odir=odir_tab,
         )
