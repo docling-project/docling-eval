@@ -114,9 +114,17 @@ def parse_arguments():
         required=False,
         default="./benchmarks/dlnv1",
     )
+    parser.add_argument(
+        "-i",
+        "--input-directory",
+        help="input directory with shards",
+        required=False,
+        default="./benchmarks/DLNv1",
+    )
+
     args = parser.parse_args()
 
-    return args.split, Path(args.output_directory)
+    return args.split, Path(args.output_directory), Path(args.input_directory)
 
 
 def ltwh_to_ltrb(box):
@@ -186,10 +194,12 @@ def update(true_doc, current_list, img, old_size, label, box, content):
         true_doc.add_text(label=label, text=content, prov=prov)
 
 
-def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
+def create_dlnv1_e2e_dataset(split: str, output_dir: Path, input_dir: Path,
+                             do_viz: bool=False, max_items: int =None):
     converter = create_converter(page_image_scale=1.0)
     # ds = load_dataset("ds4sd/DocLayNet-v1.1", trust_remote_code=True)
-    ds = load_from_disk("data/DocLayNet_v1.2/data")
+    #ds = load_from_disk("data/DocLayNet_v1.2/data")
+    ds = load_from_disk(input_dir)
 
     if do_viz:
         viz_dir = output_dir / "visualizations"
@@ -300,7 +310,7 @@ def create_dlnv1_e2e_dataset(split, output_dir, do_viz=False, max_items=None):
 
 
 def main():
-    split, output_dir = parse_arguments()
+    split, output_dir, input_dir = parse_arguments()
     os.makedirs(output_dir, exist_ok=True)
 
     odir_e2e = Path(output_dir) / "end_to_end"
@@ -308,7 +318,7 @@ def main():
     for _ in ["test", "train"]:
         os.makedirs(odir_e2e / _, exist_ok=True)
 
-    create_dlnv1_e2e_dataset(split=split, output_dir=odir_e2e)
+    create_dlnv1_e2e_dataset(split=split, output_dir=odir_e2e, input_dir=input_dir)
 
 
 if __name__ == "__main__":

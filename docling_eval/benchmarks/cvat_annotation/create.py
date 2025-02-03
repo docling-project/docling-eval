@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple, cast
+from typing import Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 import xmltodict  # type: ignore[import]
 from datasets import Dataset, load_dataset
@@ -625,7 +625,8 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
 
     already_added: List[int] = []
     for boxid in reading_order["boxids"]:
-
+        # print(" => ", boxid, ": ", boxes[boxid])
+        
         if boxid in already_added:
             logging.warning(f"{boxid} is already added: {already_added}")
             continue
@@ -818,7 +819,7 @@ def from_cvat_to_docling_document(
     annotation_filenames: List[Path],
     overview: AnnotationOverview,
     image_scale: float = 1.0,
-) -> Generator[Tuple[str, AnnotatedImage, Optional[DoclingDocument]]]:
+) -> Iterator[Tuple[str, AnnotatedImage, Optional[DoclingDocument]]]:
 
     for annot_file in annotation_filenames:
 
@@ -927,7 +928,10 @@ def create_layout_dataset_from_annotations(
 
         if true_doc is None:
             continue
-
+        else:
+            print()
+            true_doc.save_as_json(filename = benchmark_dirs.json_anno_dir / f"{basename}.json")
+        
         """
         save_inspection_html(filename=str(html_viz_dir / f"{basename}.html"), doc = true_doc,
                              labels=TRUE_HTML_EXPORT_LABELS)
