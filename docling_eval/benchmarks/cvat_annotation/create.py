@@ -626,7 +626,7 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
     already_added: List[int] = []
     for boxid in reading_order["boxids"]:
         # print(" => ", boxid, ": ", boxes[boxid])
-        
+
         if boxid in already_added:
             logging.warning(f"{boxid} is already added: {already_added}")
             continue
@@ -930,8 +930,10 @@ def create_layout_dataset_from_annotations(
             continue
         else:
             print()
-            true_doc.save_as_json(filename = benchmark_dirs.json_anno_dir / f"{basename}.json")
-        
+            true_doc.save_as_json(
+                filename=benchmark_dirs.json_anno_dir / f"{basename}.json"
+            )
+
         """
         save_inspection_html(filename=str(html_viz_dir / f"{basename}.html"), doc = true_doc,
                              labels=TRUE_HTML_EXPORT_LABELS)

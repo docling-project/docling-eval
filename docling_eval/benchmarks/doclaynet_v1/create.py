@@ -24,9 +24,9 @@ from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
 from docling_eval.benchmarks.utils import (
-    write_datasets_info,
-    save_comparison_html_with_clusters,
     add_pages_to_true_doc,
+    save_comparison_html_with_clusters,
+    write_datasets_info,
 )
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.utils import (
@@ -96,7 +96,7 @@ category_map = {
 
 
 def parse_arguments():
-    """Parse arguments for DP-Bench parsing."""
+    """Parse arguments for DLNv1 parsing."""
 
     parser = argparse.ArgumentParser(
         description="Convert DocLayNet v1 into DoclingDocument ground truth data"
@@ -194,11 +194,14 @@ def update(true_doc, current_list, img, old_size, label, box, content):
         true_doc.add_text(label=label, text=content, prov=prov)
 
 
-def create_dlnv1_e2e_dataset(split: str, output_dir: Path, input_dir: Path,
-                             do_viz: bool=False, max_items: int =None):
+def create_dlnv1_e2e_dataset(
+    split: str,
+    output_dir: Path,
+    input_dir: Path,
+    do_viz: bool = False,
+    max_items: int = -1,
+):
     converter = create_converter(page_image_scale=1.0)
-    # ds = load_dataset("ds4sd/DocLayNet-v1.1", trust_remote_code=True)
-    #ds = load_from_disk("data/DocLayNet_v1.2/data")
     ds = load_from_disk(input_dir)
 
     if do_viz:
@@ -211,7 +214,7 @@ def create_dlnv1_e2e_dataset(split: str, output_dir: Path, input_dir: Path,
     count = 0
     for doc in tqdm(
         ds[split],
-        total=min(len(ds[split]), max_items if max_items is not None else math.inf),
+        total=min(len(ds[split]), max_items if max_items > -1 else math.inf),
     ):
         pdf = doc["pdf"]
         pdf_stream = io.BytesIO(pdf)
@@ -243,17 +246,7 @@ def create_dlnv1_e2e_dataset(split: str, output_dir: Path, input_dir: Path,
             update(true_doc, current_list, img, old_size, l, b, c)
 
         if do_viz:
-            """
-            save_comparison_html(
-                filename=viz_dir / f"{os.path.basename(pdf_path)}-comp.html",
-                true_doc=true_doc,
-                pred_doc=pred_doc,
-                page_image=true_page_images[0],
-                true_labels=TRUE_HTML_EXPORT_LABELS,
-                pred_labels=PRED_HTML_EXPORT_LABELS,
-            )
-            """
-
+            # Disable the visualization of the reading order
             save_comparison_html_with_clusters(
                 filename=viz_dir / f"{true_doc.name}-clusters.html",
                 true_doc=true_doc,
@@ -261,6 +254,7 @@ def create_dlnv1_e2e_dataset(split: str, output_dir: Path, input_dir: Path,
                 page_image=img,
                 true_labels=TRUE_HTML_EXPORT_LABELS,
                 pred_labels=PRED_HTML_EXPORT_LABELS,
+                draw_reading_order=False,
             )
         true_doc, true_pictures, true_page_images = extract_images(
             document=true_doc,

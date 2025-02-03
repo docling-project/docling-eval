@@ -452,10 +452,12 @@ def save_comparison_html_with_clusters(
     page_image: Image.Image,
     true_labels: Set[DocItemLabel],
     pred_labels: Set[DocItemLabel],
+    draw_reading_order: bool = True,
 ):
 
-    def draw_clusters(doc: DoclingDocument, labels: Set[DocItemLabel]):
-
+    def draw_clusters(
+        doc: DoclingDocument, labels: Set[DocItemLabel], draw_reading_order: bool = True
+    ):
         img = copy.deepcopy(page_image)
         draw = ImageDraw.Draw(img)
 
@@ -485,54 +487,21 @@ def save_comparison_html_with_clusters(
                     if bbox.b > bbox.t:
                         bbox.b, bbox.t = bbox.t, bbox.b
 
-                    if x0 is None and y0 is None:
-                        x0 = (bbox.l + bbox.r) / 2.0
-                        y0 = (bbox.b + bbox.t) / 2.0
-                    else:
-                        x1 = (bbox.l + bbox.r) / 2.0
-                        y1 = (bbox.b + bbox.t) / 2.0
+                    if draw_reading_order:
+                        if x0 is None and y0 is None:
+                            x0 = (bbox.l + bbox.r) / 2.0
+                            y0 = (bbox.b + bbox.t) / 2.0
+                        else:
+                            x1 = (bbox.l + bbox.r) / 2.0
+                            y1 = (bbox.b + bbox.t) / 2.0
 
-                        # Arrow parameters
-                        start_point = (x0, y0)  # Starting point of the arrow
-                        end_point = (x1, y1)  # Ending point of the arrow
-                        arrowhead_length = 20  # Length of the arrowhead
-                        arrowhead_width = 10  # Width of the arrowhead
-
-                        arrow_color = "red"
-                        line_width = 2
-
-                        # Draw the arrow shaft (line)
-                        draw.line(
-                            [start_point, end_point], fill=arrow_color, width=line_width
-                        )
-
-                        # Calculate the arrowhead points
-                        dx = end_point[0] - start_point[0]
-                        dy = end_point[1] - start_point[1]
-                        angle = (
-                            dx**2 + dy**2
-                        ) ** 0.5 + 0.01  # Length of the arrow shaft
-
-                        # Normalized direction vector for the arrow shaft
-                        ux, uy = dx / angle, dy / angle
-
-                        # Base of the arrowhead
-                        base_x = end_point[0] - ux * arrowhead_length
-                        base_y = end_point[1] - uy * arrowhead_length
-
-                        # Left and right points of the arrowhead
-                        left_x = base_x - uy * arrowhead_width
-                        left_y = base_y + ux * arrowhead_width
-                        right_x = base_x + uy * arrowhead_width
-                        right_y = base_y - ux * arrowhead_width
-
-                        # Draw the arrowhead (triangle)
-                        draw.polygon(
-                            [end_point, (left_x, left_y), (right_x, right_y)],
-                            fill=arrow_color,
-                        )
-
-                        x0, y0 = x1, y1
+                            draw = draw_arrow(
+                                draw,
+                                (x0, y0, x1, y1),
+                                line_width=2,
+                                color="red",
+                            )
+                            x0, y0 = x1, y1
 
                     # Draw rectangle with only a border
                     rectangle_color = "blue"
@@ -578,8 +547,12 @@ def save_comparison_html_with_clusters(
     true_doc_html = true_doc_html.replace("'", "&#39;")
     pred_doc_html = pred_doc_html.replace("'", "&#39;")
 
-    true_doc_img = draw_clusters(doc=true_doc, labels=true_labels)
-    pred_doc_img = draw_clusters(doc=pred_doc, labels=pred_labels)
+    true_doc_img = draw_clusters(
+        doc=true_doc, labels=true_labels, draw_reading_order=draw_reading_order
+    )
+    pred_doc_img = draw_clusters(
+        doc=pred_doc, labels=pred_labels, draw_reading_order=draw_reading_order
+    )
 
     true_doc_img_b64 = from_pil_to_base64(true_doc_img)
     pred_doc_img_b64 = from_pil_to_base64(pred_doc_img)
