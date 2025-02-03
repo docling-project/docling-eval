@@ -926,18 +926,19 @@ tesserocr = ["tesserocr (>=2.7.1,<3.0.0)"]
 
 [[package]]
 name = "docling-core"
-version = "2.14.0"
+version = "2.17.0"
 description = "A python library to define and validate data types in Docling."
 optional = false
 python-versions = "<4.0,>=3.9"
 files = [
-    {file = "docling_core-2.14.0-py3-none-any.whl", hash = "sha256:05a7b89872260dcdba2b0fbcc3a4619aed4846f58f155d33a10b41b23eea5188"},
-    {file = "docling_core-2.14.0.tar.gz", hash = "sha256:0eb6a52e05f2a06e1777b0533d655a87b54a1a5d374b957beb244c8940aed7da"},
+    {file = "docling_core-2.17.0-py3-none-any.whl", hash = "sha256:5c3015e0eed8e939069bdfd566761dc9f39239647893ae42c53d1333dd0a4749"},
+    {file = "docling_core-2.17.0.tar.gz", hash = "sha256:cfcba8d173730baf244f279369f68e3cb5ddc7680769841afd254b61e432133e"},
 ]
 
 [package.dependencies]
 jsonref = ">=1.1.0,<2.0.0"
 jsonschema = ">=4.16.0,<5.0.0"
+latex2mathml = ">=3.77.0,<4.0.0"
 pandas = ">=2.1.4,<3.0.0"
 pillow = ">=10.3.0,<11.0.0"
 pydantic = ">=2.6.0,<2.10.0 || >2.10.0,<2.10.1 || >2.10.1,<2.10.2 || >2.10.2,<3.0.0"
@@ -2067,6 +2068,17 @@ files = [
     {file = "kiwisolver-1.4.8-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c07b29089b7ba090b6f1a669f1411f27221c3662b3a1b7010e67b59bb5a6f10b"},
     {file = "kiwisolver-1.4.8-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:65ea09a5a3faadd59c2ce96dc7bf0f364986a315949dc6374f04396b0d60e09b"},
     {file = "kiwisolver-1.4.8.tar.gz", hash = "sha256:23d5f023bdc8c7e54eb65f03ca5d5bb25b601eac4d7f1a042888a1f45237987e"},
+]
+
+[[package]]
+name = "latex2mathml"
+version = "3.77.0"
+description = "Pure Python library for LaTeX to MathML conversion"
+optional = false
+python-versions = ">=3.8.1,<4.0.0"
+files = [
+    {file = "latex2mathml-3.77.0-py3-none-any.whl", hash = "sha256:5531e18a2a9eae7c24e257118b6a444cbba253cd27ff3e81f1bd6c41e88e786e"},
+    {file = "latex2mathml-3.77.0.tar.gz", hash = "sha256:e2f501d1878f2e489c3f6f12786bef74c62f712d2770f7f3c837eb20a55d0a1e"},
 ]
 
 [[package]]
@@ -6171,4 +6183,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "2c36677a14b7036607eb7db3a1e8b80f44db0e4913c2008dcf2c6cf8e4bbc471"
+content-hash = "e348dda29df7b82f3a22de0fe305b73450708efcc434af6fdc967c1fa8bf67c1"
