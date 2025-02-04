@@ -462,7 +462,7 @@ def save_comparison_html_with_clusters(
         Draw the document clusters and optionaly the reading order
         """
         clusters = []
-        for idx, (elem, _) in enumerate(true_doc.iterate_items()):
+        for idx, (elem, _) in enumerate(doc.iterate_items()):
             if not isinstance(elem, DocItem):
                 continue
             prov = elem.prov[0]
