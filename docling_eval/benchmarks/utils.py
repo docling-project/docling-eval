@@ -12,8 +12,9 @@ from datasets import Features
 from datasets import Image as Features_Image
 from datasets import Sequence, Value
 from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
-from docling.datamodel.base_models import InputFormat, Page
+from docling.datamodel.base_models import BoundingBox, Cluster, InputFormat, Page
 from docling.datamodel.document import InputDocument
+from docling.utils.visualization import draw_clusters
 from docling_core.types.doc.base import Size
 from docling_core.types.doc.document import (
     DocItem,
@@ -454,83 +455,37 @@ def save_comparison_html_with_clusters(
     pred_labels: Set[DocItemLabel],
     draw_reading_order: bool = True,
 ):
-
-    def draw_clusters(
-        doc: DoclingDocument, labels: Set[DocItemLabel], draw_reading_order: bool = True
+    def draw_doc_clusters(
+        doc: DoclingDocument, image: Image.Image, draw_reading_order: bool = False
     ):
-        img = copy.deepcopy(page_image)
-        draw = ImageDraw.Draw(img)
-
-        # Load a font (adjust the font size and path as needed)
-        font = ImageFont.load_default()
-        try:
-            font = ImageFont.truetype("arial.ttf", size=15)
-        except IOError:
-            font = ImageFont.load_default()
-
-        x0, y0 = None, None
-
-        for item, level in doc.iterate_items():
-            if isinstance(item, DocItem):  # and item.label in labels:
-                for prov in item.prov:
-
-                    bbox = prov.bbox.to_top_left_origin(
-                        page_height=doc.pages[prov.page_no].size.height
+        r"""
+        Draw the document clusters and optionaly the reading order
+        """
+        clusters = []
+        for idx, (elem, _) in enumerate(true_doc.iterate_items()):
+            if not isinstance(elem, DocItem):
+                continue
+            prov = elem.prov[0]
+            cluster = Cluster(
+                id=idx,
+                label=elem.label,
+                bbox=BoundingBox.model_validate(
+                    prov.bbox.to_top_left_origin(
+                        page_height=true_doc.pages[prov.page_no].size.height
                     )
-                    bbox = bbox.normalized(doc.pages[prov.page_no].size)
+                ),
+                cells=[],
+            )
+            clusters.append(cluster)
+        scale_x = image.width / true_doc.pages[1].size.width
+        scale_y = image.height / true_doc.pages[1].size.height
+        draw_clusters(image, clusters, scale_x, scale_y)
 
-                    bbox.l = round(bbox.l * img.width)
-                    bbox.r = round(bbox.r * img.width)
-                    bbox.t = round(bbox.t * img.height)
-                    bbox.b = round(bbox.b * img.height)
+        # TODO: Add rendering of the reading_order if enabled
 
-                    if bbox.b > bbox.t:
-                        bbox.b, bbox.t = bbox.t, bbox.b
+        return image
 
-                    if draw_reading_order:
-                        if x0 is None and y0 is None:
-                            x0 = (bbox.l + bbox.r) / 2.0
-                            y0 = (bbox.b + bbox.t) / 2.0
-                        else:
-                            x1 = (bbox.l + bbox.r) / 2.0
-                            y1 = (bbox.b + bbox.t) / 2.0
-
-                            draw = draw_arrow(
-                                draw,
-                                (x0, y0, x1, y1),
-                                line_width=2,
-                                color="red",
-                            )
-                            x0, y0 = x1, y1
-
-                    # Draw rectangle with only a border
-                    rectangle_color = "blue"
-                    border_width = 1
-                    draw.rectangle(
-                        [bbox.l, bbox.b, bbox.r, bbox.t],
-                        outline=rectangle_color,
-                        width=border_width,
-                    )
-
-                    # Calculate label size using getbbox
-                    text_bbox = font.getbbox(str(item.label))
-                    label_width = text_bbox[2] - text_bbox[0]
-                    label_height = text_bbox[3] - text_bbox[1]
-                    label_x = bbox.l
-                    label_y = (
-                        bbox.b - label_height
-                    )  # - 5  # Place the label above the rectangle
-
-                    # Draw label text
-                    draw.text(
-                        (label_x, label_y),
-                        str(item.label),
-                        fill=rectangle_color,
-                        font=font,
-                    )
-
-        return img
-
+    # HTML rendering
     true_doc_html = true_doc.export_to_html(
         image_mode=ImageRefMode.EMBEDDED,
         html_head=HTML_DEFAULT_HEAD_FOR_COMP,
@@ -547,12 +502,8 @@ def save_comparison_html_with_clusters(
     true_doc_html = true_doc_html.replace("'", "&#39;")
     pred_doc_html = pred_doc_html.replace("'", "&#39;")
 
-    true_doc_img = draw_clusters(
-        doc=true_doc, labels=true_labels, draw_reading_order=draw_reading_order
-    )
-    pred_doc_img = draw_clusters(
-        doc=pred_doc, labels=pred_labels, draw_reading_order=draw_reading_order
-    )
+    true_doc_img = draw_doc_clusters(true_doc, copy.deepcopy(page_image))
+    pred_doc_img = draw_doc_clusters(pred_doc, copy.deepcopy(page_image))
 
     true_doc_img_b64 = from_pil_to_base64(true_doc_img)
     pred_doc_img_b64 = from_pil_to_base64(pred_doc_img)
@@ -565,6 +516,128 @@ def save_comparison_html_with_clusters(
 
     with open(str(filename), "w") as fw:
         fw.write(comparison_page)
+
+
+# def save_comparison_html_with_clusters(
+#     filename: Path,
+#     true_doc: DoclingDocument,
+#     pred_doc: DoclingDocument,
+#     page_image: Image.Image,
+#     true_labels: Set[DocItemLabel],
+#     pred_labels: Set[DocItemLabel],
+#     draw_reading_order: bool = True,
+# ):
+
+#     def draw_clusters(
+#         doc: DoclingDocument, labels: Set[DocItemLabel], draw_reading_order: bool = True
+#     ):
+#         img = copy.deepcopy(page_image)
+#         draw = ImageDraw.Draw(img)
+
+#         # Load a font (adjust the font size and path as needed)
+#         font = ImageFont.load_default()
+#         try:
+#             font = ImageFont.truetype("arial.ttf", size=15)
+#         except IOError:
+#             font = ImageFont.load_default()
+
+#         x0, y0 = None, None
+
+#         for item, level in doc.iterate_items():
+#             if isinstance(item, DocItem):  # and item.label in labels:
+#                 for prov in item.prov:
+
+#                     bbox = prov.bbox.to_top_left_origin(
+#                         page_height=doc.pages[prov.page_no].size.height
+#                     )
+#                     bbox = bbox.normalized(doc.pages[prov.page_no].size)
+
+#                     bbox.l = round(bbox.l * img.width)
+#                     bbox.r = round(bbox.r * img.width)
+#                     bbox.t = round(bbox.t * img.height)
+#                     bbox.b = round(bbox.b * img.height)
+
+#                     if bbox.b > bbox.t:
+#                         bbox.b, bbox.t = bbox.t, bbox.b
+
+#                     if draw_reading_order:
+#                         if x0 is None and y0 is None:
+#                             x0 = (bbox.l + bbox.r) / 2.0
+#                             y0 = (bbox.b + bbox.t) / 2.0
+#                         else:
+#                             x1 = (bbox.l + bbox.r) / 2.0
+#                             y1 = (bbox.b + bbox.t) / 2.0
+
+#                             draw = draw_arrow(
+#                                 draw,
+#                                 (x0, y0, x1, y1),
+#                                 line_width=2,
+#                                 color="red",
+#                             )
+#                             x0, y0 = x1, y1
+
+#                     # Draw rectangle with only a border
+#                     rectangle_color = "blue"
+#                     border_width = 1
+#                     draw.rectangle(
+#                         [bbox.l, bbox.b, bbox.r, bbox.t],
+#                         outline=rectangle_color,
+#                         width=border_width,
+#                     )
+
+#                     # Calculate label size using getbbox
+#                     text_bbox = font.getbbox(str(item.label))
+#                     label_width = text_bbox[2] - text_bbox[0]
+#                     label_height = text_bbox[3] - text_bbox[1]
+#                     label_x = bbox.l
+#                     label_y = (
+#                         bbox.b - label_height
+#                     )  # - 5  # Place the label above the rectangle
+
+#                     # Draw label text
+#                     draw.text(
+#                         (label_x, label_y),
+#                         str(item.label),
+#                         fill=rectangle_color,
+#                         font=font,
+#                     )
+
+#         return img
+
+#     true_doc_html = true_doc.export_to_html(
+#         image_mode=ImageRefMode.EMBEDDED,
+#         html_head=HTML_DEFAULT_HEAD_FOR_COMP,
+#         labels=true_labels,
+#     )
+
+#     pred_doc_html = pred_doc.export_to_html(
+#         image_mode=ImageRefMode.EMBEDDED,
+#         html_head=HTML_DEFAULT_HEAD_FOR_COMP,
+#         labels=pred_labels,
+#     )
+
+#     # since the string in srcdoc are wrapped by ', we need to replace all ' by it HTML convention
+#     true_doc_html = true_doc_html.replace("'", "&#39;")
+#     pred_doc_html = pred_doc_html.replace("'", "&#39;")
+
+#     true_doc_img = draw_clusters(
+#         doc=true_doc, labels=true_labels, draw_reading_order=draw_reading_order
+#     )
+#     pred_doc_img = draw_clusters(
+#         doc=pred_doc, labels=pred_labels, draw_reading_order=draw_reading_order
+#     )
+
+#     true_doc_img_b64 = from_pil_to_base64(true_doc_img)
+#     pred_doc_img_b64 = from_pil_to_base64(pred_doc_img)
+
+#     comparison_page = copy.deepcopy(HTML_COMPARISON_PAGE_WITH_CLUSTERS)
+#     comparison_page = comparison_page.replace("BASE64TRUEPAGE", true_doc_img_b64)
+#     comparison_page = comparison_page.replace("TRUEDOC", true_doc_html)
+#     comparison_page = comparison_page.replace("BASE64PREDPAGE", pred_doc_img_b64)
+#     comparison_page = comparison_page.replace("PREDDOC", pred_doc_html)
+
+#     with open(str(filename), "w") as fw:
+#         fw.write(comparison_page)
 
 
 def save_inspection_html(

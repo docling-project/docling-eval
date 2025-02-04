@@ -121,10 +121,22 @@ def parse_arguments():
         required=False,
         default="./benchmarks/DLNv1",
     )
+    parser.add_argument(
+        "-m",
+        "--max-items",
+        help="Max items to process",
+        required=False,
+        default="1000",
+    )
 
     args = parser.parse_args()
 
-    return args.split, Path(args.output_directory), Path(args.input_directory)
+    return (
+        args.split,
+        Path(args.output_directory),
+        Path(args.input_directory),
+        int(args.max_items),
+    )
 
 
 def ltwh_to_ltrb(box):
@@ -246,7 +258,6 @@ def create_dlnv1_e2e_dataset(
             update(true_doc, current_list, img, old_size, l, b, c)
 
         if do_viz:
-            # Disable the visualization of the reading order
             save_comparison_html_with_clusters(
                 filename=viz_dir / f"{true_doc.name}-clusters.html",
                 true_doc=true_doc,
@@ -254,7 +265,7 @@ def create_dlnv1_e2e_dataset(
                 page_image=img,
                 true_labels=TRUE_HTML_EXPORT_LABELS,
                 pred_labels=PRED_HTML_EXPORT_LABELS,
-                draw_reading_order=False,
+                draw_reading_order=False,  # Disable reading-order visualization
             )
         true_doc, true_pictures, true_page_images = extract_images(
             document=true_doc,
@@ -304,7 +315,7 @@ def create_dlnv1_e2e_dataset(
 
 
 def main():
-    split, output_dir, input_dir = parse_arguments()
+    split, output_dir, input_dir, max_items = parse_arguments()
     os.makedirs(output_dir, exist_ok=True)
 
     odir_e2e = Path(output_dir) / "end_to_end"
@@ -312,7 +323,13 @@ def main():
     for _ in ["test", "train"]:
         os.makedirs(odir_e2e / _, exist_ok=True)
 
-    create_dlnv1_e2e_dataset(split=split, output_dir=odir_e2e, input_dir=input_dir)
+    create_dlnv1_e2e_dataset(
+        split=split,
+        output_dir=odir_e2e,
+        input_dir=input_dir,
+        do_viz=True,
+        max_items=max_items,
+    )
 
 
 if __name__ == "__main__":
