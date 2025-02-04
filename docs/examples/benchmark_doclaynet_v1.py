@@ -33,7 +33,7 @@ def main():
             split=split,
             output_dir=odir_lay,
             do_viz=True,
-            max_items=100,
+            max_items=2000,
             input_dir=idir,
         )
 

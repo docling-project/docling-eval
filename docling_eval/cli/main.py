@@ -3,7 +3,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from tabulate import tabulate  # type: ignore
@@ -105,6 +105,7 @@ def create(
     idir: Path,
     odir: Path,
     image_scale: float = 1.0,
+    artifacts_path: Optional[Path] = None,
 ):
     r""""""
     if not os.path.exists(idir):
@@ -125,7 +126,10 @@ def create(
 
         elif modality == EvaluationModality.TABLEFORMER:
             create_dpbench_tableformer_dataset(
-                dpbench_dir=idir, output_dir=odir, image_scale=image_scale
+                dpbench_dir=idir,
+                output_dir=odir,
+                image_scale=image_scale,
+                artifacts_path=artifacts_path,
             )
 
         else:
@@ -141,7 +145,10 @@ def create(
             )
         elif modality == EvaluationModality.TABLEFORMER:
             create_omnidocbench_tableformer_dataset(
-                omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
+                omnidocbench_dir=idir,
+                output_dir=odir,
+                image_scale=image_scale,
+                artifacts_path=artifacts_path,
             )
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
@@ -150,7 +157,10 @@ def create(
         if modality == EvaluationModality.TABLEFORMER:
             log.info("Create the tableformer converted PubTabNet dataset")
             create_pubtabnet_tableformer_dataset(
-                output_dir=odir, max_items=1000, do_viz=True
+                output_dir=odir,
+                max_items=1000,
+                do_viz=True,
+                artifacts_path=artifacts_path,
             )
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
@@ -159,7 +169,10 @@ def create(
         if modality == EvaluationModality.TABLEFORMER:
             log.info("Create the tableformer converted FinTabNet dataset")
             create_fintabnet_tableformer_dataset(
-                output_dir=odir, max_items=1000, do_viz=True
+                output_dir=odir,
+                max_items=1000,
+                do_viz=True,
+                artifacts_path=artifacts_path,
             )
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
@@ -167,7 +180,12 @@ def create(
     elif benchmark == BenchMarkNames.PUB1M:
         if modality == EvaluationModality.TABLEFORMER:
             log.info("Create the tableformer converted Pub1M dataset")
-            create_p1m_tableformer_dataset(output_dir=odir, max_items=1000, do_viz=True)
+            create_p1m_tableformer_dataset(
+                output_dir=odir,
+                max_items=1000,
+                do_viz=True,
+                artifacts_path=artifacts_path,
+            )
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
@@ -369,10 +387,19 @@ def main(
             help="Dataset split",
         ),
     ] = "test",
+    artifacts_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            ...,
+            "-a",  # Short name
+            "--artifacts-path",  # Long name
+            help="Load artifacts from local path",
+        ),
+    ] = None,
 ):
     # Dispatch the command
     if task == EvaluationTask.CREATE:
-        create(modality, benchmark, idir, odir)
+        create(modality, benchmark, idir, odir, artifacts_path=artifacts_path)
 
     elif task == EvaluationTask.EVALUATE:
         evaluate(modality, benchmark, idir, odir, split)

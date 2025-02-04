@@ -1,6 +1,7 @@
 import logging
 import warnings
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 
 from docling.cli.main import OcrEngine
 from docling.datamodel.base_models import InputFormat
@@ -30,6 +31,7 @@ def create_converter(
     ocr_lang: List[str] = ["en"],
     ocr_engine: OcrEngine = OcrEngine.EASYOCR,
     timings: bool = True,
+    artifacts_path: Optional[Path] = None,
 ):
 
     force_ocr: bool = True
@@ -54,6 +56,7 @@ def create_converter(
         do_ocr=do_ocr,
         ocr_options=EasyOcrOptions(force_full_page_ocr=force_ocr),
         do_table_structure=True,
+        artifacts_path=artifacts_path,
     )
 
     pipeline_options.table_structure_options.do_cell_matching = True  # do_cell_matching

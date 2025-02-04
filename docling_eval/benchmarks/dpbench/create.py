@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 from docling.datamodel.pipeline_options import TableFormerMode
 from tqdm import tqdm  # type: ignore
@@ -235,11 +235,17 @@ def update(
 
 
 def create_dpbench_e2e_dataset(
-    dpbench_dir: Path, output_dir: Path, image_scale: float = 1.0, do_viz: bool = False
+    dpbench_dir: Path,
+    output_dir: Path,
+    image_scale: float = 1.0,
+    do_viz: bool = False,
+    artifacts_path: Optional[Path] = None,
 ):
 
     # Create Converter
-    doc_converter = create_converter(page_image_scale=image_scale)
+    doc_converter = create_converter(
+        page_image_scale=image_scale, artifacts_path=artifacts_path
+    )
 
     # load the groundtruth
     with open(dpbench_dir / f"dataset/reference.json", "r") as fr:
@@ -350,9 +356,10 @@ def create_dpbench_tableformer_dataset(
     output_dir: Path,
     image_scale: float = 1.0,
     mode: TableFormerMode = TableFormerMode.ACCURATE,
+    artifacts_path: Optional[Path] = None,
 ):
     # Init the TableFormer model
-    tf_updater = TableFormerUpdater(mode)
+    tf_updater = TableFormerUpdater(mode, artifacts_path=artifacts_path)
 
     # load the groundtruth
     with open(dpbench_dir / f"dataset/reference.json", "r") as fr:

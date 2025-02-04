@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
 from bs4 import BeautifulSoup  # type: ignore
 from docling.datamodel.pipeline_options import TableFormerMode
@@ -250,10 +251,13 @@ def create_omnidocbench_e2e_dataset(
     output_dir: Path,
     image_scale: float = 1.0,
     do_viz: bool = False,
+    artifacts_path: Optional[Path] = None,
 ):
 
     # Create Converter
-    doc_converter = create_converter(page_image_scale=image_scale)
+    doc_converter = create_converter(
+        page_image_scale=image_scale, artifacts_path=artifacts_path
+    )
 
     # load the groundtruth
     with open(omnidocbench_dir / f"OmniDocBench.json", "r") as fr:
@@ -379,9 +383,10 @@ def create_omnidocbench_tableformer_dataset(
     output_dir: Path,
     image_scale: float = 1.0,
     mode: TableFormerMode = TableFormerMode.ACCURATE,
+    artifacts_path: Optional[Path] = None,
 ):
     # Init the TableFormer model
-    tf_updater = TableFormerUpdater(mode)
+    tf_updater = TableFormerUpdater(mode, artifacts_path=artifacts_path)
 
     # load the groundtruth
     with open(omnidocbench_dir / f"OmniDocBench.json", "r") as fr:
