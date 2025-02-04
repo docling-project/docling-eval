@@ -102,29 +102,32 @@ def log_and_save_stats(
 def create(
     modality: EvaluationModality,
     benchmark: BenchMarkNames,
-    idir: Path,
     odir: Path,
+    idir: Optional[Path] = None,
     image_scale: float = 1.0,
     artifacts_path: Optional[Path] = None,
+    max_items: int = 1000,
 ):
     r""""""
-    if not os.path.exists(idir):
-        log.error(f"Benchmark directory not found: {idir}")
-        return
-
     if odir is None:
         odir = Path("./benchmarks") / benchmark.value / modality.value
 
     if benchmark == BenchMarkNames.DPBENCH:
+        if idir is None:
+            log.error("The input dir for %s must be provided", BenchMarkNames.DPBENCH)
+        assert idir is not None
+
         if (
             modality == EvaluationModality.END2END
             or modality == EvaluationModality.LAYOUT
         ):
+            # No support for max_items
             create_dpbench_e2e_dataset(
                 dpbench_dir=idir, output_dir=odir, image_scale=image_scale
             )
 
         elif modality == EvaluationModality.TABLEFORMER:
+            # No support for max_items
             create_dpbench_tableformer_dataset(
                 dpbench_dir=idir,
                 output_dir=odir,
@@ -136,14 +139,20 @@ def create(
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
     elif benchmark == BenchMarkNames.OMNIDOCBENCH:
+        if idir is None:
+            log.error("The input dir for %s must be provided", BenchMarkNames.DPBENCH)
+        assert idir is not None
+
         if (
             modality == EvaluationModality.END2END
             or modality == EvaluationModality.LAYOUT
         ):
+            # No support for max_items
             create_omnidocbench_e2e_dataset(
                 omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
             )
         elif modality == EvaluationModality.TABLEFORMER:
+            # No support for max_items
             create_omnidocbench_tableformer_dataset(
                 omnidocbench_dir=idir,
                 output_dir=odir,
@@ -158,7 +167,7 @@ def create(
             log.info("Create the tableformer converted PubTabNet dataset")
             create_pubtabnet_tableformer_dataset(
                 output_dir=odir,
-                max_items=1000,
+                max_items=max_items,
                 do_viz=True,
                 artifacts_path=artifacts_path,
             )
@@ -170,7 +179,7 @@ def create(
             log.info("Create the tableformer converted FinTabNet dataset")
             create_fintabnet_tableformer_dataset(
                 output_dir=odir,
-                max_items=1000,
+                max_items=max_items,
                 do_viz=True,
                 artifacts_path=artifacts_path,
             )
@@ -182,7 +191,7 @@ def create(
             log.info("Create the tableformer converted Pub1M dataset")
             create_p1m_tableformer_dataset(
                 output_dir=odir,
-                max_items=1000,
+                max_items=max_items,
                 do_viz=True,
                 artifacts_path=artifacts_path,
             )
@@ -360,15 +369,6 @@ def main(
             help="Benchmark name",
         ),
     ],
-    idir: Annotated[
-        Path,
-        typer.Option(
-            ...,
-            "-i",  # Short name
-            "--input-dir",  # Long name
-            help="Input directory",
-        ),
-    ],
     odir: Annotated[
         Path,
         typer.Option(
@@ -378,6 +378,15 @@ def main(
             help="Output directory",
         ),
     ],
+    idir: Annotated[
+        Optional[Path],
+        typer.Option(
+            ...,
+            "-i",  # Short name
+            "--input-dir",  # Long name
+            help="Input directory",
+        ),
+    ] = None,
     split: Annotated[
         str,
         typer.Option(
@@ -396,15 +405,33 @@ def main(
             help="Load artifacts from local path",
         ),
     ] = None,
+    max_items: Annotated[
+        int,
+        typer.Option(
+            ...,
+            "-n",  # Short name
+            "--max-items",  # Long name
+            help="How many items to load from the original dataset",
+        ),
+    ] = 1000,
 ):
     # Dispatch the command
     if task == EvaluationTask.CREATE:
-        create(modality, benchmark, idir, odir, artifacts_path=artifacts_path)
+        create(
+            modality,
+            benchmark,
+            odir,
+            idir=idir,
+            artifacts_path=artifacts_path,
+            max_items=max_items,
+        )
 
     elif task == EvaluationTask.EVALUATE:
+        assert idir is not None
         evaluate(modality, benchmark, idir, odir, split)
 
     elif task == EvaluationTask.VISUALIZE:
+        assert idir is not None
         visualise(modality, benchmark, idir, odir, split)
 
     else:

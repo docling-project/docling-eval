@@ -122,11 +122,11 @@ def parse_arguments():
         default="./benchmarks/DLNv1",
     )
     parser.add_argument(
-        "-m",
+        "-n",
         "--max-items",
         help="Max items to process",
         required=False,
-        default="1000",
+        default="2000",
     )
 
     args = parser.parse_args()

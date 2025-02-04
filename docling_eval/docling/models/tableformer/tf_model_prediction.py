@@ -127,25 +127,23 @@ class TableFormerUpdater:
         artifacts_path: Optional[Path] = None,
     ):
         r""" """
-        # Download models from HF
-        download_path = StandardPdfPipeline.download_models_hf()
+        # Download models from HF or use the local dir
+        model_weights_root = (
+            StandardPdfPipeline.download_models_hf()
+            if artifacts_path is None
+            else artifacts_path
+        )
 
         # Init the TableFormer model
         table_structure_options = TableStructureOptions(mode=mode)
         accelerator_options = AcceleratorOptions(
             num_threads=num_threads, device=AcceleratorDevice.AUTO
         )
-        pdf_pipeline_opts = PdfPipelineOptions(
-            do_table_structure=True,
-            artifacts_path=artifacts_path,
-            table_structure_options=table_structure_options,
-            accelerator_options=accelerator_options,
-        )
         self._docling_tf_model = TableStructureModel(
             enabled=True,
-            artifacts_path=download_path / StandardPdfPipeline._table_model_path,
-            options=pdf_pipeline_opts.table_structure_options,
-            accelerator_options=pdf_pipeline_opts.accelerator_options,
+            artifacts_path=model_weights_root / StandardPdfPipeline._table_model_path,
+            options=table_structure_options,
+            accelerator_options=accelerator_options,
         )
         log.info("Initialize %s", mode)
 
