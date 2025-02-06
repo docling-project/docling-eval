@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 def main():
     # TODO:
-    idir = "/Users/nli/data/datasets/DLNv1"
+    idir = "/Users/nli/data/datasets/DocLayNetV1/DLNv1_with_pdf"
     odir = Path(f"./benchmarks/{BenchMarkNames.DOCLAYNETV1.value}-dataset")
     odir_lay = Path(odir) / "layout"
     split = "test"

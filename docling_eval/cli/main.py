@@ -9,6 +9,7 @@ import typer
 from tabulate import tabulate  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
+from docling_eval.benchmarks.doclaynet_v1.create import create_dlnv1_e2e_dataset
 from docling_eval.benchmarks.dpbench.create import (
     create_dpbench_e2e_dataset,
     create_dpbench_tableformer_dataset,
@@ -106,6 +107,7 @@ def create(
     idir: Optional[Path] = None,
     image_scale: float = 1.0,
     artifacts_path: Optional[Path] = None,
+    split: str = "test",
     max_items: int = 1000,
 ):
     r""""""
@@ -194,6 +196,23 @@ def create(
                 max_items=max_items,
                 do_viz=True,
                 artifacts_path=artifacts_path,
+            )
+        else:
+            log.error(f"{modality} is not yet implemented for {benchmark}")
+
+    elif benchmark == BenchMarkNames.DOCLAYNETV1:
+        if idir is None:
+            log.error(
+                "The input dir for %s must be provided", BenchMarkNames.DOCLAYNETV1
+            )
+        assert idir is not None
+        if modality == EvaluationModality.LAYOUT:
+            create_dlnv1_e2e_dataset(
+                split=split,
+                output_dir=odir,
+                input_dir=idir,
+                do_viz=True,
+                max_items=max_items,
             )
         else:
             log.error(f"{modality} is not yet implemented for {benchmark}")
@@ -423,6 +442,7 @@ def main(
             odir,
             idir=idir,
             artifacts_path=artifacts_path,
+            split=split,
             max_items=max_items,
         )
 

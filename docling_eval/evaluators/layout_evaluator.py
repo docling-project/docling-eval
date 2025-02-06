@@ -1,4 +1,6 @@
+import copy
 import glob
+import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -99,7 +101,8 @@ class LayoutEvaluator:
         true_labels, pred_labels, intersection_labels = self._find_intersecting_labels(
             ds_selection
         )
-        logging.info(f"Intersection labels: {intersection_labels}")
+        intersection_labels_str = "\n" + "\n".join(sorted(intersection_labels))
+        logging.info(f"Intersection labels: {intersection_labels_str}")
 
         doc_ids = []
         ground_truths = []
@@ -116,8 +119,9 @@ class LayoutEvaluator:
             pred_doc_dict = data[BenchMarkColumns.PREDICTION]
             pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
 
-            gts, preds = self._evaluate_layouts_in_documents(
-                doc_id=data[BenchMarkColumns.DOC_ID],
+            doc_id = data[BenchMarkColumns.DOC_ID]
+            gts, preds = self._extract_layout_data(
+                doc_id=doc_id,
                 true_doc=true_doc,
                 pred_doc=pred_doc,
                 filter_labels=intersection_labels,
@@ -130,13 +134,17 @@ class LayoutEvaluator:
                 ground_truths.extend(gts)
                 predictions.extend(preds)
             else:
-                logging.error("Ignoring predictions for document")
+                logging.error(
+                    "Mismatch in len of GT (%s) vs pred (%s). Skipping document '%s'.",
+                    len(gts),
+                    len(preds),
+                    doc_id,
+                )
 
         assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
-
         assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
 
-        # Initialize Mean Average Precision metric
+        # Initialize metric for the bboxes of the entire document
         metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
         # Update metric with predictions and ground truths
@@ -166,7 +174,9 @@ class LayoutEvaluator:
         map_values = []
 
         evaluations_per_image: List[ImageLayoutEvaluation] = []
-        for doc_id, pred, gt in zip(doc_ids, predictions, ground_truths):
+        for i, (doc_id, pred, gt) in enumerate(
+            zip(doc_ids, predictions, ground_truths)
+        ):
             # Reset the metric for the next image
             # metric.reset()
             metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
@@ -365,7 +375,7 @@ class LayoutEvaluator:
 
         return true_labels, pred_labels, intersection_labels
 
-    def _evaluate_layouts_in_documents(
+    def _extract_layout_data(
         self,
         doc_id: str,
         true_doc: DoclingDocument,
@@ -373,6 +383,9 @@ class LayoutEvaluator:
         filter_labels: List[DocItemLabel],
     ) -> tuple[list[dict[str, torch.Tensor]], list[dict[str, torch.Tensor]]]:
         r"""
+        Filter to keep only bboxes from the given labels
+        Convert each bbox to top-left-origin, normalize to page size and scale 100
+
         Returns
         -------
         ground_truths: List of dict with keys "bboxes", "labels" and values are tensors
@@ -407,7 +420,9 @@ class LayoutEvaluator:
         ground_truths = []
         predictions = []
 
-        # logging.info(f"\n\n ================= {true_doc.name}, {pred_doc.name} ===================== \n\n")
+        # DEBUG
+        # true_tl_bboxes = []
+        # pred_tl_bboxes = []
 
         for page_no, items in true_pages_to_objects.items():
 
@@ -420,8 +435,9 @@ class LayoutEvaluator:
             labels = []
             for item in items:
                 for prov in item.prov:
-
                     bbox = prov.bbox.to_top_left_origin(page_height=page_height)
+                    # true_tl_bboxes.append(copy.deepcopy(bbox))
+
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
 
@@ -449,12 +465,11 @@ class LayoutEvaluator:
             scores = []
             for item in items:
                 for prov in item.prov:
-
                     bbox = prov.bbox.to_top_left_origin(page_height=page_height)
+                    # pred_tl_bboxes.append(copy.deepcopy(bbox))
+
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
-
-                    # logging.info(f"prediction {page_no}: {page_width, page_height} -> {item.label}, {bbox.coord_origin}: [{bbox.l}, {bbox.b}, {bbox.r}, {bbox.t}]")
 
                     bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
                     labels.append(filter_labels.index(item.label))
@@ -473,5 +488,14 @@ class LayoutEvaluator:
             predictions
         ), f"len(ground_truths)==len(predictions) => {len(ground_truths)}=={len(predictions)}"
         """
+
+        # Debug
+        # true_tl_bboxes_str = "\n".join([json.dumps(b.model_dump(include={"b", "l", "t", "r"})) for b in true_tl_bboxes])
+        # pred_tl_bboxes_str = "\n".join([json.dumps(b.model_dump(include={"b", "l", "t", "r"})) for b in pred_tl_bboxes])
+        # print(f"Doc id: {doc_id}")
+        # print(f"True bboxes: [{len(true_tl_bboxes)}]")
+        # print(true_tl_bboxes_str)
+        # print(f"Pred bboxes: [{len(pred_tl_bboxes)}]")
+        # print(pred_tl_bboxes_str)
 
         return ground_truths, predictions
