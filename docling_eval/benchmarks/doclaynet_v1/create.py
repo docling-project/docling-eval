@@ -181,8 +181,8 @@ def create_dlnv1_e2e_dataset(
     records = []
     count = 0
     for doc in tqdm(
-        ds[split],
-        total=min(len(ds[split]), max_items if max_items > -1 else math.inf),
+        ds,
+        total=min(len(ds), max_items if max_items > -1 else math.inf),
     ):
         pdf = doc["pdf"]
         pdf_stream = io.BytesIO(pdf)
