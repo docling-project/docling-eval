@@ -28,7 +28,7 @@ def main():
     if True:
         log.info("Create the end-to-end converted DocLayNetV1 dataset")
         create_dlnv1_e2e_dataset(
-            name="ds4sd/docling-DocLayNet-v1.1",
+            name="ds4sd/DocLayNet-v1.2",
             split=split,
             output_dir=odir_lay,
             do_viz=True,

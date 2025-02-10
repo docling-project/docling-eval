@@ -208,7 +208,7 @@ def create(
         assert idir is not None
         if modality == EvaluationModality.LAYOUT:
             create_dlnv1_e2e_dataset(
-                name="ds4sd/docling-DocLayNet-v1.1",
+                name="ds4sd/DocLayNet-v1.2",
                 split=split,
                 output_dir=odir,
                 do_viz=True,
