@@ -929,7 +929,6 @@ def create_layout_dataset_from_annotations(
         if true_doc is None:
             continue
         else:
-            print()
             true_doc.save_as_json(
                 filename=benchmark_dirs.json_anno_dir / f"{basename}.json"
             )
@@ -1060,20 +1059,20 @@ def get_annotation_files(benchmark_dirs):
     return xml_files
 
 
-def main():
+# def main():
 
-    source_dir = parse_args()
+#     source_dir = parse_args()
 
-    benchmark_dirs = BenchMarkDirs()
-    benchmark_dirs.set_up_directory_structure(source=source_dir, target=source_dir)
+#     benchmark_dirs = BenchMarkDirs()
+#     benchmark_dirs.set_up_directory_structure(source=source_dir, target=source_dir)
 
-    # Get all annotation files
-    annot_files = get_annotation_files(benchmark_dirs)
+#     # Get all annotation files
+#     annot_files = get_annotation_files(benchmark_dirs)
 
-    create_layout_dataset_from_annotations(
-        benchmark_dirs=benchmark_dirs, annot_files=annot_files
-    )
+#     create_layout_dataset_from_annotations(
+#         benchmark_dirs=benchmark_dirs, annot_files=annot_files
+#     )
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

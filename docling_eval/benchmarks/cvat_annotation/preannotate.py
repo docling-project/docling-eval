@@ -409,44 +409,44 @@ def export_from_dataset_supplementary_files(
     return overview
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Process input and output directories and a pre-annotation file."
-    )
+# def parse_args():
+#     parser = argparse.ArgumentParser(
+#         description="Process input and output directories and a pre-annotation file."
+#     )
 
-    parser.add_argument(
-        "-i",
-        "--input_dir",
-        required=True,
-        help="Path to the input dataset directory with parquet files.",
-    )
-    parser.add_argument(
-        "-o", "--output_dir", required=True, help="Path to the output directory."
-    )
-    parser.add_argument(
-        "-b", "--bucket-size", required=True, help="Numbers of documents in the bucket."
-    )
+#     parser.add_argument(
+#         "-i",
+#         "--input_dir",
+#         required=True,
+#         help="Path to the input dataset directory with parquet files.",
+#     )
+#     parser.add_argument(
+#         "-o", "--output_dir", required=True, help="Path to the output directory."
+#     )
+#     parser.add_argument(
+#         "-b", "--bucket-size", required=True, help="Numbers of documents in the bucket."
+#     )
 
-    args = parser.parse_args()
+#     args = parser.parse_args()
 
-    return (Path(args.input_dir), Path(args.output_dir), int(args.bucket_size))
-
-
-def main():
-
-    source_dir, target_dir, bucket_size = parse_args()
-
-    benchmark_dirs = BenchMarkDirs()
-    benchmark_dirs.set_up_directory_structure(source=source_dir, target=target_dir)
-
-    create_cvat_project_properties(project_file=benchmark_dirs.project_desc_file)
-
-    overview = export_from_dataset_supplementary_files(benchmark_dirs)
-
-    create_cvat_preannotation_file_for_single_page(
-        benchmark_dirs, overview, bucket_size=bucket_size
-    )
+#     return (Path(args.input_dir), Path(args.output_dir), int(args.bucket_size))
 
 
-if __name__ == "__main__":
-    main()
+# def main():
+
+#     source_dir, target_dir, bucket_size = parse_args()
+
+#     benchmark_dirs = BenchMarkDirs()
+#     benchmark_dirs.set_up_directory_structure(source=source_dir, target=target_dir)
+
+#     create_cvat_project_properties(project_file=benchmark_dirs.project_desc_file)
+
+#     overview = export_from_dataset_supplementary_files(benchmark_dirs)
+
+#     create_cvat_preannotation_file_for_single_page(
+#         benchmark_dirs, overview, bucket_size=bucket_size
+#     )
+
+
+# if __name__ == "__main__":
+#     main()

@@ -95,50 +95,6 @@ category_map = {
 }
 
 
-def parse_arguments():
-    """Parse arguments for DLNv1 parsing."""
-
-    parser = argparse.ArgumentParser(
-        description="Convert DocLayNet v1 into DoclingDocument ground truth data"
-    )
-    parser.add_argument(
-        "-s",
-        "--split",
-        help="train test or val",
-        required=True,
-    )
-    parser.add_argument(
-        "-o",
-        "--output-directory",
-        help="output directory with shards",
-        required=False,
-        default="./benchmarks/dlnv1",
-    )
-    parser.add_argument(
-        "-i",
-        "--input-directory",
-        help="input directory with shards",
-        required=False,
-        default="./benchmarks/DLNv1",
-    )
-    parser.add_argument(
-        "-n",
-        "--max-items",
-        help="Max items to process",
-        required=False,
-        default="2000",
-    )
-
-    args = parser.parse_args()
-
-    return (
-        args.split,
-        Path(args.output_directory),
-        Path(args.input_directory),
-        int(args.max_items),
-    )
-
-
 def ltwh_to_ltrb(box):
     l = box[0]
     t = box[1]
@@ -207,14 +163,14 @@ def update(true_doc, current_list, img, old_size, label, box, content):
 
 
 def create_dlnv1_e2e_dataset(
+    name: str,
     split: str,
     output_dir: Path,
-    input_dir: Path,
     do_viz: bool = False,
     max_items: int = -1,
 ):
+    ds = load_dataset(name, split=split)
     converter = create_converter(page_image_scale=1.0)
-    ds = load_from_disk(input_dir)
 
     if do_viz:
         viz_dir = output_dir / "visualizations"
@@ -312,25 +268,3 @@ def create_dlnv1_e2e_dataset(
         num_train_rows=0,
         num_test_rows=len(records) + count,
     )
-
-
-def main():
-    split, output_dir, input_dir, max_items = parse_arguments()
-    os.makedirs(output_dir, exist_ok=True)
-
-    odir_e2e = Path(output_dir) / "end_to_end"
-    os.makedirs(odir_e2e, exist_ok=True)
-    for _ in ["test", "train"]:
-        os.makedirs(odir_e2e / _, exist_ok=True)
-
-    create_dlnv1_e2e_dataset(
-        split=split,
-        output_dir=odir_e2e,
-        input_dir=input_dir,
-        do_viz=True,
-        max_items=max_items,
-    )
-
-
-if __name__ == "__main__":
-    main()

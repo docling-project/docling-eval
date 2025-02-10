@@ -18,8 +18,6 @@ log = logging.getLogger(__name__)
 
 
 def main():
-    # TODO:
-    idir = "/Users/nli/data/datasets/DocLayNetV1/DLNv1_with_pdf"
     odir = Path(f"./benchmarks/{BenchMarkNames.DOCLAYNETV1.value}-dataset")
     odir_lay = Path(odir) / "layout"
     split = "test"
@@ -30,11 +28,11 @@ def main():
     if True:
         log.info("Create the end-to-end converted DocLayNetV1 dataset")
         create_dlnv1_e2e_dataset(
+            name="ds4sd/docling-DocLayNet-v1.1",
             split=split,
             output_dir=odir_lay,
             do_viz=True,
             max_items=2000,
-            input_dir=idir,
         )
 
         # Layout

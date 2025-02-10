@@ -339,12 +339,3 @@ def create_p1m_tableformer_dataset(
         mode=mode,
         artifacts_path=artifacts_path,
     )
-
-
-def main():
-
-    create_fintabnet_tableformer_dataset()
-
-
-if __name__ == "__main__":
-    main()
