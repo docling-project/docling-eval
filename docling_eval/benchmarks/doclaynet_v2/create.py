@@ -5,6 +5,7 @@ import json
 import os
 import re
 from pathlib import Path
+from typing import Dict, List
 
 from datasets import load_from_disk
 from docling_core.types import DoclingDocument
@@ -20,6 +21,7 @@ from docling_core.types.doc import (
     TableCell,
     TableData,
 )
+from docling_core.types.doc.document import KeyOrValueCell, KeyValueLink
 from docling_core.types.doc.tokens import TableToken
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm  # type: ignore
@@ -258,6 +260,104 @@ def update(true_doc, current_list, img, label, segment, bb):
         true_doc.add_text(label=label, text=segment["text"], prov=prov)
 
 
+def convert_bbox(bbox_data) -> BoundingBox:
+    if isinstance(bbox_data, list) and len(bbox_data) == 4:
+        return BoundingBox(
+            l=bbox_data[0], t=bbox_data[1], r=bbox_data[2], b=bbox_data[3]
+        )
+    elif isinstance(bbox_data, BoundingBox):
+        return bbox_data
+    else:
+        raise ValueError(
+            "Invalid bounding box data; expected a list of four numbers or a BoundingBox instance."
+        )
+
+
+def create_key_or_value_cell(cell_data: Dict) -> KeyOrValueCell:
+    bbox_instance = None
+    if "bbox" in cell_data and cell_data["bbox"] is not None:
+        bbox_instance = convert_bbox(cell_data["bbox"])
+
+    return KeyOrValueCell(
+        id=cell_data["id"],
+        text=cell_data["text"],
+        orig=cell_data.get("orig", cell_data["text"]),
+        bbox=bbox_instance,
+    )
+
+
+def create_key_value_link(
+    key_cell: KeyOrValueCell,
+    value_cell: KeyOrValueCell,
+) -> KeyValueLink:
+    return KeyValueLink(key_id=key_cell.id, value_id=value_cell.id)
+
+
+def populate_key_value_item(
+    doc: DoclingDocument,
+    kv_pairs: List[Dict],
+) -> None:
+    elements = []
+    links = []
+
+    for pair in kv_pairs:
+        key_data = pair["key"]
+        value_data = pair["value"]
+
+        key_cell = create_key_or_value_cell(key_data)
+        value_cell = create_key_or_value_cell(value_data)
+
+        elements.append(key_cell)
+        elements.append(value_cell)
+
+        # link between key and value
+        kv_link = create_key_value_link(key_cell, value_cell)
+        links.append(kv_link)
+
+    # Add the key_value_item to the document.
+    doc.add_key_value_item(elements=elements, links=links)
+
+
+# creation of K/V pairs
+def create_kv_pairs(data):
+    link_pairs = []
+    seg_with_id = {}
+    bbox_with_id = {}
+
+    _ids = data["annotation_ids"]
+    bboxes = data["boxes"]
+    segments = data["segments"]
+    links = data["links"]
+
+    # str to integer id mapping
+    int_ids = {id: i for i, id in enumerate(_ids)}
+
+    for i, seg in enumerate(segments):
+        seg_with_id[_ids[i]] = seg
+        bbox_with_id[_ids[i]] = bboxes[i]
+
+    for i, segment in enumerate(segments):
+        if links[i] != None and links[i] in seg_with_id:
+            # TODO fit these into our specific KeyValueItem structure
+            link_pairs.append(
+                {
+                    "value": {
+                        "id": int_ids[_ids[i]],  # _ids[i],
+                        "bbox": bboxes[i],  # or segment["bbox"]
+                        "text": segment["text"],
+                    },
+                    "key": {
+                        "id": int_ids[links[i]],  # links[i],
+                        "bbox": bbox_with_id[
+                            links[i]
+                        ],  # or seg_with_id[links[i]]["bbox"]
+                        "text": seg_with_id[links[i]]["text"],
+                    },
+                }
+            )
+    return link_pairs
+
+
 def create_dlnv2_e2e_dataset(input_dir, output_dir):
     converter = create_converter(
         page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
@@ -308,6 +408,12 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
             )
         )
         segments = doc["segments"]
+
+        kv_pairs = create_kv_pairs(doc)
+
+        if kv_pairs is not []:
+            populate_key_value_item(true_doc, kv_pairs)
+
         for l, s, b in zip(labels, segments, boxes):
             update(true_doc, current_list, img, l, s, b)
 
