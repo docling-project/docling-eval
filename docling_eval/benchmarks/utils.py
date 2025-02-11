@@ -374,6 +374,9 @@ def draw_clusters_with_reading_order(
                     x0 = (bbox.l + bbox.r) / 2.0
                     y0 = (bbox.b + bbox.t) / 2.0
                 else:
+                    assert x0 is not None
+                    assert y0 is not None
+
                     x1 = (bbox.l + bbox.r) / 2.0
                     y1 = (bbox.b + bbox.t) / 2.0
 
@@ -508,6 +511,9 @@ def save_comparison_html_with_clusters(
                 x0 = (ro_bbox.l + ro_bbox.r) / 2.0
                 y0 = (ro_bbox.b + ro_bbox.t) / 2.0
             else:
+                assert x0 is not None
+                assert y0 is not None
+
                 x1 = (ro_bbox.l + ro_bbox.r) / 2.0
                 y1 = (ro_bbox.b + ro_bbox.t) / 2.0
 

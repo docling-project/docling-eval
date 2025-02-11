@@ -127,13 +127,6 @@ class TableFormerUpdater:
         artifacts_path: Optional[Path] = None,
     ):
         r""" """
-        # Download models from HF or use the local dir
-        model_weights_root = (
-            StandardPdfPipeline.download_models_hf()
-            if artifacts_path is None
-            else artifacts_path
-        )
-
         # Init the TableFormer model
         table_structure_options = TableStructureOptions(mode=mode)
         accelerator_options = AcceleratorOptions(
@@ -141,7 +134,7 @@ class TableFormerUpdater:
         )
         self._docling_tf_model = TableStructureModel(
             enabled=True,
-            artifacts_path=model_weights_root / StandardPdfPipeline._table_model_path,
+            artifacts_path=artifacts_path,
             options=table_structure_options,
             accelerator_options=accelerator_options,
         )
