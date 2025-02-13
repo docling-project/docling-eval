@@ -82,7 +82,7 @@ def log_and_save_stats(
     fig_filename: Path of the saved png file
     """
     log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.txt"
-    fig_filename = odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.png"
+    fig_filename = log_filename.with_suffix(".png")
 
     data, headers = stats.to_table(metric)
     content = f"{benchmark.value} {modality.value} {metric}:\n\n"
@@ -357,6 +357,25 @@ def visualise(
         with open(metrics_filename, "r") as fd:
             md_evaluation = DatasetMarkdownEvaluation.parse_file(metrics_filename)
         log_and_save_stats(odir, benchmark, modality, "BLEU", md_evaluation.bleu_stats)
+        log_and_save_stats(
+            odir, benchmark, modality, "F1", md_evaluation.f1_score_stats
+        )
+        log_and_save_stats(
+            odir, benchmark, modality, "precision", md_evaluation.precision_stats
+        )
+        log_and_save_stats(
+            odir, benchmark, modality, "recall", md_evaluation.recall_stats
+        )
+        log_and_save_stats(
+            odir,
+            benchmark,
+            modality,
+            "edit_distance",
+            md_evaluation.edit_distance_stats,
+        )
+        log_and_save_stats(
+            odir, benchmark, modality, "meteor", md_evaluation.meteor_stats
+        )
 
     elif modality == EvaluationModality.CODEFORMER:
         pass
