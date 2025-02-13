@@ -4,7 +4,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 from datasets import load_from_disk
 from docling_core.types import DoclingDocument
@@ -20,8 +20,8 @@ from docling_core.types.doc import (
     TableCell,
     TableData,
 )
-from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
 from docling_core.types.doc.document import GraphCell, GraphLink
+from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
 from docling_core.types.doc.tokens import TableToken
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm  # type: ignore
@@ -182,25 +182,17 @@ def parse_table_content(otsl_content: str) -> TableData:
 
     return TableData(
         num_rows=len(split_row_tokens),
-        num_cols=(
-            max(len(row) for row in split_row_tokens)
-            if split_row_tokens
-            else 0
-        ),
+        num_cols=(max(len(row) for row in split_row_tokens) if split_row_tokens else 0),
         table_cells=table_cells,
     )
 
 
 def update(true_doc, current_list, img, label, segment, bb):
-    bbox = BoundingBox.from_tuple(
-        tuple(bb), CoordOrigin.TOPLEFT
-    ).to_bottom_left_origin(page_height=true_doc.pages[1].size.height)
-    prov = ProvenanceItem(
-        page_no=1, bbox=bbox, charspan=(0, len(segment["text"]))
+    bbox = BoundingBox.from_tuple(tuple(bb), CoordOrigin.TOPLEFT).to_bottom_left_origin(
+        page_height=true_doc.pages[1].size.height
     )
-    img_elem = crop_bounding_box(
-        page_image=img, page=true_doc.pages[1], bbox=bbox
-    )
+    prov = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, len(segment["text"])))
+    img_elem = crop_bounding_box(page_image=img, page=true_doc.pages[1], bbox=bbox)
     if label == DocItemLabel.PICTURE:
         current_list = None
         try:
@@ -235,9 +227,7 @@ def update(true_doc, current_list, img, label, segment, bb):
         true_doc.add_group(label=group_label)
     elif label == DocItemLabel.LIST_ITEM:
         if current_list is None:
-            current_list = true_doc.add_group(
-                label=GroupLabel.LIST, name="list"
-            )
+            current_list = true_doc.add_group(label=GroupLabel.LIST, name="list")
 
         true_doc.add_list_item(
             text=segment["text"],
@@ -457,9 +447,7 @@ def create_dlnv2_e2e_dataset(
         boxes = doc["boxes"]
         labels = list(
             map(
-                lambda label: label.lower()
-                .replace("-", "_")
-                .replace(" ", "_"),
+                lambda label: label.lower().replace("-", "_").replace(" ", "_"),
                 doc["labels"],
             )
         )
@@ -499,14 +487,10 @@ def create_dlnv2_e2e_dataset(
             BenchMarkColumns.DOCLING_VERSION: docling_version(),
             BenchMarkColumns.STATUS: str(conv_results.status),
             BenchMarkColumns.DOC_ID: doc["extra"]["filename"],
-            BenchMarkColumns.GROUNDTRUTH: json.dumps(
-                true_doc.export_to_dict()
-            ),
+            BenchMarkColumns.GROUNDTRUTH: json.dumps(true_doc.export_to_dict()),
             BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
             BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
-            BenchMarkColumns.PREDICTION: json.dumps(
-                pred_doc.export_to_dict()
-            ),
+            BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
             BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
             BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
             BenchMarkColumns.ORIGINAL: img_bytes,
@@ -516,15 +500,11 @@ def create_dlnv2_e2e_dataset(
         count += 1
         if count % SHARD_SIZE == 0:
             shard_id = count // SHARD_SIZE - 1
-            save_shard_to_disk(
-                items=records, dataset_path=test_dir, shard_id=shard_id
-            )
+            save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
             records = []
 
     shard_id = count // SHARD_SIZE
-    save_shard_to_disk(
-        items=records, dataset_path=test_dir, shard_id=shard_id
-    )
+    save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
     write_datasets_info(
         name="DocLayNetV2: end-to-end",
         output_dir=output_dir,
