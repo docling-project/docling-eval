@@ -301,13 +301,18 @@ def visualise(
 
         # Save layout statistics for mAP
         log_filename, _ = log_and_save_stats(
-            odir, benchmark, modality, "mAP_0.5_0.95", layout_evaluation.mAP_stats
+            odir, benchmark, modality, "mAP_0.5_0.95", layout_evaluation.image_mAP_stats
         )
 
-        # Append to layout statistics the mAP classes
+        # Append to layout statistics, the AP per classes
         data, headers = layout_evaluation.to_table()
-        content = "\n\n\nClass mAP[0.5:0.95] table:\n\n"
+        content = "\n\n\nAP[0.5:0.05:0.95] per class (reported as %):\n\n"
         content += tabulate(data, headers=headers, tablefmt="github")
+
+        # Append to layout statistics, the mAP
+        content += "\n\nTotal mAP[0.5:0.05:0.95] (reported as %): {:.2f}".format(
+            100.0 * layout_evaluation.mAP
+        )
         log.info(content)
         with open(log_filename, "a") as fd:
             fd.write(content)
