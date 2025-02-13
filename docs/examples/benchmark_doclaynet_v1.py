@@ -51,6 +51,22 @@ def main():
             odir=odir_lay,
         )
 
+        # Markdown text
+        log.info("Evaluate the markdown text for the DocLayNet dataset")
+        evaluate(
+            modality=EvaluationModality.MARKDOWN_TEXT,
+            benchmark=BenchMarkNames.DOCLAYNETV1,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
+        log.info("Visualize the markdown text for the DocLayNet dataset")
+        visualise(
+            modality=EvaluationModality.MARKDOWN_TEXT,
+            benchmark=BenchMarkNames.DOCLAYNETV1,
+            idir=odir_lay,
+            odir=odir_lay,
+        )
+
 
 if __name__ == "__main__":
     main()

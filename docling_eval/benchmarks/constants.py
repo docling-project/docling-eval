@@ -26,6 +26,8 @@ class BenchMarkColumns(str, Enum):
     MIMETYPE = "mimetype"
     TIMINGS = "timings"
 
+    MODALITIES = "modalities"
+
 
 class EvaluationModality(str, Enum):
     END2END = "end-to-end"

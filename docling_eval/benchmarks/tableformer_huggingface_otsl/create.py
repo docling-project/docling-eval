@@ -94,7 +94,7 @@ def create_huggingface_otsl_tableformer_dataset(
     max_records: int = 1000,
     split: str = "test",
     do_viz: bool = False,
-    max_items: int = -1,
+    max_items: int = -1,  # If -1, then take the whole split
     mode: TableFormerMode = TableFormerMode.ACCURATE,
     artifacts_path: Optional[Path] = None,
 ):

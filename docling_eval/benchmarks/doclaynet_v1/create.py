@@ -167,14 +167,19 @@ def create_dlnv1_e2e_dataset(
     split: str,
     output_dir: Path,
     do_viz: bool = False,
-    max_items: int = -1,
+    max_items: int = -1,  # If -1 take the whole split
 ):
+    print(f"Downloading split: {split}")
+
     ds = load_dataset(name, split=split)
     converter = create_converter(page_image_scale=1.0)
 
     if do_viz:
         viz_dir = output_dir / "visualizations"
         os.makedirs(viz_dir, exist_ok=True)
+
+    if max_items == -1:
+        max_items = len(ds)
 
     test_dir = output_dir / split
     os.makedirs(test_dir, exist_ok=True)

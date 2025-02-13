@@ -125,7 +125,10 @@ def create(
         ):
             # No support for max_items
             create_dpbench_e2e_dataset(
-                dpbench_dir=idir, output_dir=odir, image_scale=image_scale
+                dpbench_dir=idir,
+                output_dir=odir,
+                image_scale=image_scale,
+                do_viz=True,
             )
 
         elif modality == EvaluationModality.TABLEFORMER:
@@ -201,11 +204,6 @@ def create(
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
-        if idir is None:
-            log.error(
-                "The input dir for %s must be provided", BenchMarkNames.DOCLAYNETV1
-            )
-        assert idir is not None
         if modality == EvaluationModality.LAYOUT:
             create_dlnv1_e2e_dataset(
                 name="ds4sd/DocLayNet-v1.2",
