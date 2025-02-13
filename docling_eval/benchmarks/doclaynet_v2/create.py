@@ -4,7 +4,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Optional, List
 
 from datasets import load_from_disk
 from docling_core.types import DoclingDocument
@@ -20,7 +20,8 @@ from docling_core.types.doc import (
     TableCell,
     TableData,
 )
-from docling_core.types.doc.document import KeyOrValueCell, KeyValueLink
+from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
+from docling_core.types.doc.document import GraphCell, GraphLink
 from docling_core.types.doc.tokens import TableToken
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm  # type: ignore
@@ -181,17 +182,25 @@ def parse_table_content(otsl_content: str) -> TableData:
 
     return TableData(
         num_rows=len(split_row_tokens),
-        num_cols=(max(len(row) for row in split_row_tokens) if split_row_tokens else 0),
+        num_cols=(
+            max(len(row) for row in split_row_tokens)
+            if split_row_tokens
+            else 0
+        ),
         table_cells=table_cells,
     )
 
 
 def update(true_doc, current_list, img, label, segment, bb):
-    bbox = BoundingBox.from_tuple(tuple(bb), CoordOrigin.TOPLEFT).to_bottom_left_origin(
-        page_height=true_doc.pages[1].size.height
+    bbox = BoundingBox.from_tuple(
+        tuple(bb), CoordOrigin.TOPLEFT
+    ).to_bottom_left_origin(page_height=true_doc.pages[1].size.height)
+    prov = ProvenanceItem(
+        page_no=1, bbox=bbox, charspan=(0, len(segment["text"]))
     )
-    prov = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, len(segment["text"])))
-    img_elem = crop_bounding_box(page_image=img, page=true_doc.pages[1], bbox=bbox)
+    img_elem = crop_bounding_box(
+        page_image=img, page=true_doc.pages[1], bbox=bbox
+    )
     if label == DocItemLabel.PICTURE:
         current_list = None
         try:
@@ -226,10 +235,15 @@ def update(true_doc, current_list, img, label, segment, bb):
         true_doc.add_group(label=group_label)
     elif label == DocItemLabel.LIST_ITEM:
         if current_list is None:
-            current_list = true_doc.add_group(label=GroupLabel.LIST, name="list")
+            current_list = true_doc.add_group(
+                label=GroupLabel.LIST, name="list"
+            )
 
         true_doc.add_list_item(
-            text=segment["text"], enumerated=False, prov=prov, parent=current_list
+            text=segment["text"],
+            enumerated=False,
+            prov=prov,
+            parent=current_list,
         )
     elif label == DocItemLabel.SECTION_HEADER:
         current_list = None
@@ -252,49 +266,90 @@ def convert_bbox(bbox_data) -> BoundingBox:
         )
 
 
-def create_key_or_value_cell(cell_data: Dict) -> KeyOrValueCell:
+def create_graph_cell(cell_data: Dict, label: GraphCellLabel) -> GraphCell:
     bbox_instance = None
     if "bbox" in cell_data and cell_data["bbox"] is not None:
         bbox_instance = convert_bbox(cell_data["bbox"])
 
-    return KeyOrValueCell(
-        id=cell_data["id"],
+    return GraphCell(
+        cell_id=cell_data["cell_id"],
         text=cell_data["text"],
         orig=cell_data.get("orig", cell_data["text"]),
         bbox=bbox_instance,
+        label=label,
     )
 
 
-def create_key_value_link(
-    key_cell: KeyOrValueCell,
-    value_cell: KeyOrValueCell,
-) -> KeyValueLink:
-    return KeyValueLink(key_id=key_cell.id, value_id=value_cell.id)
+def create_graph_link(
+    key_cell: GraphCell,
+    value_cell: GraphCell,
+    label: GraphLinkLabel = GraphLinkLabel.TO_VALUE,
+) -> GraphLink:
+    return GraphLink(
+        source_cell_id=key_cell.cell_id,
+        target_cell_id=value_cell.cell_id,
+        label=label,
+    )
+
+
+def get_overall_bbox(
+    links: List[GraphLink], element_dict: Dict[int, GraphCell]
+) -> Optional[BoundingBox]:
+    """
+    Compute the overall bounding box (min_x, min_y, max_x, max_y)
+    from all element ids found in the links using element_dict.
+    """
+    all_bboxes = []  # type: List[BoundingBox]
+    for link in links:
+        src_bbox = element_dict[link.source_cell_id].bbox
+        tgt_bbox = element_dict[link.target_cell_id].bbox
+        if src_bbox is not None:
+            all_bboxes.append(src_bbox)
+        if tgt_bbox is not None:
+            all_bboxes.append(tgt_bbox)
+
+    if len(all_bboxes) == 0:
+        return None
+    bbox_instance = BoundingBox.union(all_bboxes)
+    return bbox_instance
 
 
 def populate_key_value_item(
     doc: DoclingDocument,
     kv_pairs: List[Dict],
 ) -> None:
-    elements = []
+    cells = []
     links = []
 
     for pair in kv_pairs:
         key_data = pair["key"]
         value_data = pair["value"]
 
-        key_cell = create_key_or_value_cell(key_data)
-        value_cell = create_key_or_value_cell(value_data)
+        key_cell = create_graph_cell(key_data, GraphCellLabel.KEY)
+        value_cell = create_graph_cell(value_data, GraphCellLabel.VALUE)
 
-        elements.append(key_cell)
-        elements.append(value_cell)
+        cells.append(key_cell)
+        cells.append(value_cell)
 
         # link between key and value
-        kv_link = create_key_value_link(key_cell, value_cell)
+        kv_link = create_graph_link(key_cell, value_cell)
         links.append(kv_link)
 
+    overal_bbox = get_overall_bbox(
+        links, element_dict={cell.cell_id: cell for cell in cells}
+    )
+
+    if overal_bbox is not None:
+        prov = ProvenanceItem(
+            page_no=doc.pages[0].page_no,
+            charspan=(0, 0),
+            bbox=overal_bbox,
+        )
+    else:
+        prov = None
+
     # Add the key_value_item to the document.
-    doc.add_key_value_item(elements=elements, links=links)
+    doc.add_key_value_item(cells=cells, links=links, prov=prov)
 
 
 # creation of K/V pairs
@@ -316,21 +371,22 @@ def create_kv_pairs(data):
         bbox_with_id[_ids[i]] = bboxes[i]
 
     for i, segment in enumerate(segments):
-        if links[i] != None and links[i] in seg_with_id:
-            # TODO fit these into our specific KeyValueItem structure
+        if links[i] is not None and links[i] in seg_with_id:
             link_pairs.append(
                 {
                     "value": {
-                        "id": int_ids[_ids[i]],  # _ids[i],
+                        "cell_id": int_ids[_ids[i]],
                         "bbox": bboxes[i],  # or segment["bbox"]
                         "text": segment["text"],
+                        "label": GraphCellLabel.VALUE,
                     },
                     "key": {
-                        "id": int_ids[links[i]],  # links[i],
+                        "cell_id": int_ids[links[i]],
                         "bbox": bbox_with_id[
                             links[i]
                         ],  # or seg_with_id[links[i]]["bbox"]
                         "text": seg_with_id[links[i]]["text"],
+                        "label": GraphCellLabel.KEY,
                     },
                 }
             )
@@ -345,7 +401,9 @@ def create_dlnv2_e2e_dataset(
     max_items: int = -1,  # If -1 take the whole split
 ):
     converter = create_converter(
-        page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
+        page_image_scale=1.0,
+        do_ocr=True,
+        ocr_lang=["en", "fr", "es", "de", "jp", "cn"],
     )
     ds = load_from_disk(input_dir)
 
@@ -370,7 +428,8 @@ def create_dlnv2_e2e_dataset(
             img_byte_stream.seek(0)
             conv_results = converter.convert(
                 source=DocumentStream(
-                    name=Path(doc["extra"]["filename"]).stem, stream=img_byte_stream
+                    name=Path(doc["extra"]["filename"]).stem,
+                    stream=img_byte_stream,
                 ),
                 raises_on_error=True,
             )
@@ -398,7 +457,9 @@ def create_dlnv2_e2e_dataset(
         boxes = doc["boxes"]
         labels = list(
             map(
-                lambda label: label.lower().replace("-", "_").replace(" ", "_"),
+                lambda label: label.lower()
+                .replace("-", "_")
+                .replace(" ", "_"),
                 doc["labels"],
             )
         )
@@ -409,8 +470,8 @@ def create_dlnv2_e2e_dataset(
         if kv_pairs is not []:
             populate_key_value_item(true_doc, kv_pairs)
 
-        for l, s, b in zip(labels, segments, boxes):
-            update(true_doc, current_list, img, l, s, b)
+        for label, segment, box in zip(labels, segments, boxes):
+            update(true_doc, current_list, img, label, segment, box)
 
         if do_viz:
             save_comparison_html_with_clusters(
@@ -438,10 +499,14 @@ def create_dlnv2_e2e_dataset(
             BenchMarkColumns.DOCLING_VERSION: docling_version(),
             BenchMarkColumns.STATUS: str(conv_results.status),
             BenchMarkColumns.DOC_ID: doc["extra"]["filename"],
-            BenchMarkColumns.GROUNDTRUTH: json.dumps(true_doc.export_to_dict()),
+            BenchMarkColumns.GROUNDTRUTH: json.dumps(
+                true_doc.export_to_dict()
+            ),
             BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
             BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
-            BenchMarkColumns.PREDICTION: json.dumps(pred_doc.export_to_dict()),
+            BenchMarkColumns.PREDICTION: json.dumps(
+                pred_doc.export_to_dict()
+            ),
             BenchMarkColumns.PREDICTION_PAGE_IMAGES: pred_page_images,
             BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
             BenchMarkColumns.ORIGINAL: img_bytes,
@@ -451,11 +516,15 @@ def create_dlnv2_e2e_dataset(
         count += 1
         if count % SHARD_SIZE == 0:
             shard_id = count // SHARD_SIZE - 1
-            save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
+            save_shard_to_disk(
+                items=records, dataset_path=test_dir, shard_id=shard_id
+            )
             records = []
 
     shard_id = count // SHARD_SIZE
-    save_shard_to_disk(items=records, dataset_path=test_dir, shard_id=shard_id)
+    save_shard_to_disk(
+        items=records, dataset_path=test_dir, shard_id=shard_id
+    )
     write_datasets_info(
         name="DocLayNetV2: end-to-end",
         output_dir=output_dir,
