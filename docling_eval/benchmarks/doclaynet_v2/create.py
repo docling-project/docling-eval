@@ -1,4 +1,3 @@
-import argparse
 import io
 import itertools
 import json
@@ -27,7 +26,14 @@ from docling_core.types.io import DocumentStream
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.benchmarks.utils import write_datasets_info
+from docling_eval.benchmarks.doclaynet_v1.create import (
+    PRED_HTML_EXPORT_LABELS,
+    TRUE_HTML_EXPORT_LABELS,
+)
+from docling_eval.benchmarks.utils import (
+    save_comparison_html_with_clusters,
+    write_datasets_info,
+)
 from docling_eval.docling.conversion import create_converter
 from docling_eval.docling.utils import (
     crop_bounding_box,
@@ -38,33 +44,6 @@ from docling_eval.docling.utils import (
 )
 
 SHARD_SIZE = 1000
-
-
-def parse_arguments():
-    """Parse arguments for DP-Bench parsing."""
-
-    parser = argparse.ArgumentParser(
-        description="Convert DocLayNet v2 into DoclingDocument ground truth data"
-    )
-    parser.add_argument(
-        "-i",
-        "--input-directory",
-        help="input directory with documents",
-        required=True,
-    )
-    parser.add_argument(
-        "-o",
-        "--output-directory",
-        help="output directory with shards",
-        required=False,
-        default="./benchmarks/dlnv2",
-    )
-    args = parser.parse_args()
-
-    return (
-        Path(args.input_directory),
-        Path(args.output_directory),
-    )
 
 
 def parse_texts(texts, tokens):
@@ -358,17 +337,33 @@ def create_kv_pairs(data):
     return link_pairs
 
 
-def create_dlnv2_e2e_dataset(input_dir, output_dir):
+def create_dlnv2_e2e_dataset(
+    input_dir: Path,
+    split: str,
+    output_dir: Path,
+    do_viz: bool = False,
+    max_items: int = -1,  # If -1 take the whole split
+):
     converter = create_converter(
         page_image_scale=1.0, do_ocr=True, ocr_lang=["en", "fr", "es", "de", "jp", "cn"]
     )
     ds = load_from_disk(input_dir)
 
+    if do_viz:
+        viz_dir = output_dir / "visualizations"
+        os.makedirs(viz_dir, exist_ok=True)
+
+    if max_items == -1:
+        max_items = len(ds)
+
     test_dir = output_dir / "test"
     os.makedirs(test_dir, exist_ok=True)
     records = []
     count = 0
-    for doc in tqdm(ds):
+    for doc in tqdm(
+        ds[split],
+        total=min(len(ds), max_items),
+    ):
         img = doc["image"]
         with io.BytesIO() as img_byte_stream:
             img.save(img_byte_stream, format=img.format)
@@ -417,6 +412,16 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
         for l, s, b in zip(labels, segments, boxes):
             update(true_doc, current_list, img, l, s, b)
 
+        if do_viz:
+            save_comparison_html_with_clusters(
+                filename=viz_dir / f"{true_doc.name}-clusters.html",
+                true_doc=true_doc,
+                pred_doc=pred_doc,
+                page_image=img,
+                true_labels=TRUE_HTML_EXPORT_LABELS,
+                pred_labels=PRED_HTML_EXPORT_LABELS,
+                draw_reading_order=False,  # Disable reading-order visualization
+            )
         true_doc, true_pictures, true_page_images = extract_images(
             document=true_doc,
             pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,  # pictures_column,
@@ -457,19 +462,3 @@ def create_dlnv2_e2e_dataset(input_dir, output_dir):
         num_train_rows=0,
         num_test_rows=len(records) + count,
     )
-
-
-def main():
-    input_dir, output_dir = parse_arguments()
-    os.makedirs(output_dir, exist_ok=True)
-
-    odir_e2e = Path(output_dir) / "end_to_end"
-    os.makedirs(odir_e2e, exist_ok=True)
-    for _ in ["test", "train"]:
-        os.makedirs(odir_e2e / _, exist_ok=True)
-
-    create_dlnv2_e2e_dataset(input_dir=input_dir, output_dir=odir_e2e)
-
-
-if __name__ == "__main__":
-    main()
