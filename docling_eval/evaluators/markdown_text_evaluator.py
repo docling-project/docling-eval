@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import evaluate
-
-# NLTK imports
 import nltk
 from datasets import load_dataset
 from docling_core.types.doc.base import ImageRefMode
@@ -63,7 +61,6 @@ class MarkdownTextEvaluator:
             ds_selection = ds[split]
 
         evaluations: list[PageMarkdownEvaluation] = []
-        # bleus = []
 
         # Metrics per page
         ds_metrics: dict[str, list[float]] = {

@@ -68,6 +68,7 @@ def log_and_save_stats(
     modality: EvaluationModality,
     metric: str,
     stats: DatasetStatistics,
+    log_filename: Optional[Path] = None,
 ) -> tuple[Path, Path]:
     r"""
     For the given DatasetStatistics related to the provided benchmark/modality/metric:
@@ -81,21 +82,27 @@ def log_and_save_stats(
     log_filename: Path of the saved log file
     fig_filename: Path of the saved png file
     """
-    log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.txt"
-    fig_filename = log_filename.with_suffix(".png")
+    log_mode = "a"
+    if log_filename is None:
+        log_filename = (
+            odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.txt"
+        )
+        log_mode = "w"
+    fig_filename = odir / f"evaluation_{benchmark.value}_{modality.value}_{metric}.png"
+    stats.save_histogram(figname=fig_filename, name=metric)
 
     data, headers = stats.to_table(metric)
-    content = f"{benchmark.value} {modality.value} {metric}:\n\n"
+    content = f"{benchmark.value} {modality.value} {metric}: "
     content += "mean={:.2f} median={:.2f} std={:.2f}\n\n".format(
         stats.mean, stats.median, stats.std
     )
     content += tabulate(data, headers=headers, tablefmt="github")
+    content += "\n\n\n"
 
     log.info(content)
-    with open(log_filename, "w") as fd:
+    with open(log_filename, log_mode) as fd:
         fd.write(content)
         log.info("Saving statistics report to %s", log_filename)
-    stats.save_histogram(figname=fig_filename, name=metric)
 
     return log_filename, fig_filename
 
@@ -356,15 +363,42 @@ def visualise(
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         with open(metrics_filename, "r") as fd:
             md_evaluation = DatasetMarkdownEvaluation.parse_file(metrics_filename)
-        log_and_save_stats(odir, benchmark, modality, "BLEU", md_evaluation.bleu_stats)
+        # Log stats for all metrics in the same file
+        log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.txt"
+        with open(log_filename, "w") as fd:
+            fd.write(f"{benchmark.value} size: {len(md_evaluation.evaluations)}\n\n")
+
         log_and_save_stats(
-            odir, benchmark, modality, "F1", md_evaluation.f1_score_stats
+            odir,
+            benchmark,
+            modality,
+            "BLEU",
+            md_evaluation.bleu_stats,
+            log_filename=log_filename,
         )
         log_and_save_stats(
-            odir, benchmark, modality, "precision", md_evaluation.precision_stats
+            odir,
+            benchmark,
+            modality,
+            "F1",
+            md_evaluation.f1_score_stats,
+            log_filename=log_filename,
         )
         log_and_save_stats(
-            odir, benchmark, modality, "recall", md_evaluation.recall_stats
+            odir,
+            benchmark,
+            modality,
+            "precision",
+            md_evaluation.precision_stats,
+            log_filename=log_filename,
+        )
+        log_and_save_stats(
+            odir,
+            benchmark,
+            modality,
+            "recall",
+            md_evaluation.recall_stats,
+            log_filename=log_filename,
         )
         log_and_save_stats(
             odir,
@@ -372,9 +406,15 @@ def visualise(
             modality,
             "edit_distance",
             md_evaluation.edit_distance_stats,
+            log_filename=log_filename,
         )
         log_and_save_stats(
-            odir, benchmark, modality, "meteor", md_evaluation.meteor_stats
+            odir,
+            benchmark,
+            modality,
+            "meteor",
+            md_evaluation.meteor_stats,
+            log_filename=log_filename,
         )
 
     elif modality == EvaluationModality.CODEFORMER:
