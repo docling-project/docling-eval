@@ -1,12 +1,13 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 import evaluate
 import nltk
 from datasets import load_dataset
 from docling_core.types.doc.base import ImageRefMode
 from docling_core.types.doc.document import DoclingDocument
+from docling_core.types.doc.labels import DocItemLabel
 from nltk import edit_distance, word_tokenize
 from nltk.metrics import f_measure, precision, recall
 from nltk.translate import meteor_score
@@ -88,9 +89,37 @@ class MarkdownTextEvaluator:
                 pred_doc_dict
             )
 
-            # Export to markdown and tokenize
-            true_md = true_doc.export_to_markdown(image_mode=ImageRefMode.PLACEHOLDER)
-            pred_md = pred_doc.export_to_markdown(image_mode=ImageRefMode.PLACEHOLDER)
+            # Select which DocItemLabels should be exported to markdown
+            labels: Set[DocItemLabel] = set(
+                [
+                    DocItemLabel.CAPTION,
+                    # DocItemLabel.FOOTNOTE,
+                    DocItemLabel.FORMULA,
+                    DocItemLabel.LIST_ITEM,
+                    # DocItemLabel.PAGE_FOOTER,
+                    # DocItemLabel.PAGE_HEADER,
+                    DocItemLabel.PICTURE,
+                    DocItemLabel.SECTION_HEADER,
+                    # DocItemLabel.TABLE,
+                    DocItemLabel.TEXT,
+                    DocItemLabel.TITLE,
+                    DocItemLabel.DOCUMENT_INDEX,
+                    DocItemLabel.CODE,
+                    DocItemLabel.CHECKBOX_SELECTED,
+                    DocItemLabel.CHECKBOX_UNSELECTED,
+                    DocItemLabel.FORM,
+                    DocItemLabel.KEY_VALUE_REGION,
+                    DocItemLabel.PARAGRAPH,
+                    DocItemLabel.REFERENCE,
+                ]
+            )
+
+            true_md = true_doc.export_to_markdown(
+                image_mode=ImageRefMode.PLACEHOLDER, image_placeholder="", labels=labels
+            )
+            pred_md = pred_doc.export_to_markdown(
+                image_mode=ImageRefMode.PLACEHOLDER, image_placeholder="", labels=labels
+            )
             bleu = 0.0
             if true_md != "" and pred_md != "":
                 bleu = self._compute_bleu_score(true_md, pred_md)
