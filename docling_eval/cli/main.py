@@ -23,6 +23,7 @@ from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
     create_p1m_tableformer_dataset,
     create_pubtabnet_tableformer_dataset,
 )
+from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
@@ -277,6 +278,19 @@ def evaluate(
         with open(save_fn, "w") as fd:
             json.dump(
                 md_evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+
+    elif modality == EvaluationModality.BBOXES_TEXT:
+        bbox_evaluator = BboxTextEvaluator()
+        bbox_evaluation = bbox_evaluator(idir, split=split)
+
+        with open(save_fn, "w") as fd:
+            json.dump(
+                bbox_evaluation.model_dump(),
                 fd,
                 indent=2,
                 sort_keys=True,

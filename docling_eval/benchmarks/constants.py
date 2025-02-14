@@ -36,6 +36,7 @@ class EvaluationModality(str, Enum):
     CODEFORMER = "codeformer"
     READING_ORDER = "reading_order"
     MARKDOWN_TEXT = "markdown_text"
+    BBOXES_TEXT = "bboxes_text"
 
 
 class BenchMarkNames(str, Enum):
