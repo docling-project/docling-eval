@@ -25,7 +25,7 @@ packages = [{include = "docling_eval"}]
 # actual dependencies:
 ######################
 python = "^3.10"
-docling-core = { git = "https://github.com/DS4SD/docling-core.git", branch = "dev/kv-representation" }
+docling-core = { git = "https://github.com/DS4SD/docling-core.git", branch = "kv-item" }
 pydantic = "^2.0.0"
 lxml = "^5.3.0"
 datasets = "^3.2.0"
