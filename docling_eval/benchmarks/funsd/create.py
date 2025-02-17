@@ -55,7 +55,9 @@ SHARD_SIZE = 1000
 def parse_texts(texts, tokens):
     split_word = TableToken.OTSL_NL.value
     split_row_tokens = [
-        list(y) for x, y in itertools.groupby(tokens, lambda z: z == split_word) if not x
+        list(y)
+        for x, y in itertools.groupby(tokens, lambda z: z == split_word)
+        if not x
     ]
     table_cells = []
     r_idx = 0
@@ -248,7 +250,9 @@ def update(true_doc, current_list, img, label, segment, bb):
 
 def convert_bbox(bbox_data) -> BoundingBox:
     if isinstance(bbox_data, list) and len(bbox_data) == 4:
-        return BoundingBox(l=bbox_data[0], t=bbox_data[1], r=bbox_data[2], b=bbox_data[3])
+        return BoundingBox(
+            l=bbox_data[0], t=bbox_data[1], r=bbox_data[2], b=bbox_data[3]
+        )
     elif isinstance(bbox_data, BoundingBox):
         return bbox_data
     else:
@@ -335,7 +339,9 @@ def create_kv_pairs(data):
                     },
                     "key": {
                         "cell_id": int_ids[links[i]],
-                        "bbox": bbox_with_id[links[i]],  # or seg_with_id[links[i]]["bbox"]
+                        "bbox": bbox_with_id[
+                            links[i]
+                        ],  # or seg_with_id[links[i]]["bbox"]
                         "text": seg_with_id[links[i]]["text"],
                         "label": GraphCellLabel.KEY,
                     },
@@ -344,7 +350,9 @@ def create_kv_pairs(data):
     return link_pairs
 
 
-def populate_key_value_item_from_funsd(doc: DoclingDocument, funsd_data: dict) -> DoclingDocument:
+def populate_key_value_item_from_funsd(
+    doc: DoclingDocument, funsd_data: dict
+) -> DoclingDocument:
     """
     example structure given in FUNSD JSON data:
 
@@ -421,7 +429,9 @@ def populate_key_value_item_from_funsd(doc: DoclingDocument, funsd_data: dict) -
 
     cells = list(cell_by_id.values())
 
-    overal_bbox = get_overall_bbox(links, cell_dict={cell.cell_id: cell for cell in cells})
+    overal_bbox = get_overall_bbox(
+        links, cell_dict={cell.cell_id: cell for cell in cells}
+    )
 
     if overal_bbox is not None:
         prov = ProvenanceItem(
@@ -474,7 +484,9 @@ def create_funsd_dataset(
         for img_path in tqdm(images, total=len(images)):
             img = Image.open(img_path)
             data_path = (
-                img_path.parent.parent / "annotations" / img_path.name.replace(".png", ".json")
+                img_path.parent.parent
+                / "annotations"
+                / img_path.name.replace(".png", ".json")
             )
             with open(data_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -523,7 +535,9 @@ def create_funsd_dataset(
             count += 1
             if count % SHARD_SIZE == 0:
                 shard_id = count // SHARD_SIZE - 1
-                save_shard_to_disk(items=records, dataset_path=split_dir, shard_id=shard_id)
+                save_shard_to_disk(
+                    items=records, dataset_path=split_dir, shard_id=shard_id
+                )
                 records = []
 
         shard_id = count // SHARD_SIZE
