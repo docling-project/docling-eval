@@ -40,7 +40,7 @@ from docling_eval.evaluators.markdown_text_evaluator import (
 #    DatasetReadingOrderEvaluation,
 #    ReadingOrderEvaluatorGlm,
 # )
-from docling_eval.evaluators.readingorder_evaluator_new import ReadingOrderEvaluatorNew
+from docling_eval.evaluators.readingorder_evaluator import ReadingOrderEvaluator
 from docling_eval.evaluators.stats import DatasetStatistics
 from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
@@ -257,7 +257,7 @@ def evaluate(
 
     elif modality == EvaluationModality.READING_ORDER:
         # readingorder_evaluator = ReadingOrderEvaluatorGlm()
-        readingorder_evaluator = ReadingOrderEvaluatorNew()
+        readingorder_evaluator = ReadingOrderEvaluator()
 
         readingorder_evaluation = readingorder_evaluator(idir, split=split)
 

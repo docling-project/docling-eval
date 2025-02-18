@@ -17,7 +17,7 @@ from docling_eval.evaluators.base_readingorder_evaluator import (
 _log = logging.getLogger(__name__)
 
 
-class ReadingOrderEvaluatorNew(BaseReadingOrderEvaluator):
+class ReadingOrderEvaluator(BaseReadingOrderEvaluator):
     r"""
     Evaluate the reading order using the Average Relative Distance metric
     """

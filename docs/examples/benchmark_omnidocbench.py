@@ -104,14 +104,14 @@ def main():
 
         log.info("Evaluate the tableformer for the OmniDocBench dataset")
         evaluate(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_tab,
             odir=odir_tab,
         )
         log.info("Visualize the tableformer for the OmniDocBench dataset")
         visualise(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.OMNIDOCBENCH,
             idir=odir_tab,
             odir=odir_tab,
