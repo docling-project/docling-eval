@@ -104,14 +104,14 @@ def main():
 
         log.info("Evaluate the tableformer for the DP-Bench dataset")
         evaluate(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.DPBENCH,
             idir=odir_tab,
             odir=odir_tab,
         )
         log.info("Visualize the tableformer for the DP-Bench dataset")
         visualise(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.DPBENCH,
             idir=odir_tab,
             odir=odir_tab,
