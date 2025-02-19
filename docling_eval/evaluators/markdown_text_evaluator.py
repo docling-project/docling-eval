@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, Iterator, List, Optional, Set, Tuple
 
 import evaluate
 import nltk
@@ -55,7 +55,21 @@ class MarkdownTextEvaluator:
         nltk.download("popular", quiet=True)
         nltk.download("punkt_tab", quiet=True)
 
-    def __call__(self, ds_path: Path, split: str = "test") -> DatasetMarkdownEvaluation:
+    def __call__(
+        self,
+        ds_path: Path,
+        split: str = "test",
+        pred_md_dict: Optional[dict[str, str]] = None,
+    ) -> DatasetMarkdownEvaluation:
+        r"""
+        Parameters
+        ----------
+        ds_path: Path to load the parquet files of the dataset
+        split: Split of the dataset to load
+        pred_md_dict: Optionally provide the prediction markdown input content.
+                      The dict is indexed by the DOC_ID and the value is the markdown content.
+                      If such dict is provided, it will be used to provide the markdown content.
+        """
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"oveview of dataset: {ds}")
@@ -121,12 +135,22 @@ class MarkdownTextEvaluator:
                 labels=labels,
                 included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
             )
-            pred_md = pred_doc.export_to_markdown(
-                image_mode=ImageRefMode.PLACEHOLDER,
-                image_placeholder="",
-                labels=labels,
-                included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
-            )
+            # Get the predicted markdown content either from the external iterator or from dataset
+            if pred_md_dict is not None:
+                if doc_id not in pred_md_dict:
+                    _log.error(
+                        "The provided pred_md does not contain the doc_id: %s", doc_id
+                    )
+                    continue
+                pred_md = pred_md_dict[doc_id]
+            else:
+                pred_md = pred_doc.export_to_markdown(
+                    image_mode=ImageRefMode.PLACEHOLDER,
+                    image_placeholder="",
+                    labels=labels,
+                    included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
+                )
+
             bleu = 0.0
             if true_md != "" and pred_md != "":
                 bleu = self._compute_bleu_score(true_md, pred_md)
