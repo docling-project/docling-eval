@@ -139,7 +139,7 @@ def create(
                 do_viz=True,
             )
 
-        elif modality == EvaluationModality.TABLEFORMER:
+        elif modality == EvaluationModality.TABLE_STRUCTURE:
             # No support for max_items
             create_dpbench_tableformer_dataset(
                 dpbench_dir=idir,
@@ -164,7 +164,7 @@ def create(
             create_omnidocbench_e2e_dataset(
                 omnidocbench_dir=idir, output_dir=odir, image_scale=image_scale
             )
-        elif modality == EvaluationModality.TABLEFORMER:
+        elif modality == EvaluationModality.TABLE_STRUCTURE:
             # No support for max_items
             create_omnidocbench_tableformer_dataset(
                 omnidocbench_dir=idir,
@@ -176,7 +176,7 @@ def create(
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
     elif benchmark == BenchMarkNames.PUBTABNET:
-        if modality == EvaluationModality.TABLEFORMER:
+        if modality == EvaluationModality.TABLE_STRUCTURE:
             log.info("Create the tableformer converted PubTabNet dataset")
             create_pubtabnet_tableformer_dataset(
                 output_dir=odir,
@@ -188,7 +188,7 @@ def create(
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
     elif benchmark == BenchMarkNames.FINTABNET:
-        if modality == EvaluationModality.TABLEFORMER:
+        if modality == EvaluationModality.TABLE_STRUCTURE:
             log.info("Create the tableformer converted FinTabNet dataset")
             create_fintabnet_tableformer_dataset(
                 output_dir=odir,
@@ -200,7 +200,7 @@ def create(
             log.error(f"{modality} is not yet implemented for {benchmark}")
 
     elif benchmark == BenchMarkNames.PUB1M:
-        if modality == EvaluationModality.TABLEFORMER:
+        if modality == EvaluationModality.TABLE_STRUCTURE:
             log.info("Create the tableformer converted Pub1M dataset")
             create_p1m_tableformer_dataset(
                 output_dir=odir,
@@ -251,7 +251,7 @@ def evaluate(
         with open(save_fn, "w") as fd:
             json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
-    elif modality == EvaluationModality.TABLEFORMER:
+    elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
         table_evaluation = table_evaluator(idir, split=split)
 
@@ -297,7 +297,7 @@ def evaluate(
                 ensure_ascii=False,
             )
 
-    elif modality == EvaluationModality.CODEFORMER:
+    elif modality == EvaluationModality.CODE_TRANSCRIPTION:
         pass
 
     log.info("The evaluation has been saved in '%s'", save_fn)
@@ -338,7 +338,7 @@ def visualise(
         with open(log_filename, "a") as fd:
             fd.write(content)
 
-    elif modality == EvaluationModality.TABLEFORMER:
+    elif modality == EvaluationModality.TABLE_STRUCTURE:
         with open(metrics_filename, "r") as fd:
             table_evaluation = DatasetTableEvaluation.parse_file(metrics_filename)
 
@@ -431,7 +431,13 @@ def visualise(
             log_filename=log_filename,
         )
 
-    elif modality == EvaluationModality.CODEFORMER:
+    elif modality == EvaluationModality.CODE_TRANSCRIPTION:
+        pass
+
+    elif modality == EvaluationModality.MATH_TRANSCRIPTION:
+        pass
+
+    elif modality == EvaluationModality.CAPTIONING:
         pass
 
 
@@ -449,7 +455,7 @@ def main(
     modality: Annotated[
         EvaluationModality,
         typer.Option(
-            ...,  # EvaluationModality.TABLEFORMER,
+            ...,  # EvaluationModality.TABLE_STRUCTURE,
             "-m",  # Short name
             "--modality",  # Long name
             help="Evaluation modality",

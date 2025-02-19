@@ -31,13 +31,14 @@ class BenchMarkColumns(str, Enum):
 
 class EvaluationModality(str, Enum):
     END2END = "end-to-end"
-    LAYOUT = "layout"
-    TABLEFORMER = "tableformer"
-    CODEFORMER = "codeformer"
-    READING_ORDER = "reading_order"
-    MARKDOWN_TEXT = "markdown_text"
+    LAYOUT = "layout"  # To compute maP on page-segmentation
+    TABLE_STRUCTURE = "table_structure"  # to compute TEDS for tables
+    CODE_TRANSCRIPTION = "code_transcription"  # to compute BLEU between code sections
+    MATH_TRANSCRIPTION = "math_transcription"  # to compute BLEU between latex formulas
+    READING_ORDER = "reading_order"  # to compute the order
+    MARKDOWN_TEXT = "markdown_text"  # to compute the text accuracy
+    CAPTIONING = "captioning"  # to compute the accuracy of captions to table/figure
     BBOXES_TEXT = "bboxes_text"
-
 
 class BenchMarkNames(str, Enum):
 

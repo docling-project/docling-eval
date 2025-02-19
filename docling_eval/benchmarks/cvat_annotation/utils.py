@@ -111,7 +111,7 @@ class BenchMarkDirs(BaseModel):
     json_anno_dir: Path = Path("")
 
     html_anno_dir: Path = Path("")
-    html_viz_dir: Path = Path("")
+    html_comp_dir: Path = Path("")
 
     project_desc_file: Path = Path("")
     overview_file: Path = Path("")
@@ -145,7 +145,7 @@ class BenchMarkDirs(BaseModel):
         self.json_anno_dir = self.target_dir / "json_annotations"
 
         self.html_anno_dir = self.target_dir / "html_annotations"
-        self.html_viz_dir = self.target_dir / "html_annotatations-viz"
+        self.html_comp_dir = self.target_dir / "html_comparisons"
 
         for _ in [
             self.target_dir,
@@ -162,7 +162,7 @@ class BenchMarkDirs(BaseModel):
             self.json_pred_dir,
             self.json_anno_dir,
             self.html_anno_dir,
-            self.html_viz_dir,
+            self.html_comp_dir,
         ]:
             os.makedirs(_, exist_ok=True)
 

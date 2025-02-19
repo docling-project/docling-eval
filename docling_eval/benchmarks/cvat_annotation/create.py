@@ -14,6 +14,7 @@ from docling_core.types.doc.document import (
     DocItem,
     DoclingDocument,
     FloatingItem,
+    GraphData,
     ImageRef,
     PageItem,
     PictureItem,
@@ -31,7 +32,7 @@ from docling_parse.pdf_parsers import pdf_parser_v2  # type: ignore[import]
 from PIL import Image  # as PILImage
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.constants import BenchMarkColumns, EvaluationModality
 from docling_eval.benchmarks.cvat_annotation.utils import (
     AnnotatedDoc,
     AnnotatedImage,
@@ -45,6 +46,7 @@ from docling_eval.benchmarks.cvat_annotation.utils import (
 )
 from docling_eval.benchmarks.utils import (
     draw_clusters_with_reading_order,
+    get_binhash,
     save_comparison_html_with_clusters,
     save_inspection_html,
     write_datasets_info,
@@ -72,7 +74,7 @@ logging.basicConfig(
 def find_box(boxes: List, point: Tuple[float, float]):
 
     index = -1
-    area = 1e6
+    area = 1e9
 
     for i, box in enumerate(boxes):
         assert box["l"] < box["r"]
@@ -84,9 +86,9 @@ def find_box(boxes: List, point: Tuple[float, float]):
             and box["t"] <= point[1]
             and point[1] <= box["b"]
         ):
-            # if abs(box["r"]-box["l"])*(box["b"]-box["t"])<area:
-            # area = abs(box["r"]-box["l"])*(box["b"]-box["t"])
-            index = i
+            if index == -1 or abs(box["r"] - box["l"]) * (box["b"] - box["t"]) < area:
+                area = abs(box["r"] - box["l"]) * (box["b"] - box["t"])
+                index = i
 
     if index == -1:
         logging.error(f"point {point} is not in a bounding-box!")
@@ -99,9 +101,7 @@ def find_box(boxes: List, point: Tuple[float, float]):
             t = box["t"]
             b = box["b"]
 
-            logging.info(
-                f"=> bbox: {l:.3f}, {r:.3f}, ({(l<x) and (x<r)}), {t:.3f}, {b:.3f}, ({(t<y) and (y<b)})"
-            )
+            # logging.info(f"=> bbox: {l:.3f}, {r:.3f}, ({(l<x) and (x<r)}), {t:.3f}, {b:.3f}, ({(t<y) and (y<b)})")
 
     return index, boxes[index]
 
@@ -109,6 +109,7 @@ def find_box(boxes: List, point: Tuple[float, float]):
 def parse_annotation(image_annot: dict):
 
     basename: str = image_annot["@name"]
+    # logging.info(f"parsing annotations for {basename}")
 
     keep: bool = False
 
@@ -125,6 +126,7 @@ def parse_annotation(image_annot: dict):
     group: List[dict] = []
 
     if "box" not in image_annot or "polyline" not in image_annot:
+        logging.warning("skipping because no `box` nor `polyline` is found")
         return (
             basename,
             keep,
@@ -183,6 +185,8 @@ def parse_annotation(image_annot: dict):
 
     for i, line in enumerate(lines):
 
+        # print(line)
+
         points = []
         for _ in line["@points"].split(";"):
             __ = _.split(",")
@@ -198,7 +202,12 @@ def parse_annotation(image_annot: dict):
         lines[i]["points"] = points
         lines[i]["boxids"] = boxids
 
-        # print(line["@label"], ": ", len(points), "\t", len(boxids))
+        """
+        for i in range(0, len(lines[i]["points"])):
+            print(i, "\t", points[i], "\t", boxids[i])
+        
+        print(line["@label"], ": ", len(points), "\t", len(boxids))
+        """
 
     for i, line in enumerate(lines):
         if line["@label"] == "reading_order":
@@ -520,7 +529,7 @@ def add_footnotes_to_item(
 
 def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
 
-    logging.info(f"creating ground-truth document for {basename}")
+    # logging.info(f"creating ground-truth document for {basename}")
     (
         _,
         keep,
@@ -539,7 +548,7 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
         logging.error(f"incorrect annotation for {basename}")
         return None
 
-    logging.info(f"analyzing {basename}")
+    # logging.info(f"analyzing {basename}")
 
     # ========== Original Groundtruth
     orig_file = desc.true_file
@@ -621,11 +630,11 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
         true_doc.pages[page_no] = page_item
 
     # Build the true-doc
-    logging.info(f"reading-oder from annotations: {reading_order}")
+    # logging.info(f"reading-oder from annotations: {reading_order}")
 
     already_added: List[int] = []
     for boxid in reading_order["boxids"]:
-        # print(" => ", boxid, ": ", boxes[boxid])
+        # print("reading order => ", boxid, ": ", boxes[boxid])
 
         if boxid in already_added:
             logging.warning(f"{boxid} is already added: {already_added}")
@@ -634,7 +643,7 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
         # FIXME for later ...
         page_no = 1
 
-        if true_doc.pages[page_no] is None:
+        if (page_no not in true_doc.pages) or (true_doc.pages[page_no] is None):
             logging.error(f"Page item is None, skipping ...")
             continue
 
@@ -650,9 +659,7 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
         label, prov, text = get_label_prov_and_text(
             box=boxes[boxid],
             page_no=page_no,
-            # img_width=true_doc.pages[page_no].image.size.width,
             img_width=true_page_imageref.size.width,
-            # img_height=true_doc.pages[page_no].image.size.height,
             img_height=true_page_imageref.size.height,
             pdf_width=true_doc.pages[page_no].size.width,
             pdf_height=true_doc.pages[page_no].size.height,
@@ -705,13 +712,30 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
             true_doc.add_text(label=label, prov=prov, text=text)
 
         elif label == DocItemLabel.CODE:
-            true_doc.add_text(label=label, prov=prov, text=text)
+            # true_doc.add_text(label=label, prov=prov, text=text)
+
+            code_item = true_doc.add_code(text=text, prov=prov)
+
+            true_doc, already_added = add_captions_to_item(
+                basename=basename,
+                to_captions=to_captions,
+                item=code_item,
+                page_no=page_no,
+                boxid=boxid,
+                boxes=boxes,
+                already_added=already_added,
+                true_doc=true_doc,
+                parser=parser,
+                parsed_page=parsed_pages[page_no],
+            )
 
         elif label == DocItemLabel.FORM:
-            true_doc.add_text(label=label, prov=prov, text=text)
+            graph = GraphData(cells=[], links=[])
+            true_doc.add_form(graph=graph, prov=prov)
 
         elif label == DocItemLabel.KEY_VALUE_REGION:
-            true_doc.add_text(label=label, prov=prov, text=text)
+            graph = GraphData(cells=[], links=[])
+            true_doc.add_key_values(graph=graph, prov=prov)
 
         elif label in [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]:
 
@@ -832,6 +856,12 @@ def from_cvat_to_docling_document(
         for image_annot in annot_data["annotations"]["image"]:
 
             basename = image_annot["@name"]
+            # logging.info(basename)
+
+            """
+            if basename != "doc_5387a06d7e31d738c4bdb64b1936ac6fa09246b6a7e8506e1ee86691ff37155c_page_000001.png":
+                continue
+            """
 
             if basename not in overview.img_annotations:
                 logging.warning(f"Skipping {basename}: not in overview_file")
@@ -934,7 +964,7 @@ def create_layout_dataset_from_annotations(
             )
 
         """
-        save_inspection_html(filename=str(html_viz_dir / f"{basename}.html"), doc = true_doc,
+        save_inspection_html(filename=str(html_comp_dir / f"{basename}.html"), doc = true_doc,
                              labels=TRUE_HTML_EXPORT_LABELS)
         """
 
@@ -957,8 +987,8 @@ def create_layout_dataset_from_annotations(
         )
 
         if True:
-            vizname = benchmark_dirs.html_viz_dir / f"{basename}-clusters.html"
-            logging.info(f"creating visualization: {vizname}")
+            vizname = benchmark_dirs.html_comp_dir / f"{basename}-clusters.html"
+            # logging.info(f"creating visualization: {vizname}")
 
             save_comparison_html_with_clusters(
                 filename=vizname,
@@ -973,6 +1003,8 @@ def create_layout_dataset_from_annotations(
             BenchMarkColumns.DOCLING_VERSION: docling_version(),
             BenchMarkColumns.STATUS: str(conv_results.status),
             BenchMarkColumns.DOC_ID: str(basename),
+            BenchMarkColumns.DOC_PATH: str(basename),
+            BenchMarkColumns.DOC_HASH: get_binhash(get_binary(pdf_file)),
             BenchMarkColumns.GROUNDTRUTH: json.dumps(true_doc.export_to_dict()),
             BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: true_page_images,
             BenchMarkColumns.GROUNDTRUTH_PICTURES: true_pictures,
@@ -981,6 +1013,11 @@ def create_layout_dataset_from_annotations(
             BenchMarkColumns.PREDICTION_PICTURES: pred_pictures,
             BenchMarkColumns.ORIGINAL: get_binary(pdf_file),
             BenchMarkColumns.MIMETYPE: "application/pdf",
+            BenchMarkColumns.MODALITIES: [
+                EvaluationModality.LAYOUT,
+                EvaluationModality.READING_ORDER,
+                EvaluationModality.CAPTIONING,
+            ],
         }
         records.append(record)
 
@@ -1059,20 +1096,20 @@ def get_annotation_files(benchmark_dirs):
     return xml_files
 
 
-# def main():
+def main():
 
-#     source_dir = parse_args()
+    source_dir = parse_args()
 
-#     benchmark_dirs = BenchMarkDirs()
-#     benchmark_dirs.set_up_directory_structure(source=source_dir, target=source_dir)
+    benchmark_dirs = BenchMarkDirs()
+    benchmark_dirs.set_up_directory_structure(source=source_dir, target=source_dir)
 
-#     # Get all annotation files
-#     annot_files = get_annotation_files(benchmark_dirs)
+    # Get all annotation files
+    annot_files = get_annotation_files(benchmark_dirs)
 
-#     create_layout_dataset_from_annotations(
-#         benchmark_dirs=benchmark_dirs, annot_files=annot_files
-#     )
+    create_layout_dataset_from_annotations(
+        benchmark_dirs=benchmark_dirs, annot_files=annot_files
+    )
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

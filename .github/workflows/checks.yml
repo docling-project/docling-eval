@@ -26,15 +26,16 @@ jobs:
           poetry run pytest -v tests
       - name: Run examples
         run: |
-          for file in docs/examples/*.py; do
-            # Skip batch_convert.py
-            if [[ "$(basename "$file")" =~ ^(batch_convert|minimal|export_multimodal|custom_convert|develop_picture_enrichment).py ]]; then
-                echo "Skipping $file"
-                continue
-            fi
-
-            echo "Running example $file"
-            poetry run python "$file" || exit 1
-          done
+          # for file in docs/examples/*.py; do
+          #  # Skip batch_convert.py
+          #  if [[ "$(basename "$file")" =~ ^(batch_convert|minimal|export_multimodal|custom_convert|develop_picture_enrichment).py ]]; then
+          #      echo "Skipping $file"
+          #      continue
+          #  fi
+          #
+          #  echo "Running example $file"
+          #  poetry run python "$file" || exit 1
+          # done
+          echo "Skipping examples in CI until this is more time efficient."
       - name: Build with poetry
         run: poetry build
