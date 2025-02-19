@@ -40,6 +40,7 @@ class EvaluationModality(str, Enum):
     CAPTIONING = "captioning"  # to compute the accuracy of captions to table/figure
     BBOXES_TEXT = "bboxes_text"
 
+
 class BenchMarkNames(str, Enum):
 
     # End-to-End
