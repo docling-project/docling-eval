@@ -53,6 +53,7 @@ class MarkdownTextEvaluator:
 
         # Download the NLTK data
         nltk.download("popular", quiet=True)
+        nltk.download("punkt_tab", quiet=True)
 
     def __call__(self, ds_path: Path, split: str = "test") -> DatasetMarkdownEvaluation:
         parquet_files = str(ds_path / split / "*.parquet")
