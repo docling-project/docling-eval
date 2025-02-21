@@ -144,9 +144,13 @@ poetry run evaluate \
 [Markdown text report](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text.txt)
 
 ![BLEU plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_BLEU.png)
-![Edit distance plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_edit_distance.png)
-![F1 plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_F1.png)
-![Meteor plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_Meteor.png)
-![Precision plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_precision.png)
-![Recall plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_recall.png)
 
+![Edit distance plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_edit_distance.png)
+
+![F1 plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_F1.png)
+
+![Meteor plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_Meteor.png)
+
+![Precision plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_precision.png)
+
+![Recall plot](evaluations/OmniDocBench/evaluation_OmniDocBench_markdown_text_recall.png)

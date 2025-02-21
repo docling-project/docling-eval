@@ -140,10 +140,15 @@ poetry run evaluate \
 
 [Markdown text report](evaluations/DPBench/evaluation_DPBench_markdown_text.txt)
 
-![BLEU plot](evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.png)
-![Edit distance plot](evaluations/DPBench/evaluation_DPBench_markdown_text_edit_distance.png)
-![F1 plot](evaluations/DPBench/evaluation_DPBench_markdown_text_F1.png)
-![Meteor plot](evaluations/DPBench/evaluation_DPBench_markdown_text_meteor.png)
-![Precision plot](evaluations/DPBench/evaluation_DPBench_markdown_text_precision.png)
-![Recall plot](evaluations/DPBench/evaluation_DPBench_markdown_text_recall.png)
 
+![BLEU plot](evaluations/DPBench/evaluation_DPBench_markdown_text_BLEU.png)
+
+![Edit distance plot](evaluations/DPBench/evaluation_DPBench_markdown_text_edit_distance.png)
+
+![F1 plot](evaluations/DPBench/evaluation_DPBench_markdown_text_F1.png)
+
+![Meteor plot](evaluations/DPBench/evaluation_DPBench_markdown_text_meteor.png)
+
+![Precision plot](evaluations/DPBench/evaluation_DPBench_markdown_text_precision.png)
+
+![Recall plot](evaluations/DPBench/evaluation_DPBench_markdown_text_recall.png)
