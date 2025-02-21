@@ -1,6 +1,6 @@
 DPBench reading_order weighted_ARD:
 
-mean=1.00 median=1.00 std=0.01
+mean=1.00 median=1.00 std=0.00
 
 | weighted_ARD   |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |----------------|------------|-----------|-------------|---------|

@@ -1,39 +1,9 @@
 {
   "evaluations_per_class": [
     {
-      "label": "page_header",
+      "label": "table",
       "name": "Class mAP[0.5:0.95]",
-      "value": 0.1510816514492035
-    },
-    {
-      "label": "text",
-      "name": "Class mAP[0.5:0.95]",
-      "value": 0.6780200004577637
-    },
-    {
-      "label": "section_header",
-      "name": "Class mAP[0.5:0.95]",
-      "value": 0.44256600737571716
-    },
-    {
-      "label": "footnote",
-      "name": "Class mAP[0.5:0.95]",
-      "value": 0.22080150246620178
-    },
-    {
-      "label": "picture",
-      "name": "Class mAP[0.5:0.95]",
-      "value": 0.7609653472900391
-    },
-    {
-      "label": "caption",
-      "name": "Class mAP[0.5:0.95]",
-      "value": 0.45801788568496704
-    },
-    {
-      "label": "page_footer",
-      "name": "Class mAP[0.5:0.95]",
-      "value": 0.34415748715400696
+      "value": 0.8935385346412659
     },
     {
       "label": "document_index",
@@ -41,825 +11,2249 @@
       "value": 0.7552334070205688
     },
     {
-      "label": "formula",
+      "label": "picture",
       "name": "Class mAP[0.5:0.95]",
-      "value": 0.06621256470680237
+      "value": 0.7542452812194824
+    },
+    {
+      "label": "text",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.6095190048217773
+    },
+    {
+      "label": "section_header",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.3991108536720276
     },
     {
       "label": "list_item",
       "name": "Class mAP[0.5:0.95]",
-      "value": 0.2903832495212555
+      "value": 0.24588607251644135
     },
     {
-      "label": "table",
+      "label": "footnote",
       "name": "Class mAP[0.5:0.95]",
-      "value": 0.8908296227455139
+      "value": 0.18631750345230103
+    },
+    {
+      "label": "caption",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.09608200937509537
+    },
+    {
+      "label": "formula",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.0648832619190216
+    },
+    {
+      "label": "page_footer",
+      "name": "Class mAP[0.5:0.95]",
+      "value": 0.014851485379040241
     }
   ],
   "evaluations_per_image": [
     {
-      "name": "01030000000001.pdf-page-0",
-      "value": 0.5688118934631348
-    },
-    {
-      "name": "01030000000002.pdf-page-0",
-      "value": 0.60160893201828
-    },
-    {
-      "name": "01030000000003.pdf-page-0",
-      "value": 0.4425123631954193
-    },
-    {
-      "name": "01030000000004.pdf-page-0",
-      "value": 0.4110561013221741
-    },
-    {
-      "name": "01030000000005.pdf-page-0",
-      "value": 0.6834983229637146
-    },
-    {
-      "name": "01030000000006.pdf-page-0",
-      "value": 0.8006600737571716
-    },
-    {
-      "name": "01030000000007.pdf-page-0",
-      "value": 0.3792904317378998
-    },
-    {
-      "name": "01030000000008.pdf-page-0",
-      "value": 0.6100990176200867
-    },
-    {
-      "name": "01030000000009.pdf-page-0",
-      "value": 0.4451815187931061
-    },
-    {
-      "name": "01030000000010.pdf-page-0",
-      "value": 0.39966335892677307
-    },
-    {
-      "name": "01030000000011.pdf-page-0",
-      "value": 0.5771782398223877
-    },
-    {
-      "name": "01030000000012.pdf-page-0",
-      "value": 0.6607920527458191
-    },
-    {
-      "name": "01030000000013.pdf-page-0",
-      "value": 0.6584158539772034
-    },
-    {
-      "name": "01030000000014.pdf-page-0",
-      "value": 0.5201980471611023
-    },
-    {
-      "name": "01030000000015.pdf-page-0",
-      "value": 0.43029701709747314
-    },
-    {
-      "name": "01030000000016.pdf-page-0",
-      "value": 0.3333333432674408
-    },
-    {
-      "name": "01030000000017.pdf-page-0",
-      "value": 0.5881187915802002
-    },
-    {
-      "name": "01030000000018.pdf-page-0",
-      "value": 0.6499999761581421
-    },
-    {
-      "name": "01030000000019.pdf-page-0",
-      "value": 0.6666666865348816
-    },
-    {
-      "name": "01030000000020.pdf-page-0",
-      "value": 0.5333333611488342
-    },
-    {
-      "name": "01030000000021.pdf-page-0",
-      "value": 0.32211220264434814
-    },
-    {
-      "name": "01030000000022.pdf-page-0",
-      "value": 0.5666666626930237
-    },
-    {
-      "name": "01030000000023.pdf-page-0",
-      "value": 0.6000000238418579
-    },
-    {
-      "name": "01030000000024.pdf-page-0",
-      "value": 0.6596888303756714
-    },
-    {
-      "name": "01030000000025.pdf-page-0",
-      "value": 0.5850542187690735
-    },
-    {
-      "name": "01030000000026.pdf-page-0",
-      "value": 0.41111111640930176
-    },
-    {
-      "name": "01030000000027.pdf-page-0",
-      "value": 0.763861358165741
-    },
-    {
-      "name": "01030000000028.pdf-page-0",
-      "value": 0.46866747736930847
-    },
-    {
-      "name": "01030000000029.pdf-page-0",
-      "value": 0.5118811726570129
-    },
-    {
-      "name": "01030000000030.pdf-page-0",
-      "value": 0.42541253566741943
-    },
-    {
-      "name": "01030000000031.pdf-page-0",
-      "value": 0.6136512160301208
-    },
-    {
-      "name": "01030000000032.pdf-page-0",
-      "value": 0.8252475261688232
-    },
-    {
-      "name": "01030000000033.pdf-page-0",
-      "value": 0.6525742411613464
-    },
-    {
-      "name": "01030000000034.pdf-page-0",
-      "value": 0.4743635058403015
-    },
-    {
-      "name": "01030000000035.pdf-page-0",
-      "value": 0.36264026165008545
-    },
-    {
-      "name": "01030000000036.pdf-page-0",
-      "value": 0.7400000095367432
-    },
-    {
-      "name": "01030000000037.pdf-page-0",
-      "value": 0.7950165271759033
-    },
-    {
-      "name": "01030000000038.pdf-page-0",
-      "value": 0.8708745837211609
-    },
-    {
-      "name": "01030000000039.pdf-page-0",
-      "value": 0.7809052467346191
-    },
-    {
-      "name": "01030000000040.pdf-page-0",
-      "value": 0.788118839263916
-    },
-    {
-      "name": "01030000000041.pdf-page-0",
-      "value": 0.7004950642585754
-    },
-    {
-      "name": "01030000000042.pdf-page-0",
-      "value": 0.8133663535118103
-    },
-    {
-      "name": "01030000000043.pdf-page-0",
-      "value": 0.6037706136703491
-    },
-    {
-      "name": "01030000000044.pdf-page-0",
-      "value": 0.15000000596046448
-    },
-    {
-      "name": "01030000000045.pdf-page-0",
-      "value": 0.8333333134651184
-    },
-    {
-      "name": "01030000000046.pdf-page-0",
-      "value": 0.5799999833106995
-    },
-    {
-      "name": "01030000000047.pdf-page-0",
-      "value": 0.36666667461395264
-    },
-    {
-      "name": "01030000000048.pdf-page-0",
-      "value": 0.6333333253860474
-    },
-    {
-      "name": "01030000000049.pdf-page-0",
-      "value": 0.8417491912841797
-    },
-    {
-      "name": "01030000000050.pdf-page-0",
-      "value": 0.8755225539207458
-    },
-    {
-      "name": "01030000000051.pdf-page-0",
-      "value": 0.7287458777427673
-    },
-    {
-      "name": "01030000000052.pdf-page-0",
-      "value": 0.824999988079071
-    },
-    {
-      "name": "01030000000053.pdf-page-0",
-      "value": 0.7157177925109863
-    },
-    {
-      "name": "01030000000054.pdf-page-0",
-      "value": 0.78910893201828
-    },
-    {
-      "name": "01030000000055.pdf-page-0",
-      "value": 0.8194307088851929
-    },
-    {
-      "name": "01030000000056.pdf-page-0",
-      "value": 0.612673282623291
-    },
-    {
-      "name": "01030000000057.pdf-page-0",
-      "value": 0.7463366389274597
-    },
-    {
-      "name": "01030000000058.pdf-page-0",
-      "value": 0.7691088914871216
-    },
-    {
-      "name": "01030000000059.pdf-page-0",
-      "value": 0.7035396099090576
-    },
-    {
-      "name": "01030000000060.pdf-page-0",
-      "value": 0.8027227520942688
-    },
-    {
-      "name": "01030000000061.pdf-page-0",
-      "value": 0.6302970051765442
-    },
-    {
-      "name": "01030000000062.pdf-page-0",
-      "value": 0.8199999928474426
-    },
-    {
-      "name": "01030000000063.pdf-page-0",
-      "value": 0.7749999761581421
-    },
-    {
-      "name": "01030000000064.pdf-page-0",
-      "value": 0.6235148310661316
-    },
-    {
+      "avg_weighted_label_matched_iou_50": 0.9908822178840637,
+      "avg_weighted_label_matched_iou_75": 0.9908822178840637,
+      "avg_weighted_label_matched_iou_90": 0.9908822178840637,
+      "avg_weighted_label_matched_iou_95": 0.9167075157165527,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.5799999833106995,
       "name": "01030000000065.pdf-page-0",
-      "value": 0.8199999928474426
+      "value": 0.9908822178840637
     },
     {
-      "name": "01030000000066.pdf-page-0",
-      "value": 0.27731022238731384
+      "avg_weighted_label_matched_iou_50": 0.9885656833648682,
+      "avg_weighted_label_matched_iou_75": 0.9885656833648682,
+      "avg_weighted_label_matched_iou_90": 0.9885656833648682,
+      "avg_weighted_label_matched_iou_95": 0.9885656833648682,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
+      "name": "01030000000006.pdf-page-0",
+      "value": 0.9885656833648682
     },
     {
-      "name": "01030000000067.pdf-page-0",
-      "value": 0.6533003449440002
-    },
-    {
-      "name": "01030000000068.pdf-page-0",
-      "value": 0.729141891002655
-    },
-    {
-      "name": "01030000000069.pdf-page-0",
-      "value": 0.3859264552593231
-    },
-    {
-      "name": "01030000000070.pdf-page-0",
-      "value": 0.3100000023841858
-    },
-    {
-      "name": "01030000000071.pdf-page-0",
-      "value": 0.518894374370575
-    },
-    {
-      "name": "01030000000072.pdf-page-0",
-      "value": 0.40833333134651184
-    },
-    {
-      "name": "01030000000073.pdf-page-0",
-      "value": 0.6200000047683716
-    },
-    {
-      "name": "01030000000074.pdf-page-0",
-      "value": 0.8102970123291016
-    },
-    {
-      "name": "01030000000075.pdf-page-0",
-      "value": 0.6368317008018494
-    },
-    {
-      "name": "01030000000076.pdf-page-0",
-      "value": 0.7121286988258362
-    },
-    {
-      "name": "01030000000077.pdf-page-0",
-      "value": 0.7894389629364014
-    },
-    {
-      "name": "01030000000078.pdf-page-0",
-      "value": 0.8163366317749023
-    },
-    {
-      "name": "01030000000079.pdf-page-0",
-      "value": 0.7354785203933716
-    },
-    {
-      "name": "01030000000080.pdf-page-0",
-      "value": 0.7084158658981323
-    },
-    {
-      "name": "01030000000081.pdf-page-0",
-      "value": 0.6642244458198547
-    },
-    {
-      "name": "01030000000082.pdf-page-0",
-      "value": 0.5817821621894836
-    },
-    {
-      "name": "01030000000083.pdf-page-0",
-      "value": 0.48059406876564026
-    },
-    {
-      "name": "01030000000084.pdf-page-0",
-      "value": 0.49089109897613525
-    },
-    {
-      "name": "01030000000085.pdf-page-0",
-      "value": 0.6331683397293091
-    },
-    {
-      "name": "01030000000086.pdf-page-0",
-      "value": 0.8398514986038208
-    },
-    {
-      "name": "01030000000087.pdf-page-0",
-      "value": 0.7093234062194824
-    },
-    {
-      "name": "01030000000088.pdf-page-0",
-      "value": 0.5507425665855408
-    },
-    {
-      "name": "01030000000089.pdf-page-0",
-      "value": 0.6508250832557678
-    },
-    {
+      "avg_weighted_label_matched_iou_50": 0.9879168272018433,
+      "avg_weighted_label_matched_iou_75": 0.9879168272018433,
+      "avg_weighted_label_matched_iou_90": 0.9879168272018433,
+      "avg_weighted_label_matched_iou_95": 0.9879168272018433,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
       "name": "01030000000090.pdf-page-0",
-      "value": 0.7343234419822693
+      "value": 0.9879168272018433
     },
     {
-      "name": "01030000000091.pdf-page-0",
-      "value": 0.6000000238418579
+      "avg_weighted_label_matched_iou_50": 0.987894594669342,
+      "avg_weighted_label_matched_iou_75": 0.987894594669342,
+      "avg_weighted_label_matched_iou_90": 0.987894594669342,
+      "avg_weighted_label_matched_iou_95": 0.987894594669342,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.3333333432674408,
+      "name": "01030000000047.pdf-page-0",
+      "value": 0.987894594669342
     },
     {
-      "name": "01030000000092.pdf-page-0",
-      "value": 0.625
+      "avg_weighted_label_matched_iou_50": 0.9876718521118164,
+      "avg_weighted_label_matched_iou_75": 0.9876718521118164,
+      "avg_weighted_label_matched_iou_90": 0.9876718521118164,
+      "avg_weighted_label_matched_iou_95": 0.9876718521118164,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
+      "name": "01030000000005.pdf-page-0",
+      "value": 0.9876718521118164
     },
     {
-      "name": "01030000000093.pdf-page-0",
-      "value": 0.32112210988998413
+      "avg_weighted_label_matched_iou_50": 0.9865819215774536,
+      "avg_weighted_label_matched_iou_75": 0.9865819215774536,
+      "avg_weighted_label_matched_iou_90": 0.022858159616589546,
+      "avg_weighted_label_matched_iou_95": 0.022858159616589546,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.5333333611488342,
+      "name": "01030000000200.pdf-page-0",
+      "value": 0.9865819215774536
     },
     {
-      "name": "01030000000094.pdf-page-0",
-      "value": 0.8977558016777039
+      "avg_weighted_label_matched_iou_50": 0.9847787618637085,
+      "avg_weighted_label_matched_iou_75": 0.9847787618637085,
+      "avg_weighted_label_matched_iou_90": 0.9847787618637085,
+      "avg_weighted_label_matched_iou_95": 0.9847787618637085,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.6000000238418579,
+      "name": "01030000000062.pdf-page-0",
+      "value": 0.9847787618637085
     },
     {
-      "name": "01030000000095.pdf-page-0",
-      "value": 0.5289191603660583
+      "avg_weighted_label_matched_iou_50": 0.9826886057853699,
+      "avg_weighted_label_matched_iou_75": 0.9826886057853699,
+      "avg_weighted_label_matched_iou_90": 0.9826886057853699,
+      "avg_weighted_label_matched_iou_95": 0.9542730450630188,
+      "map_50": 0.75,
+      "map_75": 0.75,
+      "map_val": 0.7250000238418579,
+      "name": "01030000000012.pdf-page-0",
+      "value": 0.9826886057853699
     },
     {
-      "name": "01030000000096.pdf-page-0",
-      "value": 0.8999999761581421
+      "avg_weighted_label_matched_iou_50": 0.9825853109359741,
+      "avg_weighted_label_matched_iou_75": 0.9825853109359741,
+      "avg_weighted_label_matched_iou_90": 0.9825853109359741,
+      "avg_weighted_label_matched_iou_95": 0.9825853109359741,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
+      "name": "01030000000063.pdf-page-0",
+      "value": 0.9825853109359741
     },
     {
-      "name": "01030000000097.pdf-page-0",
-      "value": 0.9051485061645508
+      "avg_weighted_label_matched_iou_50": 0.981772780418396,
+      "avg_weighted_label_matched_iou_75": 0.981772780418396,
+      "avg_weighted_label_matched_iou_90": 0.981772780418396,
+      "avg_weighted_label_matched_iou_95": 0.981772780418396,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
+      "name": "01030000000089.pdf-page-0",
+      "value": 0.981772780418396
     },
     {
-      "name": "01030000000098.pdf-page-0",
-      "value": 0.7507425546646118
+      "avg_weighted_label_matched_iou_50": 0.9807406663894653,
+      "avg_weighted_label_matched_iou_75": 0.7469274997711182,
+      "avg_weighted_label_matched_iou_90": 0.7469274997711182,
+      "avg_weighted_label_matched_iou_95": 0.7469274997711182,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.5,
+      "name": "01030000000154.pdf-page-0",
+      "value": 0.9807406663894653
     },
     {
-      "name": "01030000000099.pdf-page-0",
-      "value": 0.7661386132240295
+      "avg_weighted_label_matched_iou_50": 0.9802095890045166,
+      "avg_weighted_label_matched_iou_75": 0.9802095890045166,
+      "avg_weighted_label_matched_iou_90": 0.7262141108512878,
+      "avg_weighted_label_matched_iou_95": 0.7262141108512878,
+      "map_50": 0.7009900808334351,
+      "map_75": 0.7009900808334351,
+      "map_val": 0.589570939540863,
+      "name": "01030000000078.pdf-page-0",
+      "value": 0.9802095890045166
     },
     {
-      "name": "01030000000100.pdf-page-0",
-      "value": 0.38481849431991577
-    },
-    {
-      "name": "01030000000101.pdf-page-0",
-      "value": 0.8376237750053406
-    },
-    {
-      "name": "01030000000102.pdf-page-0",
-      "value": 0.43193069100379944
-    },
-    {
-      "name": "01030000000103.pdf-page-0",
-      "value": 0.5614269971847534
-    },
-    {
-      "name": "01030000000104.pdf-page-0",
-      "value": 0.6932673454284668
-    },
-    {
-      "name": "01030000000105.pdf-page-0",
-      "value": 0.7288448810577393
-    },
-    {
+      "avg_weighted_label_matched_iou_50": 0.9797604084014893,
+      "avg_weighted_label_matched_iou_75": 0.9797604084014893,
+      "avg_weighted_label_matched_iou_90": 0.9797604084014893,
+      "avg_weighted_label_matched_iou_95": 0.9797604084014893,
+      "map_50": 0.5544554591178894,
+      "map_75": 0.5544554591178894,
+      "map_val": 0.5544554591178894,
       "name": "01030000000106.pdf-page-0",
-      "value": 0.8211221098899841
+      "value": 0.9797604084014893
     },
     {
-      "name": "01030000000107.pdf-page-0",
-      "value": 0.6643564105033875
+      "avg_weighted_label_matched_iou_50": 0.9796690344810486,
+      "avg_weighted_label_matched_iou_75": 0.9796690344810486,
+      "avg_weighted_label_matched_iou_90": 0.9796690344810486,
+      "avg_weighted_label_matched_iou_95": 0.8791391253471375,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.49443069100379944,
+      "name": "01030000000055.pdf-page-0",
+      "value": 0.9796690344810486
     },
     {
-      "name": "01030000000108.pdf-page-0",
-      "value": 0.75
+      "avg_weighted_label_matched_iou_50": 0.97960364818573,
+      "avg_weighted_label_matched_iou_75": 0.97960364818573,
+      "avg_weighted_label_matched_iou_90": 0.0061039431020617485,
+      "avg_weighted_label_matched_iou_95": 0.0061039431020617485,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.800000011920929,
+      "name": "01030000000171.pdf-page-0",
+      "value": 0.97960364818573
     },
     {
-      "name": "01030000000109.pdf-page-0",
-      "value": 0.43156057596206665
+      "avg_weighted_label_matched_iou_50": 0.9790127873420715,
+      "avg_weighted_label_matched_iou_75": 0.9790127873420715,
+      "avg_weighted_label_matched_iou_90": 0.9158278703689575,
+      "avg_weighted_label_matched_iou_95": 0.5852630734443665,
+      "map_50": 0.75,
+      "map_75": 0.75,
+      "map_val": 0.6391088962554932,
+      "name": "01030000000054.pdf-page-0",
+      "value": 0.9790127873420715
     },
     {
-      "name": "01030000000110.pdf-page-0",
-      "value": 0.4778217673301697
-    },
-    {
-      "name": "01030000000111.pdf-page-0",
-      "value": 0.32386139035224915
-    },
-    {
-      "name": "01030000000112.pdf-page-0",
-      "value": 0.6543042063713074
-    },
-    {
-      "name": "01030000000113.pdf-page-0",
-      "value": 0.25
-    },
-    {
-      "name": "01030000000114.pdf-page-0",
-      "value": 0.30000001192092896
-    },
-    {
-      "name": "01030000000115.pdf-page-0",
-      "value": 0.3208746016025543
-    },
-    {
-      "name": "01030000000116.pdf-page-0",
-      "value": 0.29724186658859253
-    },
-    {
-      "name": "01030000000117.pdf-page-0",
-      "value": 0.33359014987945557
-    },
-    {
-      "name": "01030000000118.pdf-page-0",
-      "value": 0.3259405791759491
-    },
-    {
-      "name": "01030000000119.pdf-page-0",
-      "value": 0.32574257254600525
-    },
-    {
-      "name": "01030000000120.pdf-page-0",
-      "value": 0.44158416986465454
-    },
-    {
-      "name": "01030000000121.pdf-page-0",
-      "value": 0.41382837295532227
-    },
-    {
-      "name": "01030000000122.pdf-page-0",
-      "value": 0.31010037660598755
-    },
-    {
-      "name": "01030000000123.pdf-page-0",
-      "value": 0.3929278552532196
-    },
-    {
-      "name": "01030000000124.pdf-page-0",
-      "value": 0.41017600893974304
-    },
-    {
-      "name": "01030000000125.pdf-page-0",
-      "value": 0.9333333373069763
-    },
-    {
-      "name": "01030000000126.pdf-page-0",
-      "value": 0.4333333373069763
-    },
-    {
-      "name": "01030000000127.pdf-page-0",
-      "value": 0.9423102140426636
-    },
-    {
-      "name": "01030000000128.pdf-page-0",
-      "value": 0.7400000095367432
-    },
-    {
-      "name": "01030000000129.pdf-page-0",
-      "value": 0.4295850992202759
-    },
-    {
-      "name": "01030000000130.pdf-page-0",
-      "value": 0.7135313749313354
-    },
-    {
-      "name": "01030000000131.pdf-page-0",
-      "value": 0.8876237869262695
-    },
-    {
-      "name": "01030000000132.pdf-page-0",
-      "value": 0.4961386024951935
-    },
-    {
-      "name": "01030000000133.pdf-page-0",
-      "value": 0.8399999737739563
-    },
-    {
-      "name": "01030000000134.pdf-page-0",
-      "value": 0.9126237630844116
-    },
-    {
-      "name": "01030000000135.pdf-page-0",
-      "value": 0.8999999761581421
-    },
-    {
-      "name": "01030000000136.pdf-page-0",
-      "value": 0.6800000071525574
-    },
-    {
-      "name": "01030000000137.pdf-page-0",
-      "value": 0.8999999761581421
-    },
-    {
-      "name": "01030000000138.pdf-page-0",
-      "value": 0.8500000238418579
-    },
-    {
+      "avg_weighted_label_matched_iou_50": 0.978713870048523,
+      "avg_weighted_label_matched_iou_75": 0.978713870048523,
+      "avg_weighted_label_matched_iou_90": 0.978713870048523,
+      "avg_weighted_label_matched_iou_95": 0.978713870048523,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
       "name": "01030000000139.pdf-page-0",
-      "value": 0.8999999761581421
+      "value": 0.978713870048523
     },
     {
+      "avg_weighted_label_matched_iou_50": 0.9774531126022339,
+      "avg_weighted_label_matched_iou_75": 0.9774531126022339,
+      "avg_weighted_label_matched_iou_90": 0.6125380992889404,
+      "avg_weighted_label_matched_iou_95": 0.6125380992889404,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.800000011920929,
+      "name": "01030000000048.pdf-page-0",
+      "value": 0.9774531126022339
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9764332175254822,
+      "avg_weighted_label_matched_iou_75": 0.9764332175254822,
+      "avg_weighted_label_matched_iou_90": 0.0037026728969067335,
+      "avg_weighted_label_matched_iou_95": 0.0037026728969067335,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.5333333611488342,
+      "name": "01030000000113.pdf-page-0",
+      "value": 0.9764332175254822
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9763572216033936,
+      "avg_weighted_label_matched_iou_75": 0.9763572216033936,
+      "avg_weighted_label_matched_iou_90": 0.778796374797821,
+      "avg_weighted_label_matched_iou_95": 0.778796374797821,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.5250495076179504,
+      "name": "01030000000179.pdf-page-0",
+      "value": 0.9763572216033936
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9759518504142761,
+      "avg_weighted_label_matched_iou_75": 0.60502690076828,
+      "avg_weighted_label_matched_iou_90": 0.477387011051178,
+      "avg_weighted_label_matched_iou_95": 0.477387011051178,
+      "map_50": 0.800000011920929,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.6050494909286499,
+      "name": "01030000000178.pdf-page-0",
+      "value": 0.9759518504142761
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9754883050918579,
+      "avg_weighted_label_matched_iou_75": 0.9754883050918579,
+      "avg_weighted_label_matched_iou_90": 0.9500013589859009,
+      "avg_weighted_label_matched_iou_95": 0.9500013589859009,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8666666746139526,
+      "name": "01030000000052.pdf-page-0",
+      "value": 0.9754883050918579
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9752033948898315,
+      "avg_weighted_label_matched_iou_75": 0.9752033948898315,
+      "avg_weighted_label_matched_iou_90": 0.9752033948898315,
+      "avg_weighted_label_matched_iou_95": 0.9752033948898315,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.5,
       "name": "01030000000140.pdf-page-0",
-      "value": 0.925000011920929
+      "value": 0.9752033948898315
     },
     {
+      "avg_weighted_label_matched_iou_50": 0.9742864370346069,
+      "avg_weighted_label_matched_iou_75": 0.7994726300239563,
+      "avg_weighted_label_matched_iou_90": 0.7994726300239563,
+      "avg_weighted_label_matched_iou_95": 0.7994726300239563,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.5,
+      "name": "01030000000133.pdf-page-0",
+      "value": 0.9742864370346069
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9712932109832764,
+      "avg_weighted_label_matched_iou_75": 0.968127965927124,
+      "avg_weighted_label_matched_iou_90": 0.8272057771682739,
+      "avg_weighted_label_matched_iou_95": 0.8272057771682739,
+      "map_50": 1.0,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.6666666865348816,
+      "name": "01030000000003.pdf-page-0",
+      "value": 0.9712932109832764
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9698202610015869,
+      "avg_weighted_label_matched_iou_75": 0.7804365158081055,
+      "avg_weighted_label_matched_iou_90": 0.7804365158081055,
+      "avg_weighted_label_matched_iou_95": 0.7804365158081055,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.4333333373069763,
+      "name": "01030000000159.pdf-page-0",
+      "value": 0.9698202610015869
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9681556820869446,
+      "avg_weighted_label_matched_iou_75": 0.9681556820869446,
+      "avg_weighted_label_matched_iou_90": 0.8123552203178406,
+      "avg_weighted_label_matched_iou_95": 0.7881878614425659,
+      "map_50": 0.7326732873916626,
+      "map_75": 0.7326732873916626,
+      "map_val": 0.6261386275291443,
+      "name": "01030000000099.pdf-page-0",
+      "value": 0.9681556820869446
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9676942825317383,
+      "avg_weighted_label_matched_iou_75": 0.9676942825317383,
+      "avg_weighted_label_matched_iou_90": 0.9676942825317383,
+      "avg_weighted_label_matched_iou_95": 0.6679210066795349,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4937293827533722,
+      "name": "01030000000040.pdf-page-0",
+      "value": 0.9676942825317383
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9670177698135376,
+      "avg_weighted_label_matched_iou_75": 0.9670177698135376,
+      "avg_weighted_label_matched_iou_90": 0.42942702770233154,
+      "avg_weighted_label_matched_iou_95": 0.42942702770233154,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.5226732492446899,
+      "name": "01030000000074.pdf-page-0",
+      "value": 0.9670177698135376
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9669321775436401,
+      "avg_weighted_label_matched_iou_75": 0.9669321775436401,
+      "avg_weighted_label_matched_iou_90": 0.9669321775436401,
+      "avg_weighted_label_matched_iou_95": 0.7625937461853027,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4907178282737732,
+      "name": "01030000000138.pdf-page-0",
+      "value": 0.9669321775436401
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9665732979774475,
+      "avg_weighted_label_matched_iou_75": 0.9665732979774475,
+      "avg_weighted_label_matched_iou_90": 0.874167799949646,
+      "avg_weighted_label_matched_iou_95": 0.6767374277114868,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.5722112059593201,
+      "name": "01030000000068.pdf-page-0",
+      "value": 0.9665732979774475
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9663347601890564,
+      "avg_weighted_label_matched_iou_75": 0.9663347601890564,
+      "avg_weighted_label_matched_iou_90": 0.9663347601890564,
+      "avg_weighted_label_matched_iou_95": 0.842727780342102,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4915841519832611,
+      "name": "01030000000137.pdf-page-0",
+      "value": 0.9663347601890564
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9661126732826233,
+      "avg_weighted_label_matched_iou_75": 0.5266905426979065,
+      "avg_weighted_label_matched_iou_90": 0.5266905426979065,
+      "avg_weighted_label_matched_iou_95": 0.5227488279342651,
+      "map_50": 1.0,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.6480748057365417,
+      "name": "01030000000004.pdf-page-0",
+      "value": 0.9661126732826233
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.965793251991272,
+      "avg_weighted_label_matched_iou_75": 0.965793251991272,
+      "avg_weighted_label_matched_iou_90": 0.6559896469116211,
+      "avg_weighted_label_matched_iou_95": 0.3484511077404022,
+      "map_50": 0.4455445408821106,
+      "map_75": 0.4455445408821106,
+      "map_val": 0.4082508385181427,
+      "name": "01030000000027.pdf-page-0",
+      "value": 0.965793251991272
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9655329585075378,
+      "avg_weighted_label_matched_iou_75": 0.9655329585075378,
+      "avg_weighted_label_matched_iou_90": 0.633319616317749,
+      "avg_weighted_label_matched_iou_95": 0.4122403860092163,
+      "map_50": 0.6485148668289185,
+      "map_75": 0.6485148668289185,
+      "map_val": 0.5735148787498474,
+      "name": "01030000000064.pdf-page-0",
+      "value": 0.9655329585075378
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9647276997566223,
+      "avg_weighted_label_matched_iou_75": 0.9647276997566223,
+      "avg_weighted_label_matched_iou_90": 0.8685519099235535,
+      "avg_weighted_label_matched_iou_95": 0.7024499773979187,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8854785561561584,
+      "name": "01030000000002.pdf-page-0",
+      "value": 0.9647276997566223
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9645259976387024,
+      "avg_weighted_label_matched_iou_75": 0.9645259976387024,
+      "avg_weighted_label_matched_iou_90": 0.9645259976387024,
+      "avg_weighted_label_matched_iou_95": 0.5797202587127686,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4749999940395355,
+      "name": "01030000000134.pdf-page-0",
+      "value": 0.9645259976387024
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9635213613510132,
+      "avg_weighted_label_matched_iou_75": 0.9635213613510132,
+      "avg_weighted_label_matched_iou_90": 0.9635213613510132,
+      "avg_weighted_label_matched_iou_95": 0.7768290638923645,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.32112210988998413,
+      "name": "01030000000093.pdf-page-0",
+      "value": 0.9635213613510132
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9633057117462158,
+      "avg_weighted_label_matched_iou_75": 0.9633057117462158,
+      "avg_weighted_label_matched_iou_90": 0.015034778043627739,
+      "avg_weighted_label_matched_iou_95": 0.015034778043627739,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.800000011920929,
+      "name": "01030000000018.pdf-page-0",
+      "value": 0.9633057117462158
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9626321196556091,
+      "avg_weighted_label_matched_iou_75": 0.9626321196556091,
+      "avg_weighted_label_matched_iou_90": 0.8531814813613892,
+      "avg_weighted_label_matched_iou_95": 0.8432897329330444,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8250824809074402,
+      "name": "01030000000001.pdf-page-0",
+      "value": 0.9626321196556091
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9602996110916138,
+      "avg_weighted_label_matched_iou_75": 0.0163730401545763,
+      "avg_weighted_label_matched_iou_90": 0.0163730401545763,
+      "avg_weighted_label_matched_iou_95": 0.0163730401545763,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.5,
+      "name": "01030000000016.pdf-page-0",
+      "value": 0.9602996110916138
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.960147500038147,
+      "avg_weighted_label_matched_iou_75": 0.960147500038147,
+      "avg_weighted_label_matched_iou_90": 0.702782928943634,
+      "avg_weighted_label_matched_iou_95": 0.43151888251304626,
+      "map_50": 0.800000011920929,
+      "map_75": 0.800000011920929,
+      "map_val": 0.7051485180854797,
+      "name": "01030000000097.pdf-page-0",
+      "value": 0.960147500038147
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9598013162612915,
+      "avg_weighted_label_matched_iou_75": 0.9598013162612915,
+      "avg_weighted_label_matched_iou_90": 0.7401460409164429,
+      "avg_weighted_label_matched_iou_95": 0.5514775514602661,
+      "map_50": 0.7009900808334351,
+      "map_75": 0.7009900808334351,
+      "map_val": 0.623465359210968,
+      "name": "01030000000177.pdf-page-0",
+      "value": 0.9598013162612915
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9597703218460083,
+      "avg_weighted_label_matched_iou_75": 0.9597703218460083,
+      "avg_weighted_label_matched_iou_90": 0.9597703218460083,
+      "avg_weighted_label_matched_iou_95": 0.9597703218460083,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.6666666865348816,
+      "name": "01030000000125.pdf-page-0",
+      "value": 0.9597703218460083
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9595822691917419,
+      "avg_weighted_label_matched_iou_75": 0.8522935509681702,
+      "avg_weighted_label_matched_iou_90": 0.7219967246055603,
+      "avg_weighted_label_matched_iou_95": 0.5897526144981384,
+      "map_50": 1.0,
+      "map_75": 0.75,
+      "map_val": 0.817060649394989,
+      "name": "01030000000190.pdf-page-0",
+      "value": 0.9595822691917419
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9583922624588013,
+      "avg_weighted_label_matched_iou_75": 0.9583922624588013,
+      "avg_weighted_label_matched_iou_90": 0.7738786339759827,
+      "avg_weighted_label_matched_iou_95": 0.6826874017715454,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.5290759205818176,
+      "name": "01030000000036.pdf-page-0",
+      "value": 0.9583922624588013
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9579554796218872,
+      "avg_weighted_label_matched_iou_75": 0.8048404455184937,
+      "avg_weighted_label_matched_iou_90": 0.4121692180633545,
+      "avg_weighted_label_matched_iou_95": 0.397672176361084,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.4458746016025543,
+      "map_val": 0.4757425785064697,
+      "name": "01030000000077.pdf-page-0",
+      "value": 0.9579554796218872
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9569860696792603,
+      "avg_weighted_label_matched_iou_75": 0.9569860696792603,
+      "avg_weighted_label_matched_iou_90": 0.9569860696792603,
+      "avg_weighted_label_matched_iou_95": 0.7125202417373657,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4845297038555145,
+      "name": "01030000000022.pdf-page-0",
+      "value": 0.9569860696792603
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9566290378570557,
+      "avg_weighted_label_matched_iou_75": 0.9566290378570557,
+      "avg_weighted_label_matched_iou_90": 0.5883431434631348,
+      "avg_weighted_label_matched_iou_95": 0.5883431434631348,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8376237750053406,
+      "name": "01030000000101.pdf-page-0",
+      "value": 0.9566290378570557
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9565194249153137,
+      "avg_weighted_label_matched_iou_75": 0.6032354235649109,
+      "avg_weighted_label_matched_iou_90": 0.4690477252006531,
+      "avg_weighted_label_matched_iou_95": 0.41902363300323486,
+      "map_50": 1.0,
+      "map_75": 0.5321782231330872,
+      "map_val": 0.6787128448486328,
+      "name": "01030000000196.pdf-page-0",
+      "value": 0.9565194249153137
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9562429189682007,
+      "avg_weighted_label_matched_iou_75": 0.9562429189682007,
+      "avg_weighted_label_matched_iou_90": 0.9562429189682007,
+      "avg_weighted_label_matched_iou_95": 0.6533203125,
+      "map_50": 0.4381188154220581,
+      "map_75": 0.4381188154220581,
+      "map_val": 0.4277227818965912,
+      "name": "01030000000060.pdf-page-0",
+      "value": 0.9562429189682007
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.955998957157135,
+      "avg_weighted_label_matched_iou_75": 0.955998957157135,
+      "avg_weighted_label_matched_iou_90": 0.8862167596817017,
+      "avg_weighted_label_matched_iou_95": 0.8862167596817017,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4831683039665222,
+      "name": "01030000000023.pdf-page-0",
+      "value": 0.955998957157135
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9543455839157104,
+      "avg_weighted_label_matched_iou_75": 0.9543455839157104,
+      "avg_weighted_label_matched_iou_90": 0.9184107780456543,
+      "avg_weighted_label_matched_iou_95": 0.9184107780456543,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.5666666626930237,
+      "name": "01030000000135.pdf-page-0",
+      "value": 0.9543455839157104
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9539949893951416,
+      "avg_weighted_label_matched_iou_75": 0.9539949893951416,
+      "avg_weighted_label_matched_iou_90": 0.7982480525970459,
+      "avg_weighted_label_matched_iou_95": 0.6380249857902527,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.470420777797699,
+      "name": "01030000000152.pdf-page-0",
+      "value": 0.9539949893951416
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9539743065834045,
+      "avg_weighted_label_matched_iou_75": 0.9539743065834045,
+      "avg_weighted_label_matched_iou_90": 0.9539743065834045,
+      "avg_weighted_label_matched_iou_95": 0.1994221806526184,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.45841583609580994,
+      "name": "01030000000020.pdf-page-0",
+      "value": 0.9539743065834045
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9532500505447388,
+      "avg_weighted_label_matched_iou_75": 0.9532500505447388,
+      "avg_weighted_label_matched_iou_90": 0.5552065372467041,
+      "avg_weighted_label_matched_iou_95": 0.3759813904762268,
+      "map_50": 0.5561056137084961,
+      "map_75": 0.5561056137084961,
+      "map_val": 0.5199670195579529,
+      "name": "01030000000130.pdf-page-0",
+      "value": 0.9532500505447388
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9531242251396179,
+      "avg_weighted_label_matched_iou_75": 0.9531242251396179,
+      "avg_weighted_label_matched_iou_90": 0.5808205604553223,
+      "avg_weighted_label_matched_iou_95": 0.5808205604553223,
+      "map_50": 0.800000011920929,
+      "map_75": 0.800000011920929,
+      "map_val": 0.699999988079071,
+      "name": "01030000000128.pdf-page-0",
+      "value": 0.9531242251396179
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9522395133972168,
+      "avg_weighted_label_matched_iou_75": 0.9466330409049988,
+      "avg_weighted_label_matched_iou_90": 0.8742503523826599,
+      "avg_weighted_label_matched_iou_95": 0.1368536353111267,
+      "map_50": 0.800000011920929,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.6000000238418579,
+      "name": "01030000000045.pdf-page-0",
+      "value": 0.9522395133972168
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9518313407897949,
+      "avg_weighted_label_matched_iou_75": 0.8383499383926392,
+      "avg_weighted_label_matched_iou_90": 0.6044365763664246,
+      "avg_weighted_label_matched_iou_95": 0.42812350392341614,
+      "map_50": 1.0,
+      "map_75": 0.7226691246032715,
+      "map_val": 0.7691728472709656,
+      "name": "01030000000187.pdf-page-0",
+      "value": 0.9518313407897949
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9516716003417969,
+      "avg_weighted_label_matched_iou_75": 0.8064306974411011,
+      "avg_weighted_label_matched_iou_90": 0.6724258661270142,
+      "avg_weighted_label_matched_iou_95": 0.4079480767250061,
+      "map_50": 1.0,
+      "map_75": 0.75,
+      "map_val": 0.8210189938545227,
+      "name": "01030000000189.pdf-page-0",
+      "value": 0.9516716003417969
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9515929222106934,
+      "avg_weighted_label_matched_iou_75": 0.9515929222106934,
+      "avg_weighted_label_matched_iou_90": 0.6928942799568176,
+      "avg_weighted_label_matched_iou_95": 0.5196874737739563,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8252475261688232,
+      "name": "01030000000032.pdf-page-0",
+      "value": 0.9515929222106934
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9504514336585999,
+      "avg_weighted_label_matched_iou_75": 0.8966480493545532,
+      "avg_weighted_label_matched_iou_90": 0.8966480493545532,
+      "avg_weighted_label_matched_iou_95": 0.8966480493545532,
+      "map_50": 0.75,
+      "map_75": 0.5,
+      "map_val": 0.625,
+      "name": "01030000000092.pdf-page-0",
+      "value": 0.9504514336585999
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9497181177139282,
+      "avg_weighted_label_matched_iou_75": 0.8005961179733276,
+      "avg_weighted_label_matched_iou_90": 0.6981271505355835,
+      "avg_weighted_label_matched_iou_95": 0.44454073905944824,
+      "map_50": 1.0,
+      "map_75": 0.8547855019569397,
+      "map_val": 0.7795379757881165,
+      "name": "01030000000053.pdf-page-0",
+      "value": 0.9497181177139282
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9489847421646118,
+      "avg_weighted_label_matched_iou_75": 0.7042016386985779,
+      "avg_weighted_label_matched_iou_90": 0.6919052600860596,
+      "avg_weighted_label_matched_iou_95": 0.369427353143692,
+      "map_50": 1.0,
+      "map_75": 0.6884488463401794,
+      "map_val": 0.7271122336387634,
+      "name": "01030000000188.pdf-page-0",
+      "value": 0.9489847421646118
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9474776387214661,
+      "avg_weighted_label_matched_iou_75": 0.9474776387214661,
+      "avg_weighted_label_matched_iou_90": 0.6807962656021118,
+      "avg_weighted_label_matched_iou_95": 0.6543608903884888,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.49504950642585754,
+      "name": "01030000000158.pdf-page-0",
+      "value": 0.9474776387214661
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9466358423233032,
+      "avg_weighted_label_matched_iou_75": 0.9108336567878723,
+      "avg_weighted_label_matched_iou_90": 0.8969293832778931,
+      "avg_weighted_label_matched_iou_95": 0.6028785705566406,
+      "map_50": 1.0,
+      "map_75": 0.6262376308441162,
+      "map_val": 0.7336633801460266,
+      "name": "01030000000049.pdf-page-0",
+      "value": 0.9466358423233032
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9463083744049072,
+      "avg_weighted_label_matched_iou_75": 0.9463083744049072,
+      "avg_weighted_label_matched_iou_90": 0.9463083744049072,
+      "avg_weighted_label_matched_iou_95": 0.49865633249282837,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4637293815612793,
+      "name": "01030000000025.pdf-page-0",
+      "value": 0.9463083744049072
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9430824518203735,
+      "avg_weighted_label_matched_iou_75": 0.9243809580802917,
+      "avg_weighted_label_matched_iou_90": 0.056665096431970596,
+      "avg_weighted_label_matched_iou_95": 0.056665096431970596,
+      "map_50": 1.0,
+      "map_75": 0.8349835276603699,
+      "map_val": 0.709900975227356,
+      "name": "01030000000143.pdf-page-0",
+      "value": 0.9430824518203735
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9423784613609314,
+      "avg_weighted_label_matched_iou_75": 0.8147479891777039,
+      "avg_weighted_label_matched_iou_90": 0.8147479891777039,
+      "avg_weighted_label_matched_iou_95": 0.5133699178695679,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.5716171860694885,
+      "map_val": 0.5858085751533508,
+      "name": "01030000000127.pdf-page-0",
+      "value": 0.9423784613609314
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9419472813606262,
+      "avg_weighted_label_matched_iou_75": 0.9419472813606262,
+      "avg_weighted_label_matched_iou_90": 0.9419472813606262,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.44999998807907104,
+      "name": "01030000000114.pdf-page-0",
+      "value": 0.9419472813606262
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9405110478401184,
+      "avg_weighted_label_matched_iou_75": 0.37620776891708374,
+      "avg_weighted_label_matched_iou_90": 0.08693855255842209,
+      "avg_weighted_label_matched_iou_95": 0.08693855255842209,
+      "map_50": 0.500990092754364,
+      "map_75": 0.33504951000213623,
+      "map_val": 0.3578217923641205,
+      "name": "01030000000110.pdf-page-0",
+      "value": 0.9405110478401184
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9389363527297974,
+      "avg_weighted_label_matched_iou_75": 0.9389363527297974,
+      "avg_weighted_label_matched_iou_90": 0.9389363527297974,
+      "avg_weighted_label_matched_iou_95": 0.3507721722126007,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.6333333253860474,
+      "name": "01030000000096.pdf-page-0",
+      "value": 0.9389363527297974
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9377762675285339,
+      "avg_weighted_label_matched_iou_75": 0.605465292930603,
+      "avg_weighted_label_matched_iou_90": 0.589609682559967,
+      "avg_weighted_label_matched_iou_95": 0.5412503480911255,
+      "map_50": 1.0,
+      "map_75": 0.6105610728263855,
+      "map_val": 0.6665841341018677,
+      "name": "01030000000051.pdf-page-0",
+      "value": 0.9377762675285339
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9371804594993591,
+      "avg_weighted_label_matched_iou_75": 0.9210593104362488,
+      "avg_weighted_label_matched_iou_90": 0.7983127236366272,
+      "avg_weighted_label_matched_iou_95": 0.40985748171806335,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6171616911888123,
+      "map_val": 0.5977557897567749,
+      "name": "01030000000094.pdf-page-0",
+      "value": 0.9371804594993591
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9298120737075806,
+      "avg_weighted_label_matched_iou_75": 0.9298120737075806,
+      "avg_weighted_label_matched_iou_90": 0.9298120737075806,
+      "avg_weighted_label_matched_iou_95": 0.07209858298301697,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.9006930589675903,
+      "name": "01030000000194.pdf-page-0",
+      "value": 0.9298120737075806
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9263594150543213,
+      "avg_weighted_label_matched_iou_75": 0.8754697442054749,
+      "avg_weighted_label_matched_iou_90": 0.7504326105117798,
+      "avg_weighted_label_matched_iou_95": 0.049412552267313004,
+      "map_50": 1.0,
+      "map_75": 0.9113215804100037,
+      "map_val": 0.8341245651245117,
+      "name": "01030000000193.pdf-page-0",
+      "value": 0.9263594150543213
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9261544346809387,
+      "avg_weighted_label_matched_iou_75": 0.9261544346809387,
+      "avg_weighted_label_matched_iou_90": 0.6365485787391663,
+      "avg_weighted_label_matched_iou_95": 0.5376619100570679,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.447524756193161,
+      "name": "01030000000024.pdf-page-0",
+      "value": 0.9261544346809387
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9226955771446228,
+      "avg_weighted_label_matched_iou_75": 0.8546051979064941,
+      "avg_weighted_label_matched_iou_90": 0.359706312417984,
+      "avg_weighted_label_matched_iou_95": 0.06741023808717728,
+      "map_50": 0.75,
+      "map_75": 0.6386138796806335,
+      "map_val": 0.5592527389526367,
+      "name": "01030000000086.pdf-page-0",
+      "value": 0.9226955771446228
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.922467827796936,
+      "avg_weighted_label_matched_iou_75": 0.922467827796936,
+      "avg_weighted_label_matched_iou_90": 0.7063256502151489,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4222772419452667,
+      "name": "01030000000164.pdf-page-0",
+      "value": 0.922467827796936
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9215903878211975,
+      "avg_weighted_label_matched_iou_75": 0.9215903878211975,
+      "avg_weighted_label_matched_iou_90": 0.5533030033111572,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.5563531517982483,
+      "name": "01030000000019.pdf-page-0",
+      "value": 0.9215903878211975
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9212325811386108,
+      "avg_weighted_label_matched_iou_75": 0.7599285840988159,
+      "avg_weighted_label_matched_iou_90": 0.042672764509916306,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.41749176383018494,
+      "map_val": 0.4277227818965912,
+      "name": "01030000000021.pdf-page-0",
+      "value": 0.9212325811386108
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9197849631309509,
+      "avg_weighted_label_matched_iou_75": 0.8093069791793823,
+      "avg_weighted_label_matched_iou_90": 0.741980791091919,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.4455445408821106,
+      "map_val": 0.4764576554298401,
+      "name": "01030000000087.pdf-page-0",
+      "value": 0.9197849631309509
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9185932874679565,
+      "avg_weighted_label_matched_iou_75": 0.7253368496894836,
+      "avg_weighted_label_matched_iou_90": 0.7253368496894836,
+      "avg_weighted_label_matched_iou_95": 0.7253368496894836,
+      "map_50": 0.800000011920929,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.6000000238418579,
+      "name": "01030000000013.pdf-page-0",
+      "value": 0.9185932874679565
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.9104675054550171,
+      "avg_weighted_label_matched_iou_75": 0.6394121646881104,
+      "avg_weighted_label_matched_iou_90": 0.3090846836566925,
+      "avg_weighted_label_matched_iou_95": 0.3090846836566925,
+      "map_50": 0.9104950428009033,
+      "map_75": 0.7599999904632568,
+      "map_val": 0.7460197806358337,
+      "name": "01030000000151.pdf-page-0",
+      "value": 0.9104675054550171
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8927702903747559,
+      "avg_weighted_label_matched_iou_75": 0.8927702903747559,
+      "avg_weighted_label_matched_iou_90": 0.19993191957473755,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8026471138000488,
+      "name": "01030000000050.pdf-page-0",
+      "value": 0.8927702903747559
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.89084792137146,
+      "avg_weighted_label_matched_iou_75": 0.690744936466217,
+      "avg_weighted_label_matched_iou_90": 0.4143500030040741,
+      "avg_weighted_label_matched_iou_95": 0.42187899351119995,
+      "map_50": 0.75,
+      "map_75": 0.5,
+      "map_val": 0.5376237630844116,
+      "name": "01030000000131.pdf-page-0",
+      "value": 0.89084792137146
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8792921304702759,
+      "avg_weighted_label_matched_iou_75": 0.8210559487342834,
+      "avg_weighted_label_matched_iou_90": 0.5166518688201904,
+      "avg_weighted_label_matched_iou_95": 0.2943836450576782,
+      "map_50": 1.0,
+      "map_75": 0.75,
+      "map_val": 0.6657178401947021,
+      "name": "01030000000033.pdf-page-0",
+      "value": 0.8792921304702759
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8770932555198669,
+      "avg_weighted_label_matched_iou_75": 0.8900450468063354,
+      "avg_weighted_label_matched_iou_90": 0.8264241218566895,
+      "avg_weighted_label_matched_iou_95": 0.7658470869064331,
+      "map_50": 0.9166666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.6542079448699951,
+      "name": "01030000000015.pdf-page-0",
+      "value": 0.8770932555198669
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8757906556129456,
+      "avg_weighted_label_matched_iou_75": 0.7124101519584656,
+      "avg_weighted_label_matched_iou_90": 0.16960865259170532,
+      "avg_weighted_label_matched_iou_95": 0.16960865259170532,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.36237624287605286,
+      "map_val": 0.2915605902671814,
+      "name": "01030000000109.pdf-page-0",
+      "value": 0.8757906556129456
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8749842047691345,
+      "avg_weighted_label_matched_iou_75": 0.8749842047691345,
+      "avg_weighted_label_matched_iou_90": 0.8727706670761108,
+      "avg_weighted_label_matched_iou_95": 0.44755637645721436,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.5500990152359009,
+      "name": "01030000000073.pdf-page-0",
+      "value": 0.8749842047691345
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8696897029876709,
+      "avg_weighted_label_matched_iou_75": 0.8696897029876709,
+      "avg_weighted_label_matched_iou_90": 0.4226304888725281,
+      "avg_weighted_label_matched_iou_95": 0.15810149908065796,
+      "map_50": 0.4942244291305542,
+      "map_75": 0.4942244291305542,
+      "map_val": 0.4141639173030853,
+      "name": "01030000000071.pdf-page-0",
+      "value": 0.8696897029876709
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8430466055870056,
+      "avg_weighted_label_matched_iou_75": 0.715491771697998,
+      "avg_weighted_label_matched_iou_90": 0.6423953175544739,
+      "avg_weighted_label_matched_iou_95": 0.5682016611099243,
+      "map_50": 0.46732673048973083,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.22893494367599487,
+      "name": "01030000000030.pdf-page-0",
+      "value": 0.8430466055870056
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8360645771026611,
+      "avg_weighted_label_matched_iou_75": 0.5576287508010864,
+      "avg_weighted_label_matched_iou_90": 0.5527322888374329,
+      "avg_weighted_label_matched_iou_95": 0.5305696725845337,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.43366336822509766,
+      "map_val": 0.4534653425216675,
+      "name": "01030000000104.pdf-page-0",
+      "value": 0.8360645771026611
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8281739354133606,
+      "avg_weighted_label_matched_iou_75": 0.6084320545196533,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.15181517601013184,
+      "map_val": 0.18953795731067657,
+      "name": "01030000000111.pdf-page-0",
+      "value": 0.8281739354133606
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8259744048118591,
+      "avg_weighted_label_matched_iou_75": 0.7888243198394775,
+      "avg_weighted_label_matched_iou_90": 0.6800779104232788,
+      "avg_weighted_label_matched_iou_95": 0.12648694217205048,
+      "map_50": 0.8943894505500793,
+      "map_75": 0.8096809387207031,
+      "map_val": 0.7328425049781799,
+      "name": "01030000000192.pdf-page-0",
+      "value": 0.8259744048118591
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8257353901863098,
+      "avg_weighted_label_matched_iou_75": 0.5375144481658936,
+      "avg_weighted_label_matched_iou_90": 0.28507834672927856,
+      "avg_weighted_label_matched_iou_95": 0.12981955707073212,
+      "map_50": 0.5,
+      "map_75": 0.1862623691558838,
+      "map_val": 0.24419495463371277,
+      "name": "01030000000168.pdf-page-0",
+      "value": 0.8257353901863098
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8210329413414001,
+      "avg_weighted_label_matched_iou_75": 0.7207602858543396,
+      "avg_weighted_label_matched_iou_90": 0.6145237684249878,
+      "avg_weighted_label_matched_iou_95": 0.45884305238723755,
+      "map_50": 0.7603960633277893,
+      "map_75": 0.5603960156440735,
+      "map_val": 0.5867920517921448,
+      "name": "01030000000186.pdf-page-0",
+      "value": 0.8210329413414001
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8208919167518616,
+      "avg_weighted_label_matched_iou_75": 0.8208919167518616,
+      "avg_weighted_label_matched_iou_90": 0.6847069263458252,
+      "avg_weighted_label_matched_iou_95": 0.6122069954872131,
+      "map_50": 0.893917977809906,
+      "map_75": 0.893917977809906,
+      "map_val": 0.723644495010376,
+      "name": "01030000000191.pdf-page-0",
+      "value": 0.8208919167518616
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8203208446502686,
+      "avg_weighted_label_matched_iou_75": 0.8203208446502686,
+      "avg_weighted_label_matched_iou_90": 0.49313586950302124,
+      "avg_weighted_label_matched_iou_95": 0.49313586950302124,
+      "map_50": 0.5841584205627441,
+      "map_75": 0.5841584205627441,
+      "map_val": 0.4841584265232086,
+      "name": "01030000000156.pdf-page-0",
+      "value": 0.8203208446502686
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8168831467628479,
+      "avg_weighted_label_matched_iou_75": 0.8168831467628479,
+      "avg_weighted_label_matched_iou_90": 0.6244472861289978,
+      "avg_weighted_label_matched_iou_95": 0.26957225799560547,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.34054455161094666,
+      "name": "01030000000029.pdf-page-0",
+      "value": 0.8168831467628479
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8095365166664124,
+      "avg_weighted_label_matched_iou_75": 0.8095365166664124,
+      "avg_weighted_label_matched_iou_90": 0.751180112361908,
+      "avg_weighted_label_matched_iou_95": 0.6945598125457764,
+      "map_50": 0.5841584205627441,
+      "map_75": 0.5841584205627441,
+      "map_val": 0.5174917578697205,
+      "name": "01030000000038.pdf-page-0",
+      "value": 0.8095365166664124
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8062825798988342,
+      "avg_weighted_label_matched_iou_75": 0.7028302550315857,
+      "avg_weighted_label_matched_iou_90": 0.7028302550315857,
+      "avg_weighted_label_matched_iou_95": 0.5609970092773438,
+      "map_50": 0.39851483702659607,
+      "map_75": 0.3176567554473877,
+      "map_val": 0.3539191484451294,
+      "name": "01030000000095.pdf-page-0",
+      "value": 0.8062825798988342
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8056672811508179,
+      "avg_weighted_label_matched_iou_75": 0.8056672811508179,
+      "avg_weighted_label_matched_iou_90": 0.8056672811508179,
+      "avg_weighted_label_matched_iou_95": 0.5039715766906738,
+      "map_50": 0.4166666567325592,
+      "map_75": 0.4166666567325592,
+      "map_val": 0.39727723598480225,
+      "name": "01030000000026.pdf-page-0",
+      "value": 0.8056672811508179
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.8036434650421143,
+      "avg_weighted_label_matched_iou_75": 0.5350330471992493,
+      "avg_weighted_label_matched_iou_90": 0.308135449886322,
+      "avg_weighted_label_matched_iou_95": 0.005810672417283058,
+      "map_50": 0.5555555820465088,
+      "map_75": 0.3894389569759369,
+      "map_val": 0.37810781598091125,
+      "name": "01030000000007.pdf-page-0",
+      "value": 0.8036434650421143
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.80294269323349,
+      "avg_weighted_label_matched_iou_75": 0.80294269323349,
+      "avg_weighted_label_matched_iou_90": 0.80294269323349,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.1683168262243271,
+      "map_75": 0.1683168262243271,
+      "map_val": 0.1514851450920105,
+      "name": "01030000000100.pdf-page-0",
+      "value": 0.80294269323349
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7954721450805664,
+      "avg_weighted_label_matched_iou_75": 0.7954721450805664,
+      "avg_weighted_label_matched_iou_90": 0.7927370071411133,
+      "avg_weighted_label_matched_iou_95": 0.44365450739860535,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.363168329000473,
+      "name": "01030000000075.pdf-page-0",
+      "value": 0.7954721450805664
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7910917401313782,
+      "avg_weighted_label_matched_iou_75": 0.7910917401313782,
+      "avg_weighted_label_matched_iou_90": 0.65651535987854,
+      "avg_weighted_label_matched_iou_95": 0.25691479444503784,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.36264026165008545,
+      "name": "01030000000035.pdf-page-0",
+      "value": 0.7910917401313782
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7910915017127991,
+      "avg_weighted_label_matched_iou_75": 0.7902058959007263,
+      "avg_weighted_label_matched_iou_90": 0.7487791180610657,
+      "avg_weighted_label_matched_iou_95": 0.5858051180839539,
+      "map_50": 0.6552333831787109,
+      "map_75": 0.6152758002281189,
+      "map_val": 0.5563295483589172,
+      "name": "01030000000039.pdf-page-0",
+      "value": 0.7910915017127991
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7833269238471985,
+      "avg_weighted_label_matched_iou_75": 0.7833269238471985,
+      "avg_weighted_label_matched_iou_90": 0.7778468132019043,
+      "avg_weighted_label_matched_iou_95": 0.6753448247909546,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.4000000059604645,
+      "map_val": 0.3650495111942291,
+      "name": "01030000000136.pdf-page-0",
+      "value": 0.7833269238471985
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.773876965045929,
+      "avg_weighted_label_matched_iou_75": 0.6887628436088562,
+      "avg_weighted_label_matched_iou_90": 0.6887628436088562,
+      "avg_weighted_label_matched_iou_95": 0.6110116243362427,
+      "map_50": 0.7087458968162537,
+      "map_75": 0.5,
+      "map_val": 0.5148102045059204,
+      "name": "01030000000009.pdf-page-0",
+      "value": 0.773876965045929
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7619365453720093,
+      "avg_weighted_label_matched_iou_75": 0.4580885171890259,
+      "avg_weighted_label_matched_iou_90": 0.3176536560058594,
+      "avg_weighted_label_matched_iou_95": 0.0940493792295456,
+      "map_50": 0.6881188154220581,
+      "map_75": 0.4455445408821106,
+      "map_val": 0.46631306409835815,
+      "name": "01030000000034.pdf-page-0",
+      "value": 0.7619365453720093
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7596174478530884,
+      "avg_weighted_label_matched_iou_75": 0.7596174478530884,
+      "avg_weighted_label_matched_iou_90": 0.7596174478530884,
+      "avg_weighted_label_matched_iou_95": 0.4970758557319641,
+      "map_50": 0.4381188154220581,
+      "map_75": 0.4381188154220581,
+      "map_val": 0.43193069100379944,
+      "name": "01030000000102.pdf-page-0",
+      "value": 0.7596174478530884
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7554823756217957,
+      "avg_weighted_label_matched_iou_75": 0.7247546911239624,
+      "avg_weighted_label_matched_iou_90": 0.3869589865207672,
+      "avg_weighted_label_matched_iou_95": 0.17457136511802673,
+      "map_50": 0.4653465449810028,
+      "map_75": 0.42178216576576233,
+      "map_val": 0.34047526121139526,
+      "name": "01030000000142.pdf-page-0",
+      "value": 0.7554823756217957
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.742413341999054,
+      "avg_weighted_label_matched_iou_75": 0.742413341999054,
+      "avg_weighted_label_matched_iou_90": 0.4418700039386749,
+      "avg_weighted_label_matched_iou_95": 0.4418700039386749,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4417491853237152,
+      "name": "01030000000031.pdf-page-0",
+      "value": 0.742413341999054
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7387110590934753,
+      "avg_weighted_label_matched_iou_75": 0.7205983400344849,
+      "avg_weighted_label_matched_iou_90": 0.18748319149017334,
+      "avg_weighted_label_matched_iou_95": 0.19251248240470886,
+      "map_50": 0.5767326951026917,
+      "map_75": 0.46617162227630615,
+      "map_val": 0.45841583609580994,
+      "name": "01030000000183.pdf-page-0",
+      "value": 0.7387110590934753
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7286189794540405,
+      "avg_weighted_label_matched_iou_75": 0.8026585578918457,
+      "avg_weighted_label_matched_iou_90": 0.19344356656074524,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.7524752616882324,
+      "map_75": 0.5643564462661743,
+      "map_val": 0.5955445766448975,
+      "name": "01030000000085.pdf-page-0",
+      "value": 0.7286189794540405
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7243028879165649,
+      "avg_weighted_label_matched_iou_75": 0.715968132019043,
+      "avg_weighted_label_matched_iou_90": 0.3436643183231354,
+      "avg_weighted_label_matched_iou_95": 0.06412942707538605,
+      "map_50": 0.6845434308052063,
+      "map_75": 0.6226622462272644,
+      "map_val": 0.5269218683242798,
+      "name": "01030000000145.pdf-page-0",
+      "value": 0.7243028879165649
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7146075963973999,
+      "avg_weighted_label_matched_iou_75": 0.5549700260162354,
+      "avg_weighted_label_matched_iou_90": 0.04235139116644859,
+      "avg_weighted_label_matched_iou_95": 0.008798107504844666,
+      "map_50": 0.6803960204124451,
+      "map_75": 0.46230006217956543,
+      "map_val": 0.424866259098053,
+      "name": "01030000000144.pdf-page-0",
+      "value": 0.7146075963973999
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.7127255201339722,
+      "avg_weighted_label_matched_iou_75": 0.7127255201339722,
+      "avg_weighted_label_matched_iou_90": 0.7127255201339722,
+      "avg_weighted_label_matched_iou_95": 0.7127255201339722,
+      "map_50": 0.20000000298023224,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.20000000298023224,
+      "name": "01030000000176.pdf-page-0",
+      "value": 0.7127255201339722
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.69331955909729,
+      "avg_weighted_label_matched_iou_75": 0.4415639638900757,
+      "avg_weighted_label_matched_iou_90": 0.44993120431900024,
+      "avg_weighted_label_matched_iou_95": 0.44993120431900024,
+      "map_50": 0.6875,
+      "map_75": 0.4375,
+      "map_val": 0.47091585397720337,
+      "name": "01030000000011.pdf-page-0",
+      "value": 0.69331955909729
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6867541670799255,
+      "avg_weighted_label_matched_iou_75": 0.6867541670799255,
+      "avg_weighted_label_matched_iou_90": 0.09252870082855225,
+      "avg_weighted_label_matched_iou_95": 0.09252870082855225,
+      "map_50": 0.6000000238418579,
+      "map_75": 0.6000000238418579,
+      "map_val": 0.4867326617240906,
+      "name": "01030000000105.pdf-page-0",
+      "value": 0.6867541670799255
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.673764169216156,
+      "avg_weighted_label_matched_iou_75": 0.24348437786102295,
+      "avg_weighted_label_matched_iou_90": 0.025181472301483154,
+      "avg_weighted_label_matched_iou_95": 0.025181472301483154,
+      "map_50": 0.5,
+      "map_75": 0.2656765580177307,
+      "map_val": 0.32061055302619934,
+      "name": "01030000000166.pdf-page-0",
+      "value": 0.673764169216156
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6737098097801208,
+      "avg_weighted_label_matched_iou_75": 0.48878979682922363,
+      "avg_weighted_label_matched_iou_90": 0.3750312328338623,
+      "avg_weighted_label_matched_iou_95": 0.10017722845077515,
+      "map_50": 0.9075907468795776,
+      "map_75": 0.6303630471229553,
+      "map_val": 0.6771727204322815,
+      "name": "01030000000195.pdf-page-0",
+      "value": 0.6737098097801208
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.672408938407898,
+      "avg_weighted_label_matched_iou_75": 0.672408938407898,
+      "avg_weighted_label_matched_iou_90": 0.672408938407898,
+      "avg_weighted_label_matched_iou_95": 0.672408938407898,
+      "map_50": 0.4891089200973511,
+      "map_75": 0.4891089200973511,
+      "map_val": 0.4891089200973511,
+      "name": "01030000000058.pdf-page-0",
+      "value": 0.672408938407898
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6521638631820679,
+      "avg_weighted_label_matched_iou_75": 0.6521638631820679,
+      "avg_weighted_label_matched_iou_90": 0.6521638631820679,
+      "avg_weighted_label_matched_iou_95": 0.6521638631820679,
+      "map_50": 0.5544554591178894,
+      "map_75": 0.5544554591178894,
+      "map_val": 0.5544554591178894,
+      "name": "01030000000017.pdf-page-0",
+      "value": 0.6521638631820679
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6487294435501099,
+      "avg_weighted_label_matched_iou_75": 0.6487294435501099,
+      "avg_weighted_label_matched_iou_90": 0.40919169783592224,
+      "avg_weighted_label_matched_iou_95": 0.41225165128707886,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.413943886756897,
+      "name": "01030000000091.pdf-page-0",
+      "value": 0.6487294435501099
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6484124660491943,
+      "avg_weighted_label_matched_iou_75": 0.6484124660491943,
+      "avg_weighted_label_matched_iou_90": 0.6484124660491943,
+      "avg_weighted_label_matched_iou_95": 0.5033978223800659,
+      "map_50": 0.3883044421672821,
+      "map_75": 0.3883044421672821,
+      "map_val": 0.38115718960762024,
+      "name": "01030000000042.pdf-page-0",
+      "value": 0.6484124660491943
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.647542417049408,
+      "avg_weighted_label_matched_iou_75": 0.5345011353492737,
+      "avg_weighted_label_matched_iou_90": 0.1393136978149414,
+      "avg_weighted_label_matched_iou_95": 0.12114910781383514,
+      "map_50": 0.5663366317749023,
+      "map_75": 0.46732673048973083,
+      "map_val": 0.47835642099380493,
+      "name": "01030000000037.pdf-page-0",
+      "value": 0.647542417049408
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6460092067718506,
+      "avg_weighted_label_matched_iou_75": 0.5397671461105347,
+      "avg_weighted_label_matched_iou_90": 0.03203902766108513,
+      "avg_weighted_label_matched_iou_95": 0.02331693284213543,
+      "map_50": 0.524312436580658,
+      "map_75": 0.407700777053833,
+      "map_val": 0.4143041670322418,
+      "name": "01030000000112.pdf-page-0",
+      "value": 0.6460092067718506
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.642530083656311,
+      "avg_weighted_label_matched_iou_75": 0.4935044050216675,
+      "avg_weighted_label_matched_iou_90": 0.005520912352949381,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.38826024532318115,
+      "map_75": 0.26202264428138733,
+      "map_val": 0.2779702842235565,
+      "name": "01030000000118.pdf-page-0",
+      "value": 0.642530083656311
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6415085792541504,
+      "avg_weighted_label_matched_iou_75": 0.6415085792541504,
+      "avg_weighted_label_matched_iou_90": 0.6138464212417603,
+      "avg_weighted_label_matched_iou_95": 0.6138464212417603,
+      "map_50": 0.41584157943725586,
+      "map_75": 0.41584157943725586,
+      "map_val": 0.3660891056060791,
+      "name": "01030000000076.pdf-page-0",
+      "value": 0.6415085792541504
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6380011439323425,
+      "avg_weighted_label_matched_iou_75": 0.6380011439323425,
+      "avg_weighted_label_matched_iou_90": 0.6380011439323425,
+      "avg_weighted_label_matched_iou_95": 0.5638531446456909,
+      "map_50": 0.40717822313308716,
+      "map_75": 0.40717822313308716,
+      "map_val": 0.3967409133911133,
+      "name": "01030000000014.pdf-page-0",
+      "value": 0.6380011439323425
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6226260662078857,
+      "avg_weighted_label_matched_iou_75": 0.5656600594520569,
+      "avg_weighted_label_matched_iou_90": 0.5656600594520569,
+      "avg_weighted_label_matched_iou_95": 0.4516158699989319,
+      "map_50": 0.375,
+      "map_75": 0.33292078971862793,
+      "map_val": 0.33653464913368225,
+      "name": "01030000000041.pdf-page-0",
+      "value": 0.6226260662078857
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.611697793006897,
+      "avg_weighted_label_matched_iou_75": 0.47152718901634216,
+      "avg_weighted_label_matched_iou_90": 0.47152718901634216,
+      "avg_weighted_label_matched_iou_95": 0.45581671595573425,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.31633663177490234,
+      "map_val": 0.3285396099090576,
+      "name": "01030000000059.pdf-page-0",
+      "value": 0.611697793006897
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6041774153709412,
+      "avg_weighted_label_matched_iou_75": 0.5132660269737244,
+      "avg_weighted_label_matched_iou_90": 0.5132660269737244,
+      "avg_weighted_label_matched_iou_95": 0.5132660269737244,
+      "map_50": 0.4443069398403168,
+      "map_75": 0.3193069398403168,
+      "map_val": 0.36930692195892334,
+      "name": "01030000000010.pdf-page-0",
+      "value": 0.6041774153709412
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6021490097045898,
+      "avg_weighted_label_matched_iou_75": 0.39711320400238037,
+      "avg_weighted_label_matched_iou_90": 0.496077299118042,
+      "avg_weighted_label_matched_iou_95": 0.496077299118042,
+      "map_50": 0.5,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.3333333432674408,
+      "name": "01030000000126.pdf-page-0",
+      "value": 0.6021490097045898
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.6016510725021362,
+      "avg_weighted_label_matched_iou_75": 0.5796512365341187,
+      "avg_weighted_label_matched_iou_90": 0.5796512365341187,
+      "avg_weighted_label_matched_iou_95": 0.5796512365341187,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.2800000011920929,
+      "name": "01030000000175.pdf-page-0",
+      "value": 0.6016510725021362
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5972799062728882,
+      "avg_weighted_label_matched_iou_75": 0.5472046732902527,
+      "avg_weighted_label_matched_iou_90": 0.4837742745876312,
+      "avg_weighted_label_matched_iou_95": 0.11128995567560196,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.36848184466362,
+      "map_val": 0.29636964201927185,
+      "name": "01030000000028.pdf-page-0",
+      "value": 0.5972799062728882
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5930344462394714,
+      "avg_weighted_label_matched_iou_75": 0.5720601677894592,
+      "avg_weighted_label_matched_iou_90": 0.5834898948669434,
+      "avg_weighted_label_matched_iou_95": 0.42595693469047546,
+      "map_50": 0.9174917340278625,
+      "map_75": 0.6683168411254883,
+      "map_val": 0.7482398152351379,
+      "name": "01030000000180.pdf-page-0",
+      "value": 0.5930344462394714
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5927473902702332,
+      "avg_weighted_label_matched_iou_75": 0.5615761876106262,
+      "avg_weighted_label_matched_iou_90": 0.41120368242263794,
+      "avg_weighted_label_matched_iou_95": 0.325591504573822,
+      "map_50": 0.6386138796806335,
+      "map_75": 0.5090758800506592,
+      "map_val": 0.4561881124973297,
+      "name": "01030000000185.pdf-page-0",
+      "value": 0.5927473902702332
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5925745964050293,
+      "avg_weighted_label_matched_iou_75": 0.5925745964050293,
+      "avg_weighted_label_matched_iou_90": 0.5925745964050293,
+      "avg_weighted_label_matched_iou_95": 0.13183733820915222,
+      "map_50": 0.5841584205627441,
+      "map_75": 0.5841584205627441,
+      "map_val": 0.5507425665855408,
+      "name": "01030000000098.pdf-page-0",
+      "value": 0.5925745964050293
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5811761617660522,
+      "avg_weighted_label_matched_iou_75": 0.5811761617660522,
+      "avg_weighted_label_matched_iou_90": 0.14032778143882751,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.4285714328289032,
+      "map_75": 0.4285714328289032,
+      "map_val": 0.3285714387893677,
+      "name": "01030000000123.pdf-page-0",
+      "value": 0.5811761617660522
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5703937411308289,
+      "avg_weighted_label_matched_iou_75": 0.5703937411308289,
+      "avg_weighted_label_matched_iou_90": 0.3885035514831543,
+      "avg_weighted_label_matched_iou_95": 0.29949459433555603,
+      "map_50": 0.5005500316619873,
+      "map_75": 0.5005500316619873,
+      "map_val": 0.4255775511264801,
+      "name": "01030000000067.pdf-page-0",
+      "value": 0.5703937411308289
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.56244295835495,
+      "avg_weighted_label_matched_iou_75": 0.56244295835495,
+      "avg_weighted_label_matched_iou_90": 0.56244295835495,
+      "avg_weighted_label_matched_iou_95": 0.36610594391822815,
+      "map_50": 0.4663366377353668,
+      "map_75": 0.4663366377353668,
+      "map_val": 0.44633662700653076,
+      "name": "01030000000057.pdf-page-0",
+      "value": 0.56244295835495
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5596309900283813,
+      "avg_weighted_label_matched_iou_75": 0.544072687625885,
+      "avg_weighted_label_matched_iou_90": 0.544072687625885,
+      "avg_weighted_label_matched_iou_95": 0.544072687625885,
+      "map_50": 0.4019801914691925,
+      "map_75": 0.30099010467529297,
+      "map_val": 0.35148516297340393,
+      "name": "01030000000173.pdf-page-0",
+      "value": 0.5596309900283813
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5532262325286865,
+      "avg_weighted_label_matched_iou_75": 0.2068142592906952,
+      "avg_weighted_label_matched_iou_90": 0.0433269701898098,
+      "avg_weighted_label_matched_iou_95": 0.0031105312518775463,
+      "map_50": 0.3571428656578064,
+      "map_75": 0.1793493628501892,
+      "map_val": 0.21338048577308655,
+      "name": "01030000000165.pdf-page-0",
+      "value": 0.5532262325286865
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5337080359458923,
+      "avg_weighted_label_matched_iou_75": 0.5337080359458923,
+      "avg_weighted_label_matched_iou_90": 0.33722004294395447,
+      "avg_weighted_label_matched_iou_95": 0.32681578397750854,
+      "map_50": 0.33551979064941406,
+      "map_75": 0.33551979064941406,
+      "map_val": 0.3119801878929138,
+      "name": "01030000000043.pdf-page-0",
+      "value": 0.5337080359458923
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5314944982528687,
+      "avg_weighted_label_matched_iou_75": 0.5314944982528687,
+      "avg_weighted_label_matched_iou_90": 0.22324693202972412,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.8168317079544067,
+      "map_75": 0.8168317079544067,
+      "map_val": 0.5737765431404114,
+      "name": "01030000000103.pdf-page-0",
+      "value": 0.5314944982528687
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5261760354042053,
+      "avg_weighted_label_matched_iou_75": 0.3768939673900604,
+      "avg_weighted_label_matched_iou_90": 0.4395194351673126,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.5,
+      "map_75": 0.24037404358386993,
+      "map_val": 0.23701870441436768,
+      "name": "01030000000124.pdf-page-0",
+      "value": 0.5261760354042053
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5254395008087158,
+      "avg_weighted_label_matched_iou_75": 0.5281335115432739,
+      "avg_weighted_label_matched_iou_90": 0.09085868299007416,
+      "avg_weighted_label_matched_iou_95": 0.09085868299007416,
+      "map_50": 0.46039605140686035,
+      "map_75": 0.33415842056274414,
+      "map_val": 0.38044553995132446,
+      "name": "01030000000107.pdf-page-0",
+      "value": 0.5254395008087158
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5238548517227173,
+      "avg_weighted_label_matched_iou_75": 0.3616182506084442,
+      "avg_weighted_label_matched_iou_90": 0.29842737317085266,
+      "avg_weighted_label_matched_iou_95": 0.29842737317085266,
+      "map_50": 0.6105610728263855,
+      "map_75": 0.2772277295589447,
+      "map_val": 0.3590759038925171,
+      "name": "01030000000157.pdf-page-0",
+      "value": 0.5238548517227173
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.5092499256134033,
+      "avg_weighted_label_matched_iou_75": 0.27394622564315796,
+      "avg_weighted_label_matched_iou_90": 0.27159184217453003,
+      "avg_weighted_label_matched_iou_95": 0.27159184217453003,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.30099010467529297,
+      "map_val": 0.31029704213142395,
+      "name": "01030000000061.pdf-page-0",
+      "value": 0.5092499256134033
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4990618824958801,
+      "avg_weighted_label_matched_iou_75": 0.36215680837631226,
+      "avg_weighted_label_matched_iou_90": 0.018705904483795166,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.39851483702659607,
+      "map_75": 0.17079207301139832,
+      "map_val": 0.19154703617095947,
+      "name": "01030000000184.pdf-page-0",
+      "value": 0.4990618824958801
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.48609140515327454,
+      "avg_weighted_label_matched_iou_75": 0.48011699318885803,
+      "avg_weighted_label_matched_iou_90": 0.48011699318885803,
+      "avg_weighted_label_matched_iou_95": 0.48011699318885803,
+      "map_50": 0.30000001192092896,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.2199999988079071,
+      "name": "01030000000070.pdf-page-0",
+      "value": 0.48609140515327454
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.48040086030960083,
+      "avg_weighted_label_matched_iou_75": 0.48040086030960083,
+      "avg_weighted_label_matched_iou_90": 0.48040086030960083,
+      "avg_weighted_label_matched_iou_95": 0.40249139070510864,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.47821781039237976,
+      "name": "01030000000008.pdf-page-0",
+      "value": 0.48040086030960083
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.47922202944755554,
+      "avg_weighted_label_matched_iou_75": 0.3100115954875946,
+      "avg_weighted_label_matched_iou_90": 0.01665026694536209,
+      "avg_weighted_label_matched_iou_95": 0.010954389348626137,
+      "map_50": 0.5008251070976257,
+      "map_75": 0.4166666567325592,
+      "map_val": 0.3817656636238098,
+      "name": "01030000000153.pdf-page-0",
+      "value": 0.47922202944755554
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4748207628726959,
+      "avg_weighted_label_matched_iou_75": 0.41220685839653015,
+      "avg_weighted_label_matched_iou_90": 0.03285232186317444,
+      "avg_weighted_label_matched_iou_95": 0.03285232186317444,
+      "map_50": 0.375,
+      "map_75": 0.25,
+      "map_val": 0.24405939877033234,
+      "name": "01030000000148.pdf-page-0",
+      "value": 0.4748207628726959
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.47252368927001953,
+      "avg_weighted_label_matched_iou_75": 0.46754395961761475,
+      "avg_weighted_label_matched_iou_90": 0.4140833020210266,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.250495046377182,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.16769637167453766,
+      "name": "01030000000167.pdf-page-0",
+      "value": 0.47252368927001953
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4569941759109497,
+      "avg_weighted_label_matched_iou_75": 0.4569941759109497,
+      "avg_weighted_label_matched_iou_90": 0.4569941759109497,
+      "avg_weighted_label_matched_iou_95": 0.4569941759109497,
+      "map_50": 0.25,
+      "map_75": 0.25,
+      "map_val": 0.25,
+      "name": "01030000000083.pdf-page-0",
+      "value": 0.4569941759109497
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4490172863006592,
+      "avg_weighted_label_matched_iou_75": 0.42001837491989136,
+      "avg_weighted_label_matched_iou_90": 0.3483946621417999,
+      "avg_weighted_label_matched_iou_95": 0.3483946621417999,
+      "map_50": 0.5460066199302673,
+      "map_75": 0.40858086943626404,
+      "map_val": 0.3846336603164673,
+      "name": "01030000000122.pdf-page-0",
+      "value": 0.4490172863006592
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.42862433195114136,
+      "avg_weighted_label_matched_iou_75": 0.42862433195114136,
+      "avg_weighted_label_matched_iou_90": 0.503495991230011,
+      "avg_weighted_label_matched_iou_95": 0.503495991230011,
+      "map_50": 0.3762376308441162,
+      "map_75": 0.3762376308441162,
+      "map_val": 0.3383663296699524,
+      "name": "01030000000082.pdf-page-0",
+      "value": 0.42862433195114136
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4205390512943268,
+      "avg_weighted_label_matched_iou_75": 0.4426516890525818,
+      "avg_weighted_label_matched_iou_90": 0.29959768056869507,
+      "avg_weighted_label_matched_iou_95": 0.22337700426578522,
+      "map_50": 0.25,
+      "map_75": 0.197666198015213,
+      "map_val": 0.18567892909049988,
+      "name": "01030000000129.pdf-page-0",
+      "value": 0.4205390512943268
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4194483458995819,
+      "avg_weighted_label_matched_iou_75": 0.4210823178291321,
+      "avg_weighted_label_matched_iou_90": 0.3676128685474396,
+      "avg_weighted_label_matched_iou_95": 0.3676128685474396,
+      "map_50": 0.5584158301353455,
+      "map_75": 0.2415841519832611,
+      "map_val": 0.3673762381076813,
+      "name": "01030000000170.pdf-page-0",
+      "value": 0.4194483458995819
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.41820621490478516,
+      "avg_weighted_label_matched_iou_75": 0.017927784472703934,
+      "avg_weighted_label_matched_iou_90": 0.017927784472703934,
+      "avg_weighted_label_matched_iou_95": 0.017927784472703934,
+      "map_50": 0.30099010467529297,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.250495046377182,
+      "name": "01030000000174.pdf-page-0",
+      "value": 0.41820621490478516
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.4129878878593445,
+      "avg_weighted_label_matched_iou_75": 0.4129878878593445,
+      "avg_weighted_label_matched_iou_90": 0.4129878878593445,
+      "avg_weighted_label_matched_iou_95": 0.10806580632925034,
+      "map_50": 0.698019802570343,
+      "map_75": 0.698019802570343,
+      "map_val": 0.6680693030357361,
+      "name": "01030000000146.pdf-page-0",
+      "value": 0.4129878878593445
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.3956943154335022,
+      "avg_weighted_label_matched_iou_75": 0.3956943154335022,
+      "avg_weighted_label_matched_iou_90": 0.3711320757865906,
+      "avg_weighted_label_matched_iou_95": 0.07513842731714249,
+      "map_50": 0.47896039485931396,
+      "map_75": 0.47896039485931396,
+      "map_val": 0.3936881124973297,
+      "name": "01030000000081.pdf-page-0",
+      "value": 0.3956943154335022
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.3697803020477295,
+      "avg_weighted_label_matched_iou_75": 0.3697803020477295,
+      "avg_weighted_label_matched_iou_90": 0.3697803020477295,
+      "avg_weighted_label_matched_iou_95": 0.3697803020477295,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.3333333432674408,
+      "name": "01030000000072.pdf-page-0",
+      "value": 0.3697803020477295
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.36449381709098816,
+      "avg_weighted_label_matched_iou_75": 0.4586772322654724,
+      "avg_weighted_label_matched_iou_90": 0.06351828575134277,
+      "avg_weighted_label_matched_iou_95": 0.008813958615064621,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.3499999940395355,
+      "map_val": 0.31168317794799805,
+      "name": "01030000000199.pdf-page-0",
+      "value": 0.36449381709098816
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.34114354848861694,
+      "avg_weighted_label_matched_iou_75": 0.34114354848861694,
+      "avg_weighted_label_matched_iou_90": 0.09588493406772614,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.7857142686843872,
+      "map_75": 0.7857142686843872,
+      "map_val": 0.6571428775787354,
+      "name": "01030000000079.pdf-page-0",
+      "value": 0.34114354848861694
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.3398134112358093,
+      "avg_weighted_label_matched_iou_75": 0.3398134112358093,
+      "avg_weighted_label_matched_iou_90": 0.3398134112358093,
+      "avg_weighted_label_matched_iou_95": 0.3398134112358093,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.3333333432674408,
+      "name": "01030000000160.pdf-page-0",
+      "value": 0.3398134112358093
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.3043314218521118,
+      "avg_weighted_label_matched_iou_75": 0.3255922198295593,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.2147277295589447,
+      "map_75": 0.04207920655608177,
+      "map_val": 0.10451732575893402,
+      "name": "01030000000181.pdf-page-0",
+      "value": 0.3043314218521118
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.30157867074012756,
+      "avg_weighted_label_matched_iou_75": 0.30157867074012756,
+      "avg_weighted_label_matched_iou_90": 0.1487128734588623,
+      "avg_weighted_label_matched_iou_95": 0.015558055602014065,
+      "map_50": 0.7103960514068604,
+      "map_75": 0.7103960514068604,
+      "map_val": 0.514026403427124,
+      "name": "01030000000197.pdf-page-0",
+      "value": 0.30157867074012756
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.2609497308731079,
+      "avg_weighted_label_matched_iou_75": 0.25796982645988464,
+      "avg_weighted_label_matched_iou_90": 0.04413352906703949,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.3663366436958313,
+      "map_75": 0.3326732814311981,
+      "map_val": 0.25306931138038635,
+      "name": "01030000000169.pdf-page-0",
+      "value": 0.2609497308731079
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.2337237000465393,
+      "avg_weighted_label_matched_iou_75": 0.08542061597108841,
+      "avg_weighted_label_matched_iou_90": 0.08542061597108841,
+      "avg_weighted_label_matched_iou_95": 0.02707306668162346,
+      "map_50": 0.46658414602279663,
+      "map_75": 0.26237624883651733,
+      "map_val": 0.3604579269886017,
+      "name": "01030000000121.pdf-page-0",
+      "value": 0.2337237000465393
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.22525683045387268,
+      "avg_weighted_label_matched_iou_75": 0.0017948669847100973,
+      "avg_weighted_label_matched_iou_90": 0.0017948669847100973,
+      "avg_weighted_label_matched_iou_95": 0.0017948669847100973,
+      "map_50": 0.3214285671710968,
+      "map_75": 0.1428571492433548,
+      "map_val": 0.21785713732242584,
+      "name": "01030000000069.pdf-page-0",
+      "value": 0.22525683045387268
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.2248823493719101,
+      "avg_weighted_label_matched_iou_75": 0.15442878007888794,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.6072607040405273,
+      "map_75": 0.08258325606584549,
+      "map_val": 0.30593010783195496,
+      "name": "01030000000117.pdf-page-0",
+      "value": 0.2248823493719101
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.17241883277893066,
+      "avg_weighted_label_matched_iou_75": 0.17241883277893066,
+      "avg_weighted_label_matched_iou_90": 0.17241883277893066,
+      "avg_weighted_label_matched_iou_95": 0.17241883277893066,
+      "map_50": 0.3326732814311981,
+      "map_75": 0.3326732814311981,
+      "map_val": 0.3326732814311981,
+      "name": "01030000000056.pdf-page-0",
+      "value": 0.17241883277893066
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.14490360021591187,
+      "avg_weighted_label_matched_iou_75": 0.14490360021591187,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.20000000298023224,
+      "name": "01030000000198.pdf-page-0",
+      "value": 0.14490360021591187
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.14376841485500336,
+      "avg_weighted_label_matched_iou_75": 0.08281877636909485,
+      "avg_weighted_label_matched_iou_90": 0.08281877636909485,
+      "avg_weighted_label_matched_iou_95": 0.08281877636909485,
+      "map_50": 0.4000000059604645,
+      "map_75": 0.20000000298023224,
+      "map_val": 0.25999999046325684,
+      "name": "01030000000115.pdf-page-0",
+      "value": 0.14376841485500336
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.1409565955400467,
+      "avg_weighted_label_matched_iou_75": 0.1409565955400467,
+      "avg_weighted_label_matched_iou_90": 0.1409565955400467,
+      "avg_weighted_label_matched_iou_95": 0.007615892682224512,
+      "map_50": 0.75,
+      "map_75": 0.75,
+      "map_val": 0.699999988079071,
+      "name": "01030000000080.pdf-page-0",
+      "value": 0.1409565955400467
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.11945808678865433,
+      "avg_weighted_label_matched_iou_75": 0.11945808678865433,
+      "avg_weighted_label_matched_iou_90": 0.10147696733474731,
+      "avg_weighted_label_matched_iou_95": 0.06502420455217361,
+      "map_50": 0.4381188154220581,
+      "map_75": 0.4381188154220581,
+      "map_val": 0.39455446600914,
+      "name": "01030000000120.pdf-page-0",
+      "value": 0.11945808678865433
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.11134195327758789,
+      "avg_weighted_label_matched_iou_75": 0.11134195327758789,
+      "avg_weighted_label_matched_iou_90": 0.0969085767865181,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.1105610579252243,
+      "map_75": 0.1105610579252243,
+      "map_val": 0.09405940771102905,
+      "name": "01030000000066.pdf-page-0",
+      "value": 0.11134195327758789
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.09765113145112991,
+      "avg_weighted_label_matched_iou_75": 0.09765113145112991,
+      "avg_weighted_label_matched_iou_90": 0.09765113145112991,
+      "avg_weighted_label_matched_iou_95": 0.09765113145112991,
+      "map_50": 0.25,
+      "map_75": 0.25,
+      "map_val": 0.25,
+      "name": "01030000000046.pdf-page-0",
+      "value": 0.09765113145112991
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.09116515517234802,
+      "avg_weighted_label_matched_iou_75": 0.09116515517234802,
+      "avg_weighted_label_matched_iou_90": 0.0011377949267625809,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.5,
+      "map_75": 0.5,
+      "map_val": 0.4166666567325592,
+      "name": "01030000000182.pdf-page-0",
+      "value": 0.09116515517234802
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.07526888698339462,
+      "avg_weighted_label_matched_iou_75": 0.07526888698339462,
+      "avg_weighted_label_matched_iou_90": 0.07526888698339462,
+      "avg_weighted_label_matched_iou_95": 0.07526888698339462,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.6666666865348816,
+      "name": "01030000000149.pdf-page-0",
+      "value": 0.07526888698339462
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.0740300714969635,
+      "avg_weighted_label_matched_iou_75": 0.0740300714969635,
+      "avg_weighted_label_matched_iou_90": 0.0740300714969635,
+      "avg_weighted_label_matched_iou_95": 0.0740300714969635,
+      "map_50": 0.25,
+      "map_75": 0.25,
+      "map_val": 0.25,
+      "name": "01030000000084.pdf-page-0",
+      "value": 0.0740300714969635
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.046502064913511276,
+      "avg_weighted_label_matched_iou_75": 0.046502064913511276,
+      "avg_weighted_label_matched_iou_90": 0.046502064913511276,
+      "avg_weighted_label_matched_iou_95": 0.016853470355272293,
+      "map_50": 0.3349834978580475,
+      "map_75": 0.3349834978580475,
+      "map_val": 0.3265676498413086,
+      "name": "01030000000116.pdf-page-0",
+      "value": 0.046502064913511276
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.03831273317337036,
+      "avg_weighted_label_matched_iou_75": 0.02751138061285019,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.2904290556907654,
+      "map_75": 0.07826496660709381,
+      "map_val": 0.15110796689987183,
+      "name": "01030000000163.pdf-page-0",
+      "value": 0.03831273317337036
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.03367198631167412,
+      "avg_weighted_label_matched_iou_75": 0.03367198631167412,
+      "avg_weighted_label_matched_iou_90": 0.022662218660116196,
+      "avg_weighted_label_matched_iou_95": 0.022662218660116196,
+      "map_50": 0.75,
+      "map_75": 0.75,
+      "map_val": 0.699999988079071,
+      "name": "01030000000147.pdf-page-0",
+      "value": 0.03367198631167412
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.03081168606877327,
+      "avg_weighted_label_matched_iou_75": 0.017734084278345108,
+      "avg_weighted_label_matched_iou_90": 0.017734084278345108,
+      "avg_weighted_label_matched_iou_95": 0.017734084278345108,
+      "map_50": 0.4191419184207916,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.3762376308441162,
+      "name": "01030000000119.pdf-page-0",
+      "value": 0.03081168606877327
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.029080171138048172,
+      "avg_weighted_label_matched_iou_75": 0.029080171138048172,
+      "avg_weighted_label_matched_iou_90": 0.03474415838718414,
+      "avg_weighted_label_matched_iou_95": 0.03474415838718414,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.800000011920929,
+      "name": "01030000000155.pdf-page-0",
+      "value": 0.029080171138048172
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.027414072304964066,
+      "avg_weighted_label_matched_iou_75": 0.027414072304964066,
+      "avg_weighted_label_matched_iou_90": 0.009643342345952988,
+      "avg_weighted_label_matched_iou_95": 0.009643342345952988,
+      "map_50": 0.6666666865348816,
+      "map_75": 0.6666666865348816,
+      "map_val": 0.5333333611488342,
+      "name": "01030000000150.pdf-page-0",
+      "value": 0.027414072304964066
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.016462018713355064,
+      "avg_weighted_label_matched_iou_75": 0.0,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.5,
+      "map_75": 0.0,
+      "map_val": 0.25,
+      "name": "01030000000044.pdf-page-0",
+      "value": 0.016462018713355064
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.015854666009545326,
+      "avg_weighted_label_matched_iou_75": 0.015854666009545326,
+      "avg_weighted_label_matched_iou_90": 0.015854666009545326,
+      "avg_weighted_label_matched_iou_95": 0.012276356108486652,
+      "map_50": 0.25,
+      "map_75": 0.25,
+      "map_val": 0.24741223454475403,
+      "name": "01030000000132.pdf-page-0",
+      "value": 0.015854666009545326
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.01277341227978468,
+      "avg_weighted_label_matched_iou_75": 0.01277341227978468,
+      "avg_weighted_label_matched_iou_90": 0.01277341227978468,
+      "avg_weighted_label_matched_iou_95": 0.01277341227978468,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.3333333432674408,
+      "name": "01030000000088.pdf-page-0",
+      "value": 0.01277341227978468
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.010137664154171944,
+      "avg_weighted_label_matched_iou_75": 0.010137664154171944,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.3333333432674408,
+      "map_75": 0.3333333432674408,
+      "map_val": 0.2666666805744171,
+      "name": "01030000000162.pdf-page-0",
+      "value": 0.010137664154171944
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.008568588644266129,
+      "avg_weighted_label_matched_iou_75": 0.008568588644266129,
+      "avg_weighted_label_matched_iou_90": 0.008568588644266129,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.8999999761581421,
+      "name": "01030000000172.pdf-page-0",
+      "value": 0.008568588644266129
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.0048754713498055935,
+      "avg_weighted_label_matched_iou_75": 0.0048754713498055935,
+      "avg_weighted_label_matched_iou_90": 0.0049081481993198395,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 1.0,
+      "map_75": 1.0,
+      "map_val": 0.75,
+      "name": "01030000000108.pdf-page-0",
+      "value": 0.0048754713498055935
+    },
+    {
+      "avg_weighted_label_matched_iou_50": 0.0,
+      "avg_weighted_label_matched_iou_75": 0.0,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.0,
+      "map_75": 0.0,
+      "map_val": 0.0,
       "name": "01030000000141.pdf-page-0",
       "value": 0.0
     },
     {
-      "name": "01030000000142.pdf-page-0",
-      "value": 0.3907797038555145
-    },
-    {
-      "name": "01030000000143.pdf-page-0",
-      "value": 0.7184818387031555
-    },
-    {
-      "name": "01030000000144.pdf-page-0",
-      "value": 0.48817864060401917
-    },
-    {
-      "name": "01030000000145.pdf-page-0",
-      "value": 0.5323604941368103
-    },
-    {
-      "name": "01030000000146.pdf-page-0",
-      "value": 0.714653491973877
-    },
-    {
-      "name": "01030000000147.pdf-page-0",
-      "value": 0.6609901189804077
-    },
-    {
-      "name": "01030000000148.pdf-page-0",
-      "value": 0.2861386239528656
-    },
-    {
-      "name": "01030000000149.pdf-page-0",
-      "value": 0.7376237511634827
-    },
-    {
-      "name": "01030000000150.pdf-page-0",
-      "value": 0.6126237511634827
-    },
-    {
-      "name": "01030000000151.pdf-page-0",
-      "value": 0.7460197806358337
-    },
-    {
-      "name": "01030000000152.pdf-page-0",
-      "value": 0.9330445528030396
-    },
-    {
-      "name": "01030000000153.pdf-page-0",
-      "value": 0.5817656517028809
-    },
-    {
-      "name": "01030000000154.pdf-page-0",
-      "value": 0.8399999737739563
-    },
-    {
-      "name": "01030000000155.pdf-page-0",
-      "value": 0.699999988079071
-    },
-    {
-      "name": "01030000000156.pdf-page-0",
-      "value": 0.7841584086418152
-    },
-    {
-      "name": "01030000000157.pdf-page-0",
-      "value": 0.6831682920455933
-    },
-    {
-      "name": "01030000000158.pdf-page-0",
-      "value": 0.7701320052146912
-    },
-    {
-      "name": "01030000000159.pdf-page-0",
-      "value": 0.7666666507720947
-    },
-    {
-      "name": "01030000000160.pdf-page-0",
-      "value": 0.5
-    },
-    {
+      "avg_weighted_label_matched_iou_50": 0.0,
+      "avg_weighted_label_matched_iou_75": 0.0,
+      "avg_weighted_label_matched_iou_90": 0.0,
+      "avg_weighted_label_matched_iou_95": 0.0,
+      "map_50": 0.0,
+      "map_75": 0.0,
+      "map_val": 0.0,
       "name": "01030000000161.pdf-page-0",
-      "value": 0.20000000298023224
-    },
-    {
-      "name": "01030000000162.pdf-page-0",
-      "value": 0.5666666626930237
-    },
-    {
-      "name": "01030000000163.pdf-page-0",
-      "value": 0.19112840294837952
-    },
-    {
-      "name": "01030000000164.pdf-page-0",
-      "value": 0.7754597067832947
-    },
-    {
-      "name": "01030000000165.pdf-page-0",
-      "value": 0.5180501341819763
-    },
-    {
-      "name": "01030000000166.pdf-page-0",
-      "value": 0.629548966884613
-    },
-    {
-      "name": "01030000000167.pdf-page-0",
-      "value": 0.41069307923316956
-    },
-    {
-      "name": "01030000000168.pdf-page-0",
-      "value": 0.5493584871292114
-    },
-    {
-      "name": "01030000000169.pdf-page-0",
-      "value": 0.42260727286338806
-    },
-    {
-      "name": "01030000000170.pdf-page-0",
-      "value": 0.4577227830886841
-    },
-    {
-      "name": "01030000000171.pdf-page-0",
-      "value": 0.699999988079071
-    },
-    {
-      "name": "01030000000172.pdf-page-0",
-      "value": 0.8999999761581421
-    },
-    {
-      "name": "01030000000173.pdf-page-0",
-      "value": 0.6916831731796265
-    },
-    {
-      "name": "01030000000174.pdf-page-0",
-      "value": 0.6607920527458191
-    },
-    {
-      "name": "01030000000175.pdf-page-0",
-      "value": 0.7200000286102295
-    },
-    {
-      "name": "01030000000176.pdf-page-0",
-      "value": 0.5400000214576721
-    },
-    {
-      "name": "01030000000177.pdf-page-0",
-      "value": 0.9100990295410156
-    },
-    {
-      "name": "01030000000178.pdf-page-0",
-      "value": 0.7650495171546936
-    },
-    {
-      "name": "01030000000179.pdf-page-0",
-      "value": 0.8250495195388794
-    },
-    {
-      "name": "01030000000180.pdf-page-0",
-      "value": 0.7427392601966858
-    },
-    {
-      "name": "01030000000181.pdf-page-0",
-      "value": 0.1676567643880844
-    },
-    {
-      "name": "01030000000182.pdf-page-0",
-      "value": 0.4375
-    },
-    {
-      "name": "01030000000183.pdf-page-0",
-      "value": 0.5715511441230774
-    },
-    {
-      "name": "01030000000184.pdf-page-0",
-      "value": 0.35931071639060974
-    },
-    {
-      "name": "01030000000185.pdf-page-0",
-      "value": 0.4954826831817627
-    },
-    {
-      "name": "01030000000186.pdf-page-0",
-      "value": 0.8060594201087952
-    },
-    {
-      "name": "01030000000187.pdf-page-0",
-      "value": 0.7746802568435669
-    },
-    {
-      "name": "01030000000188.pdf-page-0",
-      "value": 0.7271122336387634
-    },
-    {
-      "name": "01030000000189.pdf-page-0",
-      "value": 0.8210189938545227
-    },
-    {
-      "name": "01030000000190.pdf-page-0",
-      "value": 0.8160581588745117
-    },
-    {
-      "name": "01030000000191.pdf-page-0",
-      "value": 0.8017450571060181
-    },
-    {
-      "name": "01030000000192.pdf-page-0",
-      "value": 0.8021926283836365
-    },
-    {
-      "name": "01030000000193.pdf-page-0",
-      "value": 0.8671732544898987
-    },
-    {
-      "name": "01030000000194.pdf-page-0",
-      "value": 0.9006930589675903
-    },
-    {
-      "name": "01030000000195.pdf-page-0",
-      "value": 0.7824689745903015
-    },
-    {
-      "name": "01030000000196.pdf-page-0",
-      "value": 0.6787128448486328
-    },
-    {
-      "name": "01030000000197.pdf-page-0",
-      "value": 0.5266501903533936
-    },
-    {
-      "name": "01030000000198.pdf-page-0",
-      "value": 0.20000000298023224
-    },
-    {
-      "name": "01030000000199.pdf-page-0",
-      "value": 0.26598596572875977
-    },
-    {
-      "name": "01030000000200.pdf-page-0",
-      "value": 0.675000011920929
+      "value": 0.0
     }
   ],
   "intersecting_labels": [
-    "page_header",
     "text",
     "section_header",
     "footnote",
@@ -896,45 +2290,43 @@
       1.0
     ],
     "hist": [
-      1.0,
-      0.0,
-      0.0,
-      3.0,
       2.0,
-      5.0,
-      11.0,
-      9.0,
-      17.0,
-      9.0,
-      11.0,
+      1.0,
+      1.0,
+      6.0,
+      10.0,
       12.0,
-      17.0,
+      19.0,
       21.0,
-      22.0,
-      18.0,
+      16.0,
       23.0,
+      22.0,
+      17.0,
+      10.0,
+      13.0,
+      9.0,
+      3.0,
       11.0,
-      8.0,
+      3.0,
+      1.0,
       0.0
     ],
-    "mean": 0.619836469963193,
-    "median": 0.6538022756576538,
-    "std": 0.19509242626840323,
+    "mean": 0.47946036405861375,
+    "median": 0.47828711569309235,
+    "std": 0.18537447097455434,
     "total": 200
   },
   "pred_labels": {
-    "caption": 117,
+    "caption": 27,
     "document_index": 8,
     "footnote": 81,
     "formula": 38,
-    "list_item": 227,
-    "page_footer": 170,
-    "page_header": 75,
-    "paragraph": 4,
-    "picture": 187,
-    "section_header": 200,
+    "list_item": 229,
+    "page_footer": 2,
+    "picture": 188,
+    "section_header": 211,
     "table": 55,
-    "text": 837
+    "text": 810
   },
   "true_labels": {
     "caption": 154,
