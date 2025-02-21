@@ -1,6 +1,4 @@
-DPBench reading_order ARD_norm:
-
-mean=0.99 median=1.00 std=0.02
+DPBench reading_order ARD_norm: mean=0.99 median=1.00 std=0.02
 
 | ARD_norm       |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |----------------|------------|-----------|-------------|---------|
@@ -24,3 +22,5 @@ mean=0.99 median=1.00 std=0.02
 | (0.850, 0.900] |        0   |       0.5 |        99.5 |       0 |
 | (0.900, 0.950] |        4   |       0.5 |        99.5 |       8 |
 | (0.950, 1.000] |       95.5 |       4.5 |        95.5 |     191 |
+
+

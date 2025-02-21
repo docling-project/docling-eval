@@ -1,6 +1,4 @@
-DPBench layout mAP_0.5_0.95:
-
-mean=0.48 median=0.48 std=0.19
+DPBench layout mAP_0.5_0.95: mean=0.48 median=0.48 std=0.19
 
 | mAP_0.5_0.95   |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |----------------|------------|-----------|-------------|---------|
@@ -26,7 +24,10 @@ mean=0.48 median=0.48 std=0.19
 | (0.950, 1.000] |        0   |     100   |         0   |       0 |
 
 
-Class mAP[0.5:0.95] table:
+
+
+
+AP[0.5:0.05:0.95] per class (reported as %):
 
 | label          |   Class mAP[0.5:0.95] |
 |----------------|-----------------------|
@@ -40,3 +41,5 @@ Class mAP[0.5:0.95] table:
 | caption        |                  9.61 |
 | formula        |                  6.49 |
 | page_footer    |                  1.49 |
+
+Total mAP[0.5:0.05:0.95] (reported as %): 40.20
