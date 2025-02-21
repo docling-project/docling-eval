@@ -32,7 +32,7 @@ def main():
 
         log.info("Evaluate the tableformer for the FinTabNet dataset")
         evaluate(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.FINTABNET,
             idir=odir_tab,
             odir=odir_tab,
@@ -40,7 +40,7 @@ def main():
 
         log.info("Visualize the tableformer for the FinTabNet dataset")
         visualise(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.FINTABNET,
             idir=odir_tab,
             odir=odir_tab,

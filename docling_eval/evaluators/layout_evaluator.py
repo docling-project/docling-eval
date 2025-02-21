@@ -22,18 +22,26 @@ from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 
 class ClassLayoutEvaluation(BaseModel):
+    r"""
+    Class based layout evaluation
+    """
+
     name: str
     label: str
-    value: float
+    value: float  # mAP[0.5:0.05:0.95]
 
 
 class ImageLayoutEvaluation(BaseModel):
-    name: str
-    value: float
+    r"""
+    Image based layout evaluation
+    """
 
-    map_val: float
-    map_50: float
-    map_75: float
+    name: str
+    value: float  # Area weighted average IoU for label-matched GT/pred bboxes for IoU thres = 0.5
+
+    map_val: float  # mAP[0.5:0.05:0.95]
+    map_50: float  # AP at IoU thres=0.5
+    map_75: float  # AP at IoU thres=0.75
 
     # Weighted average IoU for the page bboxes with matching labels (between GT and pred)
     # The weight is the bbox size and each measurement corresponds to a different IoU threshold
@@ -46,14 +54,15 @@ class ImageLayoutEvaluation(BaseModel):
 class DatasetLayoutEvaluation(BaseModel):
     true_labels: Dict[str, int]
     pred_labels: Dict[str, int]
+    mAP: float  # The mean AP[0.5:0.05:0.95] across all classes
 
     intersecting_labels: List[str]
-
     evaluations_per_class: List[ClassLayoutEvaluation]
-
     evaluations_per_image: List[ImageLayoutEvaluation]
 
-    mAP_stats: DatasetStatistics
+    image_mAP_stats: (
+        DatasetStatistics  # Stats for the mAP[0.5:0.05:0.95] across all images
+    )
 
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
 
@@ -107,6 +116,7 @@ class LayoutEvaluator:
         doc_ids = []
         ground_truths = []
         predictions = []
+        mismatched_docs = 0
 
         for i, data in tqdm(
             enumerate(ds_selection),
@@ -134,12 +144,20 @@ class LayoutEvaluator:
                 ground_truths.extend(gts)
                 predictions.extend(preds)
             else:
+                mismatched_docs += 1
                 logging.error(
                     "Mismatch in len of GT (%s) vs pred (%s). Skipping document '%s'.",
                     len(gts),
                     len(preds),
                     doc_id,
                 )
+
+        if mismatched_docs > 0:
+            logging.error(
+                "Total mismatched/skipped documents: %s over %s",
+                mismatched_docs,
+                len(ds_selection),
+            )
 
         assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
         assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
@@ -154,12 +172,15 @@ class LayoutEvaluator:
         result = metric.compute()
 
         evaluations_per_class: List[ClassLayoutEvaluation] = []
-        for key, value in result.items():
-            if isinstance(value, float):
-                evaluations_per_class.append(
-                    ClassLayoutEvaluation(name=key, value=value, label=None)
-                )
 
+        # TODO: Why do we need the next for loop?
+        # for key, value in result.items():
+        #     if isinstance(value, float):
+        #         evaluations_per_class.append(
+        #             ClassLayoutEvaluation(name=key, value=value, label=None)
+        #         )
+
+        total_mAP = result["map"]
         if "map_per_class" in result:
             for label_idx, class_map in enumerate(result["map_per_class"]):
                 evaluations_per_class.append(
@@ -222,9 +243,10 @@ class LayoutEvaluator:
         evaluations_per_image = sorted(evaluations_per_image, key=lambda x: -x.value)
 
         return DatasetLayoutEvaluation(
+            mAP=total_mAP,
             evaluations_per_class=evaluations_per_class,
             evaluations_per_image=evaluations_per_image,
-            mAP_stats=compute_stats(map_values),
+            image_mAP_stats=compute_stats(map_values),
             true_labels=true_labels,
             pred_labels=pred_labels,
             intersecting_labels=[_.value for _ in intersection_labels],
@@ -250,7 +272,7 @@ class LayoutEvaluator:
         self, pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.5
     ):
         """
-        Compute the average IoU for matched detections, considering labels.
+        Compute the average IoU for label-matched detections and weight by bbox area:
 
         Args:
             pred_boxes (torch.Tensor): Predicted bounding boxes (N x 4).
@@ -288,7 +310,7 @@ class LayoutEvaluator:
         unmatched_gt = len(gt_boxes) - len(matched_gt)  # Ground truth boxes not matched
 
         return {
-            "average_iou": avg_iou,
+            "average_iou": avg_iou,  # It should range in [0, 1]
             "unmatched_gt": unmatched_gt,
             "matched_gt": len(ious),
         }

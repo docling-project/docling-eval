@@ -38,6 +38,7 @@ class EvaluationModality(str, Enum):
     READING_ORDER = "reading_order"  # to compute the order
     MARKDOWN_TEXT = "markdown_text"  # to compute the text accuracy
     CAPTIONING = "captioning"  # to compute the accuracy of captions to table/figure
+    BBOXES_TEXT = "bboxes_text"
 
 
 class BenchMarkNames(str, Enum):
@@ -51,6 +52,7 @@ class BenchMarkNames(str, Enum):
     PUBLAYNET = "PubLayNet"
     DOCLAYNETV1 = "DocLayNetV1"
     DOCLAYNETV2 = "DocLayNetV2"
+    FUNSD = "FUNSD"
 
     # Table
     PUB1M = "Pub1M"

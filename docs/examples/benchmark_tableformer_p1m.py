@@ -29,7 +29,7 @@ def main():
 
         log.info("Evaluate the tableformer converted Pub1M dataset")
         evaluate(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.PUB1M,
             idir=odir_tab,
             odir=odir_tab,
@@ -37,7 +37,7 @@ def main():
 
         log.info("Visualize the tableformer converted Pub1M dataset")
         visualise(
-            modality=EvaluationModality.TABLEFORMER,
+            modality=EvaluationModality.TABLE_STRUCTURE,
             benchmark=BenchMarkNames.PUB1M,
             idir=odir_tab,
             odir=odir_tab,
