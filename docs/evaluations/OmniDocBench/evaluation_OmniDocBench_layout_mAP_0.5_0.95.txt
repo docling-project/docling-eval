@@ -1,6 +1,4 @@
-OmniDocBench layout mAP_0.5_0.95:
-
-mean=0.24 median=0.23 std=0.18
+OmniDocBench layout mAP_0.5_0.95: mean=0.24 median=0.23 std=0.18
 
 | mAP_0.5_0.95   |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |----------------|------------|-----------|-------------|---------|
@@ -26,7 +24,10 @@ mean=0.24 median=0.23 std=0.18
 | (0.950, 1.000] |       0.43 |     99.57 |        0.43 |       4 |
 
 
-Class mAP[0.5:0.95] table:
+
+
+
+AP[0.5:0.05:0.95] per class (reported as %):
 
 | label          |   Class mAP[0.5:0.95] |
 |----------------|-----------------------|
@@ -39,3 +40,5 @@ Class mAP[0.5:0.95] table:
 | footnote       |                  2.46 |
 | page_footer    |                  0.45 |
 | page_header    |                  0    |
+
+Total mAP[0.5:0.05:0.95] (reported as %): 15.82

@@ -1,6 +1,4 @@
-OmniDocBench reading_order weighted_ARD:
-
-mean=0.98 median=0.99 std=0.03
+OmniDocBench reading_order weighted_ARD: mean=0.98 median=0.99 std=0.03
 
 | weighted_ARD   |   prob [%] |   acc [%] |   1-acc [%] |   total |
 |----------------|------------|-----------|-------------|---------|
@@ -24,3 +22,5 @@ mean=0.98 median=0.99 std=0.03
 | (0.850, 0.900] |       1.83 |      0.51 |       99.49 |      18 |
 | (0.900, 0.950] |       6.73 |      2.34 |       97.66 |      66 |
 | (0.950, 1.000] |      90.93 |      9.07 |       90.93 |     892 |
+
+

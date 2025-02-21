@@ -10344,18 +10344,7 @@
       "value": 0.0
     }
   ],
-  "intersecting_labels": [
-    "picture",
-    "section_header",
-    "text",
-    "footnote",
-    "caption",
-    "table",
-    "page_header",
-    "page_footer",
-    "formula"
-  ],
-  "mAP_stats": {
+  "image_mAP_stats": {
     "bins": [
       0.0,
       0.05,
@@ -10406,6 +10395,18 @@
     "std": 0.1788086640768029,
     "total": 936
   },
+  "intersecting_labels": [
+    "picture",
+    "section_header",
+    "text",
+    "footnote",
+    "caption",
+    "table",
+    "page_header",
+    "page_footer",
+    "formula"
+  ],
+  "mAP": 0.15823929011821747,
   "pred_labels": {
     "caption": 166,
     "code": 1,
