@@ -41,9 +41,9 @@ poetry run evaluate \
     -o benchmarks/OmniDocBench-dataset/layout
 ```
 
-[mAP[0.5:0.95] report](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].txt)
+[mAP[0.5:0.95] report](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP_0.5_0.95.txt)
 
-![mAP[0.5:0.95] plot](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP[0.5_0.95].png)
+![mAP[0.5:0.95] plot](evaluations/OmniDocBench/evaluation_OmniDocBench_layout_mAP_0.5_0.95.png)
 
 <!--
 </details>
