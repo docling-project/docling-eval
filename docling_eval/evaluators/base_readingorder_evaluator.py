@@ -178,37 +178,6 @@ class BaseReadingOrderEvaluator:
                         cell["bbox"] = [0, 0, 0, 0]
         return legacy_doc_dict
 
-    # def _filter_out_bboxes(
-    #     self, legacy_doc_dict: Dict, bboxes: List[BoundingBox]
-    # ) -> Dict:
-    #     r"""
-    #     Remove entries from "main-text" with bbox outside of the provided bboxes
-    #     """
-    #     # Make set of existing bboxes as tuples
-    #     existing_bboxes = set([b.as_tuple() for b in bboxes])
-
-    #     # Identify main ids to be deleted
-    #     main_ids_to_delete = set()
-    #     for main_id, main in enumerate(legacy_doc_dict["main-text"]):
-    #         if "prov" not in main:
-    #             continue
-    #         for prov in main["prov"]:
-    #             bbox = prov["bbox"]
-    #             # Check if bbox is a tuple or a list
-    #             if tuple(bbox) not in existing_bboxes:
-    #                 main_ids_to_delete.add(main_id)
-
-    #     # Reconstruct the main
-    #     if main_ids_to_delete:
-    #         filtered_mains = []
-    #         for main_id, main in enumerate(legacy_doc_dict["main-text"]):
-    #             if main_id in main_ids_to_delete:
-    #                 continue
-    #             filtered_mains.append(main)
-    #         legacy_doc_dict["main-text"] = filtered_mains
-
-    #     return legacy_doc_dict
-
     def _show_items(self, true_doc: DoclingDocument):
         r""" """
         page_size = true_doc.pages[1].size

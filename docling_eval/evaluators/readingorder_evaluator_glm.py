@@ -1,29 +1,14 @@
 import copy
-import json
 import logging
-import math
-from io import BytesIO
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
-from datasets import load_dataset
 from deepsearch_glm.andromeda_nlp import nlp_model  # type: ignore
-from docling.datamodel.base_models import BoundingBox, Cluster
-from docling.utils.visualization import draw_clusters
-from docling_core.types.doc.document import DocItem, DoclingDocument, TextItem
+from docling_core.types.doc.document import DoclingDocument
 from docling_core.utils.legacy import docling_document_to_legacy
-from PIL import Image, ImageDraw, ImageFont
-from pydantic import BaseModel
-from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.benchmarks.utils import draw_arrow
 from docling_eval.evaluators.base_readingorder_evaluator import (
     BaseReadingOrderEvaluator,
-    DatasetReadingOrderEvaluation,
-    PageReadingOrderEvaluation,
 )
-from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)
 

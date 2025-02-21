@@ -8,7 +8,6 @@ from docling_ibm_models.reading_order.reading_order_rb import (
     PageElement as ReadingOrderPageElement,
 )
 from docling_ibm_models.reading_order.reading_order_rb import ReadingOrderPredictor
-from tqdm import tqdm  # type: ignore
 
 from docling_eval.evaluators.base_readingorder_evaluator import (
     BaseReadingOrderEvaluator,

@@ -731,11 +731,11 @@ def create_true_document(basename: str, annot: dict, desc: AnnotatedImage):
 
         elif label == DocItemLabel.FORM:
             graph = GraphData(cells=[], links=[])
-            true_doc.add_form_item(graph=graph, prov=prov)
+            true_doc.add_form(graph=graph, prov=prov)
 
         elif label == DocItemLabel.KEY_VALUE_REGION:
             graph = GraphData(cells=[], links=[])
-            true_doc.add_key_value_item(graph=graph, prov=prov)
+            true_doc.add_key_values(graph=graph, prov=prov)
 
         elif label in [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]:
 
