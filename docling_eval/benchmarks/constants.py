@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class BenchMarkColumns(str, Enum):
+    DOCLING_VERSION = "docling_version"
+    AZURE_VERSION = "azure_version"
     CONVERTER_TYPE = "converter_type"
     CONVERTER_VERSION = "converter_version"
     DOCLING_PIPELINE = "docling_pipeline"
