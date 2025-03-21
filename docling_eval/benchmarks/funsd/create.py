@@ -155,7 +155,22 @@ def create_funsd_dataset(
     output_dir: Path,
     splits: List[str] = ["train", "test"],
     max_items: int = -1,
+    download: bool = True,
 ):
+
+    if download:
+        idir_parent = input_dir.parent
+        idir_parent.mkdir(parents=True, exist_ok=True)
+        os.system(
+            f"wget --no-check-certificate "
+            f"'https://docs.google.com/uc?export=download&id=1wdJJQgRIb1c404SJnX1dyBSi7U2mVduI' "
+            f"-O {idir_parent}/FUNSD.zip && "
+            f"unzip {idir_parent}/FUNSD.zip -d {idir_parent} && "
+            f"rm {idir_parent}/FUNSD.zip && "
+            f"mv {idir_parent}/FUNSD {input_dir} && "
+            f"mv {input_dir}/training_data/adjusted_annotations {input_dir}/training_data/annotations && "
+            f"mv {input_dir}/testing_data/adjusted_annotations {input_dir}/testing_data/annotations"
+        )
     doc_converter = create_image_docling_converter(do_ocr=True, ocr_lang=["en"])
 
     num_train_rows = 0
