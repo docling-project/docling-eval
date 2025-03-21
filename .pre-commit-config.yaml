@@ -4,13 +4,13 @@ repos:
     hooks:
       - id: black
         name: Black
-        entry: poetry run black docling_eval tests docs/examples
+        entry: poetry run black docling_eval docling_eval_next tests docs/examples
         pass_filenames: false
         language: system
         files: '\.py$'
       - id: isort
         name: isort
-        entry: poetry run isort docling_eval tests docs/examples
+        entry: poetry run isort docling_eval docling_eval_next tests docs/examples
         pass_filenames: false
         language: system
         files: '\.py$'
@@ -22,7 +22,7 @@ repos:
 #        files: '\.py$'
       - id: mypy
         name: MyPy
-        entry: poetry run mypy docling_eval tests docs/examples
+        entry: poetry run mypy docling_eval docling_eval_next tests docs/examples
         pass_filenames: false
         language: system
         files: '\.py$'

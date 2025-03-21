@@ -1,7 +1,8 @@
 import copy
 import logging
+from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from docling.datamodel.base_models import Cluster, LayoutPrediction, Page, Table
@@ -45,70 +46,6 @@ class PageTokens(BaseModel):
     width: float
 
 
-def get_iocr_page(parsed_page: Dict, table_bbox: Tuple[float, float, float, float]):
-
-    height = parsed_page["sanitized"]["dimension"]["height"]
-    width = parsed_page["sanitized"]["dimension"]["width"]
-
-    records = map_to_records(parsed_page["sanitized"]["cells"])
-
-    cnt = 0
-
-    tokens = []
-    text_lines = []
-    for i, rec in enumerate(records):
-        tokens.append(
-            {
-                "bbox": {
-                    "l": rec["x0"],
-                    "t": height - rec["y1"],
-                    "r": rec["x1"],
-                    "b": height - rec["y0"],
-                },
-                "text": rec["text"],
-                "id": i,
-            }
-        )
-
-        text_lines.append(
-            {
-                "bbox": [rec["x0"], height - rec["y1"], rec["x1"], height - rec["y0"]],
-                "text": rec["text"],
-            }
-        )
-
-        """
-        if table_bbox[0]<=tokens[-1]["bbox"]["l"] and \
-           table_bbox[2]>=tokens[-1]["bbox"]["r"] and \
-           table_bbox[1]<=tokens[-1]["bbox"]["b"] and \
-           table_bbox[3]>=tokens[-1]["bbox"]["t"]:
-            cnt += 1
-            print(f"text-cell [{cnt}]: ", tokens[-1]["text"], "\t", tokens[-1]["bbox"])
-        """
-
-    iocr_page = {"tokens": tokens, "height": height, "width": width}
-
-    return iocr_page
-
-
-def to_np(pil_image: Image.Image):
-    # Convert to NumPy array
-    np_image = np.array(pil_image)
-
-    # Handle different formats
-    if np_image.ndim == 3:  # RGB or RGBA image
-        if np_image.shape[2] == 4:  # RGBA image
-            # Discard alpha channel and convert to BGR
-            np_image = np_image[:, :, :3]  # Keep only RGB channels
-
-        # Convert RGB to BGR by reversing the last axis
-        np_image = np_image[:, :, ::-1]
-
-        return np_image
-    else:
-        raise ValueError("Unsupported image format")
-
-
 class TableFormerUpdater:
 
     def __init__(
@@ -130,6 +67,23 @@ class TableFormerUpdater:
             accelerator_options=accelerator_options,
         )
         log.info("Initialize %s", mode)
+
+    def to_np(self, pil_image: Image.Image):
+        # Convert to NumPy array
+        np_image = np.array(pil_image)
+
+        # Handle different formats
+        if np_image.ndim == 3:  # RGB or RGBA image
+            if np_image.shape[2] == 4:  # RGBA image
+                # Discard alpha channel and convert to BGR
+                np_image = np_image[:, :, :3]  # Keep only RGB channels
+
+            # Convert RGB to BGR by reversing the last axis
+            np_image = np_image[:, :, ::-1]
+
+            return np_image
+        else:
+            raise ValueError("Unsupported image format")
 
     def get_page_cells(self, filename: str):
 
@@ -174,14 +128,14 @@ class TableFormerUpdater:
 
     def replace_tabledata(
         self,
-        pdf_path: Path,
+        pdf_path: Path | BytesIO,
         true_doc: DoclingDocument,
     ) -> Tuple[bool, DoclingDocument]:
 
         updated = False
 
         # deep copy of the true-document
-        pred_doc = copy.deepcopy(true_doc)
+        pred_doc = true_doc.model_copy(deep=True)
 
         input_doc = get_input_document(pdf_path)
         if not input_doc.valid:
@@ -233,7 +187,7 @@ class TableFormerUpdater:
 
         ocr_page = page_tokens.dict()
 
-        ocr_page["image"] = to_np(page_image)
+        ocr_page["image"] = self.to_np(page_image)
         ocr_page["table_bboxes"] = table_bboxes
 
         # TODO: Here we bypass docling API and we steal the tf_preditor private object :-(

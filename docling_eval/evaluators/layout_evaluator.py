@@ -15,7 +15,8 @@ from pydantic import BaseModel
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.constants import BenchMarkColumns, PredictionFormats
+from docling_eval.evaluators.base_evaluator import BaseEvaluator, DatasetEvaluation
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ class ImageLayoutEvaluation(BaseModel):
     avg_weighted_label_matched_iou_95: float
 
 
-class DatasetLayoutEvaluation(BaseModel):
+class DatasetLayoutEvaluation(DatasetEvaluation):
     true_labels: Dict[str, int]
     pred_labels: Dict[str, int]
     mAP: float  # The mean AP[0.5:0.05:0.95] across all classes
@@ -84,11 +85,14 @@ class DatasetLayoutEvaluation(BaseModel):
         return table, headers
 
 
-class LayoutEvaluator:
-
+class LayoutEvaluator(BaseEvaluator):
     def __init__(
-        self, label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = None
-    ) -> None:
+        self,
+        label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = None,
+        intermediate_evaluations_path: Optional[Path] = None,
+    ):
+        super().__init__(intermediate_evaluations_path=intermediate_evaluations_path)
+
         self.filter_labels = []
         self.label_names = {}
         self.label_mapping = label_mapping or {v: v for v in DocItemLabel}
@@ -101,7 +105,7 @@ class LayoutEvaluator:
         self,
         ds_path: Path,
         split: str = "test",
-        pred_dict: Optional[Dict[str, DoclingDocument]] = None,
+        ext_predictions: Optional[Dict[str, DoclingDocument]] = None,
     ) -> DatasetLayoutEvaluation:
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
@@ -116,7 +120,7 @@ class LayoutEvaluator:
         ds_selection: Dataset = ds[split]
 
         true_labels, pred_labels, intersection_labels = self._find_intersecting_labels(
-            ds_selection, pred_dict=pred_dict
+            ds_selection, pred_dict=ext_predictions
         )
         intersection_labels_str = "\n" + "\n".join(sorted(intersection_labels))
         logging.info(f"Intersection labels: {intersection_labels_str}")
@@ -136,14 +140,14 @@ class LayoutEvaluator:
 
             true_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
             true_doc = DoclingDocument.model_validate_json(true_doc_dict)
-            if pred_dict is None:
+            if ext_predictions is None:
                 pred_doc_dict = data[BenchMarkColumns.PREDICTION]
                 pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
             else:
-                if doc_id not in pred_dict:
+                if doc_id not in ext_predictions:
                     _log.error("Missing pred_doc from dict argument for %s", doc_id)
                     continue
-                pred_doc = pred_dict[doc_id]
+                pred_doc = ext_predictions[doc_id]
 
             gts, preds = self._extract_layout_data(
                 doc_id=doc_id,
@@ -557,3 +561,9 @@ class LayoutEvaluator:
         # print(pred_tl_bboxes_str)
 
         return ground_truths, predictions
+
+    def supported_prediction_formats(self) -> List[PredictionFormats]:
+        r"""
+        Return the supported formats for predictions
+        """
+        return [PredictionFormats.DOCLING_DOCUMENT]

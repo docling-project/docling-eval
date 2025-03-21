@@ -241,6 +241,10 @@ def docling_version() -> str:
     return version("docling")  # may raise PackageNotFoundError
 
 
+def docling_models_version() -> str:
+    return version("docling-ibm-models")  # may raise PackageNotFoundError
+
+
 def get_binary(file_path: Path):
     """Read binary document into buffer."""
     with open(file_path, "rb") as f:
