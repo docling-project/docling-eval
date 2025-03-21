@@ -171,7 +171,6 @@ def test_run_omnidocbench_tables():
         odir=target_path / "tables" / "tableformer",
     )
 
-
 def test_run_doclaynet_v1_e2e():
     target_path = Path("./scratch/doclaynet-v1-builder-test/")
     docling_provider = create_docling_prediction_provider(page_image_scale=2.0)

@@ -79,7 +79,7 @@ class BaseEvaluationDatasetBuilder:
     def iterate(self) -> Iterable[DatasetRecord]:
         pass
 
-    def update_prediction(self, record: DatasetRecord):
+    def update_prediction(self, record: DatasetRecord, **extra_args):
         # This might need customization depending on the input the dataset has.
         # The default implementation assumes that there is an original file in binary format which is accepted.
         input_data = record.original
@@ -91,18 +91,18 @@ class BaseEvaluationDatasetBuilder:
                 )
 
         pred_doc = self.prediction_provider.predict(
-            record.ground_truth_doc, stream=input_data
+            record.ground_truth_doc, stream=input_data, **extra_args
         )
 
         record.predicted_doc = pred_doc
 
         record.validate_model()  # type: ignore
 
-    def save_to_disk(self, chunk_size: int = 80, max_num_chunks: int = sys.maxsize):
-        if not self.retrieved:
-            raise RuntimeError(
-                "You must first retrieve the source dataset. Call retrieve_input_dataset()."
-            )
+    def save_to_disk(self):
+        # if not self.retrieved:
+        #     raise RuntimeError(
+        #         "You must first retrieve the source dataset. Call retrieve_input_dataset()."
+        #     )
 
         test_dir = self.target / "test"
         os.makedirs(test_dir, exist_ok=True)
