@@ -2,7 +2,9 @@ from pathlib import Path
 
 from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
 from docling_eval.cli.main import evaluate
-from docling_eval_next.dataset_builders.fintabnet_builder import FintabnetTableStructureDatasetBuilder
+from docling_eval_next.dataset_builders.fintabnet_builder import (
+    FintabnetTableStructureDatasetBuilder,
+)
 from docling_eval_next.prediction_providers.azure_prediction_provider import (
     AzureDocIntelligencePredictionProvider,
 )
@@ -16,7 +18,9 @@ def main():
     target_path = Path("./output/FinTabNet_OTSL/")
 
     # Define the predictor that needs to be run on each item of the dataset
-    provider = AzureDocIntelligencePredictionProvider() # Microsoft Azure Document Intelligence API Provider
+    provider = (
+        AzureDocIntelligencePredictionProvider()
+    )  # Microsoft Azure Document Intelligence API Provider
 
     # 1. Create the dataset builder
     dataset = FintabnetTableStructureDatasetBuilder(
@@ -25,7 +29,9 @@ def main():
     )
 
     # 2. Download the dataset
-    downloaded_path = dataset.retrieve_input_dataset()  # fetches the source dataset from HF
+    downloaded_path = (
+        dataset.retrieve_input_dataset()
+    )  # fetches the source dataset from HF
     print(f"Dataset downloaded to {downloaded_path}")
 
     # 3. Run prediction and save the output in parquet format locally; Note that this saved data will have both ground truth and prediction
@@ -37,7 +43,7 @@ def main():
         benchmark=BenchMarkNames.FINTABNET,
         idir=target_path,
         odir=target_path / "teds",
-        split="intermediate_files"
+        split="intermediate_files",
     )
 
 

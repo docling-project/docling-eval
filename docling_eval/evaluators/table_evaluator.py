@@ -3,7 +3,7 @@ import json
 import logging
 import random
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 from datasets import Dataset, load_dataset
@@ -13,7 +13,8 @@ from lxml import html
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.benchmarks.constants import BenchMarkColumns, PredictionFormats
+from docling_eval.evaluators.base_evaluator import BaseEvaluator, DatasetEvaluation
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 from docling_eval.evaluators.teds import TEDScorer
 
@@ -33,7 +34,7 @@ class TableEvaluation(BaseModel):
     pred_nrows: int = -1
 
 
-class DatasetTableEvaluation(BaseModel):
+class DatasetTableEvaluation(DatasetEvaluation):
     evaluations: list[TableEvaluation]
 
     TEDS: DatasetStatistics
@@ -46,12 +47,12 @@ class DatasetTableEvaluation(BaseModel):
         delta_row = {i: 0 for i in range(-10, 11)}
         delta_col = {i: 0 for i in range(-10, 11)}
 
-        for _ in self.evaluations:
-            if _.true_nrows - _.pred_nrows in delta_row:
-                delta_row[_.true_nrows - _.pred_nrows] += 1
+        for evaluation in self.evaluations:
+            if evaluation.true_nrows - evaluation.pred_nrows in delta_row:
+                delta_row[evaluation.true_nrows - evaluation.pred_nrows] += 1
 
-            if _.true_ncols - _.pred_ncols in delta_col:
-                delta_col[_.true_ncols - _.pred_ncols] += 1
+            if evaluation.true_ncols - evaluation.pred_ncols in delta_col:
+                delta_col[evaluation.true_ncols - evaluation.pred_ncols] += 1
 
         x_row, y_row = [], []
         for k, v in delta_row.items():
@@ -93,12 +94,19 @@ def is_complex_table(table: TableItem) -> bool:
     return False
 
 
-class TableEvaluator:
+class TableEvaluator(BaseEvaluator):
     r"""
     Evaluate table predictions from HF dataset with the columns:
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        intermediate_evaluations_path: Optional[Path] = None,
+        structure_only: bool = False,
+    ):
+        super().__init__(intermediate_evaluations_path=intermediate_evaluations_path)
+
+        self._structure_only = structure_only
         self._teds_scorer = TEDScorer()
         self._stopwords = ["<i>", "</i>", "<b>", "</b>", "<u>", "</u>"]
 
@@ -106,9 +114,7 @@ class TableEvaluator:
         self,
         ds_path: Path,
         split: str = "test",
-        structure_only: bool = False,
-        pred_dict: Optional[Dict[str, DoclingDocument]] = None,
-        intermediate_results_dir: Optional[Path] = None,
+        ext_predictions: Optional[Dict[str, DoclingDocument]] = None,
     ) -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments
@@ -141,19 +147,19 @@ class TableEvaluator:
             gt_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
             gt_doc = DoclingDocument.model_validate_json(gt_doc_dict)
 
-            if pred_dict is None:
+            if ext_predictions is None:
                 pred_doc_dict = data[BenchMarkColumns.PREDICTION]
                 pred_doc = DoclingDocument.model_validate_json(pred_doc_dict)
             else:
                 if doc_id.endswith(".png") or doc_id.endswith(".jpg"):
                     doc_id = doc_id[:-4]
-                if doc_id not in pred_dict:
+                if doc_id not in ext_predictions:
                     _log.error("Missing pred_doc from dict argument for %s", doc_id)
                     continue
-                pred_doc = pred_dict[doc_id]
+                pred_doc = ext_predictions[doc_id]
 
             try:
-                if not structure_only:
+                if not self._structure_only:
                     results = self._evaluate_tables_in_documents(
                         doc_id=data[BenchMarkColumns.DOC_ID],
                         true_doc=gt_doc,
@@ -162,9 +168,13 @@ class TableEvaluator:
                     )
                     table_evaluations.extend(results)
 
-                    if intermediate_results_dir:
+                    if self._intermediate_evaluations_path:
                         self._save_table_evalutions(
-                            False, i, doc_id, results, intermediate_results_dir
+                            False,
+                            i,
+                            doc_id,
+                            results,
+                            self._intermediate_evaluations_path,
                         )
 
                 results = self._evaluate_tables_in_documents(
@@ -174,9 +184,9 @@ class TableEvaluator:
                     structure_only=True,
                 )
                 table_struct_evaluations.extend(results)
-                if intermediate_results_dir:
+                if self._intermediate_evaluations_path:
                     self._save_table_evalutions(
-                        True, i, doc_id, results, intermediate_results_dir
+                        True, i, doc_id, results, self._intermediate_evaluations_path
                     )
             except Exception as ex:
                 evaluation_errors += 1
@@ -191,7 +201,7 @@ class TableEvaluator:
         teds_simple = []
         teds_complex = []
         teds_all = []
-        if not structure_only:
+        if not self._structure_only:
             for te in table_evaluations:
                 teds_all.append(te.TEDS)
 
@@ -301,3 +311,9 @@ class TableEvaluator:
 
         with open(evaluation_fn, "w") as fd:
             json.dump(evals, fd)
+
+    def supported_prediction_formats(self) -> List[PredictionFormats]:
+        r"""
+        Return the supported formats for predictions
+        """
+        return [PredictionFormats.DOCLING_DOCUMENT]

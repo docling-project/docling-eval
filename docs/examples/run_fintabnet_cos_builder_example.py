@@ -18,9 +18,13 @@ def main():
     target_path = Path("./output/tables_quality_fintabnet_crops/")
 
     # Define the predictor that needs to be run on each item of the dataset
-    provider_args = { "skip_api_if_prediction_is_present": True,
-                          "predictions_dir": target_path /  "microsoft" }
-    provider = AzureDocIntelligencePredictionProvider(**provider_args) # Microsoft Azure Document Intelligence API Provider
+    provider_args = {
+        "skip_api_if_prediction_is_present": True,
+        "predictions_dir": target_path / "microsoft",
+    }
+    provider = AzureDocIntelligencePredictionProvider(
+        **provider_args
+    )  # Microsoft Azure Document Intelligence API Provider
 
     # 1. Create the dataset builder
     dataset = FintabnetCOSTableStructureDatasetBuilder(
@@ -29,7 +33,9 @@ def main():
     )
 
     # 2. Download the dataset
-    downloaded_path = dataset.retrieve_input_dataset()  # fetches the source dataset from HF
+    downloaded_path = (
+        dataset.retrieve_input_dataset()
+    )  # fetches the source dataset from HF
     print(f"Dataset downloaded to {downloaded_path}")
 
     # 3. Run prediction and save the output in parquet format locally; Note that this saved data will have both ground truth and prediction
@@ -41,7 +47,7 @@ def main():
         benchmark=BenchMarkNames.FINTABNET,
         idir=target_path,
         odir=target_path / "teds",
-        split="intermediate_files"
+        split="intermediate_files",
     )
 
 

@@ -85,7 +85,8 @@ PRED_HTML_EXPORT_LABELS = {
 
 
 class FintabnetCOSDatasetBuilder(BaseEvaluationDatasetBuilder):
-    """ Base Fintabnet Dataset Builder that will pull dataset from Hugging face."""
+    """Base Fintabnet Dataset Builder that will pull dataset from Hugging face."""
+
     def __init__(
         self,
         name: str,
@@ -123,8 +124,9 @@ class FintabnetCOSDatasetBuilder(BaseEvaluationDatasetBuilder):
 
 
 class FintabnetCOSTableStructureDatasetBuilder(FintabnetCOSDatasetBuilder):
-    """ Subclass of FintabnetDatasetBuilder that will define the "iterate" method on how to iterate
+    """Subclass of FintabnetDatasetBuilder that will define the "iterate" method on how to iterate
     the table structure from the dataset."""
+
     def __init__(
         self,
         prediction_provider: BasePredictionProvider,
@@ -137,7 +139,6 @@ class FintabnetCOSTableStructureDatasetBuilder(FintabnetCOSDatasetBuilder):
             target=target,
             do_visualization=do_visualization,
         )
-
 
     def iterate(self) -> Iterable[DatasetRecord]:
         """Iterate and yield each record of the dataset.
@@ -174,11 +175,13 @@ class FintabnetCOSTableStructureDatasetBuilder(FintabnetCOSDatasetBuilder):
         image_files = list(glob.glob(f"{image_files_path}/*"))
 
         # Read the ground truth into a dictionary structure
-        ground_truth_location = os.path.join(self.dataset_local_path, "gt/ftn_150_dpi_test_selection.jsonl")
+        ground_truth_location = os.path.join(
+            self.dataset_local_path, "gt/ftn_150_dpi_test_selection.jsonl"
+        )
         ground_truth_per_filename = {}
         with jsonlines.open(ground_truth_location, "r") as reader:
             for line in reader:
-                filename = line["filename"] 
+                filename = line["filename"]
                 # Each line is of the form
                 # {   "filename": "xx",
                 #     "split": "text",
@@ -193,9 +196,15 @@ class FintabnetCOSTableStructureDatasetBuilder(FintabnetCOSDatasetBuilder):
                 #         }
                 #     }
                 # }
-                html_structure = "<table>" + "".join(line["html"]["structure"]["tokens"]) + "</table>"
-                ground_truth_per_filename[filename] = { "table_html": html_structure,
-                                                        "table_cells": line["html"]["cells"] }
+                html_structure = (
+                    "<table>"
+                    + "".join(line["html"]["structure"]["tokens"])
+                    + "</table>"
+                )
+                ground_truth_per_filename[filename] = {
+                    "table_html": html_structure,
+                    "table_cells": line["html"]["cells"],
+                }
 
         # TODO - Pass this as an argument? Do we need to run all items..
         max_items = -1
@@ -222,17 +231,21 @@ class FintabnetCOSTableStructureDatasetBuilder(FintabnetCOSDatasetBuilder):
 
             page_index = 1
 
-            image_scale = 1.0 # TODO - pass as input argument?
+            image_scale = 1.0  # TODO - pass as input argument?
 
             image_ref = ImageRef(
                 mimetype="image/png",
                 dpi=round(72 * image_scale),
-                size=Size(width=float(table_image.width), height=float(table_image.height)),
+                size=Size(
+                    width=float(table_image.width), height=float(table_image.height)
+                ),
                 uri=from_pil_to_base64uri(table_image),
             )
             page_item = PageItem(
                 page_no=page_index,
-                size=Size(width=float(table_image.width), height=float(table_image.height)),
+                size=Size(
+                    width=float(table_image.width), height=float(table_image.height)
+                ),
                 image=image_ref,
             )
 
@@ -293,7 +306,7 @@ class FintabnetCOSTableStructureDatasetBuilder(FintabnetCOSDatasetBuilder):
             output_dir = self.target / "microsoft" / "ground_truth_docling_document"
             os.makedirs(output_dir, exist_ok=True)
             docling_document_file_name = os.path.join(output_dir, f"{filename}.json")
-            with open(docling_document_file_name, 'w', encoding="utf-8") as f:
+            with open(docling_document_file_name, "w", encoding="utf-8") as f:
                 json.dump(true_doc.export_to_dict(), f, indent=2)
 
             # If visualization flag is set, run the visualizations and save them a well

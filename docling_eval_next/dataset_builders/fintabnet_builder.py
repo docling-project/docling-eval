@@ -1,6 +1,7 @@
 import glob
 import io
 import json
+import logging
 import os
 from io import BytesIO
 from pathlib import Path
@@ -83,43 +84,26 @@ PRED_HTML_EXPORT_LABELS = {
     DocItemLabel.FOOTNOTE,
 }
 
+_log = logging.getLogger(__name__)
 
 
-class FintabnetDatasetBuilder(BaseEvaluationDatasetBuilder):
-    """ Base Fintabnet Dataset Builder that will pull dataset from Hugging face."""
-    def __init__(
-        self,
-        name: str,
-        prediction_provider: BasePredictionProvider,
-        target: Path,
-        do_visualization: bool = True,
-    ):
-        super().__init__(
-            name=name,
-            dataset_source=HFSource(repo_id="ds4sd/FinTabNet_OTSL"),
-            prediction_provider=prediction_provider,
-            target=target,
-        )
-        self.do_visualization = do_visualization
-
-
-class FintabnetTableStructureDatasetBuilder(FintabnetDatasetBuilder):
-    """ Subclass of FintabnetDatasetBuilder that will define the "iterate" method on how to iterate
+class FintabnetTableStructureDatasetBuilder(BaseEvaluationDatasetBuilder):
+    """Subclass of FintabnetDatasetBuilder that will define the "iterate" method on how to iterate
     the table structure from the dataset."""
+
     def __init__(
         self,
-        prediction_provider: BasePredictionProvider,
         target: Path,
-        do_visualization: bool = True,
     ):
         super().__init__(
             name="Fintabnet: table-structure",
-            prediction_provider=prediction_provider,
+            dataset_source=HFSource(repo_id="ds4sd/FinTabNet_OTSL"),
             target=target,
-            do_visualization=do_visualization,
         )
 
-    def create_page_tokens(self, data: List[Any], height: float, width: float) -> PageTokens:
+    def create_page_tokens(
+        self, data: List[Any], height: float, width: float
+    ) -> PageTokens:
         """Needed for tableformer model only, where it additionally needs the page tokens for extraction.
         TODO: Not needed?? - Remove for hyperscalers"""
         tokens = []
@@ -162,24 +146,11 @@ class FintabnetTableStructureDatasetBuilder(FintabnetDatasetBuilder):
 
         assert self.dataset_local_path is not None
 
-        # Create the folders for saving the intermediate files (test) and visualizations
-        intermediate_dir = self.target / "intermediate_files"
-        viz_dir = self.target / "vizualisations"
-        for _ in [intermediate_dir, viz_dir]:
-            os.makedirs(_, exist_ok=True)
-
-        # Use glob to find all .parquet files in the directory and clean up the intermediate files
-        parquet_files = glob.glob(os.path.join(str(intermediate_dir), "*.parquet"))
-        for file in parquet_files:
-            try:
-                os.remove(file)
-                print(f"Deleted: {file}")
-            except Exception as e:
-                print(f"Error deleting {file}: {e}")
-
-        print(f"self.dataset_local_path={self.dataset_local_path}")
-        print(f"self.name={self.name}")
-        ds = load_dataset(os.path.join(self.dataset_local_path, "data"), split="test") # TODO - pass the split as argument?
+        _log.debug(f"self.dataset_local_path={self.dataset_local_path}")
+        _log.debug(f"self.name={self.name}")
+        ds = load_dataset(
+            os.path.join(self.dataset_local_path, "data"), split="test"
+        )  # TODO - pass the split as argument?
 
         # TODO - Pass this as an argument? Do we need to run all items..
         max_items = -1
@@ -197,32 +168,31 @@ class FintabnetTableStructureDatasetBuilder(FintabnetDatasetBuilder):
             table_image = item["image"]
 
             # TODO - For now, process two files instead of the whole dataset
-            if filename not in ["HAL.2015.page_43.pdf_125177.png", "HAL.2009.page_77.pdf_125051.png"]:
-                continue
+            # if filename not in ["HAL.2015.page_43.pdf_125177.png", "HAL.2009.page_77.pdf_125051.png"]:
+            #    continue
 
-            print(f"\nProcessing file - [{filename}]...")
-
-            true_page_images = [table_image]
-            # page_tokens = self.create_page_tokens(
-            #     data=item["cells"], height=table_image.height, width=table_image.width
-            # )
+            _log.debug(f"\nProcessing file - [{filename}]...")
 
             # Create the Ground truth document
             true_doc = DoclingDocument(name=f"ground-truth {filename}")
 
             page_index = 1
 
-            image_scale = 1.0 # TODO - pass as input argument?
+            image_scale = 1.0  # TODO - pass as input argument?
 
             image_ref = ImageRef(
                 mimetype="image/png",
                 dpi=round(72 * image_scale),
-                size=Size(width=float(table_image.width), height=float(table_image.height)),
+                size=Size(
+                    width=float(table_image.width), height=float(table_image.height)
+                ),
                 uri=from_pil_to_base64uri(table_image),
             )
             page_item = PageItem(
                 page_no=page_index,
-                size=Size(width=float(table_image.width), height=float(table_image.height)),
+                size=Size(
+                    width=float(table_image.width), height=float(table_image.height)
+                ),
                 image=image_ref,
             )
 
@@ -264,37 +234,20 @@ class FintabnetTableStructureDatasetBuilder(FintabnetDatasetBuilder):
             bytes_io = io.BytesIO()
             image = item["image"]
             image.save(bytes_io, format="png")
-            image_bytes = bytes_io.getvalue()
-            image_stream = DocumentStream(name=filename, stream=BytesIO(image_bytes))
             record = DatasetRecord(
-                predictor_info=self.prediction_provider.info(),
                 doc_id=str(filename),
                 ground_truth_doc=true_doc,
-                doc_hash=get_binhash(image_bytes),
-                original=image_stream,
+                ground_truth_page_images=true_page_images,
+                doc_hash=get_binhash(bytes_io.getvalue()),
+                original=DocumentStream(name=str(filename), stream=bytes_io),
                 mime_type="image/png",
             )
 
-            # Create the prediction, convert it to doclingDocument and update the dataset record
-            # Note: This saves the prediction and its doclingDocument as .json in the target directory
-            self.update_prediction(record)
-
-            # Save the ground truth data as well - for debugging
-            output_dir = self.target / "microsoft" / "ground_truth_docling_document"
-            os.makedirs(output_dir, exist_ok=True)
-            docling_document_file_name = os.path.join(output_dir, f"{filename}.json")
-            with open(docling_document_file_name, 'w', encoding="utf-8") as f:
-                json.dump(true_doc.export_to_dict(), f, indent=2)
-
-            # If visualization flag is set, run the visualizations and save them a well
-            if self.do_visualization and record.predicted_doc is not None:
-                save_comparison_html(
-                    filename=viz_dir / f"{os.path.basename(filename)}.html",
-                    true_doc=true_doc,
-                    pred_doc=record.predicted_doc,
-                    page_image=true_page_images[0],
-                    true_labels=TRUE_HTML_EXPORT_LABELS,
-                    pred_labels=PRED_HTML_EXPORT_LABELS,
-                )
+            # # Save the ground truth data as well - for debugging
+            # output_dir = self.target / "microsoft" / "ground_truth_docling_document"
+            # os.makedirs(output_dir, exist_ok=True)
+            # docling_document_file_name = os.path.join(output_dir, f"{filename}.json")
+            # with open(docling_document_file_name, 'w', encoding="utf-8") as f:
+            #     json.dump(true_doc.export_to_dict(), f, indent=2)
 
             yield record
