@@ -3,30 +3,33 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Tuple
 
 import typer
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import PdfFormatOption
+from docling.models.factories import get_ocr_factory
 from tabulate import tabulate  # type: ignore
 
-from docling_eval.benchmarks.constants import (
+from docling_eval.datamodels.types import (
     BenchMarkNames,
-    ConverterTypes,
     EvaluationModality,
+    PredictionFormats,
 )
-from docling_eval.benchmarks.doclaynet_v1.create import create_dlnv1_e2e_dataset
-from docling_eval.benchmarks.dpbench.create import (
-    create_dpbench_e2e_dataset,
-    create_dpbench_tableformer_dataset,
+from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
+from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
+from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
+from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
+from docling_eval.dataset_builders.omnidocbench_builder import (
+    OmniDocBenchDatasetBuilder,
 )
-from docling_eval.benchmarks.omnidocbench.create import (
-    create_omnidocbench_e2e_dataset,
-    create_omnidocbench_tableformer_dataset,
+from docling_eval.dataset_builders.otsl_table_dataset_builder import (
+    FintabNetDatasetBuilder,
+    PubTables1MDatasetBuilder,
+    PubTabNetDatasetBuilder,
 )
-from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
-    create_fintabnet_tableformer_dataset,
-    create_p1m_tableformer_dataset,
-    create_pubtabnet_tableformer_dataset,
-)
+from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderVisualizer,
@@ -46,6 +49,11 @@ from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
 )
+from docling_eval.prediction_providers.docling_provider import DoclingPredictionProvider
+from docling_eval.prediction_providers.file_provider import FilePredictionProvider
+from docling_eval.prediction_providers.tableformer_provider import (
+    TableFormerPredictionProvider,
+)
 
 # Configure logging
 logging.getLogger("docling").setLevel(logging.WARNING)
@@ -59,10 +67,12 @@ app = typer.Typer(
 )
 
 
-class EvaluationTask(str, Enum):
-    CREATE = "create"
-    EVALUATE = "evaluate"
-    VISUALIZE = "visualize"
+class PredictionProviderType(str, Enum):
+    """Types of prediction providers available."""
+
+    DOCLING = "docling"
+    TABLEFORMER = "tableformer"
+    FILE = "file"
 
 
 def log_and_save_stats(
@@ -72,18 +82,20 @@ def log_and_save_stats(
     metric: str,
     stats: DatasetStatistics,
     log_filename: Optional[Path] = None,
-) -> tuple[Path, Path]:
-    r"""
-    For the given DatasetStatistics related to the provided benchmark/modality/metric:
-    - Generate a textual table. Log it and save it in a file.
-    - Generate a plot and save it in a file.
+) -> Tuple[Path, Path]:
+    """
+    For the given DatasetStatistics, generate textual table and plot.
 
-    The filenames of the generated files are derived by the benchmark/modality/metric
+    Args:
+        odir: Output directory
+        benchmark: Benchmark name
+        modality: Evaluation modality
+        metric: Metric name
+        stats: Dataset statistics
+        log_filename: Optional log filename
 
-    Returns
-    -------
-    log_filename: Path of the saved log file
-    fig_filename: Path of the saved png file
+    Returns:
+        Tuple of (log_filename, fig_filename)
     """
     log_mode = "a"
     if log_filename is None:
@@ -110,144 +122,175 @@ def log_and_save_stats(
     return log_filename, fig_filename
 
 
-def create(
-    modality: EvaluationModality,
+def get_dataset_builder(
     benchmark: BenchMarkNames,
-    odir: Path,
-    idir: Optional[Path] = None,
-    image_scale: float = 1.0,
-    converter_type: ConverterTypes = ConverterTypes.DOCLING,
-    artifacts_path: Optional[Path] = None,
+    target: Path,
     split: str = "test",
     begin_index: int = 0,
-    end_index: int = 1000,
-    debug: bool = False,
+    end_index: int = -1,
+    dataset_source: Optional[Path] = None,
 ):
-    r""""""
-    if odir is None:
-        odir = Path("./benchmarks") / benchmark.value / modality.value
+    """Get the appropriate dataset builder for the given benchmark."""
+    common_params = {
+        "target": target,
+        "split": split,
+        "begin_index": begin_index,
+        "end_index": end_index,
+    }
 
     if benchmark == BenchMarkNames.DPBENCH:
-        if idir is None:
-            _log.error("The input dir for %s must be provided", BenchMarkNames.DPBENCH)
-        assert idir is not None
-
-        if (
-            modality == EvaluationModality.END2END
-            or modality == EvaluationModality.LAYOUT
-        ):
-            # No support for max_items
-            create_dpbench_e2e_dataset(
-                dpbench_dir=idir,
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                converter_type=converter_type,
-                image_scale=image_scale,
-                do_viz=True,
-            )
-
-        elif modality == EvaluationModality.TABLE_STRUCTURE:
-            # No support for max_items
-            create_dpbench_tableformer_dataset(
-                dpbench_dir=idir,
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                image_scale=image_scale,
-                artifacts_path=artifacts_path,
-            )
-
-        else:
-            _log.error(f"{modality} is not yet implemented for {benchmark}")
-
-    elif benchmark == BenchMarkNames.OMNIDOCBENCH:
-        if idir is None:
-            _log.error("The input dir for %s must be provided", BenchMarkNames.DPBENCH)
-        assert idir is not None
-
-        if (
-            modality == EvaluationModality.END2END
-            or modality == EvaluationModality.LAYOUT
-        ):
-            # No support for max_items
-            create_omnidocbench_e2e_dataset(
-                omnidocbench_dir=idir,
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                converter_type=converter_type,
-                image_scale=image_scale,
-            )
-        elif modality == EvaluationModality.TABLE_STRUCTURE:
-            # No support for max_items
-            create_omnidocbench_tableformer_dataset(
-                omnidocbench_dir=idir,
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                image_scale=image_scale,
-                artifacts_path=artifacts_path,
-            )
-        else:
-            _log.error(f"{modality} is not yet implemented for {benchmark}")
-
-    elif benchmark == BenchMarkNames.PUBTABNET:
-        if modality == EvaluationModality.TABLE_STRUCTURE:
-            _log.info("Create the tableformer converted PubTabNet dataset")
-            create_pubtabnet_tableformer_dataset(
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                do_viz=True,
-                artifacts_path=artifacts_path,
-            )
-        else:
-            _log.error(f"{modality} is not yet implemented for {benchmark}")
-
-    elif benchmark == BenchMarkNames.FINTABNET:
-        if modality == EvaluationModality.TABLE_STRUCTURE:
-            _log.info("Create the tableformer converted FinTabNet dataset")
-            create_fintabnet_tableformer_dataset(
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                do_viz=True,
-                artifacts_path=artifacts_path,
-            )
-        else:
-            _log.error(f"{modality} is not yet implemented for {benchmark}")
-
-    elif benchmark == BenchMarkNames.PUB1M:
-        if modality == EvaluationModality.TABLE_STRUCTURE:
-            _log.info("Create the tableformer converted Pub1M dataset")
-            create_p1m_tableformer_dataset(
-                output_dir=odir,
-                begin_index=begin_index,
-                end_index=end_index,
-                do_viz=True,
-                artifacts_path=artifacts_path,
-            )
-        else:
-            _log.error(f"{modality} is not yet implemented for {benchmark}")
+        return DPBenchDatasetBuilder(**common_params)  # type: ignore
 
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
-        if modality == EvaluationModality.LAYOUT:
-            create_dlnv1_e2e_dataset(
-                name="ds4sd/DocLayNet-v1.2",
-                split=split,
-                output_dir=odir,
-                converter_type=converter_type,
-                do_viz=True,
-                begin_index=begin_index,
-                end_index=end_index,
-                do_debug=debug,
-            )
-        else:
-            _log.error(f"{modality} is not yet implemented for {benchmark}")
+        return DocLayNetV1DatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.DOCLAYNETV2:
+        if dataset_source is None:
+            raise ValueError("dataset_path is required for DocLayNetV2")
+        return DocLayNetV2DatasetBuilder(dataset_source=dataset_source, **common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.FUNSD:
+        if dataset_source is None:
+            raise ValueError("dataset_source is required for FUNSD")
+        return FUNSDDatasetBuilder(dataset_source=dataset_source, **common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.XFUND:
+        if dataset_source is None:
+            raise ValueError("dataset_source is required for XFUND")
+        return XFUNDDatasetBuilder(dataset_source=dataset_source, **common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.OMNIDOCBENCH:
+        return OmniDocBenchDatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.FINTABNET:
+        return FintabNetDatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.PUB1M:
+        return PubTables1MDatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.PUBTABNET:
+        return PubTabNetDatasetBuilder(**common_params)  # type: ignore
 
     else:
-        _log.error(f"{benchmark} is not yet implemented")
+        raise ValueError(f"Unsupported benchmark: {benchmark}")
+
+
+def get_prediction_provider(
+    provider_type: PredictionProviderType,
+    file_source_path: Optional[Path] = None,
+    file_prediction_format: Optional[PredictionFormats] = None,
+):
+    """Get the appropriate prediction provider with default settings."""
+    if provider_type == PredictionProviderType.DOCLING:
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="easyocr",
+        )
+
+        pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options,
+            do_table_structure=True,
+        )
+
+        pipeline_options.images_scale = 2.0
+        pipeline_options.generate_page_images = True
+        pipeline_options.generate_picture_images = True
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=True,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.TABLEFORMER:
+        return TableFormerPredictionProvider(
+            do_visualization=True,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.FILE:
+        if file_prediction_format is None:
+            raise ValueError("file_prediction_format is required for File provider")
+        if file_source_path is None:
+            raise ValueError("file_source_path is required for File provider")
+
+        return FilePredictionProvider(
+            prediction_format=file_prediction_format,
+            source_path=file_source_path,
+            do_visualization=True,
+            ignore_missing_predictions=True,
+            ignore_missing_files=True,
+            use_ground_truth_page_images=False,
+        )
+
+    else:
+        raise ValueError(f"Unsupported prediction provider: {provider_type}")
+
+
+def create_datasets(
+    modality: EvaluationModality,
+    benchmark: BenchMarkNames,
+    output_dir: Path,
+    dataset_source: Optional[Path] = None,
+    split: str = "test",
+    begin_index: int = 0,
+    end_index: int = -1,
+    prediction_provider: Optional[PredictionProviderType] = None,
+    file_prediction_format: Optional[PredictionFormats] = None,
+    file_source_path: Optional[Path] = None,
+    debug: bool = False,
+):
+    """Create datasets using dataset builders and prediction providers."""
+    # Set up ground truth directory - matching test_dataset_builder.py layout
+    gt_dir = output_dir / "gt_dataset"
+
+    # Create dataset builder
+    try:
+        dataset_builder = get_dataset_builder(
+            benchmark=benchmark,
+            target=gt_dir,
+            split=split,
+            begin_index=begin_index,
+            end_index=end_index,
+            dataset_source=dataset_source,
+        )
+    except ValueError as e:
+        _log.error(f"Error creating dataset builder: {str(e)}")
+        return
+
+    # Retrieve and save the dataset
+    dataset_builder.retrieve_input_dataset()
+    dataset_builder.save_to_disk(chunk_size=80)
+
+    # If prediction provider is specified, create predictions
+    if prediction_provider:
+        # Set up eval dataset directory - matching test_dataset_builder.py layout
+        pred_dir = output_dir / "eval_dataset"
+
+        try:
+            # Create the appropriate prediction provider
+            provider = get_prediction_provider(
+                provider_type=prediction_provider,
+                file_source_path=file_source_path,
+                file_prediction_format=file_prediction_format,
+            )
+
+            # Create predictions
+            provider.create_prediction_dataset(
+                name=dataset_builder.name,
+                gt_dataset_dir=gt_dir,
+                target_dataset_dir=pred_dir,
+                split=split,
+                begin_index=begin_index,
+                end_index=end_index,
+            )
+        except ValueError as e:
+            _log.error(f"Error creating prediction provider: {str(e)}")
 
 
 def evaluate(
@@ -257,35 +300,56 @@ def evaluate(
     odir: Path,
     split: str = "test",
 ):
-    r""""""
+    """
+    Evaluate predictions against ground truth.
+
+    Args:
+        modality: Evaluation modality
+        benchmark: Benchmark name
+        idir: Input directory with dataset
+        odir: Output directory for results
+        split: Dataset split
+        begin_index: Begin index
+        end_index: End index
+    """
     if not os.path.exists(idir):
         _log.error(f"Benchmark directory not found: {idir}")
+        return
+
+    os.makedirs(odir, exist_ok=True)
 
     # Save the evaluation
     save_fn = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
     if modality == EvaluationModality.END2END:
-        _log.error("not supported")
+        _log.error("END2END evaluation not supported. ")
 
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
-        layout_evaluation = layout_evaluator(idir, split=split)
+        layout_evaluation = layout_evaluator(
+            idir,
+            split=split,
+        )
 
         with open(save_fn, "w") as fd:
             json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
-        table_evaluation = table_evaluator(idir, split=split)
+        table_evaluation = table_evaluator(
+            idir,
+            split=split,
+        )
 
         with open(save_fn, "w") as fd:
             json.dump(table_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
-        # readingorder_evaluator = ReadingOrderEvaluatorGlm()
         readingorder_evaluator = ReadingOrderEvaluator()
-
-        readingorder_evaluation = readingorder_evaluator(idir, split=split)
+        readingorder_evaluation = readingorder_evaluator(
+            idir,
+            split=split,
+        )
 
         with open(save_fn, "w") as fd:
             json.dump(
@@ -298,7 +362,10 @@ def evaluate(
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         md_evaluator = MarkdownTextEvaluator()
-        md_evaluation = md_evaluator(idir, split=split)
+        md_evaluation = md_evaluator(
+            idir,
+            split=split,
+        )
 
         with open(save_fn, "w") as fd:
             json.dump(
@@ -311,7 +378,10 @@ def evaluate(
 
     elif modality == EvaluationModality.BBOXES_TEXT:
         bbox_evaluator = BboxTextEvaluator()
-        bbox_evaluation = bbox_evaluator(idir, split=split)
+        bbox_evaluation = bbox_evaluator(
+            idir,
+            split=split,
+        )
 
         with open(save_fn, "w") as fd:
             json.dump(
@@ -322,283 +392,425 @@ def evaluate(
                 ensure_ascii=False,
             )
 
-    elif modality == EvaluationModality.CODE_TRANSCRIPTION:
-        pass
+    else:
+        _log.error(f"Unsupported modality for evaluation: {modality}")
+        return
 
-    _log.info("The evaluation has been saved in '%s'", save_fn)
+    _log.info(f"The evaluation has been saved in '{save_fn}'")
 
 
-def visualise(
+def visualize(
     modality: EvaluationModality,
     benchmark: BenchMarkNames,
     idir: Path,
     odir: Path,
     split: str = "test",
 ):
+    """
+    Visualize evaluation results.
 
+    Args:
+        modality: Visualization modality
+        benchmark: Benchmark name
+        idir: Input directory with dataset
+        odir: Output directory for visualizations
+        split: Dataset split
+        begin_index: Begin index
+        end_index: End index
+    """
+    if not os.path.exists(idir):
+        _log.error(f"Input directory not found: {idir}")
+        return
+
+    os.makedirs(odir, exist_ok=True)
     metrics_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
+    if not os.path.exists(metrics_filename):
+        _log.error(f"Metrics file not found: {metrics_filename}")
+        _log.error("You need to run evaluation first before visualization")
+        return
+
     if modality == EvaluationModality.END2END:
-        pass
+        _log.error("END2END visualization not supported")
 
     elif modality == EvaluationModality.LAYOUT:
-        with open(metrics_filename, "r") as fd:
-            layout_evaluation = DatasetLayoutEvaluation.parse_file(metrics_filename)
+        try:
+            with open(metrics_filename, "r") as fd:
+                layout_evaluation = DatasetLayoutEvaluation.model_validate_json(
+                    fd.read()
+                )
 
-        # Save layout statistics for mAP
-        log_filename, _ = log_and_save_stats(
-            odir, benchmark, modality, "mAP_0.5_0.95", layout_evaluation.image_mAP_stats
-        )
+            # Save layout statistics for mAP
+            log_filename, _ = log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "mAP_0.5_0.95",
+                layout_evaluation.image_mAP_stats,
+            )
 
-        # Append to layout statistics, the AP per classes
-        data, headers = layout_evaluation.to_table()
-        content = "\n\n\nAP[0.5:0.05:0.95] per class (reported as %):\n\n"
-        content += tabulate(data, headers=headers, tablefmt="github")
+            # Append to layout statistics, the AP per classes
+            data, headers = layout_evaluation.to_table()
+            content = "\n\n\nAP[0.5:0.05:0.95] per class (reported as %):\n\n"
+            content += tabulate(data, headers=headers, tablefmt="github")
 
-        # Append to layout statistics, the mAP
-        content += "\n\nTotal mAP[0.5:0.05:0.95] (reported as %): {:.2f}".format(
-            100.0 * layout_evaluation.mAP
-        )
-        _log.info(content)
-        with open(log_filename, "a") as fd:
-            fd.write(content)
+            # Append to layout statistics, the mAP
+            content += "\n\nTotal mAP[0.5:0.05:0.95] (reported as %): {:.2f}".format(
+                100.0 * layout_evaluation.mAP
+            )
+            _log.info(content)
+            with open(log_filename, "a") as fd:
+                fd.write(content)
+        except Exception as e:
+            _log.error(f"Error processing layout evaluation: {str(e)}")
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
-        with open(metrics_filename, "r") as fd:
-            table_evaluation = DatasetTableEvaluation.parse_file(metrics_filename)
+        try:
+            with open(metrics_filename, "r") as fd:
+                table_evaluation = DatasetTableEvaluation.model_validate_json(fd.read())
 
-        figname = (
-            odir / f"evaluation_{benchmark.value}_{modality.value}-delta_row_col.png"
-        )
-        table_evaluation.save_histogram_delta_row_col(figname=figname)
+            figname = (
+                odir
+                / f"evaluation_{benchmark.value}_{modality.value}-delta_row_col.png"
+            )
+            table_evaluation.save_histogram_delta_row_col(figname=figname)
 
-        # TEDS struct-with-text
-        log_and_save_stats(
-            odir, benchmark, modality, "TEDS_struct-with-text", table_evaluation.TEDS
-        )
+            # TEDS struct-with-text
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "TEDS_struct-with-text",
+                table_evaluation.TEDS,
+            )
 
-        # TEDS struct-only
-        log_and_save_stats(
-            odir, benchmark, modality, "TEDS_struct-only", table_evaluation.TEDS_struct
-        )
+            # TEDS struct-only
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "TEDS_struct-only",
+                table_evaluation.TEDS_struct,
+            )
+        except Exception as e:
+            _log.error(f"Error processing table evaluation: {str(e)}")
 
     elif modality == EvaluationModality.READING_ORDER:
-        with open(metrics_filename, "r") as fd:
-            ro_evaluation = DatasetReadingOrderEvaluation.parse_file(metrics_filename)
-        # ARD
-        log_and_save_stats(
-            odir, benchmark, modality, "ARD_norm", ro_evaluation.ard_stats
-        )
+        try:
+            with open(metrics_filename, "r") as fd:
+                ro_evaluation = DatasetReadingOrderEvaluation.model_validate_json(
+                    fd.read()
+                )
 
-        # Weighted ARD
-        log_and_save_stats(
-            odir, benchmark, modality, "weighted_ARD", ro_evaluation.w_ard_stats
-        )
+            # ARD
+            log_and_save_stats(
+                odir, benchmark, modality, "ARD_norm", ro_evaluation.ard_stats
+            )
 
-        # Generate visualizations of the reading order across the GT and the prediction
-        ro_visualizer = ReadingOrderVisualizer()
-        ro_visualizer(idir, metrics_filename, odir, split=split)
+            # Weighted ARD
+            log_and_save_stats(
+                odir, benchmark, modality, "weighted_ARD", ro_evaluation.w_ard_stats
+            )
+
+            # Generate visualizations of the reading order across the GT and the prediction
+            ro_visualizer = ReadingOrderVisualizer()
+            ro_visualizer(
+                idir,
+                metrics_filename,
+                odir,
+                split=split,
+            )
+        except Exception as e:
+            _log.error(f"Error processing reading order evaluation: {str(e)}")
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
-        with open(metrics_filename, "r") as fd:
-            md_evaluation = DatasetMarkdownEvaluation.parse_file(metrics_filename)
-        # Log stats for all metrics in the same file
-        log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.txt"
-        with open(log_filename, "w") as fd:
-            fd.write(f"{benchmark.value} size: {len(md_evaluation.evaluations)}\n\n")
+        try:
+            with open(metrics_filename, "r") as fd:
+                md_evaluation = DatasetMarkdownEvaluation.model_validate_json(fd.read())
 
-        log_and_save_stats(
-            odir,
-            benchmark,
-            modality,
-            "BLEU",
-            md_evaluation.bleu_stats,
-            log_filename=log_filename,
-        )
-        log_and_save_stats(
-            odir,
-            benchmark,
-            modality,
-            "F1",
-            md_evaluation.f1_score_stats,
-            log_filename=log_filename,
-        )
-        log_and_save_stats(
-            odir,
-            benchmark,
-            modality,
-            "precision",
-            md_evaluation.precision_stats,
-            log_filename=log_filename,
-        )
-        log_and_save_stats(
-            odir,
-            benchmark,
-            modality,
-            "recall",
-            md_evaluation.recall_stats,
-            log_filename=log_filename,
-        )
-        log_and_save_stats(
-            odir,
-            benchmark,
-            modality,
-            "edit_distance",
-            md_evaluation.edit_distance_stats,
-            log_filename=log_filename,
-        )
-        log_and_save_stats(
-            odir,
-            benchmark,
-            modality,
-            "meteor",
-            md_evaluation.meteor_stats,
-            log_filename=log_filename,
-        )
+            # Log stats for all metrics in the same file
+            log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.txt"
+            with open(log_filename, "w") as fd:
+                fd.write(
+                    f"{benchmark.value} size: {len(md_evaluation.evaluations)}\n\n"
+                )
 
-    elif modality == EvaluationModality.CODE_TRANSCRIPTION:
-        pass
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "BLEU",
+                md_evaluation.bleu_stats,
+                log_filename=log_filename,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "F1",
+                md_evaluation.f1_score_stats,
+                log_filename=log_filename,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "precision",
+                md_evaluation.precision_stats,
+                log_filename=log_filename,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "recall",
+                md_evaluation.recall_stats,
+                log_filename=log_filename,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "edit_distance",
+                md_evaluation.edit_distance_stats,
+                log_filename=log_filename,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "meteor",
+                md_evaluation.meteor_stats,
+                log_filename=log_filename,
+            )
+        except Exception as e:
+            _log.error(f"Error processing markdown text evaluation: {str(e)}")
 
-    elif modality == EvaluationModality.MATH_TRANSCRIPTION:
-        pass
-
-    elif modality == EvaluationModality.CAPTIONING:
-        pass
+    else:
+        _log.error(f"Unsupported modality for visualization: {modality}")
 
 
-@app.command(no_args_is_help=True)
-def main(
-    task: Annotated[
-        EvaluationTask,
-        typer.Option(
-            ...,  # EvaluationTask.CREATE,
-            "-t",  # Short name
-            "--task",  # Long name
-            help="Evaluation task",
-        ),
-    ],
-    modality: Annotated[
-        EvaluationModality,
-        typer.Option(
-            ...,  # EvaluationModality.TABLE_STRUCTURE,
-            "-m",  # Short name
-            "--modality",  # Long name
-            help="Evaluation modality",
-        ),
-    ],
-    benchmark: Annotated[
-        BenchMarkNames,
-        typer.Option(
-            ...,  # BenchMarkNames.DPBENCH,
-            "-b",  # Short name
-            "--benchmark",  # Long name
-            help="Benchmark name",
-        ),
-    ],
-    odir: Annotated[
-        Path,
-        typer.Option(
-            ...,
-            "-o",  # Short name
-            "--output-dir",  # Long name
-            help="Output directory",
-        ),
-    ],
-    idir: Annotated[
-        Optional[Path],
-        typer.Option(
-            ...,
-            "-i",  # Short name
-            "--input-dir",  # Long name
-            help="Input directory",
-        ),
+@app.command()
+def create_gt(
+    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    dataset_source: Annotated[
+        Optional[Path], typer.Option(help="Dataset source for FUNSD and XFUND")
     ] = None,
-    converter_type: Annotated[
-        ConverterTypes,
-        typer.Option(
-            ...,
-            "-c",  # Short name
-            "--converter_type",  # Long name
-            help="Type of document converter",
-        ),
-    ] = ConverterTypes.DOCLING,
-    split: Annotated[
-        str,
-        typer.Option(
-            ...,
-            "-s",  # Short name
-            "--split",  # Long name
-            help="Dataset split",
-        ),
-    ] = "test",
-    artifacts_path: Annotated[
-        Optional[Path],
-        typer.Option(
-            ...,
-            "-a",  # Short name
-            "--artifacts-path",  # Long name
-            help="Load artifacts from local path",
-        ),
-    ] = None,
-    begin_index: Annotated[
-        int,
-        typer.Option(
-            ...,
-            "-bi",  # Short name
-            "--begin_index",  # Long name
-            help="Begin converting from the given sample index (inclusive). Zero based.",
-        ),
-    ] = 0,
+    split: Annotated[str, typer.Option(help="Dataset split")] = "test",
+    begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
     end_index: Annotated[
-        int,
-        typer.Option(
-            ...,
-            "-ei",  # Short name
-            "--end_index",  # Long name
-            help="End converting to the given sample index (exclusive). Zero based. -1 indicates to take all",
-        ),
-    ] = 1000,
-    debug: Annotated[
-        bool,
-        typer.Option(
-            ...,
-            help="Enable debugging",
-        ),
-    ] = False,
+        int, typer.Option(help="End index (exclusive), -1 for all")
+    ] = -1,
 ):
-    # Set the log level
-    log_format = "%(asctime)s - %(levelname)s - %(message)s"
-    # if debug:
-    #     logging.basicConfig(level=logging.DEBUG, format=log_format)
-    # else:
-    #     logging.basicConfig(level=logging.INFO, format=log_format)
-    logging.basicConfig(level=logging.INFO, format=log_format)
+    """Create ground truth dataset only."""
+    gt_dir = output_dir / "gt_dataset"
 
-    # Dispatch the command
-    if task == EvaluationTask.CREATE:
-        create(
-            modality,
-            benchmark,
-            odir,
-            idir=idir,
-            converter_type=converter_type,
-            artifacts_path=artifacts_path,
+    try:
+        dataset_builder = get_dataset_builder(
+            benchmark=benchmark,
+            target=gt_dir,
             split=split,
             begin_index=begin_index,
             end_index=end_index,
-            debug=debug,
+            dataset_source=dataset_source,
         )
 
-    elif task == EvaluationTask.EVALUATE:
-        assert idir is not None
-        evaluate(modality, benchmark, idir, odir, split)
+        # Retrieve and save the dataset
+        dataset_builder.retrieve_input_dataset()
+        dataset_builder.save_to_disk(chunk_size=80)
 
-    elif task == EvaluationTask.VISUALIZE:
-        assert idir is not None
-        visualise(modality, benchmark, idir, odir, split)
+        _log.info(f"Ground truth dataset created at {gt_dir}")
+    except ValueError as e:
+        _log.error(f"Error creating dataset builder: {str(e)}")
 
+
+@app.command()
+def create_eval(
+    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
+    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    prediction_provider: Annotated[
+        PredictionProviderType, typer.Option(help="Type of prediction provider to use")
+    ],
+    split: Annotated[str, typer.Option(help="Dataset split")] = "test",
+    begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
+    end_index: Annotated[
+        int, typer.Option(help="End index (exclusive), -1 for all")
+    ] = -1,
+    # File provider required options
+    file_prediction_format: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Prediction format for File provider (required if using FILE provider)"
+        ),
+    ] = None,
+    file_source_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Source path for File provider (required if using FILE provider)"
+        ),
+    ] = None,
+):
+    """Create evaluation dataset from existing ground truth."""
+    gt_dir = output_dir / "gt_dataset"
+    pred_dir = output_dir / "eval_dataset"
+
+    # Check if ground truth exists
+    if not gt_dir.exists():
+        _log.error(f"Ground truth directory not found: {gt_dir}")
+        _log.error(
+            "Cannot create eval dataset without ground truth. Run create_gt first."
+        )
+        return
+
+    try:
+        # Convert string option to enum value
+        file_format = (
+            PredictionFormats(file_prediction_format)
+            if file_prediction_format
+            else None
+        )
+
+        # Create the appropriate prediction provider
+        provider = get_prediction_provider(
+            provider_type=prediction_provider,
+            file_source_path=file_source_path,
+            file_prediction_format=file_format,
+        )
+
+        # Get the dataset name from the benchmark
+        dataset_name = f"{benchmark.value}: {modality.value}"
+
+        # Create predictions
+        provider.create_prediction_dataset(
+            name=dataset_name,
+            gt_dataset_dir=gt_dir,
+            target_dataset_dir=pred_dir,
+            split=split,
+            begin_index=begin_index,
+            end_index=end_index,
+        )
+
+        _log.info(f"Evaluation dataset created at {pred_dir}")
+    except ValueError as e:
+        _log.error(f"Error creating prediction provider: {str(e)}")
+
+
+@app.command()
+def create(
+    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
+    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    dataset_source: Annotated[
+        Optional[Path], typer.Option(help="Dataset source for FUNSD and XFUND")
+    ] = None,
+    split: Annotated[str, typer.Option(help="Dataset split")] = "test",
+    begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
+    end_index: Annotated[
+        int, typer.Option(help="End index (exclusive), -1 for all")
+    ] = -1,
+    prediction_provider: Annotated[
+        Optional[PredictionProviderType],
+        typer.Option(help="Type of prediction provider to use"),
+    ] = None,
+    file_prediction_format: Annotated[
+        Optional[str], typer.Option(help="Prediction format for File provider")
+    ] = None,
+    file_source_path: Annotated[
+        Optional[Path], typer.Option(help="Source path for File provider")
+    ] = None,
+):
+    """Create both ground truth and evaluation datasets in one step."""
+    # First create ground truth
+    create_gt(
+        benchmark=benchmark,
+        output_dir=output_dir,
+        dataset_source=dataset_source,
+        split=split,
+        begin_index=begin_index,
+        end_index=end_index,
+    )
+
+    # Then create evaluation if provider specified
+    if prediction_provider:
+        create_eval(
+            modality=modality,
+            benchmark=benchmark,
+            output_dir=output_dir,
+            prediction_provider=prediction_provider,
+            split=split,
+            begin_index=begin_index,
+            end_index=end_index,
+            file_prediction_format=file_prediction_format,
+            file_source_path=file_source_path,
+        )
     else:
-        _log.error("Unsupported command: '%s'", task.value)
+        _log.info(
+            "No prediction provider specified, skipping evaluation dataset creation"
+        )
+
+
+@app.command(name="evaluate")
+def evaluate_cmd(
+    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
+    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
+    output_dir: Annotated[Path, typer.Option(help="Base output directory")],
+    split: Annotated[str, typer.Option(help="Dataset split")] = "test",
+):
+    """Evaluate predictions against ground truth."""
+    # Derive input and output paths based on the directory structure in test_dataset_builder.py
+    input_dir = output_dir / "eval_dataset"
+    eval_output_dir = output_dir / "evaluations" / modality.value
+
+    # Create output directory
+    os.makedirs(eval_output_dir, exist_ok=True)
+
+    # Call our self-contained evaluation function
+    evaluate(
+        modality=modality,
+        benchmark=benchmark,
+        idir=input_dir,
+        odir=eval_output_dir,
+        split=split,
+    )
+
+
+@app.command(name="visualize")
+def visualize_cmd(
+    modality: Annotated[
+        EvaluationModality, typer.Option(help="Visualization modality")
+    ],
+    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
+    output_dir: Annotated[Path, typer.Option(help="Base output directory")],
+    split: Annotated[str, typer.Option(help="Dataset split")] = "test",
+    begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
+    end_index: Annotated[
+        int, typer.Option(help="End index (exclusive), -1 for all")
+    ] = -1,
+):
+    """Visualize evaluation results."""
+    # Derive input and output paths based on the directory structure in test_dataset_builder.py
+    input_dir = output_dir / "eval_dataset"
+    eval_output_dir = output_dir / "evaluations" / modality.value
+
+    # Create output directory
+    os.makedirs(eval_output_dir, exist_ok=True)
+
+    # Call our self-contained visualization function
+    visualize(
+        modality=modality,
+        benchmark=benchmark,
+        idir=input_dir,
+        odir=eval_output_dir,
+        split=split,
+    )
+
+
+@app.callback()
+def main():
+    """Docling Evaluation CLI for benchmarking document processing tasks."""
+    pass
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns  # type: ignore
+from docling_eval.datamodels.types import BenchMarkColumns  # type: ignore
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)

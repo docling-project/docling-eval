@@ -9,7 +9,7 @@ from docling_core.types.doc.document import DocItem, DoclingDocument, ImageRefMo
 from docling_core.types.doc.labels import DocItemLabel
 from PIL import Image, ImageDraw, ImageFont
 
-from docling_eval.benchmarks.utils import from_pil_to_base64
+from docling_eval.utils.utils import from_pil_to_base64
 from docling_eval.visualisation.constants import (
     HTML_COMPARISON_PAGE,
     HTML_COMPARISON_PAGE_WITH_CLUSTERS,

@@ -2,11 +2,11 @@ import logging
 import os
 from pathlib import Path
 
-from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
-from docling_eval.benchmarks.tableformer_huggingface_otsl.create import (
+from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
+from docling_eval.legacy.main import evaluate, visualise
+from docling_eval.legacy.tableformer_huggingface_otsl.create import (
     create_p1m_tableformer_dataset,
 )
-from docling_eval.cli.main import evaluate, visualise
 
 # Configure logging
 logging.basicConfig(

@@ -13,7 +13,7 @@ poetry run python docs/examples/benchmark_dpbench.py
 Another way is to create it from PDF or PNG files. In this case, simply run the following scripts,
 
 ```sh
-poetry run python ./docling_eval/benchmarks/cvat_annotation/create_dataset_from_pdfs.py -h
+poetry run python ./docling_eval/legacy/cvat_annotation/create_dataset_from_pdfs.py -h
 usage: create_dataset_from_pdfs.py [-h] -i INPUT_DIR -o OUTPUT_DIR -b BUCKET_SIZE
 
 Process input and output directories and a pre-annotation file.
@@ -33,7 +33,7 @@ options:
 Once you have run the Prerequisites, you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `preannotate.py` script,
 
 ```sh
-poetry run python docling_eval/benchmarks/cvat_annotation/preannotate.py -h
+poetry run python docling_eval/legacy/cvat_annotation/preannotate.py -h
 usage: preannotate.py [-h] -i INPUT_DIR -o OUTPUT_DIR -b BUCKET_SIZE
 
 Process input and output directories and a pre-annotation file.
@@ -51,7 +51,7 @@ options:
 In essence, this will read the parquet files and set up a new directory structure (designated output) that has the following layout,
 
 ```sh
-./benchmarks/<output-dir>
+./legacy/<output-dir>
 ├── cvat_annotations
 │   ├── xmls
 │   └── zips
@@ -136,7 +136,7 @@ After you have annotated all images, you can export the annotations,
 You move the zip file into `cvat_annotations/zips` and then run the create script,
 
 ```sh
-poetry run python docling_eval/benchmarks/cvat_annotation/create.py -h
+poetry run python docling_eval/legacy/cvat_annotation/create.py -h
 usage: create.py [-h] -i INPUT_DIR
 
 Create new evaluation dataset using CVAT annotation files.

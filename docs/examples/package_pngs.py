@@ -3,21 +3,21 @@ import json
 import logging
 from pathlib import Path
 
-from docling.cli.main import OcrEngine
 from docling.datamodel.base_models import ConversionStatus
+from docling.datamodel.pipeline_options import OcrMacOptions
 from docling_core.types.doc.document import ImageRefMode
 from docling_core.types.doc.labels import DocItemLabel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns
-from docling_eval.benchmarks.utils import (
+from docling_eval.datamodels.types import BenchMarkColumns
+from docling_eval.legacy.converters.conversion import create_image_docling_converter
+from docling_eval.utils.utils import (
     docling_version,
     extract_images,
     from_pil_to_base64,
     get_binary,
     save_shard_to_disk,
 )
-from docling_eval.converters.conversion import create_image_docling_converter
 from docling_eval.visualisation.constants import HTML_INSPECTION
 from docling_eval.visualisation.visualisations import draw_clusters_with_reading_order
 
@@ -140,7 +140,7 @@ def main():
 
     # Create Converter
     doc_converter = create_image_docling_converter(
-        do_ocr=True, ocr_lang=["en"], ocr_engine=OcrEngine.OCRMAC
+        do_ocr=True, ocr_lang=["en"], ocr_engine=OcrMacOptions.kind
     )
 
     records = []

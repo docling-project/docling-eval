@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns
+from docling_eval.datamodels.types import BenchMarkColumns
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 from docling_eval.visualisation.visualisations import draw_arrow
 

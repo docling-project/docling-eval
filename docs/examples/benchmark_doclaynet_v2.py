@@ -2,16 +2,11 @@ import logging
 import os
 from pathlib import Path
 
-from huggingface_hub import snapshot_download
 from tabulate import tabulate  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkNames, EvaluationModality
-from docling_eval.benchmarks.doclaynet_v2.create import create_dlnv2_e2e_dataset
-from docling_eval.benchmarks.dpbench.create import (
-    create_dpbench_e2e_dataset,
-    create_dpbench_tableformer_dataset,
-)
-from docling_eval.cli.main import evaluate, visualise
+from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
+from docling_eval.legacy.doclaynet_v2.create import create_dlnv2_e2e_dataset
+from docling_eval.legacy.main import evaluate, visualise
 
 # Configure logging
 logging.basicConfig(

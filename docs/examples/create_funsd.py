@@ -2,8 +2,8 @@ import logging
 import os
 from pathlib import Path
 
-from docling_eval.benchmarks.constants import BenchMarkNames
-from docling_eval.benchmarks.funsd.create import create_funsd_dataset
+from docling_eval.datamodels.types import BenchMarkNames
+from docling_eval.legacy.funsd.create import create_funsd_dataset
 
 # Configure logging
 logging.basicConfig(

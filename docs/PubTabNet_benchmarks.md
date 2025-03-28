@@ -15,8 +15,8 @@ poetry run evaluate \
     -t evaluate \
     -m tableformer \
     -b PubTabNet \
-    -i benchmarks/PubTabNet-dataset/tableformer \
-    -o benchmarks/PubTabNet-dataset/tableformer
+    -i legacy/PubTabNet-dataset/tableformer \
+    -o legacy/PubTabNet-dataset/tableformer
 ```
 
 [Tableformer evaluation json](evaluations/PubTabNet/evaluation_PubTabNet_tableformer.json)
@@ -28,8 +28,8 @@ poetry run evaluate \
     -t visualize \
     -m tableformer \
     -b PubTabNet \
-    -i benchmarks/PubTabNet-dataset/tableformer \
-    -o benchmarks/PubTabNet-dataset/tableformer
+    -i legacy/PubTabNet-dataset/tableformer \
+    -o legacy/PubTabNet-dataset/tableformer
 ```
 
 ![TEDS plot](evaluations/PubTabNet/evaluation_PubTabNet_tableformer-delta_row_col.png)

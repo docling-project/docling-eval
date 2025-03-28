@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 import evaluate
 import nltk
@@ -14,7 +14,12 @@ from nltk.translate import meteor_score
 from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
-from docling_eval.benchmarks.constants import BenchMarkColumns  # type: ignore
+from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
+from docling_eval.datamodels.types import (  # type: ignore
+    BenchMarkColumns,
+    PredictionFormats,
+)
+from docling_eval.evaluators.base_evaluator import BaseEvaluator, DatasetEvaluation
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)
@@ -26,8 +31,6 @@ class PageMarkdownEvaluation(BaseModel):
     true_md: str
     pred_md: str
     bleu: float
-
-    # NLTK metrics
     f1_score: float
     precision: float
     recall: float
@@ -35,11 +38,10 @@ class PageMarkdownEvaluation(BaseModel):
     meteor: float
 
 
-class DatasetMarkdownEvaluation(BaseModel):
+class DatasetMarkdownEvaluation(DatasetEvaluation):
     evaluations: List[PageMarkdownEvaluation]
-    bleu_stats: DatasetStatistics
 
-    # NLTK metrics
+    bleu_stats: DatasetStatistics
     f1_score_stats: DatasetStatistics
     precision_stats: DatasetStatistics
     recall_stats: DatasetStatistics
@@ -47,32 +49,74 @@ class DatasetMarkdownEvaluation(BaseModel):
     meteor_stats: DatasetStatistics
 
 
-class MarkdownTextEvaluator:
-    def __init__(self):
+class MarkdownTextEvaluator(BaseEvaluator):
+    def __init__(
+        self,
+        intermediate_evaluations_path: Optional[Path] = None,
+        prediction_sources: List[PredictionFormats] = [],
+    ):
+        r""" """
+        supported_prediction_formats: List[PredictionFormats] = [
+            PredictionFormats.DOCLING_DOCUMENT,
+            PredictionFormats.MARKDOWN,
+        ]
+        if not prediction_sources:
+            prediction_sources = supported_prediction_formats
+        super().__init__(
+            intermediate_evaluations_path=intermediate_evaluations_path,
+            prediction_sources=prediction_sources,
+            supported_prediction_formats=supported_prediction_formats,
+        )
+
         self._bleu_eval = evaluate.load("bleu")
 
         # Download the NLTK data
         nltk.download("popular", quiet=True)
         nltk.download("punkt_tab", quiet=True)
 
+        # Select which DocItemLabels should be exported to markdown
+        self._labels: Set[DocItemLabel] = set(
+            [
+                DocItemLabel.CAPTION,
+                DocItemLabel.FOOTNOTE,
+                DocItemLabel.FORMULA,
+                DocItemLabel.LIST_ITEM,
+                DocItemLabel.PAGE_FOOTER,
+                DocItemLabel.PAGE_HEADER,
+                DocItemLabel.PICTURE,
+                DocItemLabel.SECTION_HEADER,
+                # DocItemLabel.TABLE,
+                DocItemLabel.TEXT,
+                DocItemLabel.TITLE,
+                DocItemLabel.DOCUMENT_INDEX,
+                DocItemLabel.CODE,
+                DocItemLabel.CHECKBOX_SELECTED,
+                DocItemLabel.CHECKBOX_UNSELECTED,
+                DocItemLabel.FORM,
+                DocItemLabel.KEY_VALUE_REGION,
+                DocItemLabel.PARAGRAPH,
+                DocItemLabel.REFERENCE,
+            ]
+        )
+
     def __call__(
         self,
         ds_path: Path,
         split: str = "test",
-        pred_md_dict: Optional[dict[str, str]] = None,
+        # Remove the ext_predictions when all evaluators have been migrated to the new design
+        ext_predictions: Optional[
+            Dict[str, Any]
+        ] = None,  # Optionally provided external predictions
     ) -> DatasetMarkdownEvaluation:
         r"""
         Parameters
         ----------
         ds_path: Path to load the parquet files of the dataset
         split: Split of the dataset to load
-        pred_md_dict: Optionally provide the prediction markdown input content.
-                      The dict is indexed by the DOC_ID and the value is the markdown content.
-                      If such dict is provided, it will be used to provide the markdown content.
         """
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
-        _log.info(f"oveview of dataset: {ds}")
+        _log.info(f"Overview of the dataset: {ds}")
         if ds is not None:
             ds_selection = ds[split]
 
@@ -94,62 +138,15 @@ class MarkdownTextEvaluator:
             ncols=120,
             total=len(ds_selection),
         ):
-            doc_id = data[BenchMarkColumns.DOC_ID]
-            true_doc_dict = data[BenchMarkColumns.GROUNDTRUTH]
-            true_doc: DoclingDocument = DoclingDocument.model_validate_json(
-                true_doc_dict
-            )
-            pred_doc_dict = data[BenchMarkColumns.PREDICTION]
-            pred_doc: DoclingDocument = DoclingDocument.model_validate_json(
-                pred_doc_dict
-            )
+            data_record = DatasetRecordWithPrediction.model_validate(data)
+            doc_id = data_record.doc_id
+            true_doc = data_record.ground_truth_doc
+            true_md = self._docling_document_to_md(true_doc)
+            pred_md = self._get_pred_md(data_record)
 
-            # Select which DocItemLabels should be exported to markdown
-            labels: Set[DocItemLabel] = set(
-                [
-                    DocItemLabel.CAPTION,
-                    DocItemLabel.FOOTNOTE,
-                    DocItemLabel.FORMULA,
-                    DocItemLabel.LIST_ITEM,
-                    DocItemLabel.PAGE_FOOTER,
-                    DocItemLabel.PAGE_HEADER,
-                    DocItemLabel.PICTURE,
-                    DocItemLabel.SECTION_HEADER,
-                    # DocItemLabel.TABLE,
-                    DocItemLabel.TEXT,
-                    DocItemLabel.TITLE,
-                    DocItemLabel.DOCUMENT_INDEX,
-                    DocItemLabel.CODE,
-                    DocItemLabel.CHECKBOX_SELECTED,
-                    DocItemLabel.CHECKBOX_UNSELECTED,
-                    DocItemLabel.FORM,
-                    DocItemLabel.KEY_VALUE_REGION,
-                    DocItemLabel.PARAGRAPH,
-                    DocItemLabel.REFERENCE,
-                ]
-            )
-
-            true_md = true_doc.export_to_markdown(
-                image_mode=ImageRefMode.PLACEHOLDER,
-                image_placeholder="",
-                labels=labels,
-                included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
-            )
-            # Get the predicted markdown content either from the external iterator or from dataset
-            if pred_md_dict is not None:
-                if doc_id not in pred_md_dict:
-                    _log.error(
-                        "The provided pred_md does not contain the doc_id: %s", doc_id
-                    )
-                    continue
-                pred_md = pred_md_dict[doc_id]
-            else:
-                pred_md = pred_doc.export_to_markdown(
-                    image_mode=ImageRefMode.PLACEHOLDER,
-                    image_placeholder="",
-                    labels=labels,
-                    included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
-                )
+            if pred_md is None:
+                _log.error("There is no markdown prediction for doc_id=%s", doc_id)
+                continue
 
             bleu = 0.0
             if true_md != "" and pred_md != "":
@@ -157,7 +154,6 @@ class MarkdownTextEvaluator:
                 ntlk_scores = self._compute_nltk_scores(true_md, pred_md)
 
             # Collect metrics across pages
-            # bleus.append(bleu)
             ds_metrics["bleu"].append(bleu)
             for score_name, score in ntlk_scores.items():
                 ds_metrics[score_name].append(score)
@@ -174,7 +170,7 @@ class MarkdownTextEvaluator:
                 meteor=ntlk_scores["meteor"],
             )
             evaluations.append(md_evaluation)
-        # bleu_stats = compute_stats(bleus)
+
         ds_md_evalutions = DatasetMarkdownEvaluation(
             evaluations=evaluations,
             bleu_stats=compute_stats(ds_metrics["bleu"]),
@@ -223,3 +219,32 @@ class MarkdownTextEvaluator:
             "meteor": meteor,
         }
         return metrics
+
+    def _docling_document_to_md(self, doc: DoclingDocument) -> str:
+        r"""
+        Export DoclingDocument to markdown
+        """
+        md = doc.export_to_markdown(
+            image_mode=ImageRefMode.PLACEHOLDER,
+            image_placeholder="",
+            labels=self._labels,
+            included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
+        )
+        return md
+
+    def _get_pred_md(self, data_record: DatasetRecordWithPrediction) -> Optional[str]:
+        r"""
+        Get the predicted markdown
+        """
+        pred_md = None
+        for prediction_format in self._prediction_sources:
+            if prediction_format == PredictionFormats.DOCLING_DOCUMENT:
+                pred_doc = data_record.predicted_doc
+                if pred_doc is not None:
+                    pred_md = self._docling_document_to_md(pred_doc)
+            elif prediction_format == PredictionFormats.MARKDOWN:
+                pred_md = data_record.original_prediction
+            if pred_md is not None:
+                break
+
+        return pred_md
