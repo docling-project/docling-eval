@@ -54,6 +54,8 @@ class FilePredictionProvider(BasePredictionProvider):
             true_labels: Set of DocItemLabel to use for ground truth visualization
             pred_labels: Set of DocItemLabel to use for prediction visualization
         """
+        # TODO: Check if it makes sense to have prediction modalities
+
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
