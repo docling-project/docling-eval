@@ -14,7 +14,8 @@ import PIL.Image
 from bs4 import BeautifulSoup  # type: ignore
 from datasets import Dataset, Features
 from datasets import Image as Features_Image
-from datasets import Sequence, Value
+from datasets import Sequence, Value, load_dataset
+from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
@@ -432,6 +433,28 @@ def save_shard_to_disk(
     shard_id += 1
 
     return shard_id, [], 0
+
+
+def dataset_exists(
+    ds_path: Path,
+    split: str,
+) -> bool:
+    r"""
+    It returns True if a parquet dataset exists for the given split and has data.
+    """
+    try:
+        parquet_files = str(ds_path / split / "*.parquet")
+        ds: IterableDataset = load_dataset(
+            "parquet",
+            data_files={split: parquet_files},
+            split=split,
+            streaming=True,
+        )
+        for d in ds:
+            return True
+    except Exception as ex:
+        pass
+    return False
 
 
 def crop_bounding_box(page_image: Image.Image, page: PageItem, bbox: BoundingBox):

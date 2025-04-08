@@ -1,0 +1,70 @@
+from pathlib import Path
+
+from docling_eval.aggregations.multi_evalutor import MultiEvaluator
+from docling_eval.cli.main import PredictionProviderType
+from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
+
+
+def test_multi_evaluator():
+    r""" """
+    save_dir = Path("scratch/multi_test")
+    benchmarks = [BenchMarkNames.DPBENCH]
+    prediction_provider_types = [PredictionProviderType.DOCLING]
+    modalities = [EvaluationModality.LAYOUT]
+
+    # Create multi evaluator for 2 samples of the dataset
+    me = MultiEvaluator(save_dir, save_dir, begin_index=0, end_index=2)
+
+    # MultiEvaluator for 1 dataset, 1 provider, 1 modality
+    m_evals = me(prediction_provider_types, benchmarks, modalities)
+
+    assert m_evals is not None
+    assert m_evals.evaluations is not None
+    assert BenchMarkNames.DPBENCH in m_evals.evaluations
+    assert PredictionProviderType.DOCLING in m_evals.evaluations[BenchMarkNames.DPBENCH]
+    assert (
+        EvaluationModality.LAYOUT
+        in m_evals.evaluations[BenchMarkNames.DPBENCH][PredictionProviderType.DOCLING]
+    )
+
+    # MultiEvaluator for 1 dataset, 1 provider, 2 modalities
+    modalities.append(EvaluationModality.MARKDOWN_TEXT)
+    m_evals2 = me(prediction_provider_types, benchmarks, modalities)
+
+    assert m_evals2 is not None
+    assert m_evals2.evaluations is not None
+    assert BenchMarkNames.DPBENCH in m_evals2.evaluations
+    assert (
+        PredictionProviderType.DOCLING in m_evals2.evaluations[BenchMarkNames.DPBENCH]
+    )
+    assert (
+        EvaluationModality.MARKDOWN_TEXT
+        in m_evals2.evaluations[BenchMarkNames.DPBENCH][PredictionProviderType.DOCLING]
+    )
+
+    # # MultiEvaluator for 1 dataset, 2 providers, 1 modality
+    # prediction_provider_types.append(PredictionProviderType.SMOLDOCLING)
+    # modalities.remove(EvaluationModality.MARKDOWN_TEXT)
+    # m_evals2 = me(
+    #     prediction_provider_types, benchmarks, modalities
+    # )
+
+    # assert m_evals2 is not None
+    # assert m_evals2.evaluations is not None
+    # assert BenchMarkNames.DPBENCH in m_evals2.evaluations
+    # assert (
+    #     PredictionProviderType.SMOLDOCLING
+    #     in m_evals2.evaluations[BenchMarkNames.DPBENCH]
+    # )
+    # assert (
+    #     EvaluationModality.LAYOUT
+    #     in m_evals2.evaluations[BenchMarkNames.DPBENCH][
+    #         PredictionProviderType.SMOLDOCLING
+    #     ]
+    # )
+
+    # TODO: Test for datasets with external data sources
+
+
+# if __name__ == "__main__":
+#     test_multi_evaluator()
