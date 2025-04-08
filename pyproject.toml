@@ -41,8 +41,12 @@ tqdm = "^4.67.1"
 pillow = "^10.3.0"
 evaluate = "^0.4.3"
 nltk = "^3.9.1"
+azure-ai-formrecognizer = { version = "^3.3.0", optional = true }
+azure-common = { version = "^1.1.28", optional = true }
+azure-core = { version = "^1.32.0", optional = true }
 beautifulsoup4 = "^4.12.3"
 jiwer = "^3.1.0"
+urllib3 = "^1.24.2"
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}
@@ -64,6 +68,9 @@ ipywidgets = "^8.1.5"
 nbqa = "^1.9.0"
 types-openpyxl = "^3.1.5.20241114"
 xmltodict = "^0.14.2"
+
+[tool.poetry.extras]
+hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core"]
 
 [tool.poetry.scripts]
 docling_eval = "docling_eval.cli.main:app"
