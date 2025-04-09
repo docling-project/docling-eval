@@ -45,6 +45,7 @@ azure-ai-formrecognizer = { version = "^3.3.0", optional = true }
 azure-common = { version = "^1.1.28", optional = true }
 azure-core = { version = "^1.32.0", optional = true }
 beautifulsoup4 = "^4.12.3"
+jiwer = "^3.1.0"
 urllib3 = "^1.24.2"
 
 [tool.poetry.group.dev.dependencies]
