@@ -39,6 +39,33 @@ class MultiEvaluation(BaseModel, Generic[DatasetEvaluationType]):
     ] = {}
 
 
+def load_evaluation(
+    benchmark: BenchMarkNames,
+    modality: EvaluationModality,
+    eval_dir: Path,
+) -> Optional[DatasetEvaluationType]:
+    r"""Load evaluation from file"""
+
+    # TODO: Fix the type of values
+    modality_eval_classes: Dict[EvaluationModality, Any] = {
+        EvaluationModality.BBOXES_TEXT: DatasetBoxesTextEvaluation,
+        EvaluationModality.LAYOUT: DatasetLayoutEvaluation,
+        EvaluationModality.TABLE_STRUCTURE: DatasetTableEvaluation,
+        EvaluationModality.READING_ORDER: DatasetReadingOrderEvaluation,
+        EvaluationModality.MARKDOWN_TEXT: DatasetMarkdownEvaluation,
+    }
+
+    eval_fn = eval_dir / f"evaluation_{benchmark.value}_{modality.value}.json"
+    if not eval_fn.exists():
+        return None
+
+    with open(eval_fn, "r") as fd:
+        eval_json = json.load(fd)
+        eval_class = modality_eval_classes[modality]
+        evaluation = eval_class.model_validate(eval_json)
+    return evaluation
+
+
 class MultiEvaluator(Generic[DatasetEvaluationType]):
     r"""
     Evaluate combinations of multiple Providers, Benchmark, EvaluationModality
@@ -46,6 +73,11 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
     GT dir structure: gt_dir / benchmark_name / parquet files
     Prediction dir structure: output_dir / benchmark / provider / modality / parquet files
     """
+
+    # Leaf dirs for GT, predictions, evaluations
+    GT_LEAF_DIR = "_GT_"
+    PRED_LEAF_DIR = "predictions"
+    EVAL_LEAF_DIR = "evaluations"
 
     def __init__(
         self,
@@ -62,21 +94,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
         self._begin_index = begin_index
         self._end_index = end_index
 
-        # Leaf dirs for GT, predictions, evaluations
-        self._gt_leaf_dir = "_GT_"
-        self._pred_leaf_dir = "predictions"
-        self._eval_leaf_dir = "evaluations"
-
         self._output_dir.mkdir(parents=True, exist_ok=True)
-
-        # TODO: Fix the type of values
-        self._modality_eval_classes: Dict[EvaluationModality, Any] = {
-            EvaluationModality.BBOXES_TEXT: DatasetBoxesTextEvaluation,
-            EvaluationModality.LAYOUT: DatasetLayoutEvaluation,
-            EvaluationModality.TABLE_STRUCTURE: DatasetTableEvaluation,
-            EvaluationModality.READING_ORDER: DatasetReadingOrderEvaluation,
-            EvaluationModality.MARKDOWN_TEXT: DatasetMarkdownEvaluation,
-        }
 
     def __call__(
         self,
@@ -134,7 +152,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
         # Set the benchmark_preds
         for benchmark in benchmarks:
             # Decide how to name the dir for GT dataset
-            benchmark_gt_dir = gt_dir / benchmark.value / self._gt_leaf_dir
+            benchmark_gt_dir = gt_dir / benchmark.value / MultiEvaluator.GT_LEAF_DIR
             split = (
                 dataset_splits.get(benchmark, self._default_split)
                 if dataset_splits
@@ -153,7 +171,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                         / benchmark.value
                         / provider_type.value
                         / modality.value
-                        / self._pred_leaf_dir
+                        / MultiEvaluator.PRED_LEAF_DIR
                     )
                     if dataset_exists(benchmark_pred_dir, split):
                         benchmark_preds[benchmark][provider_type][
@@ -224,10 +242,10 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                         / benchmark.value
                         / provider_type.value
                         / modality.value
-                        / self._eval_leaf_dir
+                        / MultiEvaluator.EVAL_LEAF_DIR
                     )
                     # Check if the evaluations are already present
-                    evaluation = self._load_evaluation(benchmark, modality, eval_dir)
+                    evaluation = load_evaluation(benchmark, modality, eval_dir)
                     if not evaluation:
                         evaluation = evaluate(
                             modality, benchmark, pred_dir, eval_dir, split
@@ -238,23 +256,6 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
 
         multi_evaluation: MultiEvaluation = MultiEvaluation(evaluations=evaluations)
         return multi_evaluation
-
-    def _load_evaluation(
-        self,
-        benchmark: BenchMarkNames,
-        modality: EvaluationModality,
-        eval_dir: Path,
-    ) -> Optional[DatasetEvaluationType]:
-        r"""Load evaluation from file"""
-        eval_fn = eval_dir / f"evaluation_{benchmark.value}_{modality.value}.json"
-        if not eval_fn.exists():
-            return None
-
-        with open(eval_fn, "r") as fd:
-            eval_json = json.load(fd)
-            eval_class = self._modality_eval_classes[modality]
-            evaluation = eval_class.model_validate(eval_json)
-        return evaluation
 
     def _create_gt(
         self,
@@ -328,3 +329,48 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
         except ValueError as e:
             _log.error(f"Error creating prediction provider: {str(e)}")
             return False
+
+    @staticmethod
+    def load_multi_evaluation(multi_evaluation_path: Path) -> MultiEvaluation:
+        r"""Load MultiEvaluation from disk files"""
+        # benchmark -> provider -> modality -> DatasetEvaluation
+        evaluations: Dict[
+            BenchMarkNames,
+            Dict[
+                PredictionProviderType, Dict[EvaluationModality, DatasetEvaluationType]
+            ],
+        ] = {}
+
+        for benchmark_path in multi_evaluation_path.iterdir():
+            try:
+                benchmark = BenchMarkNames(benchmark_path.name)
+            except ValueError:
+                continue
+            for provider_path in benchmark_path.iterdir():
+                if provider_path.name == "_GT_":
+                    continue
+                try:
+                    provider = PredictionProviderType(provider_path.name)
+                except ValueError:
+                    continue
+
+                for modality_path in provider_path.iterdir():
+                    try:
+                        modality = EvaluationModality(modality_path.name)
+                    except ValueError:
+                        continue
+                    evaluations_path = modality_path / MultiEvaluator.EVAL_LEAF_DIR
+
+                    # Load the evaluation
+                    evaluation = load_evaluation(benchmark, modality, evaluations_path)
+                    if not evaluation:
+                        continue
+
+                    if benchmark not in evaluations:
+                        evaluations[benchmark] = {}
+                    if provider not in evaluations[benchmark]:
+                        evaluations[benchmark][provider] = {}
+                    evaluations[benchmark][provider][modality] = evaluation
+
+        multi_evalution: MultiEvaluation = MultiEvaluation(evaluations=evaluations)
+        return multi_evalution

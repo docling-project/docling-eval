@@ -8,6 +8,7 @@ from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
 def test_multi_evaluator():
     r""" """
     save_dir = Path("scratch/multi_test")
+
     benchmarks = [BenchMarkNames.DPBENCH]
     prediction_provider_types = [PredictionProviderType.DOCLING]
     modalities = [EvaluationModality.LAYOUT]
@@ -42,29 +43,16 @@ def test_multi_evaluator():
         in m_evals2.evaluations[BenchMarkNames.DPBENCH][PredictionProviderType.DOCLING]
     )
 
-    # # MultiEvaluator for 1 dataset, 2 providers, 1 modality
-    # prediction_provider_types.append(PredictionProviderType.SMOLDOCLING)
-    # modalities.remove(EvaluationModality.MARKDOWN_TEXT)
-    # m_evals2 = me(
-    #     prediction_provider_types, benchmarks, modalities
-    # )
-
-    # assert m_evals2 is not None
-    # assert m_evals2.evaluations is not None
-    # assert BenchMarkNames.DPBENCH in m_evals2.evaluations
-    # assert (
-    #     PredictionProviderType.SMOLDOCLING
-    #     in m_evals2.evaluations[BenchMarkNames.DPBENCH]
-    # )
-    # assert (
-    #     EvaluationModality.LAYOUT
-    #     in m_evals2.evaluations[BenchMarkNames.DPBENCH][
-    #         PredictionProviderType.SMOLDOCLING
-    #     ]
-    # )
-
+    # TODO: Test for datasets with multiple providers
     # TODO: Test for datasets with external data sources
 
 
+def test_loading_from_disk():
+    save_dir = Path("scratch/multi_test")
+    loaded_m_evals = MultiEvaluator.load_multi_evaluation(save_dir)
+    assert loaded_m_evals is not None
+
+
 # if __name__ == "__main__":
-#     test_multi_evaluator()
+#     # test_multi_evaluator()
+#     test_loading_from_disk()
