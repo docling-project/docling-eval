@@ -104,3 +104,7 @@ class PageTokens(BaseModel):
 
     height: float
     width: float
+
+
+class ConsolidationFormats(str, Enum):
+    EXCEL = "excel"

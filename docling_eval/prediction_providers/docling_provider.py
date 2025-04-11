@@ -1,6 +1,6 @@
 import copy
 import platform
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, FormatOption
@@ -11,7 +11,7 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import EvaluationModality, PredictionFormats
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -44,11 +44,20 @@ class DoclingPredictionProvider(BasePredictionProvider):
             true_labels: Set of DocItemLabel to use for ground truth visualization
             pred_labels: Set of DocItemLabel to use for prediction visualization
         """
+        pred_modalities = [
+            EvaluationModality.LAYOUT,
+            EvaluationModality.TABLE_STRUCTURE,
+            EvaluationModality.READING_ORDER,
+            EvaluationModality.MARKDOWN_TEXT,
+            EvaluationModality.BBOXES_TEXT,
+        ]
+
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
             true_labels=true_labels,
             pred_labels=pred_labels,
+            pred_modalities=pred_modalities,
         )
         self.doc_converter = DocumentConverter(format_options=format_options)
 

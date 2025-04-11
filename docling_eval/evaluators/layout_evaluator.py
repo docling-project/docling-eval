@@ -24,6 +24,7 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.utils import tensor_to_float
 
 _log = logging.getLogger(__name__)
 
@@ -67,9 +68,14 @@ class DatasetLayoutEvaluation(DatasetEvaluation):
     evaluations_per_class: List[ClassLayoutEvaluation]
     evaluations_per_image: List[ImageLayoutEvaluation]
 
-    image_mAP_stats: (
-        DatasetStatistics  # Stats for the mAP[0.5:0.05:0.95] across all images
-    )
+    # Statistics
+    map_stats: DatasetStatistics  # Stats for the mAP[0.5:0.05:0.95] across all images
+    map_50_stats: DatasetStatistics
+    map_75_stats: DatasetStatistics
+    weighted_map_50_stats: DatasetStatistics
+    weighted_map_75_stats: DatasetStatistics
+    weighted_map_90_stats: DatasetStatistics
+    weighted_map_95_stats: DatasetStatistics
 
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
 
@@ -223,16 +229,23 @@ class LayoutEvaluator(BaseEvaluator):
         total_mAP = result["map"]
         if "map_per_class" in result:
             for label_idx, class_map in enumerate(result["map_per_class"]):
+                label = intersection_labels[label_idx].value
                 evaluations_per_class.append(
                     ClassLayoutEvaluation(
                         name="Class mAP[0.5:0.95]",
-                        label=intersection_labels[label_idx].value,
+                        label=label,
                         value=class_map,
                     )
                 )
 
         # Compute mAP for each image individually
         map_values = []
+        map_50_values = []
+        map_75_values = []
+        weighted_map_50_values = []
+        weighted_map_75_values = []
+        weighted_map_90_values = []
+        weighted_map_95_values = []
 
         evaluations_per_image: List[ImageLayoutEvaluation] = []
         for i, (doc_id, pred, gt) in enumerate(
@@ -249,9 +262,9 @@ class LayoutEvaluator(BaseEvaluator):
             result = metric.compute()
 
             # Extract mAP for this image
-            map_value = float(result["map"].item())
-            map_50 = float(result["map_50"].item())
-            map_75 = float(result["map_75"].item())
+            map_value = tensor_to_float(result["map_50"])
+            map_50 = tensor_to_float(result["map_50"])
+            map_75 = tensor_to_float(result["map_75"])
 
             result = self._compute_average_iou_with_labels_across_iou(
                 pred_boxes=pred["boxes"],
@@ -259,12 +272,20 @@ class LayoutEvaluator(BaseEvaluator):
                 gt_boxes=gt["boxes"],
                 gt_labels=gt["labels"],
             )
-            average_iou_50 = result["average_iou_50"]
-            average_iou_75 = result["average_iou_75"]
-            average_iou_90 = result["average_iou_90"]
-            average_iou_95 = result["average_iou_95"]
+            average_iou_50 = tensor_to_float(result["average_iou_50"])
+            average_iou_75 = tensor_to_float(result["average_iou_75"])
+            average_iou_90 = tensor_to_float(result["average_iou_90"])
+            average_iou_95 = tensor_to_float(result["average_iou_95"])
 
+            # Set the stats
             map_values.append(map_value)
+            map_50_values.append(map_50)
+            map_75_values.append(map_75)
+            weighted_map_50_values.append(average_iou_50)
+            weighted_map_75_values.append(average_iou_75)
+            weighted_map_90_values.append(average_iou_90)
+            weighted_map_95_values.append(average_iou_95)
+
             image_evaluation = ImageLayoutEvaluation(
                 name=doc_id,
                 value=average_iou_50,
@@ -285,15 +306,22 @@ class LayoutEvaluator(BaseEvaluator):
         evaluations_per_class = sorted(evaluations_per_class, key=lambda x: -x.value)
         evaluations_per_image = sorted(evaluations_per_image, key=lambda x: -x.value)
 
-        return DatasetLayoutEvaluation(
+        dataset_layout_evaluation = DatasetLayoutEvaluation(
             mAP=total_mAP,
             evaluations_per_class=evaluations_per_class,
             evaluations_per_image=evaluations_per_image,
-            image_mAP_stats=compute_stats(map_values),
+            map_stats=compute_stats(map_values),
+            map_50_stats=compute_stats(map_50_values),
+            map_75_stats=compute_stats(map_75_values),
+            weighted_map_50_stats=compute_stats(weighted_map_50_values),
+            weighted_map_75_stats=compute_stats(weighted_map_75_values),
+            weighted_map_90_stats=compute_stats(weighted_map_90_values),
+            weighted_map_95_stats=compute_stats(weighted_map_95_values),
             true_labels=true_labels,
             pred_labels=pred_labels,
             intersecting_labels=[_.value for _ in intersection_labels],
         )
+        return dataset_layout_evaluation
 
     def _get_pred_doc(
         self, data_record: DatasetRecordWithPrediction

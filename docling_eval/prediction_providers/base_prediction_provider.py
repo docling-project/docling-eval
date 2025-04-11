@@ -4,7 +4,7 @@ import sys
 from abc import abstractmethod
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
@@ -18,7 +18,11 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
+from docling_eval.datamodels.types import (
+    BenchMarkColumns,
+    EvaluationModality,
+    PredictionFormats,
+)
 from docling_eval.utils.utils import (
     extract_images,
     insert_images_from_pil,
@@ -86,6 +90,7 @@ class BasePredictionProvider:
         ignore_missing_predictions: bool = True,
         true_labels: Optional[Set[DocItemLabel]] = None,
         pred_labels: Optional[Set[DocItemLabel]] = None,
+        pred_modalities: Optional[List[EvaluationModality]] = None,
     ):
         """
         Initialize the prediction provider.
@@ -98,10 +103,15 @@ class BasePredictionProvider:
         """
         self.do_visualization = do_visualization
         self.ignore_missing_predictions = ignore_missing_predictions
+        self.pred_modalities = pred_modalities
 
         # Label sets for visualization
         self.true_labels = true_labels or TRUE_HTML_EXPORT_LABELS
         self.pred_labels = pred_labels or PRED_HTML_EXPORT_LABELS
+
+    def prediction_modalities(self) -> Optional[List[EvaluationModality]]:
+        r"""Report the supported prediction modalities"""
+        return self.pred_modalities
 
     @abstractmethod
     def predict(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
