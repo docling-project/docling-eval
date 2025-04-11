@@ -46,6 +46,8 @@ azure-ai-formrecognizer = { version = "^3.3.0" }
 azure-common = { version = "^1.1.28" }
 azure-core = { version = "^1.32.0" }
 beautifulsoup4 = "^4.12.3"
+boto3 = { version = "^1.37.8", optional = true }
+google-cloud-documentai = { version = "^3.2.0" }
 urllib3 = "^1.24.2"
 
 [tool.poetry.group.dev.dependencies]
@@ -68,9 +70,11 @@ ipywidgets = "^8.1.5"
 nbqa = "^1.9.0"
 types-openpyxl = "^3.1.5.20241114"
 xmltodict = "^0.14.2"
+types-protobuf = "^5.29.1.20250315"
+boto3-stubs = "^1.37.19"
 
 [tool.poetry.extras]
-hyperscalers = ["ibm-cos-sdk", "azure-ai-formrecognizer", "azure-common", "azure-core"]
+hyperscalers = ["ibm-cos-sdk", "azure-ai-formrecognizer", "azure-common", "azure-core", "boto3", "google-cloud-documentai"]
 
 [tool.poetry.scripts]
 docling_eval = "docling_eval.cli.main:app"

@@ -1,4 +1,3 @@
-import logging
 import os
 from pathlib import Path
 
@@ -9,22 +8,20 @@ from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
 from docling_eval.dataset_builders.otsl_table_dataset_builder import (
     FintabNetDatasetBuilder,
 )
-from docling_eval.prediction_providers.azure_prediction_provider import (
-    AzureDocIntelligencePredictionProvider,
+from docling_eval.prediction_providers.google_prediction_provider import (
+    GoogleDocAIPredictionProvider,
 )
 
 IS_CI = os.getenv("RUN_IN_CI") == "1"
-
-logging.getLogger("azure").setLevel(logging.WARNING)
 
 
 @pytest.mark.skipif(
     IS_CI, reason="Skipping test in CI because the dataset is too heavy."
 )
 def test_run_fintabnet_builder():
-    target_path = Path(f"./scratch/{BenchMarkNames.FINTABNET.value}_azure/")
-    azure_provider = AzureDocIntelligencePredictionProvider(
-        do_visualization=True, ignore_missing_predictions=True
+    target_path = Path(f"./scratch/{BenchMarkNames.FINTABNET.value}_google/")
+    google_provider = GoogleDocAIPredictionProvider(
+        do_visualization=True, ignore_missing_predictions=False
     )
 
     dataset = FintabNetDatasetBuilder(
@@ -32,10 +29,9 @@ def test_run_fintabnet_builder():
         end_index=5,
     )
 
-    # dataset.retrieve_input_dataset()  # fetches the source dataset from HF
     dataset.save_to_disk()  # does all the job of iterating the dataset, making GT+prediction records, and saving them in shards as parquet.
 
-    azure_provider.create_prediction_dataset(
+    google_provider.create_prediction_dataset(
         name=dataset.name,
         gt_dataset_dir=target_path / "gt_dataset",
         target_dataset_dir=target_path / "eval_dataset",
