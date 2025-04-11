@@ -105,7 +105,6 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
         dataset_splits: Optional[Dict[BenchMarkNames, str]] = None,
     ) -> MultiEvaluation:
         r""" """
-        # TODO: Consider if to return also an "report" object with
         # Build any missing dataset
         benchmark_preds = self._build_datasets(
             prediction_provider_types,
