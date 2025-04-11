@@ -5,6 +5,22 @@ from docling_eval.cli.main import PredictionProviderType
 from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
 
 
+def build_real_multi_evals():
+    save_dir = Path("scratch/multi_test")
+
+    benchmarks = [BenchMarkNames.DPBENCH, BenchMarkNames.DOCLAYNETV1]
+    prediction_provider_types = [PredictionProviderType.DOCLING]
+    modalities = [
+        EvaluationModality.LAYOUT,
+        EvaluationModality.MARKDOWN_TEXT,
+        EvaluationModality.TABLE_STRUCTURE,
+    ]
+
+    me = MultiEvaluator(save_dir, save_dir, begin_index=0)
+    m_evals = me(prediction_provider_types, benchmarks, modalities)
+    assert m_evals is not None
+
+
 def test_multi_evaluator():
     r""" """
     save_dir = Path("scratch/multi_test")
@@ -54,5 +70,11 @@ def test_loading_from_disk():
 
 
 # if __name__ == "__main__":
+#     import logging
+
+#     logging.getLogger("docling").setLevel(logging.WARNING)
+#     logging.getLogger(__name__).setLevel(logging.INFO)
+
 #     # test_multi_evaluator()
-#     test_loading_from_disk()
+#     # test_loading_from_disk()
+#     build_real_multi_evals()

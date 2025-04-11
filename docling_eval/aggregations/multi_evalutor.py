@@ -24,14 +24,6 @@ from docling_eval.utils.utils import dataset_exists
 _log = logging.getLogger(__name__)
 
 
-# TODO:
-# class DatasetBuildResult(str, Enum):
-#     PRE_EXISTING = "pre_existing"
-#     CREATED = "created"
-#     FAILED_TO_LOAD = "failed_to_load"
-#     FAILED_TO_CREATE = "failed_to_create"
-
-
 class MultiEvaluation(BaseModel, Generic[DatasetEvaluationType]):
     evaluations: Dict[
         BenchMarkNames,
@@ -46,7 +38,6 @@ def load_evaluation(
 ) -> Optional[DatasetEvaluationType]:
     r"""Load evaluation from file"""
 
-    # TODO: Fix the type of values
     modality_eval_classes: Dict[EvaluationModality, Any] = {
         EvaluationModality.BBOXES_TEXT: DatasetBoxesTextEvaluation,
         EvaluationModality.LAYOUT: DatasetLayoutEvaluation,
@@ -136,12 +127,6 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
 
         Return the paths of the prediction datasets
         """
-        # TODO: Report of the GT/pred datasets that have been created or loaded
-        # gt_build_report: Dict[BenchMarkNames, DatasetBuildResult] = {}
-        # pred_build_report: Dict[BenchMarkNames, Dict[
-        #     BenchMarkNames, Dict[PredictionProviderType, Dict[EvaluationModality, DatasetBuildResult]]
-        # ]] = {}
-
         # Dict with benchmark predictions
         benchmark_preds: Dict[
             BenchMarkNames, Dict[PredictionProviderType, Dict[EvaluationModality, Path]]
