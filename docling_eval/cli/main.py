@@ -436,7 +436,7 @@ def visualize(
                 benchmark,
                 modality,
                 "mAP_0.5_0.95",
-                layout_evaluation.image_mAP_stats,
+                layout_evaluation.map_stats,
             )
 
             # Append to layout statistics, the AP per classes

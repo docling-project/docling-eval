@@ -7,7 +7,7 @@ from collections import defaultdict
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import PIL.Image
@@ -31,6 +31,7 @@ from docling_core.types.doc.document import (
 from docling_core.types.doc.labels import GraphCellLabel
 from PIL import Image
 from pydantic import AnyUrl
+from torch import Tensor
 
 from docling_eval.datamodels.types import BenchMarkColumns
 
@@ -579,3 +580,10 @@ def get_package_version(package_name):
         return version(package_name)
     except PackageNotFoundError:
         return None
+
+
+def tensor_to_float(t: Union[Tensor, float]) -> float:
+    r"""Get float from tensor item"""
+    if isinstance(t, Tensor):
+        return float(t.item())
+    return t
