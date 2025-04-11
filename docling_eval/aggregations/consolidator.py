@@ -160,8 +160,8 @@ class Consolidator:
 
                     # Buid the dataframe
                     data: Dict[str, Union[str, float]] = {
-                        "benchmark": benchmark.value,
-                        "provider": provider_type.value,
+                        "Benchmark": benchmark.value,
+                        "Provider": provider_type.value,
                     }
                     data |= metrics
                     if modality not in df_data:
@@ -172,7 +172,7 @@ class Consolidator:
         dfs: Dict[EvaluationModality, DataFrame] = {}
         for modality, m_data in df_data.items():
             df = DataFrame(m_data)
-            df = df.sort_values(by=["benchmark", "provider"], ascending=[True, True])
+            df = df.sort_values(by=["Benchmark", "Provider"], ascending=[True, True])
             dfs[modality] = df
 
         return dfs
@@ -193,12 +193,12 @@ class Consolidator:
     ) -> Dict[str, float]:
         r""" """
         metrics: Dict[str, float] = {
-            "bleu": evaluation.bleu_stats.mean,
-            "f1": evaluation.f1_score_stats.mean,
-            "precision": evaluation.precision_stats.mean,
-            "recall": evaluation.recall_stats.mean,
-            "edit_distance": evaluation.edit_distance_stats.mean,
-            "meteor": evaluation.meteor_stats.mean,
+            "BLEU": evaluation.bleu_stats.mean,
+            "F1": evaluation.f1_score_stats.mean,
+            "Precision": evaluation.precision_stats.mean,
+            "Recall": evaluation.recall_stats.mean,
+            "Edit_Distance": evaluation.edit_distance_stats.mean,
+            "METEOR": evaluation.meteor_stats.mean,
         }
         return metrics
 
@@ -220,7 +220,7 @@ class Consolidator:
         r""" """
         metrics: Dict[str, float] = {
             "ARD": evaluation.ard_stats.mean,
-            "weighted_ARD": evaluation.w_ard_stats.mean,
+            "Weighted_ARD": evaluation.w_ard_stats.mean,
         }
         return metrics
 
@@ -229,11 +229,11 @@ class Consolidator:
     ) -> Dict[str, float]:
         r""" """
         metrics: Dict[str, float] = {
-            "bleu": evaluation.bleu_stats.mean,
-            "f1": evaluation.f1_score_stats.mean,
-            "precision": evaluation.precision_stats.mean,
-            "recall": evaluation.recall_stats.mean,
-            "edit_distance": evaluation.edit_distance_stats.mean,
-            "meteor": evaluation.meteor_stats.mean,
+            "BLEU": evaluation.bleu_stats.mean,
+            "F1": evaluation.f1_score_stats.mean,
+            "Precision": evaluation.precision_stats.mean,
+            "Recall": evaluation.recall_stats.mean,
+            "Edit_Distance": evaluation.edit_distance_stats.mean,
+            "METEOR": evaluation.meteor_stats.mean,
         }
         return metrics
