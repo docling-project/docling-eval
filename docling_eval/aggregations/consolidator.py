@@ -15,9 +15,20 @@ from docling_eval.evaluators.bbox_text_evaluator import DatasetBoxesTextEvaluati
 from docling_eval.evaluators.layout_evaluator import DatasetLayoutEvaluation
 from docling_eval.evaluators.markdown_text_evaluator import DatasetMarkdownEvaluation
 from docling_eval.evaluators.readingorder_evaluator import DatasetReadingOrderEvaluation
+from docling_eval.evaluators.stats import DatasetStatistics
 from docling_eval.evaluators.table_evaluator import DatasetTableEvaluation
 
 _log = logging.getLogger(__name__)
+
+
+def export_value(val: Union[float, DatasetStatistics]) -> str:
+    r"""Get statistics value"""
+    if isinstance(val, DatasetStatistics):
+        fmt_val = f"{val.mean:.2f}±{val.std:.2f}"
+    else:
+        fmt_val = f"{val:.2f}"
+
+    return fmt_val
 
 
 class Consolidator:
@@ -177,63 +188,73 @@ class Consolidator:
 
         return dfs
 
-    def _layout_metrics(self, evaluation: DatasetLayoutEvaluation) -> Dict[str, float]:
+    def _layout_metrics(self, evaluation: DatasetLayoutEvaluation) -> Dict[str, str]:
         r"""Get the metrics for the LayoutEvaluation"""
-        metrics: Dict[str, float] = {
-            "mAP": evaluation.mAP,
+        metrics = {
+            "mAP": export_value(evaluation.map_stats),
+            "mAP_50": export_value(evaluation.map_50_stats),
+            "mAP_75": export_value(evaluation.map_75_stats),
+            "weighted_mAP_50": export_value(evaluation.weighted_map_50_stats),
+            "weighted_mAP_75": export_value(evaluation.weighted_map_75_stats),
+            "weighted_mAP_90": export_value(evaluation.weighted_map_90_stats),
+            "weighted_mAP_95": export_value(evaluation.weighted_map_95_stats),
         }
         for class_evaluation in evaluation.evaluations_per_class:
             key = f"class_{class_evaluation.label}"
-            metrics[key] = class_evaluation.value
+            metrics[key] = export_value(class_evaluation.value)
 
         return metrics
 
     def _markdowntext_metrics(
-        self, evaluation: DatasetMarkdownEvaluation
-    ) -> Dict[str, float]:
+        self,
+        evaluation: DatasetMarkdownEvaluation,
+    ) -> Dict[str, str]:
         r""" """
-        metrics: Dict[str, float] = {
-            "BLEU": evaluation.bleu_stats.mean,
-            "F1": evaluation.f1_score_stats.mean,
-            "Precision": evaluation.precision_stats.mean,
-            "Recall": evaluation.recall_stats.mean,
-            "Edit_Distance": evaluation.edit_distance_stats.mean,
-            "METEOR": evaluation.meteor_stats.mean,
+        metrics = {
+            "BLEU": export_value(evaluation.bleu_stats),
+            "F1": export_value(evaluation.f1_score_stats),
+            "Precision": export_value(evaluation.precision_stats),
+            "Recall": export_value(evaluation.recall_stats),
+            "Edit_Distance": export_value(evaluation.edit_distance_stats),
+            "METEOR": export_value(evaluation.meteor_stats),
         }
         return metrics
 
     def _tablestructure_metrics(
-        self, evaluation: DatasetTableEvaluation
-    ) -> Dict[str, float]:
+        self,
+        evaluation: DatasetTableEvaluation,
+    ) -> Dict[str, str]:
         r""" """
-        metrics: Dict[str, float] = {
-            "TEDS": evaluation.TEDS.mean,
-            "TEDS_struct": evaluation.TEDS_struct.mean,
-            "TEDS_simple": evaluation.TEDS_simple.mean,
-            "TEDS_complex": evaluation.TEDS_complex.mean,
+        metrics = {
+            "TEDS": export_value(evaluation.TEDS),
+            "TEDS_struct": export_value(evaluation.TEDS_struct),
+            "TEDS_simple": export_value(evaluation.TEDS_simple),
+            "TEDS_complex": export_value(evaluation.TEDS_complex),
         }
         return metrics
 
     def _readingorder_metrics(
-        self, evaluation: DatasetReadingOrderEvaluation
-    ) -> Dict[str, float]:
+        self,
+        evaluation: DatasetReadingOrderEvaluation,
+    ) -> Dict[str, str]:
         r""" """
-        metrics: Dict[str, float] = {
-            "ARD": evaluation.ard_stats.mean,
-            "Weighted_ARD": evaluation.w_ard_stats.mean,
+        metrics = {
+            "ARD": export_value(evaluation.ard_stats),
+            "Weighted_ARD": export_value(evaluation.w_ard_stats),
         }
         return metrics
 
     def _bboxestext_metrics(
-        self, evaluation: DatasetBoxesTextEvaluation
-    ) -> Dict[str, float]:
+        self,
+        evaluation: DatasetBoxesTextEvaluation,
+    ) -> Dict[str, str]:
         r""" """
-        metrics: Dict[str, float] = {
-            "BLEU": evaluation.bleu_stats.mean,
-            "F1": evaluation.f1_score_stats.mean,
-            "Precision": evaluation.precision_stats.mean,
-            "Recall": evaluation.recall_stats.mean,
-            "Edit_Distance": evaluation.edit_distance_stats.mean,
-            "METEOR": evaluation.meteor_stats.mean,
+        metrics = {
+            "BLEU": export_value(evaluation.bleu_stats),
+            "F1": export_value(evaluation.f1_score_stats),
+            "Precision": export_value(evaluation.precision_stats),
+            "Recall": export_value(evaluation.recall_stats),
+            "Edit_Distance": export_value(evaluation.edit_distance_stats),
+            "METEOR": export_value(evaluation.meteor_stats),
         }
         return metrics
