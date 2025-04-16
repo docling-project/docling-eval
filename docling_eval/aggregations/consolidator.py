@@ -11,6 +11,7 @@ from pandas import DataFrame
 
 from docling_eval.aggregations.multi_evalutor import MultiEvaluation
 from docling_eval.datamodels.types import ConsolidationFormats, EvaluationModality
+from docling_eval.evaluators.base_evaluator import EvaluationRejectionType
 from docling_eval.evaluators.bbox_text_evaluator import DatasetBoxesTextEvaluation
 from docling_eval.evaluators.layout_evaluator import DatasetLayoutEvaluation
 from docling_eval.evaluators.markdown_text_evaluator import DatasetMarkdownEvaluation
@@ -147,7 +148,7 @@ class Consolidator:
         Return a Dict with dataframes per modality
         """
         # Collect all data to build the dataframes
-        df_data: Dict[EvaluationModality, List[Dict[str, Union[str, float]]]] = {}
+        df_data: Dict[EvaluationModality, List[Dict[str, Union[str, float, int]]]] = {}
 
         # Collect the dataframe data
         for benchmark, prov_mod_eval in multi_evalution.evaluations.items():
@@ -169,11 +170,18 @@ class Consolidator:
                         )
                         continue
 
-                    # Buid the dataframe
+                    # Gather the dataframe data
                     data: Dict[str, Union[str, float]] = {
                         "Benchmark": benchmark.value,
                         "Provider": provider_type.value,
+                        "evaluated_samples": evaluation.evaluated_samples,
                     }
+                    for rej_type in EvaluationRejectionType:
+                        if rej_type not in evaluation.rejected_samples:
+                            data[rej_type.value] = 0
+                        else:
+                            data[rej_type.value] = evaluation.rejected_samples[rej_type]
+
                     data |= metrics
                     if modality not in df_data:
                         df_data[modality] = []
