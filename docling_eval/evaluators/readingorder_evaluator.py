@@ -25,6 +25,7 @@ from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import (
     BaseEvaluator,
     DatasetEvaluation,
+    EvaluationRejectionType,
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
@@ -86,10 +87,10 @@ class ReadingOrderEvaluator(BaseEvaluator):
             ds_selection = ds[split]
 
         evaluations: list[PageReadingOrderEvaluation] = []
+        rejected_samples: Dict[EvaluationRejectionType, int] = {}
         ards = []
         w_ards = []
 
-        broken_docs = 0
         for i, data in tqdm(
             enumerate(ds_selection),
             desc="Reading order evaluations",
@@ -102,13 +103,14 @@ class ReadingOrderEvaluator(BaseEvaluator):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
+                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
             true_doc = data_record.ground_truth_doc
 
             reading_order = self._get_reading_order_preds(doc_id, true_doc)
             if reading_order is None:
-                broken_docs += 1
+                rejected_samples[EvaluationRejectionType.BROKEN_PREDICTION] += 1
                 continue
 
             # Compute metrics
@@ -131,15 +133,21 @@ class ReadingOrderEvaluator(BaseEvaluator):
                     "reading_order", i, doc_id, evaluations
                 )
 
-        if broken_docs > 0:
-            _log.warning(f"Broken documents: {broken_docs}")
+        if rejected_samples[EvaluationRejectionType.BROKEN_PREDICTION] > 0:
+            _log.warning(
+                f"Broken documents: {rejected_samples[EvaluationRejectionType.BROKEN_PREDICTION]}"
+            )
 
         # Compute statistics for metrics
         ard_stats = compute_stats(ards)
         w_ard_stats = compute_stats(w_ards)
 
         ds_reading_order_evaluation = DatasetReadingOrderEvaluation(
-            evaluations=evaluations, ard_stats=ard_stats, w_ard_stats=w_ard_stats
+            evaluated_samples=len(evaluations),
+            rejected_samples=rejected_samples,
+            evaluations=evaluations,
+            ard_stats=ard_stats,
+            w_ard_stats=w_ard_stats,
         )
 
         return ds_reading_order_evaluation

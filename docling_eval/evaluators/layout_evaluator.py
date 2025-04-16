@@ -20,6 +20,7 @@ from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import (
     BaseEvaluator,
     DatasetEvaluation,
+    EvaluationRejectionType,
     UnitEvaluation,
     docling_document_from_doctags,
 )
@@ -152,7 +153,11 @@ class LayoutEvaluator(BaseEvaluator):
         doc_ids = []
         ground_truths = []
         predictions = []
-        mismatched_docs = 0
+        rejected_samples: Dict[EvaluationRejectionType, int] = {
+            EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
+            EvaluationRejectionType.MISSING_PREDICTION: 0,
+            EvaluationRejectionType.MISMATHCED_DOCUMENT: 0,
+        }
 
         for i, data in tqdm(
             enumerate(ds_selection),
@@ -166,12 +171,14 @@ class LayoutEvaluator(BaseEvaluator):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
+                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
             true_doc = data_record.ground_truth_doc
             pred_doc = self._get_pred_doc(data_record)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
+                rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
 
             gts, preds = self._extract_layout_data(
@@ -189,7 +196,7 @@ class LayoutEvaluator(BaseEvaluator):
                 if len(gts) == len(preds):
                     predictions.extend(preds)
                 else:
-                    mismatched_docs += 1
+                    rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] += 1
                     logging.error(
                         "Mismatch in len of GT (%s) vs pred (%s) in document_id '%s'.",
                         len(gts),
@@ -205,10 +212,10 @@ class LayoutEvaluator(BaseEvaluator):
                         }
                     )
 
-        if mismatched_docs > 0:
+        if rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] > 0:
             logging.error(
                 "Total mismatched/skipped documents: %s over %s",
-                mismatched_docs,
+                rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT],
                 len(ds_selection),
             )
 
@@ -307,6 +314,8 @@ class LayoutEvaluator(BaseEvaluator):
         evaluations_per_image = sorted(evaluations_per_image, key=lambda x: -x.value)
 
         dataset_layout_evaluation = DatasetLayoutEvaluation(
+            evaluated_samples=len(evaluations_per_image),
+            rejected_samples=rejected_samples,
             mAP=total_mAP,
             evaluations_per_class=evaluations_per_class,
             evaluations_per_image=evaluations_per_image,
