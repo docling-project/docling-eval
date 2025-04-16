@@ -17,5 +17,5 @@ def test_consolidator():
     assert produced_file.exists()
 
 
-if __name__ == "__main__":
-    test_consolidator()
+# if __name__ == "__main__":
+#     test_consolidator()

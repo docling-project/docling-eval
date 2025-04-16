@@ -152,8 +152,10 @@ class Consolidator:
 
         # Collect the dataframe data
         for benchmark, prov_mod_eval in multi_evalution.evaluations.items():
-            for provider_type, mod_eval in prov_mod_eval.items():
-                for modality, evaluation in mod_eval.items():
+            for experiment, mod_eval in prov_mod_eval.items():
+                for modality, single_evaluation in mod_eval.items():
+                    evaluation = single_evaluation.evaluation
+
                     if modality == EvaluationModality.LAYOUT:
                         metrics = self._layout_metrics(evaluation)
                     elif modality == EvaluationModality.MARKDOWN_TEXT:
@@ -171,9 +173,15 @@ class Consolidator:
                         continue
 
                     # Gather the dataframe data
+                    provider = (
+                        single_evaluation.prediction_provider_type.value
+                        if single_evaluation.prediction_provider_type is not None
+                        else "Unkown"
+                    )
                     data: Dict[str, Union[str, float]] = {
                         "Benchmark": benchmark.value,
-                        "Provider": provider_type.value,
+                        "Provider": provider,
+                        "Experiment": experiment,
                         "evaluated_samples": evaluation.evaluated_samples,
                     }
                     for rej_type in EvaluationRejectionType:

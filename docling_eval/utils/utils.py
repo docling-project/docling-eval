@@ -33,7 +33,11 @@ from PIL import Image
 from pydantic import AnyUrl
 from torch import Tensor
 
-from docling_eval.datamodels.types import BenchMarkColumns
+from docling_eval.datamodels.types import (
+    BenchMarkColumns,
+    EvaluationModality,
+    PredictionProviderType,
+)
 
 
 def get_binhash(binary_data: bytes) -> str:
@@ -587,3 +591,32 @@ def tensor_to_float(t: Union[Tensor, float]) -> float:
     if isinstance(t, Tensor):
         return float(t.item())
     return t
+
+
+def modalities_of_prediction_type(
+    prediction_provider_type: PredictionProviderType,
+) -> Optional[List[EvaluationModality]]:
+    r"""
+    Return a list of EvaluationModality supported by the given prediction_provider_type
+    """
+    from docling_eval.prediction_providers.docling_provider import (
+        DoclingPredictionProvider,
+    )
+    from docling_eval.prediction_providers.tableformer_provider import (
+        TableFormerPredictionProvider,
+    )
+
+    # TODO: Update this map as more prediction providers are implemented
+    prediction_type_class = {
+        PredictionProviderType.DOCLING: DoclingPredictionProvider,
+        PredictionProviderType.TABLEFORMER: TableFormerPredictionProvider,
+    }
+
+    if prediction_provider_type not in prediction_type_class:
+        return None
+
+    prediction_provider_class = prediction_type_class[prediction_provider_type]
+    if not hasattr(prediction_provider_class, "prediction_modalities"):
+        return None
+
+    return prediction_provider_class.prediction_modalities

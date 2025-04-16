@@ -1,8 +1,11 @@
 from pathlib import Path
 
 from docling_eval.aggregations.multi_evalutor import MultiEvaluator
-from docling_eval.cli.main import PredictionProviderType
-from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
+from docling_eval.datamodels.types import (
+    BenchMarkNames,
+    EvaluationModality,
+    PredictionProviderType,
+)
 
 
 def build_real_multi_evals():
@@ -16,7 +19,7 @@ def build_real_multi_evals():
         EvaluationModality.TABLE_STRUCTURE,
     ]
 
-    me = MultiEvaluator(save_dir, save_dir, begin_index=0)
+    me = MultiEvaluator(save_dir, begin_index=0)
     m_evals = me(prediction_provider_types, benchmarks, modalities)
     assert m_evals is not None
 
@@ -27,10 +30,10 @@ def test_multi_evaluator():
 
     benchmarks = [BenchMarkNames.DPBENCH]
     prediction_provider_types = [PredictionProviderType.DOCLING]
-    modalities = [EvaluationModality.LAYOUT]
+    modalities = [EvaluationModality.LAYOUT, EvaluationModality.MARKDOWN_TEXT]
 
     # Create multi evaluator for 2 samples of the dataset
-    me = MultiEvaluator(save_dir, save_dir, begin_index=0, end_index=2)
+    me = MultiEvaluator(save_dir, begin_index=0, end_index=2)
 
     # MultiEvaluator for 1 dataset, 1 provider, 1 modality
     m_evals = me(prediction_provider_types, benchmarks, modalities)
@@ -76,5 +79,5 @@ def test_loading_from_disk():
 #     logging.getLogger(__name__).setLevel(logging.INFO)
 
 #     # test_multi_evaluator()
-#     # test_loading_from_disk()
-#     build_real_multi_evals()
+#     test_loading_from_disk()
+#     # build_real_multi_evals()

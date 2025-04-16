@@ -34,6 +34,7 @@ from docling_eval.datamodels.types import (
     PageToken,
     PageTokens,
     PredictionFormats,
+    PredictionProviderType,
 )
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
@@ -53,6 +54,14 @@ class TableFormerPredictionProvider(BasePredictionProvider):
 
     This provider is specialized for predicting table structures in documents.
     """
+
+    prediction_provider_type: PredictionProviderType = (
+        PredictionProviderType.TABLEFORMER
+    )
+
+    prediction_modalities = [
+        EvaluationModality.TABLE_STRUCTURE,
+    ]
 
     def __init__(
         self,
@@ -76,15 +85,11 @@ class TableFormerPredictionProvider(BasePredictionProvider):
             true_labels: Set of DocItemLabel to use for ground truth visualization
             pred_labels: Set of DocItemLabel to use for prediction visualization
         """
-        pred_modalities = [
-            EvaluationModality.TABLE_STRUCTURE,
-        ]
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
             true_labels=true_labels,
             pred_labels=pred_labels,
-            pred_modalities=pred_modalities,
         )
         self.tf_updater = TableFormerUpdater(mode, num_threads, artifacts_path)
 
@@ -160,7 +165,10 @@ class TableFormerPredictionProvider(BasePredictionProvider):
 
     def info(self) -> Dict:
         """Get information about the prediction provider."""
-        return {"asset": "TableFormer", "version": docling_models_version()}
+        return {
+            "asset": PredictionProviderType.TABLEFORMER,
+            "version": docling_models_version(),
+        }
 
 
 class TableFormerUpdater:

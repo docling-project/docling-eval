@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Annotated, Dict, Optional, Tuple
 
@@ -24,6 +23,7 @@ from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
     PredictionFormats,
+    PredictionProviderType,
 )
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
@@ -75,15 +75,6 @@ app = typer.Typer(
     add_completion=False,
     pretty_exceptions_enable=False,
 )
-
-
-class PredictionProviderType(str, Enum):
-    """Types of prediction providers available."""
-
-    DOCLING = "docling"
-    TABLEFORMER = "tableformer"
-    FILE = "file"
-    SMOLDOCLING = "smoldocling"
 
 
 def log_and_save_stats(
