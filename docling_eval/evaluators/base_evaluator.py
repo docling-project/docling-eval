@@ -95,8 +95,6 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         self._accepted_status: List[ConversionStatus] = [
             ConversionStatus.SUCCESS,
             ConversionStatus.PARTIAL_SUCCESS,
-            # TODO: Need to check why we have PENDING status from Docling
-            ConversionStatus.PENDING,
         ]
 
     def __call__(
