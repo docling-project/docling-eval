@@ -106,3 +106,18 @@ class PageTokens(BaseModel):
 
     height: float
     width: float
+
+
+class ConsolidationFormats(str, Enum):
+    EXCEL = "excel"
+
+
+class PredictionProviderType(str, Enum):
+    """Types of prediction providers available."""
+
+    DOCLING = "Docling"
+    TABLEFORMER = "TableFormer"
+    FILE = "File"
+    SMOLDOCLING = "SmolDocling"
+    AWS = "AWS"
+    AZURE = "Azure"

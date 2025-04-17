@@ -21,6 +21,7 @@ from docling_eval.datamodels.types import (  # type: ignore
 from docling_eval.evaluators.base_evaluator import (
     BaseEvaluator,
     DatasetEvaluation,
+    EvaluationRejectionType,
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
@@ -110,6 +111,10 @@ class BboxTextEvaluator(BaseEvaluator):
             "edit_distance": [],
             "meteor": [],
         }
+        rejected_samples: Dict[EvaluationRejectionType, int] = {
+            EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
+            EvaluationRejectionType.MISSING_PREDICTION: 0,
+        }
         boxes_evaluations: List[BoxesTextEvaluation] = []
 
         for i, data in tqdm(
@@ -124,12 +129,14 @@ class BboxTextEvaluator(BaseEvaluator):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
+                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
             true_doc = data_record.ground_truth_doc
             pred_doc = data_record.predicted_doc
             if pred_doc is None:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
+                rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
 
             # Match the bboxes/text from the true/pred documents
@@ -159,6 +166,8 @@ class BboxTextEvaluator(BaseEvaluator):
                 boxes_evaluations.append(boxes_evaluation)
 
         ds_evaluation = DatasetBoxesTextEvaluation(
+            evaluated_samples=len(boxes_evaluations),
+            rejected_samples=rejected_samples,
             evaluations=boxes_evaluations,
             bleu_stats=compute_stats(ds_metrics["bleu"]),
             f1_score_stats=compute_stats(ds_metrics["f1_score"]),

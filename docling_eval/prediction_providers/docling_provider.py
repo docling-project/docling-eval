@@ -1,6 +1,6 @@
 import copy
 import platform
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, FormatOption
@@ -11,7 +11,11 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import (
+    EvaluationModality,
+    PredictionFormats,
+    PredictionProviderType,
+)
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -25,6 +29,16 @@ class DoclingPredictionProvider(BasePredictionProvider):
     This provider converts documents using the Docling document converter
     with specified format options.
     """
+
+    prediction_provider_type: PredictionProviderType = PredictionProviderType.DOCLING
+
+    prediction_modalities: List[EvaluationModality] = [
+        EvaluationModality.LAYOUT,
+        EvaluationModality.TABLE_STRUCTURE,
+        EvaluationModality.READING_ORDER,
+        EvaluationModality.MARKDOWN_TEXT,
+        EvaluationModality.BBOXES_TEXT,
+    ]
 
     def __init__(
         self,
@@ -44,6 +58,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
             true_labels: Set of DocItemLabel to use for ground truth visualization
             pred_labels: Set of DocItemLabel to use for prediction visualization
         """
+
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
@@ -92,7 +107,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
         """Get information about the prediction provider."""
 
         return {
-            "asset": "Docling",
+            "asset": PredictionProviderType.DOCLING,
             "version": docling_version(),
             "package_versions": {
                 "docling": get_package_version("docling"),
