@@ -53,13 +53,13 @@ class Consolidator:
 
     def __call__(
         self,
-        multi_evalution: MultiEvaluation,
+        multi_evaluation: MultiEvaluation,
         consolidation_format: Optional[
             ConsolidationFormats
         ] = ConsolidationFormats.EXCEL,
     ) -> Tuple[Dict[EvaluationModality, DataFrame], Optional[Path]]:
         r""" """
-        dfs = self._build_dataframes(multi_evalution)
+        dfs = self._build_dataframes(multi_evaluation)
 
         # Export dataframe
         if consolidation_format == ConsolidationFormats.EXCEL:
@@ -142,7 +142,7 @@ class Consolidator:
 
     def _build_dataframes(
         self,
-        multi_evalution: MultiEvaluation,
+        multi_evaluation: MultiEvaluation,
     ) -> Dict[EvaluationModality, DataFrame]:
         r"""
         Return a Dict with dataframes per modality
@@ -151,7 +151,7 @@ class Consolidator:
         df_data: Dict[EvaluationModality, List[Dict[str, Union[str, float, int]]]] = {}
 
         # Collect the dataframe data
-        for benchmark, prov_mod_eval in multi_evalution.evaluations.items():
+        for benchmark, prov_mod_eval in multi_evaluation.evaluations.items():
             for experiment, mod_eval in prov_mod_eval.items():
                 for modality, single_evaluation in mod_eval.items():
                     evaluation = single_evaluation.evaluation
