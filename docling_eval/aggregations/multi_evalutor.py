@@ -368,6 +368,9 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
             except ValueError:
                 continue
             for experiment_path in benchmark_path.iterdir():
+                if not experiment_path.is_dir():
+                    continue
+
                 experiment = experiment_path.name
                 if experiment == "_GT_":
                     continue
