@@ -202,6 +202,7 @@ def get_prediction_provider(
     provider_type: PredictionProviderType,
     file_source_path: Optional[Path] = None,
     file_prediction_format: Optional[PredictionFormats] = None,
+    artifacts_path: Optional[Path] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -221,6 +222,9 @@ def get_prediction_provider(
         pipeline_options.images_scale = 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
 
         return DoclingPredictionProvider(
             format_options={
@@ -244,6 +248,10 @@ def get_prediction_provider(
                 import mlx_vlm  # type: ignore
 
                 pipeline_options.vlm_options = smoldocling_vlm_mlx_conversion_options
+
+                if artifacts_path is not None:
+                    pipeline_options.artifacts_path = artifacts_path
+
             except ImportError:
                 _log.warning(
                     "To run SmolDocling faster, please install mlx-vlm:\n"
@@ -637,7 +645,6 @@ def create_gt(
 
 @app.command()
 def create_eval(
-    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory.")],
     prediction_provider: Annotated[
@@ -662,6 +669,12 @@ def create_eval(
         Optional[Path],
         typer.Option(
             help="Source path for File provider (required if using FILE provider)"
+        ),
+    ] = None,
+    artifacts_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
 ):
@@ -690,10 +703,11 @@ def create_eval(
             provider_type=prediction_provider,
             file_source_path=file_source_path,
             file_prediction_format=file_format,
+            artifacts_path=artifacts_path,
         )
 
         # Get the dataset name from the benchmark
-        dataset_name = f"{benchmark.value}: {modality.value}"
+        dataset_name = f"{benchmark.value}"
 
         # Create predictions
         provider.create_prediction_dataset(
@@ -712,7 +726,6 @@ def create_eval(
 
 @app.command()
 def create(
-    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     dataset_source: Annotated[
@@ -748,7 +761,6 @@ def create(
     # Then create evaluation if provider specified
     if prediction_provider:
         create_eval(
-            modality=modality,
             benchmark=benchmark,
             output_dir=output_dir,
             prediction_provider=prediction_provider,

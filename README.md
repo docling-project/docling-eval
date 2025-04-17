@@ -32,16 +32,16 @@ terminal %> poetry run docling_eval --help
                                                                                                                                                                                                                                                 
  Docling Evaluation CLI for benchmarking document processing tasks.                                                                                                                                                                             
                                                                                                                                                                                                                                                 
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --help          Show this message and exit.                                                                                                                                                                                                  │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ create        Create both ground truth and evaluation datasets in one step.                                                                                                                                                                  │
-│ create-eval   Create evaluation dataset from existing ground truth.                                                                                                                                                                          │
-│ create-gt     Create ground truth dataset only.                                                                                                                                                                                              │
-│ evaluate      Evaluate predictions against ground truth.                                                                                                                                                                                     │
-│ visualize     Visualize evaluation results.                                                                                                                                                                                                  │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────────────╮
+│ create        Create both ground truth and evaluation datasets in one step.          │
+│ create-eval   Create evaluation dataset from existing ground truth.                  │
+│ create-gt     Create ground truth dataset only.                                      │
+│ evaluate      Evaluate predictions against ground truth.                             │
+│ visualize     Visualize evaluation results.                                          │
+╰──────────────────────────────────────────────────────────────────────────────────────╯
 
 
 ```

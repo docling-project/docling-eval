@@ -8,7 +8,6 @@ docling_eval create-gt --benchmark PubTabNet --output-dir ./benchmarks/PubTabNet
 
 # Make predictions for tables.
 docling_eval create-eval \
-  --modality table_structure \
   --benchmark DPBench \
   --output-dir ./benchmarks/PubTabNet/ \
   --end-index 1000 \
