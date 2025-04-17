@@ -2,7 +2,7 @@ import logging
 import mimetypes
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import ImageRef, PageItem, Size
@@ -40,7 +40,16 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
-        file_pattern: str = "*.{PDF,pdf,PNG,png,JPG,jpg,JPEG,jpeg,TIF,tif,tiff}",
+        file_extensions: List[str] = [
+            "pdf",
+            "tif",
+            "tiff",
+            "jpg",
+            "jpeg",
+            "png",
+            "bmp",
+            "gif",
+        ],
     ):
         """
         Initialize the File dataset builder.
@@ -60,7 +69,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
             begin_index=begin_index,
             end_index=end_index,
         )
-        self.file_pattern = file_pattern
+        self.file_extensions = file_extensions
         self.must_retrieve = False
 
     def iterate(self) -> Iterable[DatasetRecord]:
@@ -73,9 +82,11 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         assert isinstance(self.dataset_source, Path)
 
-        files = []
-        for file in self.dataset_source.glob(self.file_pattern):
-            files.append(file)
+        files: List[Path] = []
+
+        for ext in self.file_extensions:
+            files.extend(self.dataset_source.glob(f"*.{ext}"))
+            files.extend(self.dataset_source.glob(f"*.{ext.upper()}"))
         files.sort()
 
         # Apply index range
