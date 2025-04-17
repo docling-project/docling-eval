@@ -25,7 +25,7 @@ packages = [{include = "docling_eval"}]
 # actual dependencies:
 ######################
 python = "^3.10"
-docling-core = "^2.25.0"
+docling-core = "^2.27.0"
 pydantic = "^2.0.0"
 lxml = "^5.3.0"
 datasets = "^3.2.0"
@@ -43,13 +43,16 @@ pillow = "^10.3.0"
 evaluate = "^0.4.3"
 nltk = "^3.9.1"
 ibm-cos-sdk = "^2.1.40"
-azure-ai-formrecognizer = { version = "^3.3.0" }
-azure-common = { version = "^1.1.28" }
-azure-core = { version = "^1.32.0" }
+azure-ai-formrecognizer = { version = "^3.3.0", optional = true }
+azure-common = { version = "^1.1.28", optional = true }
+azure-core = { version = "^1.32.0", optional = true }
 beautifulsoup4 = "^4.12.3"
-urllib3 = "^1.24.2"
 pandas = "^2.2.3"
 openpyxl = "^3.1.5"
+boto3 = { version = "^1.37.8", optional = true }
+google-cloud-documentai = { version = "^3.2.0", optional = true }
+#urllib3 = "^1.24.2"
+
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}
@@ -71,9 +74,12 @@ ipywidgets = "^8.1.5"
 nbqa = "^1.9.0"
 types-openpyxl = "^3.1.5.20241114"
 xmltodict = "^0.14.2"
+types-protobuf = "^5.29.1.20250315"
+boto3-stubs = "^1.37.19"
+types-urllib3 = "^1.26.25.14"
 
 [tool.poetry.extras]
-hyperscalers = ["ibm-cos-sdk", "azure-ai-formrecognizer", "azure-common", "azure-core"]
+hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3", "google-cloud-documentai"]
 
 [tool.poetry.scripts]
 docling_eval = "docling_eval.cli.main:app"

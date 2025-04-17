@@ -11,7 +11,11 @@ from huggingface_hub import snapshot_download
 from pydantic import BaseModel
 
 from docling_eval.datamodels.dataset_record import DatasetRecord
+from docling_eval.prediction_providers.base_prediction_provider import (
+    TRUE_HTML_EXPORT_LABELS,
+)
 from docling_eval.utils.utils import save_shard_to_disk, write_datasets_info
+from docling_eval.visualisation.visualisations import save_inspection_html
 
 # Get logger
 _log = logging.getLogger(__name__)
@@ -239,7 +243,10 @@ class BaseEvaluationDatasetBuilder:
         pass
 
     def save_to_disk(
-        self, chunk_size: int = 80, max_num_chunks: int = sys.maxsize
+        self,
+        chunk_size: int = 80,
+        max_num_chunks: int = sys.maxsize,
+        do_visualization: bool = False,
     ) -> None:
         """
         Save the dataset to disk in chunks.
@@ -260,11 +267,21 @@ class BaseEvaluationDatasetBuilder:
         chunk_count = 0
 
         for record_chunk in chunkify(self.iterate(), chunk_size):
-            record_chunk = [r.as_record_dict() for r in record_chunk]
+            record_list = []
+            for r in record_chunk:
+                record_list.append(r.as_record_dict())
+                if do_visualization:
+                    viz_path = self.target / "visualizations" / f"{r.doc_id}.html"
+                    save_inspection_html(
+                        filename=viz_path,
+                        doc=r.ground_truth_doc,
+                        labels=TRUE_HTML_EXPORT_LABELS,
+                    )
+
             save_shard_to_disk(
-                items=record_chunk, dataset_path=test_dir, shard_id=chunk_count
+                items=record_list, dataset_path=test_dir, shard_id=chunk_count
             )
-            count += len(record_chunk)
+            count += len(record_list)
             chunk_count += 1
 
             if chunk_count >= max_num_chunks:

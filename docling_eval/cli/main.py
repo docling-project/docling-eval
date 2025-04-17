@@ -25,6 +25,10 @@ from docling_eval.datamodels.types import (
     PredictionFormats,
     PredictionProviderType,
 )
+from docling_eval.dataset_builders.cvat_dataset_builder import CvatDatasetBuilder
+from docling_eval.dataset_builders.cvat_preannotation_builder import (
+    CvatPreannotationBuilder,
+)
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
@@ -176,6 +180,12 @@ def get_dataset_builder(
     elif benchmark == BenchMarkNames.DOCVQA:
         return DocVQADatasetBuilder(**common_params)  # type: ignore
 
+    elif benchmark == BenchMarkNames.CVAT:
+        assert dataset_source is not None
+        return CvatDatasetBuilder(
+            name="CVAT", dataset_source=dataset_source, target=target, split=split
+        )
+
     else:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
 
@@ -185,6 +195,7 @@ def get_prediction_provider(
     file_source_path: Optional[Path] = None,
     file_prediction_format: Optional[PredictionFormats] = None,
     do_visualization: bool = True,
+    artifacts_path: Optional[Path] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -204,6 +215,9 @@ def get_prediction_provider(
         pipeline_options.images_scale = 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
 
         return DoclingPredictionProvider(
             format_options={
@@ -227,6 +241,10 @@ def get_prediction_provider(
                 import mlx_vlm  # type: ignore
 
                 pipeline_options.vlm_options = smoldocling_vlm_mlx_conversion_options
+
+                if artifacts_path is not None:
+                    pipeline_options.artifacts_path = artifacts_path
+
             except ImportError:
                 _log.warning(
                     "To run SmolDocling faster, please install mlx-vlm:\n"
@@ -572,11 +590,23 @@ def visualize(
 
 
 @app.command()
+def create_cvat(
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
+    bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
+):
+    builder = CvatPreannotationBuilder(
+        dataset_source=gt_dir, target=output_dir, bucket_size=bucket_size
+    )
+    builder.prepare_for_annotation()
+
+
+@app.command()
 def create_gt(
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     dataset_source: Annotated[
-        Optional[Path], typer.Option(help="Dataset source for FUNSD and XFUND")
+        Optional[Path], typer.Option(help="Dataset source path")
     ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
     begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
@@ -609,7 +639,6 @@ def create_gt(
 
 @app.command()
 def create_eval(
-    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory.")],
     prediction_provider: Annotated[
@@ -634,6 +663,12 @@ def create_eval(
         Optional[Path],
         typer.Option(
             help="Source path for File provider (required if using FILE provider)"
+        ),
+    ] = None,
+    artifacts_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
 ):
@@ -662,10 +697,11 @@ def create_eval(
             provider_type=prediction_provider,
             file_source_path=file_source_path,
             file_prediction_format=file_format,
+            artifacts_path=artifacts_path,
         )
 
         # Get the dataset name from the benchmark
-        dataset_name = f"{benchmark.value}: {modality.value}"
+        dataset_name = f"{benchmark.value}"
 
         # Create predictions
         provider.create_prediction_dataset(
@@ -684,11 +720,10 @@ def create_eval(
 
 @app.command()
 def create(
-    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     dataset_source: Annotated[
-        Optional[Path], typer.Option(help="Dataset source for FUNSD and XFUND")
+        Optional[Path], typer.Option(help="Dataset source path")
     ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
     begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
@@ -720,7 +755,6 @@ def create(
     # Then create evaluation if provider specified
     if prediction_provider:
         create_eval(
-            modality=modality,
             benchmark=benchmark,
             output_dir=output_dir,
             prediction_provider=prediction_provider,

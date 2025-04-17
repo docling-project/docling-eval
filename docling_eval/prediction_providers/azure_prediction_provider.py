@@ -1,3 +1,4 @@
+import importlib.metadata
 import json
 import logging
 import os
@@ -251,7 +252,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 result = poller.result()
                 result_json = result.to_dict()
                 _log.info(
-                    f"Successfully processed [{record.original.name}] using Azure API..!!"
+                    f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
 
             elif record.mime_type == "image/png":
@@ -267,7 +268,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 result = poller.result()
                 result_json = result.to_dict()
                 _log.info(
-                    f"Successfully processed [{record.original.name}] using Azure API..!!"
+                    f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
             else:
                 raise RuntimeError(
@@ -295,4 +296,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         return pred_record
 
     def info(self) -> Dict:
-        return {"asset": "Azure AI Document Intelligence", "version": "1.0.0"}
+        return {
+            "asset": "Azure AI Document Intelligence",
+            "version": importlib.metadata.version("azure-ai-formrecognizer"),
+        }
