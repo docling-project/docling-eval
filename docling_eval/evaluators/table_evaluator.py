@@ -236,8 +236,9 @@ class TableEvaluator(BaseEvaluator):
         table_evaluations = []
         true_tables = true_doc.tables
         pred_tables = pred_doc.tables
-
-        # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
+        _log.info(
+            "#-true-tables: %s, #-pred-tables: %s", len(true_tables), len(pred_tables)
+        )
         assert len(true_tables) == len(
             pred_tables
         ), "len(true_tables)!=len(pred_tables)"

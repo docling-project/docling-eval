@@ -9,7 +9,7 @@ from docling_core.types.doc.labels import DocItemLabel
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.datamodels.types import BenchMarkColumns
-from docling_eval.legacy.converters.conversion import create_pdf_docling_converter
+from docling_eval.legacy.conversion import create_pdf_docling_converter
 from docling_eval.utils.utils import (
     docling_version,
     from_pil_to_base64,

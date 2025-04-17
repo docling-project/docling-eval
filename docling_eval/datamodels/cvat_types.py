@@ -65,24 +65,6 @@ class TableComponentLabel(str, Enum):
         return color_map[label]
 
 
-def rgb_to_hex(r, g, b):
-    """
-    Converts RGB values to a HEX color code.
-
-    Args:
-        r (int): Red value (0-255)
-        g (int): Green value (0-255)
-        b (int): Blue value (0-255)
-
-    Returns:
-        str: HEX color code (e.g., "#RRGGBB")
-    """
-    if not (0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255):
-        raise ValueError("RGB values must be in the range 0-255")
-
-    return f"#{r:02X}{g:02X}{b:02X}"
-
-
 class BenchMarkDirs(BaseModel):
 
     source_dir: Path = Path("")
@@ -181,57 +163,50 @@ class AnnotationLine(BaseModel):
 
 
 class AnnotatedDoc(BaseModel):
+    """Document representation for CVAT annotation."""
 
     mime_type: str = ""
-
-    true_file: Path = Path("")
-    pred_file: Path = Path("")
-
+    document_file: Path = Path("")  # Single document file path
     bin_file: Path = Path("")
-
     doc_hash: str = ""
     doc_name: str = ""
 
 
 class AnnotatedImage(BaseModel):
+    """Image representation for CVAT annotation."""
 
     mime_type: str = ""
-
-    true_file: Path = Path("")
-    pred_file: Path = Path("")
-
+    document_file: Path = Path("")  # Single document file path
     bin_file: Path = Path("")
     bucket_dir: Path = Path("")
-
     doc_hash: str = ""
     doc_name: str = ""
-
     img_id: int = -1
     img_w: int = -1
     img_h: int = -1
-
     img_file: Path = Path("")
-
     page_nos: List[int] = []
     page_img_files: List[Path] = []
+    bbox_annotations: List[AnnotationBBox] = []  # Renamed from pred_boxes
+    line_annotations: List[AnnotationLine] = []  # Renamed from pred_lines
 
-    pred_boxes: List[AnnotationBBox] = []
-    pred_lines: List[AnnotationLine] = []
+    def to_cvat(self, lines: bool = False) -> str:
+        """
+        Generate CVAT XML annotation for this image.
 
-    cvat_boxes: List[AnnotationBBox] = []
-    cvat_lines: List[AnnotationLine] = []
+        Args:
+            lines: Whether to include line annotations (default: False)
 
-    def to_cvat(self, pred: bool = True, lines: bool = False) -> str:
+        Returns:
+            String containing CVAT XML for this image
+        """
         tmp = [
             f'<image id="{self.img_id}" name="{os.path.basename(self.img_file)}" width="{self.img_w}" height="{self.img_h}">'
         ]
 
-        if pred:
-            for item_id, item in enumerate(self.pred_boxes):
-                tmp.append(item.to_cvat())
-        else:
-            for item_id, item in enumerate(self.cvat_boxes):
-                tmp.append(item.to_cvat())
+        # Add bounding box annotations
+        for item_id, item in enumerate(self.bbox_annotations):
+            tmp.append(item.to_cvat())
 
         tmp.append("</image>")
 

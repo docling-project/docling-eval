@@ -2,51 +2,36 @@
 
 ## Prerequisites: create dataset in parquet
 
-To start creating ground-truth, you first need to have a dataset in parquet format. This can be done in different ways. 
-
-The first way is to use an existing dataset (eg dpbench), which has potentially pre-annotated tables, formulas, etc. Hence you can run the create script of that particular benchmark.
+To start creating ground-truth, you first need to have a dataset in parquet format.
+The most straightforward way is to use an existing dataset (e.g. DPBench), which comes with pre-annotated tables, formulas, etc. Hence, you can run the create script of that particular benchmark.
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark DPBench --output-dir ./benchmarks/DPBench/ 
-```
-
-Another way is to create it from PDF or PNG files. In this case, simply run the following scripts,
-
-```sh
-poetry run python ./docling_eval/legacy/cvat_annotation/create_dataset_from_pdfs.py -h
-usage: create_dataset_from_pdfs.py [-h] -i INPUT_DIR -o OUTPUT_DIR -b BUCKET_SIZE
-
-Process input and output directories and a pre-annotation file.
-
-options:
-  -h, --help            show this help message and exit
-  -i INPUT_DIR, --input_dir INPUT_DIR
-                        Path to directory with pdf's
-  -o OUTPUT_DIR, --output_dir OUTPUT_DIR
-                        Path to the output directory containing the dataset.
-  -b BUCKET_SIZE, --bucket-size BUCKET_SIZE
-                        Numbers of documents in the bucket.
+docling_eval create-gt --benchmark DPBench --output-dir ./benchmarks/DPBench-GT/ 
 ```
 
 ## Pre-annotation with Docling
 
-Once you have run the Prerequisites, you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `preannotate.py` script,
+Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `create-cvat` function of the `docling_eval` CLI.
 
 ```sh
-poetry run python docling_eval/legacy/cvat_annotation/preannotate.py -h
-usage: preannotate.py [-h] -i INPUT_DIR -o OUTPUT_DIR -b BUCKET_SIZE
+❯ docling_eval create-cvat --help
+                                                                                                                                                                    
+ Usage: docling_eval create-cvat [OPTIONS]                                                                                                                          
+                                                                                                                                                                    
+╭─ Options ────────────────────────────────────────────────────────────────────────╮
+│ *  --output-dir         PATH     Output directory [default: None] [required]     │
+│ *  --gt-dir             PATH     Dataset source path [default: None] [required]  │
+│    --bucket-size        INTEGER  Size of CVAT tasks [default: 20]                │
+│    --help                        Show this message and exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────────╯
+```
 
-Process input and output directories and a pre-annotation file.
-
-options:
-  -h, --help            show this help message and exit
-  -i INPUT_DIR, --input_dir INPUT_DIR
-                        Path to the input dataset directory with parquet files.
-  -o OUTPUT_DIR, --output_dir OUTPUT_DIR
-                        Path to the output directory.
-  -b BUCKET_SIZE, --bucket-size BUCKET_SIZE
-                        Numbers of documents in the bucket.
+For example, try:
+```sh
+docling_eval create-cvat \ 
+   --gt-dir ./benchmarks/DPBench-GT/gt_dataset/test/ \
+   --output-dir ./benchmarks/DPBench-CVAT/
 ```
 
 In essence, this will read the parquet files and set up a new directory structure (designated output) that has the following layout,
@@ -68,7 +53,6 @@ In essence, this will read the parquet files and set up a new directory structur
 ├── html_comparisons
 ├── json_annotations
 ├── json_groundtruth
-├── json_predictions
 └── page_imgs
 ```
 
@@ -134,18 +118,12 @@ After you have annotated all images, you can export the annotations,
 
 ![Export annotations](./CVAT_screenshots/13.png)
 
-You move the zip file into `cvat_annotations/zips` and then run the create script,
-
-```sh
-poetry run python docling_eval/legacy/cvat_annotation/create.py -h
-usage: create.py [-h] -i INPUT_DIR
-
-Create new evaluation dataset using CVAT annotation files.
-
-options:
-  -h, --help            show this help message and exit
-  -i INPUT_DIR, --input_dir INPUT_DIR
-                        Path to the input directory
+You move the zip file into `cvat_annotations/zips` and then run the `create-gt` CLI function. For example:
+```shell
+docling_eval create-gt \
+  --benchmark CVAT \
+  --output-dir ./benchmarks/DPBench-CVAT-GT/ \
+  --dataset-source ./benchmarks/DPBench-CVAT/
 ```
 
-This should do all the heavy lifting for you. It is good to verify that all went well by inspecting the `html_comparisons` directory. The newly created dataset will be stored in the `dataset` with `test` and `train` subdirs. Evaluations cna then be run directly on the `dataset/test` directory.
+This should do all the heavy lifting for you.

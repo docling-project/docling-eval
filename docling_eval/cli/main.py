@@ -25,6 +25,10 @@ from docling_eval.datamodels.types import (
     EvaluationModality,
     PredictionFormats,
 )
+from docling_eval.dataset_builders.cvat_dataset_builder import CvatDatasetBuilder
+from docling_eval.dataset_builders.cvat_preannotation_builder import (
+    CvatPreannotationBuilder,
+)
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
@@ -183,6 +187,12 @@ def get_dataset_builder(
 
     elif benchmark == BenchMarkNames.DOCVQA:
         return DocVQADatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.CVAT:
+        assert dataset_source is not None
+        return CvatDatasetBuilder(
+            name="CVAT", dataset_source=dataset_source, target=target, split=split
+        )
 
     else:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
@@ -578,11 +588,23 @@ def visualize(
 
 
 @app.command()
+def create_cvat(
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
+    bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
+):
+    builder = CvatPreannotationBuilder(
+        dataset_source=gt_dir, target=output_dir, bucket_size=bucket_size
+    )
+    builder.prepare_for_annotation()
+
+
+@app.command()
 def create_gt(
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     dataset_source: Annotated[
-        Optional[Path], typer.Option(help="Dataset source for FUNSD and XFUND")
+        Optional[Path], typer.Option(help="Dataset source path")
     ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
     begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
@@ -694,7 +716,7 @@ def create(
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     dataset_source: Annotated[
-        Optional[Path], typer.Option(help="Dataset source for FUNSD and XFUND")
+        Optional[Path], typer.Option(help="Dataset source path")
     ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
     begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,

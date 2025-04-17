@@ -77,6 +77,8 @@ class BenchMarkNames(str, Enum):
     # OCR
     PIXPARSEIDL = "PixparseIdl"
 
+    CVAT = "CVAT"
+
 
 class ConverterTypes(str, Enum):
     DOCLING = "Docling"
