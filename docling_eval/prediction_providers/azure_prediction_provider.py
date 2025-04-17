@@ -25,7 +25,11 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import (
+    EvaluationModality,
+    PredictionFormats,
+    PredictionProviderType,
+)
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -38,6 +42,10 @@ _log = logging.getLogger(__name__)
 
 class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
     """Provider that calls the Microsoft Azure Document Intelligence API for predicting the tables in document."""
+
+    prediction_provider_type: PredictionProviderType = PredictionProviderType.AZURE
+
+    prediction_modalities = [EvaluationModality.TABLE_STRUCTURE]
 
     def __init__(
         self,

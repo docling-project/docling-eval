@@ -37,8 +37,7 @@ class FilePredictionProvider(BasePredictionProvider):
 
     prediction_provider_type: PredictionProviderType = PredictionProviderType.FILE
 
-    # TODO: Check if it makes sense to have prediction modalities
-    # prediction_modalities = []
+    prediction_modalities = [x for x in EvaluationModality]
 
     def __init__(
         self,
