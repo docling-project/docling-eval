@@ -103,7 +103,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         """
         return self._supported_prediction_sources
 
-    def save_intermediate_evalutions(
+    def save_intermediate_evaluations(
         self,
         evaluation_name: str,
         enunumerate_id: int,
