@@ -236,8 +236,9 @@ class TableEvaluator(BaseEvaluator):
         table_evaluations = []
         true_tables = true_doc.tables
         pred_tables = pred_doc.tables
-
-        # logging.info(f"#-true-tables: {len(true_tables)}, #-pred-tables: {len(pred_tables)}")
+        _log.info(
+            "#-true-tables: %s, #-pred-tables: %s", len(true_tables), len(pred_tables)
+        )
         assert len(true_tables) == len(
             pred_tables
         ), "len(true_tables)!=len(pred_tables)"
@@ -257,8 +258,8 @@ class TableEvaluator(BaseEvaluator):
 
                 is_complex = is_complex_table(true_table)
 
-                true_html = true_table.export_to_html()
-                pred_html = pred_table.export_to_html()
+                true_html = true_table.export_to_html(true_doc)
+                pred_html = pred_table.export_to_html(pred_doc)
 
                 # Filter out tags that may be present in GT but not in prediction to avoid penalty
                 for stopword in self._stopwords:

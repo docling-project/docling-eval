@@ -8,7 +8,6 @@ docling_eval create-gt --benchmark Pub1M --output-dir ./benchmarks/Pub1M/
 
 # Make predictions for tables.
 docling_eval create-eval \
-  --modality table_structure \
   --benchmark DPBench \
   --output-dir ./benchmarks/Pub1M/ \
   --end-index 1000 \

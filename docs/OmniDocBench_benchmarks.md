@@ -10,14 +10,12 @@ docling_eval create-gt --benchmark OmniDocBench --output-dir ./benchmarks/OmniDo
 
 # Make predictions for different modalities.
 docling_eval create-eval \
-  --modality end-to-end \
   --benchmark OmniDocBench \
   --gt-dir ./benchmarks/OmniDocBench-gt/ \
   --output-dir ./benchmarks/OmniDocBench-e2e/ \
   --prediction-provider docling # use full-document predictions from docling
   
 docling_eval create-eval \
-  --modality table_structure \
   --benchmark DPBench \
   --gt-dir ./benchmarks/OmniDocBench-gt/ \
   --output-dir ./benchmarks/OmniDocBench-tables/ \

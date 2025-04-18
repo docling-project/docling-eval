@@ -8,8 +8,7 @@ docling_eval create-gt --benchmark FinTabNet --output-dir ./benchmarks/FinTabNet
 
 # Make predictions for tables.
 docling_eval create-eval \
-  --modality table_structure \
-  --benchmark DPBench \
+  --benchmark FinTabNet \
   --output-dir ./benchmarks/FinTabNet/ \
   --end-index 1000 \
   --prediction-provider tableformer # use tableformer predictions only

@@ -10,14 +10,12 @@ Create Docling-DPBench evaluation datasets:
 huggingface-cli download --repo-type dataset --local-dir ./benchmarks/Docling-DPBench-gt/gt_dataset ds4sd/docling-dpbench
 # Make predictions for different modalities.
 docling_eval create-eval \
-  --modality end-to-end \
   --benchmark DPBench \
   --gt-dir ./benchmarks/Docling-DPBench-gt/gt_dataset/ \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ \
   --prediction-provider docling # use full-document predictions from docling
   
 docling_eval create-eval \
-  --modality table_structure \
   --benchmark DPBench \
   --gt-dir ./benchmarks/Docling-DPBench-gt/gt_dataset/ \
   --output-dir ./benchmarks/Docling-DPBench-tables/ \

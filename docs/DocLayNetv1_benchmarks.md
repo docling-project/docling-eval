@@ -9,13 +9,11 @@ docling_eval create-gt --benchmark DocLayNetV1 --output-dir ./benchmarks/DocLayN
 
 # Make predictions for different modalities.
 docling_eval create-eval \
-  --modality end-to-end \
   --benchmark DocLayNetV1 \
   --output-dir ./benchmarks/DocLayNetV1/ \
   --prediction-provider docling # use full-document predictions from docling
   
 docling_eval create-eval \
-  --modality table_structure \
   --benchmark DPBench \
   --output-dir ./benchmarks/DocLayNetV1/ \
   --prediction-provider tableformer # use tableformer predictions only

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Generic, List, Optional, TypeVar
 
+from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.document import (
     DoclingDocument,
     DocTagsDocument,
@@ -80,6 +81,11 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
             raise RuntimeError(msg)
         self._prediction_sources = prediction_sources
         self._supported_prediction_sources = supported_prediction_formats
+
+        self._accepted_status: List[ConversionStatus] = [
+            ConversionStatus.SUCCESS,
+            ConversionStatus.PARTIAL_SUCCESS,
+        ]
 
     def __call__(
         self,
