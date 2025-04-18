@@ -127,7 +127,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             evaluations.append(page_evaluation)
 
             if self._intermediate_evaluations_path:
-                self.save_intermediate_evalutions(
+                self.save_intermediate_evaluations(
                     "reading_order", i, doc_id, evaluations
                 )
 

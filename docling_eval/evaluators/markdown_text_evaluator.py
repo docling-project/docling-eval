@@ -178,7 +178,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
             evaluations.append(md_evaluation)
 
             if self._intermediate_evaluations_path:
-                self.save_intermediate_evalutions("MD", i, doc_id, evaluations)
+                self.save_intermediate_evaluations("MD", i, doc_id, evaluations)
 
         ds_md_evalutions = DatasetMarkdownEvaluation(
             evaluations=evaluations,

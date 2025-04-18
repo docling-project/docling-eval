@@ -176,7 +176,7 @@ class TableEvaluator(BaseEvaluator):
                     table_evaluations.extend(results)
 
                     if self._intermediate_evaluations_path:
-                        self.save_intermediate_evalutions(
+                        self.save_intermediate_evaluations(
                             "TEDs_struct_content", i, doc_id, results
                         )
 
@@ -188,7 +188,9 @@ class TableEvaluator(BaseEvaluator):
                 )
                 table_struct_evaluations.extend(results)
                 if self._intermediate_evaluations_path:
-                    self.save_intermediate_evalutions("TEDs_struct", i, doc_id, results)
+                    self.save_intermediate_evaluations(
+                        "TEDs_struct", i, doc_id, results
+                    )
 
             except Exception as ex:
                 evaluation_errors += 1

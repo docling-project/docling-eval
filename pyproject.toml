@@ -46,10 +46,10 @@ azure-ai-formrecognizer = { version = "^3.3.0", optional = true }
 azure-common = { version = "^1.1.28", optional = true }
 azure-core = { version = "^1.32.0", optional = true }
 beautifulsoup4 = "^4.12.3"
+jiwer = "^3.1.0"
+urllib3 = "^1.24.2"
 boto3 = { version = "^1.37.8", optional = true }
 google-cloud-documentai = { version = "^3.2.0", optional = true }
-#urllib3 = "^1.24.2"
-
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}
