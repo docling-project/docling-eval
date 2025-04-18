@@ -8,7 +8,7 @@ docling_eval create-gt --benchmark PubTabNet --split val --output-dir ./benchmar
 
 # Make predictions for tables.
 docling_eval create-eval \
-  --benchmark DPBench \
+  --benchmark PubTabNet \
   --output-dir ./benchmarks/PubTabNet/ \
   --end-index 1000 \
   --prediction-provider tableformer # use tableformer predictions only
