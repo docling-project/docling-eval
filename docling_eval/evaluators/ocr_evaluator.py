@@ -116,14 +116,14 @@ class OCREvaluator(BaseEvaluator):
             )
 
             text_evaluations_list.append(page_evaluation)
-
-            # Save intermediate evaluations if path is set
-            self.save_intermediate_evaluations(
-                evaluation_name="ocr_eval",
-                enunumerate_id=i,
-                doc_id=doc_id,
-                evaluations=[page_evaluation],
-            )
+            if self._intermediate_evaluations_path:
+                # Save intermediate evaluations if path is set
+                self.save_intermediate_evaluations(
+                    evaluation_name="ocr_eval",
+                    enunumerate_id=i,
+                    doc_id=doc_id,
+                    evaluations=[page_evaluation],
+                )
 
         mean_character_accuracy = (
             statistics.mean(char_accuracy_list) if char_accuracy_list else 0.0
@@ -140,7 +140,7 @@ class OCREvaluator(BaseEvaluator):
     def _compute_cer_score(self, true_txt: str, pred_txt: str) -> float:
         """Compute Character Error Rate"""
         result = self._cer_eval.compute(predictions=[pred_txt], references=[true_txt])
-        return result["cer"]
+        return result
 
     def _extract_text(self, json_data: Dict[str, Any]) -> str:
         """Extract text from document JSON structure"""

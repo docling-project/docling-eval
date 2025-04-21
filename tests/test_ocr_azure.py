@@ -37,7 +37,7 @@ def test_run_pixparse_builder():
         end_index=5,
     )
 
-    # dataset.retrieve_input_dataset()  # fetches the source dataset from HF
+    dataset.retrieve_input_dataset()  # fetches the source dataset from HF
     dataset.save_to_disk()  # does all the job of iterating the dataset, making GT+prediction records, and saving them in shards as parquet.
 
     azure_provider.create_prediction_dataset(
