@@ -25,16 +25,16 @@ logging.basicConfig(
 _log = logging.getLogger(__name__)
 
 
-class PageEvaluation(BaseModel):
+class PageOcrEvaluation(BaseModel):
     doc_id: str
-    gd_text: str
-    extracted_text: str
+    true_text: str
+    pred_text: str
     cer: float
     char_accuracy: float
 
 
 class DatasetOcrEvaluation(BaseModel):
-    evaluations: List[PageEvaluation]
+    evaluations: List[PageOcrEvaluation]
     mean_character_accuracy: float
 
 
@@ -85,21 +85,24 @@ class OCREvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
-            true_doc_dict = data_record.ground_truth_doc
-            pred_doc_dict = data_record.predicted_doc
+            if data_record.status not in self._accepted_status:
+                _log.error(
+                    "Skipping record without successfull conversion status: %s", doc_id
+                )
+                continue
 
-            if not pred_doc_dict:
+            true_doc = data_record.ground_truth_doc
+            pred_doc = data_record.predicted_doc
+
+            if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 continue
 
-            # TODO: update the types of _extract_text
-            gd_text = self._extract_text(json.loads(true_doc_dict.model_dump_json()))
-            extracted_text = self._extract_text(
-                json.loads(pred_doc_dict.model_dump_json())
-            )
+            true_text = self._extract_text(true_doc)
+            pred_text = self._extract_text(pred_doc)
 
-            if gd_text and extracted_text:
-                cer = self._compute_cer_score(gd_text, extracted_text)
+            if true_text and pred_text:
+                cer = self._compute_cer_score(true_text, pred_text)
                 char_accuracy = 1.0 - cer
             else:
                 cer = 1.0  # max error when text is missing
@@ -107,17 +110,16 @@ class OCREvaluator(BaseEvaluator):
 
             char_accuracy_list.append(char_accuracy)
 
-            page_evaluation = PageEvaluation(
+            page_evaluation = PageOcrEvaluation(
                 doc_id=doc_id,
-                gd_text=gd_text,
-                extracted_text=extracted_text,
+                true_text=true_text,
+                pred_text=pred_text,
                 cer=cer,
                 char_accuracy=char_accuracy,
             )
 
             text_evaluations_list.append(page_evaluation)
             if self._intermediate_evaluations_path:
-                # Save intermediate evaluations if path is set
                 self.save_intermediate_evaluations(
                     evaluation_name="ocr_eval",
                     enunumerate_id=i,
@@ -131,7 +133,6 @@ class OCREvaluator(BaseEvaluator):
 
         _log.info(f"Mean Character Accuracy: {mean_character_accuracy:.4f}")
 
-        # Return the dataset evaluation with the mean character accuracy
         return DatasetOcrEvaluation(
             evaluations=text_evaluations_list,
             mean_character_accuracy=mean_character_accuracy,
@@ -142,11 +143,11 @@ class OCREvaluator(BaseEvaluator):
         result = self._cer_eval.compute(predictions=[pred_txt], references=[true_txt])
         return result
 
-    def _extract_text(self, json_data: Dict[str, Any]) -> str:
+    def _extract_text(self, doc: DoclingDocument) -> str:
         """Extract text from document JSON structure"""
         extracted_text = ""
-        if "texts" in json_data:
-            for text_item in json_data["texts"]:
-                if "text" in text_item:
-                    extracted_text += text_item["text"] + " "
+        if hasattr(doc, "texts") and doc.texts:
+            for text_item in doc.texts:
+                if hasattr(text_item, "text"):
+                    extracted_text += text_item.text + " "
         return extracted_text.strip()
