@@ -6,9 +6,6 @@ import pytest
 
 from docling_eval.cli.main import evaluate, visualize
 from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
-from docling_eval.dataset_builders.otsl_table_dataset_builder import (
-    FintabNetDatasetBuilder,
-)
 from docling_eval.dataset_builders.pixparse_builder import PixparseDatasetBuilder
 from docling_eval.prediction_providers.azure_prediction_provider import (
     AzureDocIntelligencePredictionProvider,
