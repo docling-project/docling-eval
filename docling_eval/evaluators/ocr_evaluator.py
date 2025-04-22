@@ -146,8 +146,6 @@ class OCREvaluator(BaseEvaluator):
     def _extract_text(self, doc: DoclingDocument) -> str:
         """Extract text from document JSON structure"""
         extracted_text = ""
-        if hasattr(doc, "texts") and doc.texts:
-            for text_item in doc.texts:
-                if hasattr(text_item, "text"):
-                    extracted_text += text_item.text + " "
+        for text_item in doc.texts:
+            extracted_text += text_item.text + " "
         return extracted_text.strip()
