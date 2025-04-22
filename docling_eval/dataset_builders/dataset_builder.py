@@ -263,6 +263,10 @@ class BaseEvaluationDatasetBuilder:
         test_dir = self.target / self.split
         test_dir.mkdir(parents=True, exist_ok=True)
 
+        if do_visualization:
+            viz_path = self.target / "visualizations"
+            viz_path.mkdir(exist_ok=True)
+
         count = 0
         chunk_count = 0
 
