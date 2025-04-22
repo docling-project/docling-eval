@@ -35,6 +35,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
 
     def __init__(
         self,
+        name: str,
         dataset_source: Path,
         target: Path,
         split: str = "test",
@@ -62,7 +63,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
             end_index: End index for processing (exclusive), -1 means process all
         """
         super().__init__(
-            name="FileDataset",
+            name=name,
             dataset_source=dataset_source,  # Local Path to dataset
             target=target,
             split=split,

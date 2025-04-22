@@ -225,6 +225,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
                         self.original_prediction
                     ),
                     self.get_field_alias("status"): (self.status),
+                    self.get_field_alias("predictor_info"): self.predictor_info,
                 }
             )
 
@@ -250,6 +251,10 @@ class DatasetRecordWithPrediction(DatasetRecord):
     @model_validator(mode="before")
     @classmethod
     def validate_prediction_record_dict(cls, data: dict):
+        info_alias = cls.get_field_alias("predictor_info")
+        if info_alias in data and isinstance(data[info_alias], str):
+            data[info_alias] = json.loads(data[info_alias])
+
         pred_doc_alias = cls.get_field_alias("predicted_doc")
         if pred_doc_alias in data and isinstance(data[pred_doc_alias], str):
             data[pred_doc_alias] = json.loads(data[pred_doc_alias])

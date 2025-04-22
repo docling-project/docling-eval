@@ -3,16 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from docling_eval.cli.main import (
-    PredictionProviderType,
-    evaluate,
-    get_prediction_provider,
-    visualize,
-)
+from docling_eval.cli.main import evaluate, get_prediction_provider, visualize
 from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
     PredictionFormats,
+    PredictionProviderType,
 )
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
@@ -586,7 +582,7 @@ def test_file_dataset_builder():
     target_path = Path(f"./scratch/file_dataset/")
 
     dataset_builder = FileDatasetBuilder(
-        dataset_source=Path("./tests/data/files"), target=target_path
+        name="Test_Files", dataset_source=Path("./tests/data/files"), target=target_path
     )
 
     dataset_builder.save_to_disk(do_visualization=True)

@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Annotated, Dict, Optional, Tuple
 
@@ -24,6 +23,7 @@ from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
     PredictionFormats,
+    PredictionProviderType,
 )
 from docling_eval.dataset_builders.cvat_dataset_builder import CvatDatasetBuilder
 from docling_eval.dataset_builders.cvat_preannotation_builder import (
@@ -33,6 +33,7 @@ from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1Datase
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
+from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
 from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
 from docling_eval.dataset_builders.omnidocbench_builder import (
     OmniDocBenchDatasetBuilder,
@@ -43,6 +44,7 @@ from docling_eval.dataset_builders.otsl_table_dataset_builder import (
     PubTabNetDatasetBuilder,
 )
 from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
+from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
@@ -78,15 +80,6 @@ app = typer.Typer(
     add_completion=False,
     pretty_exceptions_enable=False,
 )
-
-
-class PredictionProviderType(str, Enum):
-    """Types of prediction providers available."""
-
-    DOCLING = "docling"
-    TABLEFORMER = "tableformer"
-    FILE = "file"
-    SMOLDOCLING = "smoldocling"
 
 
 def log_and_save_stats(
@@ -193,6 +186,14 @@ def get_dataset_builder(
         return CvatDatasetBuilder(
             name="CVAT", dataset_source=dataset_source, target=target, split=split
         )
+    elif benchmark == BenchMarkNames.PLAIN_FILES:
+        assert dataset_source is not None
+        return FileDatasetBuilder(
+            name=dataset_source.name,
+            dataset_source=dataset_source,
+            target=target,
+            split=split,
+        )
 
     else:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
@@ -202,6 +203,7 @@ def get_prediction_provider(
     provider_type: PredictionProviderType,
     file_source_path: Optional[Path] = None,
     file_prediction_format: Optional[PredictionFormats] = None,
+    do_visualization: bool = True,
     artifacts_path: Optional[Path] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
@@ -231,7 +233,7 @@ def get_prediction_provider(
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
                 InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
             },
-            do_visualization=True,
+            do_visualization=do_visualization,
             ignore_missing_predictions=True,
         )
 
@@ -269,13 +271,13 @@ def get_prediction_provider(
 
         return DoclingPredictionProvider(
             format_options=format_options,
-            do_visualization=True,
+            do_visualization=do_visualization,
             ignore_missing_predictions=True,
         )
 
     elif provider_type == PredictionProviderType.TABLEFORMER:
         return TableFormerPredictionProvider(
-            do_visualization=False,
+            do_visualization=do_visualization,
             ignore_missing_predictions=True,
         )
 
@@ -288,7 +290,7 @@ def get_prediction_provider(
         return FilePredictionProvider(
             prediction_format=file_prediction_format,
             source_path=file_source_path,
-            do_visualization=True,
+            do_visualization=do_visualization,
             ignore_missing_predictions=True,
             ignore_missing_files=True,
             use_ground_truth_page_images=False,
@@ -304,7 +306,7 @@ def evaluate(
     idir: Path,
     odir: Path,
     split: str = "test",
-):
+) -> Optional[DatasetEvaluationType]:
     """
     Evaluate predictions against ground truth.
 
@@ -319,7 +321,7 @@ def evaluate(
     """
     if not os.path.exists(idir):
         _log.error(f"Benchmark directory not found: {idir}")
-        return
+        return None
 
     os.makedirs(odir, exist_ok=True)
 
@@ -331,34 +333,34 @@ def evaluate(
 
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
-        layout_evaluation = layout_evaluator(
+        evaluation = layout_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
-            json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
-        table_evaluation = table_evaluator(
+        evaluation = table_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
-            json.dump(table_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
-        readingorder_evaluation = readingorder_evaluator(
+        evaluation = readingorder_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
             json.dump(
-                readingorder_evaluation.model_dump(),
+                evaluation.model_dump(),
                 fd,
                 indent=2,
                 sort_keys=True,
@@ -367,14 +369,14 @@ def evaluate(
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
         md_evaluator = MarkdownTextEvaluator()
-        md_evaluation = md_evaluator(
+        evaluation = md_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
             json.dump(
-                md_evaluation.model_dump(),
+                evaluation.model_dump(),
                 fd,
                 indent=2,
                 sort_keys=True,
@@ -383,14 +385,14 @@ def evaluate(
 
     elif modality == EvaluationModality.BBOXES_TEXT:
         bbox_evaluator = BboxTextEvaluator()
-        bbox_evaluation = bbox_evaluator(
+        evaluation = bbox_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
             json.dump(
-                bbox_evaluation.model_dump(),
+                evaluation.model_dump(),
                 fd,
                 indent=2,
                 sort_keys=True,
@@ -399,9 +401,10 @@ def evaluate(
 
     else:
         _log.error(f"Unsupported modality for evaluation: {modality}")
-        return
+        return None
 
     _log.info(f"The evaluation has been saved in '{save_fn}'")
+    return evaluation  # type: ignore
 
 
 def visualize(
@@ -451,7 +454,7 @@ def visualize(
                 benchmark,
                 modality,
                 "mAP_0.5_0.95",
-                layout_evaluation.image_mAP_stats,
+                layout_evaluation.map_stats,
             )
 
             # Append to layout statistics, the AP per classes
