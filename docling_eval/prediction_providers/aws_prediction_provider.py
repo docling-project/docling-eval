@@ -463,7 +463,8 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                 file_bytes = record.original.stream.read()
                 response = self.textract_client.analyze_document(
-                    Document={"Bytes": file_bytes}, FeatureTypes=["TABLES", "FORMS"]
+                    Document={"Bytes": file_bytes},
+                    FeatureTypes=["TABLES", "FORMS", "LAYOUT"],
                 )
                 result_orig = json.dumps(response, default=str)
                 result_json = json.loads(result_orig)
