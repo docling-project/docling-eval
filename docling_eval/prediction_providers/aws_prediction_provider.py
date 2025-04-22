@@ -409,9 +409,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     charspan=(0, len(text_content)),
                 )
 
-                doc.add_text(
-                    label=DocItemLabel.KEY_VALUE_REGION, text=text_content, prov=prov
-                )
+                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
             if block["BlockType"] == "LAYOUT_TABLE":
                 text_content = block.get("Text", "")

@@ -37,9 +37,10 @@ def test_run_dpbench_builder():
 
     dataset = DPBenchDatasetBuilder(
         target=target_path / "gt_dataset",
-        end_index=5,
+        end_index=20,
     )
 
+    dataset.retrieve_input_dataset()
     dataset.save_to_disk()  # does all the job of iterating the dataset, making GT+prediction records, and saving them in shards as parquet.
 
     aws_provider.create_prediction_dataset(
@@ -77,6 +78,7 @@ def test_run_omnidocbench_builder():
         end_index=5,
     )
 
+    dataset.retrieve_input_dataset()
     dataset.save_to_disk()  # does all the job of iterating the dataset, making GT+prediction records, and saving them in shards as parquet.
 
     aws_provider.create_prediction_dataset(
