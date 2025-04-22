@@ -4,12 +4,12 @@ Create PubTabNet evaluation datasets. This downloads from Huggingface the [PubTa
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark PubTabNet --output-dir ./benchmarks/PubTabNet/ 
+docling_eval create-gt --benchmark PubTabNet --split val --output-dir ./benchmarks/PubTabNet/ 
 
 # Make predictions for tables.
 docling_eval create-eval \
-  --modality table_structure \
-  --benchmark DPBench \
+  --benchmark PubTabNet \
+  --split val \
   --output-dir ./benchmarks/PubTabNet/ \
   --end-index 1000 \
   --prediction-provider tableformer # use tableformer predictions only

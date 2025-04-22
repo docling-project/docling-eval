@@ -586,7 +586,7 @@ def test_file_dataset_builder():
     target_path = Path(f"./scratch/file_dataset/")
 
     dataset_builder = FileDatasetBuilder(
-        dataset_source=Path("./tests/data/files"), target=target_path
+        name="Test_Files", dataset_source=Path("./tests/data/files"), target=target_path
     )
 
     dataset_builder.save_to_disk(do_visualization=True)

@@ -224,6 +224,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
                     self.get_field_alias("original_prediction"): (
                         self.original_prediction
                     ),
+                    self.get_field_alias("status"): (self.status),
                 }
             )
 
