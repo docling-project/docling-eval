@@ -4,6 +4,7 @@ import logging
 import math
 import random
 from abc import abstractmethod
+from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -87,7 +88,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             ds_selection = ds[split]
 
         evaluations: list[PageReadingOrderEvaluation] = []
-        rejected_samples: Dict[EvaluationRejectionType, int] = {}
+        rejected_samples: Dict[EvaluationRejectionType, int] = defaultdict(int)
         ards = []
         w_ards = []
 
