@@ -299,4 +299,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         return pred_record
 
     def info(self) -> Dict:
-        return {"asset": "AWS Textract", "version": importlib.metadata.version("boto3")}
+        return {
+            "asset": PredictionProviderType.AWS,
+            "version": importlib.metadata.version("boto3"),
+        }

@@ -121,3 +121,4 @@ class PredictionProviderType(str, Enum):
     SMOLDOCLING = "SmolDocling"
     AWS = "AWS"
     AZURE = "Azure"
+    GOOGLE = "Google"

@@ -305,6 +305,6 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
 
     def info(self) -> Dict:
         return {
-            "asset": "Azure AI Document Intelligence",
+            "asset": PredictionProviderType.AZURE,
             "version": importlib.metadata.version("azure-ai-formrecognizer"),
         }

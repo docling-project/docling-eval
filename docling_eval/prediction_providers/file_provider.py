@@ -96,6 +96,7 @@ class FilePredictionProvider(BasePredictionProvider):
         """Get information about the prediction provider."""
         return {
             "asset": PredictionProviderType.FILE,
+            "version": "0.0.1",
             "supported_prediction_formats": [
                 fmt.value for fmt in self._supported_prediction_formats
             ],

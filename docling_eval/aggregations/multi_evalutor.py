@@ -96,9 +96,6 @@ def read_prediction_provider_type(
             streaming=True,
         )
         for data in ds:
-            # TODO: Check why the predictor_info does not exist
-            return PredictionProviderType.DOCLING
-
             info = data.get("predictor_info")
             if not info:
                 return None
