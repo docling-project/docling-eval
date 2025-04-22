@@ -20,6 +20,7 @@ from docling_core.types.doc.document import (
 from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 from google.cloud import documentai  # type: ignore
+from google.oauth2 import service_account
 from google.protobuf.json_format import MessageToDict  # Convert to JSON for storage
 from PIL.Image import Image
 
@@ -37,7 +38,7 @@ _log = logging.getLogger(__name__)
 
 
 class GoogleDocAIPredictionProvider(BasePredictionProvider):
-    """Provider that calls the Google Document AI API for predicting the tables in document."""
+    """Provider that calls the Google Document AI API for document processing."""
 
     def __init__(
         self,
@@ -57,23 +58,33 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
             raise ValueError(
                 "Error: google-cloud-documentai library not installed. Google Doc AI functionality will be disabled."
             )
-        google_project_id = os.getenv("GOOGLE_PROJECT_ID")
+
         google_location = os.getenv("GOOGLE_LOCATION", "us")
         google_processor_id = os.getenv("GOOGLE_PROCESSOR_ID")
-        google_processor_version = "pretrained-ocr-v2.1-2024-08-07"  # latest model
 
-        if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if credentials_path is None:
             raise ValueError(
                 "GOOGLE_APPLICATION_CREDENTIALS must be set in environment variables."
             )
+        with open(credentials_path) as f:
+            creds_json = json.load(f)
+            google_project_id = creds_json.get("project_id")
 
-        if not google_project_id or not google_processor_id:
+        if not google_processor_id:
             raise ValueError(
-                "GOOGLE_CLOUD_PROJECT_ID and GOOGLE_DOCAI_PROCESSOR_ID must be set in environment variables."
+                "GOOGLE_PROCESSOR_ID must be set in environment variables."
             )
 
-        self.doc_ai_client = documentai.DocumentProcessorServiceClient()
-        self.google_processor_name = f"projects/{google_project_id}/locations/{google_location}/processors/{google_processor_id}/processorVersions/{google_processor_version}"
+        credentials = service_account.Credentials.from_service_account_file(
+            credentials_path
+        )
+
+        self.doc_ai_client = documentai.DocumentProcessorServiceClient(
+            credentials=credentials
+        )
+
+        self.google_processor_name = f"projects/{google_project_id}/locations/{google_location}/processors/{google_processor_id}"
 
     def extract_bbox_from_vertices(self, vertices):
         """Helper function to extract bbox coordinates from vertices."""
