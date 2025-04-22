@@ -239,6 +239,195 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                 doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
+            if block["BlockType"] == "LAYOUT_TITLE":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_title(text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_HEADER":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_text(label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_FOOTER":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_text(label=DocItemLabel.PAGE_FOOTER, text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_SECTION_HEADER":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_heading(text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_PAGE_NUMBER":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_LIST":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_list_item(text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_FIGURE":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_picture(prov=prov)
+
+            if block["BlockType"] == "LAYOUT_KEY_VALUE":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_text(label=DocItemLabel.KEY_VALUE_REGION, text=text_content, prov=prov)
+
+            if block["BlockType"] == "LAYOUT_TABLE":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_table(data = TableData(), prov=prov)
+
             if block["BlockType"] == "TABLE":
                 page_no = int(block.get("Page", 1))
                 table_prov, table_data = self.process_table(block, blocks_map, page_no)
