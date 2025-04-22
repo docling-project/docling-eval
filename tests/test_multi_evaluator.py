@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from docling_eval.aggregations.multi_evalutor import MultiEvaluator
 from docling_eval.datamodels.types import (
     BenchMarkNames,
@@ -24,6 +26,7 @@ def build_real_multi_evals():
     assert m_evals is not None
 
 
+@pytest.mark.dependency()
 def test_multi_evaluator():
     r""" """
     save_dir = Path("scratch/multi_test")

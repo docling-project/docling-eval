@@ -1,9 +1,15 @@
 from pathlib import Path
 
+import pytest
+
 from docling_eval.aggregations.consolidator import Consolidator
 from docling_eval.aggregations.multi_evalutor import MultiEvaluator
 
 
+@pytest.mark.dependency(
+    depends=["tests/test_multi_evaluator.py::test_multi_evaluator"],
+    scope="session",
+)
 def test_consolidator():
     r""" """
     save_dir = Path("scratch/multi_test")
