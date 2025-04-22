@@ -14,6 +14,7 @@ from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1Datase
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
+from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
 from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
 from docling_eval.dataset_builders.omnidocbench_builder import (
     OmniDocBenchDatasetBuilder,
@@ -575,3 +576,13 @@ def test_run_pixparse_builder():
         target_dataset_dir=target_path / "eval_dataset_e2e",
         end_index=5,
     )
+
+
+def test_file_dataset_builder():
+    target_path = Path(f"./scratch/file_dataset/")
+
+    dataset_builder = FileDatasetBuilder(
+        dataset_source=Path("./tests/data/files"), target=target_path
+    )
+
+    dataset_builder.save_to_disk(do_visualization=True)
