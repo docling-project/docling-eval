@@ -279,7 +279,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     charspan=(0, len(text_content)),
                 )
 
-                doc.add_text(label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov)
+                doc.add_text(
+                    label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov
+                )
 
             if block["BlockType"] == "LAYOUT_FOOTER":
                 text_content = block.get("Text", "")
@@ -300,7 +302,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     charspan=(0, len(text_content)),
                 )
 
-                doc.add_text(label=DocItemLabel.PAGE_FOOTER, text=text_content, prov=prov)
+                doc.add_text(
+                    label=DocItemLabel.PAGE_FOOTER, text=text_content, prov=prov
+                )
 
             if block["BlockType"] == "LAYOUT_SECTION_HEADER":
                 text_content = block.get("Text", "")
@@ -405,7 +409,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     charspan=(0, len(text_content)),
                 )
 
-                doc.add_text(label=DocItemLabel.KEY_VALUE_REGION, text=text_content, prov=prov)
+                doc.add_text(
+                    label=DocItemLabel.KEY_VALUE_REGION, text=text_content, prov=prov
+                )
 
             if block["BlockType"] == "LAYOUT_TABLE":
                 text_content = block.get("Text", "")
@@ -426,7 +432,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     charspan=(0, len(text_content)),
                 )
 
-                doc.add_table(data = TableData(), prov=prov)
+                doc.add_table(data=TableData(), prov=prov)
 
             if block["BlockType"] == "TABLE":
                 page_no = int(block.get("Page", 1))
