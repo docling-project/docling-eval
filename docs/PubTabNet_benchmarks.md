@@ -23,6 +23,7 @@ Create the evaluation report:
 docling_eval evaluate \
   --modality table_structure \
   --benchmark PubTabNet \
+  --split val \
   --output-dir ./benchmarks/PubTabNet/ 
 ```
 
@@ -34,6 +35,7 @@ Visualize the report:
 docling_eval visualize \
   --modality table_structure \
   --benchmark PubTabNet \
+  --split val \
   --output-dir ./benchmarks/PubTabNet/ 
 ```
 

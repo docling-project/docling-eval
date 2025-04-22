@@ -15,7 +15,11 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import (
+    EvaluationModality,
+    PredictionFormats,
+    PredictionProviderType,
+)
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -30,6 +34,10 @@ class FilePredictionProvider(BasePredictionProvider):
     This provider supports various file formats like DOCTAGS, MARKDOWN,
     JSON, and YAML.
     """
+
+    prediction_provider_type: PredictionProviderType = PredictionProviderType.FILE
+
+    prediction_modalities = [x for x in EvaluationModality]
 
     def __init__(
         self,
@@ -87,6 +95,8 @@ class FilePredictionProvider(BasePredictionProvider):
     def info(self) -> Dict:
         """Get information about the prediction provider."""
         return {
+            "asset": PredictionProviderType.FILE,
+            "version": "0.0.1",
             "supported_prediction_formats": [
                 fmt.value for fmt in self._supported_prediction_formats
             ],

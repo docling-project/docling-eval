@@ -17,6 +17,7 @@ from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import (
     BaseEvaluator,
     DatasetEvaluation,
+    EvaluationRejectionType,
     UnitEvaluation,
     docling_document_from_doctags,
 )
@@ -150,7 +151,11 @@ class TableEvaluator(BaseEvaluator):
 
         table_evaluations = []
         table_struct_evaluations = []
-        evaluation_errors = 0
+        rejected_samples: Dict[EvaluationRejectionType, int] = {
+            EvaluationRejectionType.MISSING_PREDICTION: 0,
+            EvaluationRejectionType.EVALUATION_ERROR: 0,
+        }
+
         for i, data in tqdm(
             enumerate(ds_selection),
             desc="Table evaluations",
@@ -163,6 +168,7 @@ class TableEvaluator(BaseEvaluator):
             pred_doc = self._get_pred_doc(data_record)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
+                rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
 
             try:
@@ -193,12 +199,12 @@ class TableEvaluator(BaseEvaluator):
                     )
 
             except Exception as ex:
-                evaluation_errors += 1
+                rejected_samples[EvaluationRejectionType.EVALUATION_ERROR] += 1
                 _log.error("Error during tables evaluation for %s", doc_id)
 
         _log.info(
             "Finish. %s documents were skipped due to evaluation errors",
-            evaluation_errors,
+            rejected_samples[EvaluationRejectionType.EVALUATION_ERROR],
         )
 
         # Compute TED statistics for the entire dataset
@@ -219,6 +225,8 @@ class TableEvaluator(BaseEvaluator):
             teds_struct.append(te.TEDS)
 
         dataset_evaluation = DatasetTableEvaluation(
+            evaluated_samples=len(table_evaluations),
+            rejected_samples=rejected_samples,
             evaluations=table_evaluations,
             TEDS=compute_stats(teds_all),
             TEDS_struct=compute_stats(teds_struct),

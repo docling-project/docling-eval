@@ -79,6 +79,8 @@ class BenchMarkNames(str, Enum):
 
     CVAT = "CVAT"
 
+    PLAIN_FILES = "PlainFiles"
+
 
 class ConverterTypes(str, Enum):
     DOCLING = "Docling"
@@ -106,3 +108,19 @@ class PageTokens(BaseModel):
 
     height: float
     width: float
+
+
+class ConsolidationFormats(str, Enum):
+    EXCEL = "excel"
+
+
+class PredictionProviderType(str, Enum):
+    """Types of prediction providers available."""
+
+    DOCLING = "Docling"
+    TABLEFORMER = "TableFormer"
+    FILE = "File"
+    SMOLDOCLING = "SmolDocling"
+    AWS = "AWS"
+    AZURE = "Azure"
+    GOOGLE = "Google"

@@ -22,6 +22,7 @@ from docling_eval.datamodels.types import (  # type: ignore
 from docling_eval.evaluators.base_evaluator import (
     BaseEvaluator,
     DatasetEvaluation,
+    EvaluationRejectionType,
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
@@ -121,6 +122,10 @@ class MarkdownTextEvaluator(BaseEvaluator):
             ds_selection = ds[split]
 
         evaluations: list[PageMarkdownEvaluation] = []
+        rejected_samples: Dict[EvaluationRejectionType, int] = {
+            EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
+            EvaluationRejectionType.MISSING_PREDICTION: 0,
+        }
 
         # Metrics per page
         ds_metrics: dict[str, list[float]] = {
@@ -144,6 +149,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
+                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
             true_doc = data_record.ground_truth_doc
@@ -152,6 +158,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
 
             if pred_md is None:
                 _log.error("There is no markdown prediction for doc_id=%s", doc_id)
+                rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
 
             bleu = 0.0
@@ -181,6 +188,8 @@ class MarkdownTextEvaluator(BaseEvaluator):
                 self.save_intermediate_evaluations("MD", i, doc_id, evaluations)
 
         ds_md_evalutions = DatasetMarkdownEvaluation(
+            evaluated_samples=len(evaluations),
+            rejected_samples=rejected_samples,
             evaluations=evaluations,
             bleu_stats=compute_stats(ds_metrics["bleu"]),
             f1_score_stats=compute_stats(ds_metrics["f1_score"]),

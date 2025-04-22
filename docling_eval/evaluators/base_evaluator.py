@@ -1,7 +1,8 @@
 import json
 import logging
+from enum import Enum
 from pathlib import Path
-from typing import Any, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.document import (
@@ -21,8 +22,17 @@ class UnitEvaluation(BaseModel):
     pass
 
 
+class EvaluationRejectionType(str, Enum):
+    INVALID_CONVERSION_STATUS = "invalid_conversion_status"
+    MISSING_PREDICTION = "missing_prediction"
+    MISMATHCED_DOCUMENT = "mismatched_document"
+    BROKEN_PREDICTION = "broken_prediction"
+    EVALUATION_ERROR = "evaluation_error"
+
+
 class DatasetEvaluation(BaseModel):
-    pass
+    evaluated_samples: int = -1
+    rejected_samples: Dict[EvaluationRejectionType, int] = {}
 
 
 UnitEvaluationType = TypeVar("UnitEvaluationType", bound=UnitEvaluation)

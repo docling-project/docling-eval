@@ -7,14 +7,15 @@ from collections import defaultdict
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import PIL.Image
 from bs4 import BeautifulSoup  # type: ignore
 from datasets import Dataset, Features
 from datasets import Image as Features_Image
-from datasets import Sequence, Value
+from datasets import Sequence, Value, load_dataset
+from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
@@ -30,8 +31,13 @@ from docling_core.types.doc.document import (
 from docling_core.types.doc.labels import GraphCellLabel
 from PIL import Image
 from pydantic import AnyUrl
+from torch import Tensor
 
-from docling_eval.datamodels.types import BenchMarkColumns
+from docling_eval.datamodels.types import (
+    BenchMarkColumns,
+    EvaluationModality,
+    PredictionProviderType,
+)
 
 
 def get_binhash(binary_data: bytes) -> str:
@@ -434,6 +440,28 @@ def save_shard_to_disk(
     return shard_id, [], 0
 
 
+def dataset_exists(
+    ds_path: Path,
+    split: str,
+) -> bool:
+    r"""
+    It returns True if a parquet dataset exists for the given split and has data.
+    """
+    try:
+        parquet_files = str(ds_path / split / "*.parquet")
+        ds: IterableDataset = load_dataset(
+            "parquet",
+            data_files={split: parquet_files},
+            split=split,
+            streaming=True,
+        )
+        for d in ds:
+            return True
+    except Exception as ex:
+        pass
+    return False
+
+
 def crop_bounding_box(page_image: Image.Image, page: PageItem, bbox: BoundingBox):
     """
     Crop a bounding box from a PIL image.
@@ -556,3 +584,39 @@ def get_package_version(package_name):
         return version(package_name)
     except PackageNotFoundError:
         return None
+
+
+def tensor_to_float(t: Union[Tensor, float]) -> float:
+    r"""Get float from tensor item"""
+    if isinstance(t, Tensor):
+        return float(t.item())
+    return t
+
+
+def modalities_of_prediction_type(
+    prediction_provider_type: PredictionProviderType,
+) -> Optional[List[EvaluationModality]]:
+    r"""
+    Return a list of EvaluationModality supported by the given prediction_provider_type
+    """
+    from docling_eval.prediction_providers.docling_provider import (
+        DoclingPredictionProvider,
+    )
+    from docling_eval.prediction_providers.tableformer_provider import (
+        TableFormerPredictionProvider,
+    )
+
+    # TODO: Update this map as more prediction providers are implemented
+    prediction_type_class = {
+        PredictionProviderType.DOCLING: DoclingPredictionProvider,
+        PredictionProviderType.TABLEFORMER: TableFormerPredictionProvider,
+    }
+
+    if prediction_provider_type not in prediction_type_class:
+        return None
+
+    prediction_provider_class = prediction_type_class[prediction_provider_type]
+    if not hasattr(prediction_provider_class, "prediction_modalities"):
+        return None
+
+    return prediction_provider_class.prediction_modalities

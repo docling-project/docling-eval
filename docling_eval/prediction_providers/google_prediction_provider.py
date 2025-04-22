@@ -28,7 +28,7 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import PredictionFormats, PredictionProviderType
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -338,6 +338,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
     def info(self) -> Dict:
         return {
-            "asset": "Google Document AI",
+            "asset": PredictionProviderType.GOOGLE,
             "version": importlib.metadata.version("google-cloud-documentai"),
         }

@@ -26,7 +26,11 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import (
+    EvaluationModality,
+    PredictionFormats,
+    PredictionProviderType,
+)
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -37,6 +41,10 @@ _log = logging.getLogger(__name__)
 
 class AWSTextractPredictionProvider(BasePredictionProvider):
     """Provider that calls the AWS Textract API for predicting the tables in document."""
+
+    prediction_provider_type: PredictionProviderType = PredictionProviderType.AWS
+
+    prediction_modalities = [EvaluationModality.TABLE_STRUCTURE]
 
     def __init__(
         self,
@@ -291,4 +299,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         return pred_record
 
     def info(self) -> Dict:
-        return {"asset": "AWS Textract", "version": importlib.metadata.version("boto3")}
+        return {
+            "asset": PredictionProviderType.AWS,
+            "version": importlib.metadata.version("boto3"),
+        }

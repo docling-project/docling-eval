@@ -4,7 +4,7 @@ import sys
 from abc import abstractmethod
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
@@ -18,7 +18,11 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
 )
-from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
+from docling_eval.datamodels.types import (
+    BenchMarkColumns,
+    EvaluationModality,
+    PredictionFormats,
+)
 from docling_eval.utils.utils import (
     extract_images,
     insert_images_from_pil,

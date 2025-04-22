@@ -10,6 +10,13 @@ The most straightforward way is to use an existing dataset (e.g. DPBench), which
 docling_eval create-gt --benchmark DPBench --output-dir ./benchmarks/DPBench-GT/ 
 ```
 
+Alternatively, you can first create a plain dataset from a folder of PDF or image files to start from (without any annotations). 
+
+```shell
+# Make the ground-truth
+docling_eval create-gt --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/
+```
+
 ## Pre-annotation with Docling
 
 Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `create-cvat` function of the `docling_eval` CLI.
