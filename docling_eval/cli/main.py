@@ -33,6 +33,7 @@ from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1Datase
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
+from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
 from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
 from docling_eval.dataset_builders.omnidocbench_builder import (
     OmniDocBenchDatasetBuilder,
@@ -192,6 +193,14 @@ def get_dataset_builder(
         assert dataset_source is not None
         return CvatDatasetBuilder(
             name="CVAT", dataset_source=dataset_source, target=target, split=split
+        )
+    elif benchmark == BenchMarkNames.PLAIN_FILES:
+        assert dataset_source is not None
+        return FileDatasetBuilder(
+            name=dataset_source.name,
+            dataset_source=dataset_source,
+            target=target,
+            split=split,
         )
 
     else:

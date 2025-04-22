@@ -79,6 +79,8 @@ class BenchMarkNames(str, Enum):
 
     CVAT = "CVAT"
 
+    PLAIN_FILES = "PlainFiles"
+
 
 class ConverterTypes(str, Enum):
     DOCLING = "Docling"
