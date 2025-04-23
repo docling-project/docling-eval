@@ -410,7 +410,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                 )
 
                 doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
-
+            # This condition is to add only the layout of the table as predicted, doesn't contain the cell structure
             if block["BlockType"] == "LAYOUT_TABLE":
                 text_content = block.get("Text", "")
                 bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
@@ -432,6 +432,28 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                 doc.add_table(data=TableData(), prov=prov)
 
+            if block["BlockType"] == "LAYOUT_TEXT":
+                text_content = block.get("Text", "")
+                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+
+                # Scale normalized coordinates to the page dimensions
+                bbox_obj = BoundingBox(
+                    l=bbox["l"] * width,
+                    t=bbox["t"] * height,
+                    r=bbox["r"] * width,
+                    b=bbox["b"] * height,
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no,
+                    bbox=bbox_obj,
+                    charspan=(0, len(text_content)),
+                )
+
+                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+            # This condition is to add output from actual tables API which adds detailed table
             if block["BlockType"] == "TABLE":
                 page_no = int(block.get("Page", 1))
                 table_prov, table_data = self.process_table(block, blocks_map, page_no)
