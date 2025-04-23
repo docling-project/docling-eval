@@ -53,14 +53,14 @@ def test_run_dpbench_builder():
         modality=EvaluationModality.READING_ORDER,
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset",
-        odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
+        odir=target_path / "evaluations" / EvaluationModality.READING_ORDER.value,
     )
 
     visualize(
         modality=EvaluationModality.READING_ORDER,
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset",
-        odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
+        odir=target_path / "evaluations" / EvaluationModality.READING_ORDER.value,
     )
 
 
@@ -91,12 +91,12 @@ def test_run_omnidocbench_builder():
         modality=EvaluationModality.READING_ORDER,
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
-        odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
+        odir=target_path / "evaluations" / EvaluationModality.READING_ORDER.value,
     )
 
     visualize(
         modality=EvaluationModality.READING_ORDER,
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
-        odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
+        odir=target_path / "evaluations" / EvaluationModality.READING_ORDER.value,
     )
