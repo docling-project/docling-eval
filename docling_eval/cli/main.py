@@ -34,6 +34,7 @@ from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2Datase
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
+from docling_eval.dataset_builders.file_dataset_builder_with_annotations import AnnotatedFileDatasetBuilder
 from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
 from docling_eval.dataset_builders.omnidocbench_builder import (
     OmniDocBenchDatasetBuilder,
@@ -73,6 +74,7 @@ from docling_eval.prediction_providers.tableformer_provider import (
 
 # Configure logging
 logging.getLogger("docling").setLevel(logging.WARNING)
+logging.getLogger('PIL').setLevel(logging.WARNING)
 _log = logging.getLogger(__name__)
 
 app = typer.Typer(
@@ -188,14 +190,14 @@ def get_dataset_builder(
             name="CVAT", dataset_source=dataset_source, target=target, split=split
         )
     elif benchmark == BenchMarkNames.PLAIN_FILES:
-        assert dataset_source is not None
+        if dataset_source is None:
+            raise ValueError("dataset_source is required for PLAIN_FILES")
+        
         return FileDatasetBuilder(
             name=dataset_source.name,
             dataset_source=dataset_source,
-            target=target,
-            split=split,
-        )
-
+            **common_params,            
+        )    
     else:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
 
@@ -614,9 +616,11 @@ def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
     bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
+    use_predictions: Annotated[bool, typer.Option(help="use predictions")] = False,
 ):
+    """Create dataset ready to upload to CVAT starting from (ground-truth) dataset."""
     builder = CvatPreannotationBuilder(
-        dataset_source=gt_dir, target=output_dir, bucket_size=bucket_size
+        dataset_source=gt_dir, target=output_dir, bucket_size=bucket_size, use_predictions = use_predictions,
     )
     builder.prepare_for_annotation()
 

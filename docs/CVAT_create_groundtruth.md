@@ -17,6 +17,12 @@ Alternatively, you can first create a plain dataset from a folder of PDF or imag
 docling_eval create-gt --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/
 ```
 
+If you want to pre-annotate the dataset (eg with Docling), then use
+
+```shell
+docling_eval create --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/ --prediction-provider Docling
+```
+
 ## Pre-annotation with Docling
 
 Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `create-cvat` function of the `docling_eval` CLI.
@@ -26,19 +32,21 @@ Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/).
                                                                                                                                                                     
  Usage: docling_eval create-cvat [OPTIONS]                                                                                                                          
                                                                                                                                                                     
-╭─ Options ────────────────────────────────────────────────────────────────────────╮
-│ *  --output-dir         PATH     Output directory [default: None] [required]     │
-│ *  --gt-dir             PATH     Dataset source path [default: None] [required]  │
-│    --bucket-size        INTEGER  Size of CVAT tasks [default: 20]                │
-│    --help                        Show this message and exit.                     │
-╰──────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ *  --output-dir         PATH                     Output directory [default: None] [required]     │
+│ *  --gt-dir             PATH                     Dataset source path [default: None] [required]  │
+│    --bucket-size        INTEGER                  Size of CVAT tasks [default: 20]                │
+│    --use-predictions    --no-use-predictions     use predictions [default: no-use-predictions]   │
+│    --help                                        Show this message and exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 For example, try:
 ```sh
 docling_eval create-cvat \ 
    --gt-dir ./benchmarks/DPBench-GT/gt_dataset/test/ \
-   --output-dir ./benchmarks/DPBench-CVAT/
+   --output-dir ./benchmarks/DPBench-CVAT/ \
+   --no-use-predictions
 ```
 
 In essence, this will read the parquet files and set up a new directory structure (designated output) that has the following layout,

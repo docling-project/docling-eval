@@ -100,7 +100,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         for filename in tqdm(
             selected_filenames,
-            desc="Processing files for DP-Bench",
+            desc=f"Processing files for {self.name}",
             ncols=128,
         ):
             mime_type, _ = mimetypes.guess_type(filename)
