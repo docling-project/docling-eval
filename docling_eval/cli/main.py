@@ -287,22 +287,34 @@ def get_prediction_provider(
             kind="easyocr",
         )
         
-        pipeline_options = PdfPipelineOptions(
+        pdf_pipeline_options = PdfPipelineOptions(
             do_ocr=False,
             ocr_options=ocr_options, # we need to provide OCR options in order to not break the parquet serialization
             do_table_structure=True,
         )
         
-        pipeline_options.images_scale = 2.0
-        pipeline_options.generate_page_images = True
-        pipeline_options.generate_picture_images = True
-
+        pdf_pipeline_options.images_scale = 2.0
+        pdf_pipeline_options.generate_page_images = True
+        pdf_pipeline_options.generate_picture_images = True
+        
+        ocr_pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options, # we need to provide OCR options in order to not break the parquet serialization
+            do_table_structure=True,
+        )
+        
+        ocr_pipeline_options.images_scale = 2.0
+        ocr_pipeline_options.generate_page_images = True
+        ocr_pipeline_options.generate_picture_images = True
+        
         if artifacts_path is not None:
-            pipeline_options.artifacts_path = artifacts_path
+            pdf_pipeline_options.artifacts_path = artifacts_path
+            ocr_pipeline_options.artifacts_path = artifacts_path
 
         return DoclingPredictionProvider(
             format_options={
-                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(pipeline_options=ocr_pipeline_options),
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,

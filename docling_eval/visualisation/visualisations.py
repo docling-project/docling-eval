@@ -1,3 +1,4 @@
+import re
 import copy
 import logging
 from pathlib import Path
@@ -22,6 +23,11 @@ from docling_eval.visualisation.constants import (
     HTML_INSPECTION,
 )
 
+from docling_core.experimental.serializer.html import (
+    HTMLDocSerializer,
+    HTMLOutputStyle,
+    HTMLParams,
+)
 
 def save_comparison_html(
     filename: Path,
@@ -250,10 +256,13 @@ def save_comparison_html_with_clusters(
     pred_labels: Set[DocItemLabel],
     draw_reading_order: bool = True,
 ):
-    if (1 not in true_doc.pages) or (1 not in pred_doc.pages):
+    if (1 not in true_doc.pages):
         logging.error(f"1 not in true_doc.pages -> skipping {filename} ")
         return
-
+    elif (1 not in pred_doc.pages):
+        logging.error(f"1 not in pred_doc.pages -> skipping {filename} ")
+        return
+    
     def draw_doc_layout(doc: DoclingDocument, image: Image.Image):
         r"""
         Draw the document clusters and optionaly the reading order
@@ -378,6 +387,150 @@ def save_comparison_html_with_clusters(
     with open(str(filename), "w") as fw:
         fw.write(comparison_page)
 
+
+def save_comparison_html_with_clusters_v2(
+    filename: Path,
+    true_doc: DoclingDocument,
+    pred_doc: DoclingDocument,
+    true_labels: Set[DocItemLabel],
+    pred_labels: Set[DocItemLabel],
+    draw_reading_order: bool = True,
+):
+    def get_missing_pageimg(width=800, height=1100, text="MISSING PAGE"):
+        from PIL import Image, ImageDraw, ImageFont
+        import numpy as np
+        
+        # Create a white background image
+        image = Image.new('RGB', (width, height), color='white')
+        draw = ImageDraw.Draw(image)
+    
+        # Try to use a standard font or fall back to default
+        try:
+            # For larger installations, you might have Arial or other fonts
+            font = ImageFont.truetype("arial.ttf", size=60)
+        except IOError:
+            # Fall back to default font
+            font = ImageFont.load_default().font_variant(size=60)
+    
+        # Get text size to center it
+        text_width, text_height = draw.textsize(text, font=font) if hasattr(draw, 'textsize') else \
+            (draw.textlength(text, font=font), font.size)
+        
+        # Position for the text (centered and angled)
+        position = ((width - text_width) // 2, (height - text_height) // 2)
+    
+        # Draw the watermark text (light gray and rotated)
+        draw.text(position, text, fill=(200, 200, 200), font=font)
+        
+        # Rotate the image 45 degrees to create diagonal watermark effect
+        image = image.rotate(45, expand=False, fillcolor='white')
+    
+        return image
+
+    true_page_imgs = true_doc.get_visualization(show_label=False)
+    pred_page_imgs = pred_doc.get_visualization(show_label=False)
+
+    true_page_nos = true_page_imgs.keys()
+    pred_page_nos = pred_page_imgs.keys()
+
+    if true_page_nos != pred_page_nos:
+        logging.error(f"incompatible true_page_nos versus pred_page_nos: \ntrue_page_nos: {true_page_nos}\npred_page_nos: {pred_page_nos}")        
+
+    page_nos = (true_page_nos | pred_page_nos)
+
+    ser = HTMLDocSerializer(
+        doc=true_doc,
+        params=HTMLParams(
+            image_mode=ImageRefMode.EMBEDDED,
+            output_style=HTMLOutputStyle.SPLIT_PAGE,
+        ),
+    )
+    
+    html_parts = [
+        "<!DOCTYPE html>",
+        "<html>",
+        # "<head><style></style></head>",
+        ser._generate_head(),
+        "<body>",
+    ]
+    
+    html_parts.append("<table>")
+    html_parts.append("<tbody>")
+
+    # Compile a regular expression pattern to match content within <body> tags
+    pattern = re.compile(r"<body[^>]*>\n<div class='page'>(.*?)</div>\n</body>", re.DOTALL | re.IGNORECASE)
+    
+    for page_no in page_nos:
+
+        if page_no in true_page_imgs:
+            true_doc_img_b64 = from_pil_to_base64(true_page_imgs[page_no])
+        else:
+            logging.error(f"{page_no} not in true_page_imgs, get default image.")
+            true_doc_img_b64 = from_pil_to_base64(get_missing_pageimg())
+
+        if page_no in pred_page_imgs:
+            pred_doc_img_b64 = from_pil_to_base64(pred_page_imgs[page_no])
+        else:
+            logging.error(f"{page_no} not in pred_page_imgs, get default image.")
+            pred_doc_img_b64 = from_pil_to_base64(get_missing_pageimg())
+
+        true_doc_page = true_doc.export_to_html(page_no=page_no)
+        pred_doc_page = pred_doc.export_to_html(page_no=page_no)
+
+        # Search for the pattern in the HTML string
+        mtch = pattern.search(true_doc_page)
+        if mtch:
+            true_doc_page_body = mtch.group(1).strip()
+        else:
+            logging.error(f"could not find body in true_doc_page")
+            true_doc_page_body = "<p>Nothing Found</p>"
+
+        # Search for the pattern in the HTML string
+        mtch = pattern.search(pred_doc_page)
+        if mtch:
+            pred_doc_page_body = mtch.group(1).strip()
+        else:
+            logging.error(f"could not find body in pred_doc_page")
+            pred_doc_page_body = "<p>Nothing Found</p>"            
+
+        if len(true_doc_page_body)==0:
+            true_doc_page_body = "<p>Nothing Found</p>"
+
+        if len(pred_doc_page_body)==0:
+            pred_doc_page_body = "<p>Nothing Found</p>"
+            
+        html_parts.append("<tr>")
+
+        html_parts.append("<td>")
+        html_parts.append(f'<img src="data:image/png;base64,{true_doc_img_b64}">')
+        html_parts.append("</td>")
+        
+        html_parts.append("<td>")
+        html_parts.append(f"<div class='page'>\n{true_doc_page_body}\n</div>")
+        html_parts.append("</td>")
+
+        html_parts.append("<td>")
+        html_parts.append(f'<img src="data:image/png;base64,{pred_doc_img_b64}">')
+        html_parts.append("</td>")
+        
+        html_parts.append("<td>")
+        html_parts.append(f"<div class='page'>\n{pred_doc_page_body}\n</div>")
+        html_parts.append("</td>")
+        
+        html_parts.append("</tr>")
+
+        
+    html_parts.append("</tbody>")
+    html_parts.append("</table>")
+    
+    # Close HTML structure
+    html_parts.extend(["</body>", "</html>"])
+
+    # Join with newlines
+    html_content = "\n".join(html_parts)
+    
+    with open(str(filename), "w") as fw:
+        fw.write(html_content)
 
 def save_inspection_html(
     filename: Path, doc: DoclingDocument, labels: Set[DocItemLabel]

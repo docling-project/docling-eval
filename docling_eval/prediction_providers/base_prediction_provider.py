@@ -1,3 +1,4 @@
+
 import copy
 import logging
 import sys
@@ -29,7 +30,7 @@ from docling_eval.utils.utils import (
     save_shard_to_disk,
     write_datasets_info,
 )
-from docling_eval.visualisation.visualisations import save_comparison_html_with_clusters
+from docling_eval.visualisation.visualisations import save_comparison_html_with_clusters, save_comparison_html_with_clusters_v2
 
 # Get logger
 _log = logging.getLogger(__name__)
@@ -170,6 +171,16 @@ class BasePredictionProvider:
                 pred_labels=self.pred_labels,
                 draw_reading_order=True,
             )
+            save_comparison_html_with_clusters_v2(
+                filename=target_dataset_dir
+                / "visualizations"
+                / f"{prediction_record.doc_id}.v2.html",
+                true_doc=gt_doc,
+                pred_doc=pred_doc,
+                true_labels=self.true_labels,
+                pred_labels=self.pred_labels,
+                draw_reading_order=True,
+            )            
 
     @property
     @abstractmethod
