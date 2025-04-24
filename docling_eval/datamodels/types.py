@@ -81,6 +81,7 @@ class BenchMarkNames(str, Enum):
 
     PLAIN_FILES = "PlainFiles"
 
+
 class ConverterTypes(str, Enum):
     DOCLING = "Docling"
     SMOL_DOCLING = "SmolDocling"
