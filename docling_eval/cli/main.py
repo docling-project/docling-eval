@@ -74,6 +74,12 @@ from docling_eval.prediction_providers.tableformer_provider import (
 # Configure logging
 logging.getLogger("docling").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("transformers").setLevel(logging.WARNING)
+logging.getLogger("datasets").setLevel(logging.WARNING)
+logging.getLogger("filelock").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("docling_ibm_models").setLevel(logging.WARNING)
+
 _log = logging.getLogger(__name__)
 
 app = typer.Typer(
@@ -213,7 +219,9 @@ def get_prediction_provider(
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
-    if provider_type == PredictionProviderType.DOCLING:
+    if provider_type == PredictionProviderType.DOCLING or \
+       provider_type == PredictionProviderType.OCR_DOCLING or \
+       provider_type == PredictionProviderType.EasyOCR_DOCLING:
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
@@ -242,6 +250,64 @@ def get_prediction_provider(
             ignore_missing_predictions=True,
         )
 
+    elif provider_type == PredictionProviderType.MacOCR_DOCLING:
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="ocrmac",
+        )
+
+        pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options,
+            do_table_structure=True,
+        )
+
+        pipeline_options.images_scale = 2.0
+        pipeline_options.generate_page_images = True
+        pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.PDF_DOCLING:
+
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="easyocr",
+        )
+        
+        pipeline_options = PdfPipelineOptions(
+            do_ocr=False,
+            ocr_options=ocr_options, # we need to provide OCR options in order to not break the parquet serialization
+            do_table_structure=True,
+        )
+        
+        pipeline_options.images_scale = 2.0
+        pipeline_options.generate_page_images = True
+        pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )    
+    
     elif provider_type == PredictionProviderType.SMOLDOCLING:
         pipeline_options = VlmPipelineOptions()
 

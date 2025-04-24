@@ -118,6 +118,11 @@ class PredictionProviderType(str, Enum):
     """Types of prediction providers available."""
 
     DOCLING = "Docling"
+    PDF_DOCLING = "PDF_Docling"
+    OCR_DOCLING = "OCR_Docling"
+    MacOCR_DOCLING = "MacOCR_Docling"
+    EasyOCR_DOCLING = "EasyOCR_Docling"
+
     TABLEFORMER = "TableFormer"
     FILE = "File"
     SMOLDOCLING = "SmolDocling"

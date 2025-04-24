@@ -106,7 +106,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
     def info(self) -> Dict:
         """Get information about the prediction provider."""
 
-        return {
+        result = {
             "asset": PredictionProviderType.DOCLING,
             "version": docling_version(),
             "package_versions": {
@@ -128,10 +128,11 @@ class DoclingPredictionProvider(BasePredictionProvider):
                             mode="json", exclude_defaults=True
                         )
                         if v.pipeline_options is not None
-                        else {}
+                        else None # Parquet might not like empty dicts!
                     ),
                 }
                 for k, v in self.doc_converter.format_to_options.items()
                 if k in [InputFormat.PDF, InputFormat.IMAGE]
             },
         }
+        return result
