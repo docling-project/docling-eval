@@ -28,6 +28,7 @@ from docling_eval.visualisation.constants import (
     HTML_INSPECTION,
 )
 
+
 def draw_arrow(
     draw: ImageDraw.ImageDraw,
     arrow_coords: tuple[float, float, float, float],
@@ -73,8 +74,6 @@ def draw_arrow(
     )
     return draw
 
-    
-                                                 
 
 def save_comparison_html_with_clusters(
     filename: Path,
@@ -224,5 +223,3 @@ def save_comparison_html_with_clusters(
 
     with open(str(filename), "w") as fw:
         fw.write(html_content)
-
-

@@ -7,6 +7,7 @@ from typing import Iterable, Optional, Union
 
 import ibm_boto3  # type: ignore
 from docling.utils.utils import chunkify
+from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
 from pydantic import BaseModel
 
@@ -275,10 +276,12 @@ class BaseEvaluationDatasetBuilder:
                 record_list.append(r.as_record_dict())
                 if do_visualization:
                     viz_path = self.target / "visualizations" / f"{r.doc_id}.html"
-                    r.ground_truth_doc.save_as_html(filename=viz_path,
-                                                    labels=TRUE_HTML_EXPORT_LABELS,
-                                                    image_mode=ImageRefMode.EMBEDDED,
-                                                    split_page_view=True)
+                    r.ground_truth_doc.save_as_html(
+                        filename=viz_path,
+                        labels=TRUE_HTML_EXPORT_LABELS,
+                        image_mode=ImageRefMode.EMBEDDED,
+                        split_page_view=True,
+                    )
 
             save_shard_to_disk(
                 items=record_list, dataset_path=test_dir, shard_id=chunk_count

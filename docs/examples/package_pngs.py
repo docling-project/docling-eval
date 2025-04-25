@@ -19,7 +19,8 @@ from docling_eval.utils.utils import (
     save_shard_to_disk,
 )
 from docling_eval.visualisation.constants import HTML_INSPECTION
-from docling_eval.visualisation.visualisations import draw_clusters_with_reading_order
+
+# from docling_eval.visualisation.visualisations import draw_clusters_with_reading_order
 
 # Configure logging
 logging.basicConfig(
@@ -173,43 +174,13 @@ def main():
         for key, item in conv_results.timings.items():
             timings[key] = json.loads(item.model_dump_json())
 
-        html_doc = pred_doc.export_to_html(
-            image_mode=ImageRefMode.EMBEDDED,
-            # html_head=HTML_DEFAULT_HEAD_FOR_COMP,
-            # labels=pred_labels,
-        )
-
-        html_doc = html_doc.replace("'", "&#39;")
-
-        page_images = []
-        page_template = '<div class="image-wrapper"><img src="data:image/png;base64,BASE64PAGE" alt="Example Image"></div>'
-        for page_no, page in pred_doc.pages.items():
-
-            page_img = page.image.pil_image
-
-            # page_img = PILImage.open(png_file)
-            # assert page.size.width==page_img.width, f"page.size.width==page_img.width {page.size.width}=={page_img.width}"
-            # assert page.size.height==page_img.height, f"page.size.height==page_img.height {page.size.height}=={page_img.height}"
-            # page_img.show()
-
-            page_img = draw_clusters_with_reading_order(
-                doc=pred_doc,
-                page_image=page_img,
-                labels=PRED_HTML_EXPORT_LABELS,
-                page_no=page_no,
-                reading_order=True,
-            )
-
-            page_base64 = from_pil_to_base64(page_img)
-            page_images.append(page_template.replace("BASE64PAGE", page_base64))
-
-        page = copy.deepcopy(HTML_INSPECTION)
-        page = page.replace("PREDDOC", html_doc)
-        page = page.replace("PAGE_IMAGES", "\n".join(page_images))
-
         filename = viz_dir / f"{os.path.basename(img_file)}.html"
-        with open(str(filename), "w") as fw:
-            fw.write(page)
+        pred_doc.save_as_html(
+            filename=filename,
+            labels=PRED_HTML_EXPORT_LABELS,
+            image_mode=ImageRefMode.EMBEDDED,
+            split_page_view=True,
+        )
 
         pred_doc, pred_pictures, pred_page_images = extract_images(
             document=pred_doc,
