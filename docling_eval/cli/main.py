@@ -219,9 +219,11 @@ def get_prediction_provider(
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
-    if provider_type == PredictionProviderType.DOCLING or \
-       provider_type == PredictionProviderType.OCR_DOCLING or \
-       provider_type == PredictionProviderType.EasyOCR_DOCLING:
+    if (
+        provider_type == PredictionProviderType.DOCLING
+        or provider_type == PredictionProviderType.OCR_DOCLING
+        or provider_type == PredictionProviderType.EasyOCR_DOCLING
+    ):
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
@@ -286,27 +288,27 @@ def get_prediction_provider(
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
             kind="easyocr",
         )
-        
+
         pdf_pipeline_options = PdfPipelineOptions(
             do_ocr=False,
-            ocr_options=ocr_options, # we need to provide OCR options in order to not break the parquet serialization
+            ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
             do_table_structure=True,
         )
-        
+
         pdf_pipeline_options.images_scale = 2.0
         pdf_pipeline_options.generate_page_images = True
         pdf_pipeline_options.generate_picture_images = True
-        
+
         ocr_pipeline_options = PdfPipelineOptions(
             do_ocr=True,
-            ocr_options=ocr_options, # we need to provide OCR options in order to not break the parquet serialization
+            ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
             do_table_structure=True,
         )
-        
+
         ocr_pipeline_options.images_scale = 2.0
         ocr_pipeline_options.generate_page_images = True
         ocr_pipeline_options.generate_picture_images = True
-        
+
         if artifacts_path is not None:
             pdf_pipeline_options.artifacts_path = artifacts_path
             ocr_pipeline_options.artifacts_path = artifacts_path
@@ -314,12 +316,14 @@ def get_prediction_provider(
         return DoclingPredictionProvider(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
-                InputFormat.IMAGE: PdfFormatOption(pipeline_options=ocr_pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(
+                    pipeline_options=ocr_pipeline_options
+                ),
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
-        )    
-    
+        )
+
     elif provider_type == PredictionProviderType.SMOLDOCLING:
         pipeline_options = VlmPipelineOptions()
 

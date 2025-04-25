@@ -128,7 +128,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
                             mode="json", exclude_defaults=True
                         )
                         if v.pipeline_options is not None
-                        else None # Parquet might not like empty dicts!
+                        else None  # Parquet might not like empty dicts!
                     ),
                 }
                 for k, v in self.doc_converter.format_to_options.items()
