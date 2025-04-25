@@ -287,6 +287,8 @@ def save_comparison_html_with_clusters(
 
         scale_x = image.width / doc.pages[1].size.width
         scale_y = image.height / doc.pages[1].size.height
+        if image.mode == "L":
+            image = image.convert("RGB")
         draw_clusters(image, clusters, scale_x, scale_y)
 
         return image
