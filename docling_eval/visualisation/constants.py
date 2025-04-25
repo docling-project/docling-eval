@@ -309,7 +309,7 @@ HTML_COMPARISON_PAGE_WITH_CLUSTERS = """<!DOCTYPE html>
             display: flex;
             flex-direction: column;
             width: 25%; /* Adjust the width of each item */
-            height: 100%; /* Adjust height to fill parent container */
+            height: 50%; /* Adjust height to fill parent container */
             border: 1px solid #ccc; /* Optional: Add borders */
             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Optional: Add shadow */
             background-color: #fff; /* Optional: Add background */
