@@ -59,6 +59,10 @@ class ImageLayoutEvaluation(UnitEvaluation):
     avg_weighted_label_matched_iou_90: float
     avg_weighted_label_matched_iou_95: float
 
+    segmentation_precision: float
+    segmentation_recall: float
+    segmentation_f1: float
+
 
 class DatasetLayoutEvaluation(DatasetEvaluation):
     true_labels: Dict[str, int]
@@ -77,6 +81,10 @@ class DatasetLayoutEvaluation(DatasetEvaluation):
     weighted_map_75_stats: DatasetStatistics
     weighted_map_90_stats: DatasetStatistics
     weighted_map_95_stats: DatasetStatistics
+
+    segmentation_precision_stats: DatasetStatistics
+    segmentation_recall_stats: DatasetStatistics
+    segmentation_f1_stats: DatasetStatistics
 
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
 
@@ -147,8 +155,15 @@ class LayoutEvaluator(BaseEvaluator):
         true_labels, pred_labels, intersection_labels = self._find_intersecting_labels(
             ds_selection
         )
-        intersection_labels_str = "\n" + "\n".join(sorted(intersection_labels))
+        true_labels_str = ", ".join(sorted(true_labels))
+        logging.info(f"True labels: {true_labels_str}")
+
+        pred_labels_str = ", ".join(sorted(pred_labels))
+        logging.info(f"Pred labels: {pred_labels_str}")
+
+        intersection_labels_str = ", ".join(sorted(intersection_labels))
         logging.info(f"Intersection labels: {intersection_labels_str}")
+        # intersection_labels_str = "\n" + "\n".join(sorted(intersection_labels))
 
         doc_ids = []
         ground_truths = []
@@ -186,6 +201,9 @@ class LayoutEvaluator(BaseEvaluator):
                 pred_doc=pred_doc,
                 filter_labels=intersection_labels,
             )
+
+            # logging.info(f"gts: {gts}")
+            # logging.info(f"preds: {preds}")
 
             if len(gts) > 0:
                 for i in range(len(gts)):
@@ -258,8 +276,19 @@ class LayoutEvaluator(BaseEvaluator):
         for i, (doc_id, pred, gt) in enumerate(
             zip(doc_ids, predictions, ground_truths)
         ):
+            # logging.info(f"gt: {gt}")
+            # logging.info(f"pred: {pred}")
+
+            precision, recall, f1 = self._compute_area_level_metrics_for_tensors(
+                gt_boxes=gt["boxes"],
+                pred_boxes=pred["boxes"],
+                page_width=100,
+                page_height=100,
+                mask_width=512,
+                mask_height=512,
+            )
+
             # Reset the metric for the next image
-            # metric.reset()
             metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
             # Update with single image
@@ -293,6 +322,10 @@ class LayoutEvaluator(BaseEvaluator):
             weighted_map_90_values.append(average_iou_90)
             weighted_map_95_values.append(average_iou_95)
 
+            logging.info(
+                f"doc: {doc_id}\tprecision: {precision:.2f}, recall: {recall:.2f}, f1: {f1:.2f}, map_50: {map_50:.2f}"
+            )
+
             image_evaluation = ImageLayoutEvaluation(
                 name=doc_id,
                 value=average_iou_50,
@@ -303,6 +336,9 @@ class LayoutEvaluator(BaseEvaluator):
                 avg_weighted_label_matched_iou_75=average_iou_75,
                 avg_weighted_label_matched_iou_90=average_iou_90,
                 avg_weighted_label_matched_iou_95=average_iou_95,
+                segmentation_precision=precision,
+                segmentation_recall=recall,
+                segmentation_f1=f1,
             )
             evaluations_per_image.append(image_evaluation)
             if self._intermediate_evaluations_path:
@@ -326,6 +362,15 @@ class LayoutEvaluator(BaseEvaluator):
             weighted_map_75_stats=compute_stats(weighted_map_75_values),
             weighted_map_90_stats=compute_stats(weighted_map_90_values),
             weighted_map_95_stats=compute_stats(weighted_map_95_values),
+            segmentation_precision_stats=compute_stats(
+                [_.segmentation_precision for _ in evaluations_per_image]
+            ),
+            segmentation_recall_stats=compute_stats(
+                [_.segmentation_recall for _ in evaluations_per_image]
+            ),
+            segmentation_f1_stats=compute_stats(
+                [_.segmentation_f1 for _ in evaluations_per_image]
+            ),
             true_labels=true_labels,
             pred_labels=pred_labels,
             intersecting_labels=[_.value for _ in intersection_labels],
@@ -572,12 +617,9 @@ class LayoutEvaluator(BaseEvaluator):
             for item in items:
                 for prov in item.prov:
                     bbox = prov.bbox.to_top_left_origin(page_height=page_height)
-                    # true_tl_bboxes.append(copy.deepcopy(bbox))
 
                     bbox = bbox.normalized(page_size)
                     bbox = bbox.scaled(100.0)
-
-                    # logging.info(f"ground-truth {page_no}: {page_width, page_height} -> {item.label}, {bbox.coord_origin}: [{bbox.l}, {bbox.t}, {bbox.r}, {bbox.b}]")
 
                     bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
                     labels.append(filter_labels.index(self.label_mapping[item.label]))  # type: ignore
@@ -635,3 +677,94 @@ class LayoutEvaluator(BaseEvaluator):
         # print(pred_tl_bboxes_str)
 
         return ground_truths, predictions
+
+    def _compute_area_level_metrics_for_tensors(
+        self,
+        gt_boxes: torch.Tensor,
+        pred_boxes: torch.Tensor,
+        page_width: int,
+        page_height: int,
+        mask_width: int = 512,
+        mask_height: int = 512,
+    ) -> Tuple[float, float, float]:
+        """
+        Compute area-level precision, recall, and F1 score for tensor format boxes.
+        Handles overlapping boxes by using binary masks at the specified resolution.
+
+        Args:
+            gt_boxes: Ground truth boxes as tensor of shape (N, 4) with [x1, y1, x2, y2] format
+            pred_boxes: Predicted boxes as tensor of shape (M, 4) with [x1, y1, x2, y2] format
+            page_width: Width of the original page
+            page_height: Height of the original page
+            mask_width: Width of the mask to use for computation (default: 512)
+            mask_height: Height of the mask to use for computation (default: 512)
+
+        Returns:
+            Dictionary containing precision, recall, and F1 scores
+        """
+        if gt_boxes.shape[0] == 0:
+            precision = 1.0 if pred_boxes.shape[0] == 0 else 0.0
+            recall = 1.0
+            f1 = 1.0 if pred_boxes.shape[0] == 0 else 0.0
+            return precision, recall, f1
+
+        if pred_boxes.shape[0] == 0:
+            precision = 1.0
+            recall = 0.0
+            f1 = 0.0
+            return precision, recall, f1
+
+        # Calculate scaling factors (ensure float division)
+        x_scale = float(mask_width) / float(page_width)
+        y_scale = float(mask_height) / float(page_height)
+
+        # Create empty masks
+        gt_mask = torch.zeros((mask_height, mask_width), dtype=torch.bool, device="cpu")
+        pred_mask = torch.zeros(
+            (mask_height, mask_width), dtype=torch.bool, device="cpu"
+        )
+
+        # Fill ground truth mask
+        for i in range(gt_boxes.shape[0]):
+            x1, y1, x2, y2 = gt_boxes[i].tolist()
+
+            # Scale coordinates to mask space
+            x1, y1 = max(0, int(x1 * x_scale)), max(0, int(y1 * y_scale))
+            x2, y2 = min(mask_width, int(x2 * x_scale)), min(
+                mask_height, int(y2 * y_scale)
+            )
+
+            if x2 > x1 and y2 > y1:
+                gt_mask[y1:y2, x1:x2] = True
+
+        # Fill prediction mask
+        for i in range(pred_boxes.shape[0]):
+            x1, y1, x2, y2 = pred_boxes[i].tolist()
+
+            # Scale coordinates to mask space
+            x1, y1 = max(0, int(x1 * x_scale)), max(0, int(y1 * y_scale))
+            x2, y2 = min(mask_width, int(x2 * x_scale)), min(
+                mask_height, int(y2 * y_scale)
+            )
+
+            if x2 > x1 and y2 > y1:
+                pred_mask[y1:y2, x1:x2] = True
+
+        # Calculate areas (accounting for overlaps)
+        total_gt_area = torch.sum(gt_mask).item()
+        total_pred_area = torch.sum(pred_mask).item()
+
+        # Calculate intersection (logical AND of masks)
+        intersection_mask = torch.logical_and(gt_mask, pred_mask)
+        total_intersection = torch.sum(intersection_mask).item()
+
+        # Calculate metrics
+        precision = total_intersection / total_pred_area if total_pred_area > 0 else 0.0
+        recall = total_intersection / total_gt_area if total_gt_area > 0 else 0.0
+
+        # Calculate F1 score
+        f1 = 0.0
+        if precision + recall > 0:
+            f1 = 2 * (precision * recall) / (precision + recall)
+
+        return precision, recall, f1

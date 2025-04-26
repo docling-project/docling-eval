@@ -53,6 +53,7 @@ class BenchMarkNames(str, Enum):
 
     # End-to-End
     DPBENCH = "DPBench"
+    DOCLING_DPBENCH = "DoclingDPBench"
     OMNIDOCBENCH = "OmniDocBench"
     WORDSCAPE = "WordScape"
 

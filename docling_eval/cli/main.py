@@ -31,6 +31,9 @@ from docling_eval.dataset_builders.cvat_preannotation_builder import (
 )
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
+from docling_eval.dataset_builders.doclingdpbench_builder import (
+    DoclingDPBenchDatasetBuilder,
+)
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
@@ -155,6 +158,9 @@ def get_dataset_builder(
 
     if benchmark == BenchMarkNames.DPBENCH:
         return DPBenchDatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.DOCLING_DPBENCH:
+        return DoclingDPBenchDatasetBuilder(**common_params)  # type: ignore
 
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
         return DocLayNetV1DatasetBuilder(**common_params)  # type: ignore
@@ -552,6 +558,30 @@ def visualize(
                 modality,
                 "mAP_0.5_0.95",
                 layout_evaluation.map_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "precision",
+                layout_evaluation.segmentation_precision_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "recall",
+                layout_evaluation.segmentation_recall_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "f1",
+                layout_evaluation.segmentation_f1_stats,
             )
 
             # Append to layout statistics, the AP per classes
