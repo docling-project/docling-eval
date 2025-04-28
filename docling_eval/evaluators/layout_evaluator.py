@@ -145,14 +145,14 @@ class LayoutEvaluator(BaseEvaluator):
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
         split_files = glob.glob(split_path)
-        logging.info("Files: %s", split_files)
+        logging.info("#-files: %s", len(split_files))
         ds = load_dataset("parquet", data_files={split: split_files})
         logging.info("Overview of dataset: %s", ds)
 
         # Select the split
         ds_selection: Dataset = ds[split]
 
-        true_labels, pred_labels, intersection_labels = self._find_intersecting_labels(
+        true_labels, pred_labels, intersection_labels, union_labels = self._find_intersecting_labels(
             ds_selection
         )
         true_labels_str = ", ".join(sorted(true_labels))
@@ -163,7 +163,9 @@ class LayoutEvaluator(BaseEvaluator):
 
         intersection_labels_str = ", ".join(sorted(intersection_labels))
         logging.info(f"Intersection labels: {intersection_labels_str}")
-        # intersection_labels_str = "\n" + "\n".join(sorted(intersection_labels))
+
+        union_labels_str = ", ".join(sorted(union_labels))
+        logging.info(f"Union labels: {union_labels_str}")        
 
         doc_ids = []
         ground_truths = []
@@ -547,11 +549,18 @@ class LayoutEvaluator(BaseEvaluator):
         """
 
         intersection_labels: List[DocItemLabel] = []
+        union_labels: List[DocItemLabel] = []
         for label, count in true_labels.items():
+            union_labels.append(DocItemLabel(label))
+            
             if label in pred_labels:
                 intersection_labels.append(DocItemLabel(label))
 
-        return true_labels, pred_labels, intersection_labels
+        for label, count in pred_labels.items():
+            if label not in true_labels:
+                union_labels.append(DocItemLabel(label))
+
+        return true_labels, pred_labels, intersection_labels, union_labels
 
     def _extract_layout_data(
         self,

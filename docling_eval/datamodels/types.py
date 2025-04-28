@@ -47,6 +47,7 @@ class EvaluationModality(str, Enum):
     OCR = "ocr"
     KEY_VALUE = "key_value"
     QUESTION_ANSWERING = "question_answering"
+    TIMINGS = "timings"
 
 
 class BenchMarkNames(str, Enum):
