@@ -49,6 +49,12 @@ from docling_eval.dataset_builders.otsl_table_dataset_builder import (
 from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
+
+from docling_eval.evaluators.timings_evaluator import (
+    DatasetTimingsEvaluation,
+    TimingsEvaluator,
+)
+
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
@@ -423,7 +429,17 @@ def evaluate(
 
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
+        
+    elif modality == EvaluationModality.TIMINGS:
+        timings_evaluator = TimingsEvaluator()
+        evaluation = timings_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
 
+        with open(save_fn, "w") as fd:
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+        
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
         evaluation = layout_evaluator(  # type: ignore

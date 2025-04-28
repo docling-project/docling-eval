@@ -1,22 +1,42 @@
 import glob
 import logging
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+from tqdm import tqdm
+
+from datasets import Dataset, load_dataset
+
+from docling_eval.evaluators.base_evaluator import (
+    BaseEvaluator,
+    DatasetEvaluation,
+    EvaluationRejectionType,
+    UnitEvaluation,
+)
+from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
+from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 
 _log = logging.getLogger(__name__)
 
-class DatasetTimingEvaluation(DatasetEvaluation):
+class DatasetTimingsEvaluation(DatasetEvaluation):
     """Dataset timing evaluation."""
 
     timing_per_page_stats: DatasetStatistics
     
 class TimingsEvaluator(BaseEvaluator):
+    """Timings evaluator."""
+    
     def __init__(
         self,
         intermediate_evaluations_path: Optional[Path] = None,
         prediction_sources: List[PredictionFormats] = [],        
     ):
+        supported_prediction_formats: List[PredictionFormats] = [
+            PredictionFormats.DOCLING_DOCUMENT,
+        ]
+        
         if not prediction_sources:
             prediction_sources = supported_prediction_formats
         super().__init__(
@@ -58,7 +78,9 @@ class TimingsEvaluator(BaseEvaluator):
                 rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
-            timings.append(data_record.timings)
+            print("data_record.prediction_timings: ", data_record.prediction_timings)
+            
+            timings.append(data_record.prediction_timings)
             
         dataset_timing_evaluation = DatasetTimingEvaluation(
             timing_per_page_stats=compute_stats([_.time for _ in timings])

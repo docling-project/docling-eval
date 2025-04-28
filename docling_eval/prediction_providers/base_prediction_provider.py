@@ -118,6 +118,8 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction added
         """
+        print("predict")
+        
         pred_record = self.create_dataset_record_with_prediction(
             record,
             DoclingDocument(name="dummy"),
@@ -186,6 +188,7 @@ class BasePredictionProvider:
         record: DatasetRecord,
         predicted_doc: Optional[DoclingDocument] = None,
         original_prediction: Optional[str] = None,
+        timings: Optional[dict] = None,
     ) -> DatasetRecordWithPrediction:
         """
         Create a dataset record with prediction from an input record.
@@ -198,6 +201,8 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction
         """
+        print("create_dataset_record_with_prediction")
+        
         pred_page_images = []
         pred_pictures = []
         if predicted_doc is not None:
@@ -208,6 +213,8 @@ class BasePredictionProvider:
                 page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,
             )
 
+        print("timings: ", timings)
+        
         data = {
             **record.as_record_dict(),
             "predicted_doc": predicted_doc,
@@ -215,6 +222,7 @@ class BasePredictionProvider:
             "predicted_pictures": pred_pictures,
             "original_prediction": original_prediction,
             "prediction_format": self.prediction_format,
+            "prediction_timings": self.prediction_timings,
             "predictor_info": self.info(),
         }
         return DatasetRecordWithPrediction.model_validate(data)
@@ -229,9 +237,12 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction
         """
+        print("add_prediction")
+        
         # Copy the original input data to avoid modifying it
         input_data = copy.deepcopy(record.original)
-
+        print("copy done")
+        
         # Convert Path to DocumentStream if needed
         if not isinstance(input_data, DocumentStream):
             if isinstance(input_data, Path):
@@ -240,6 +251,8 @@ class BasePredictionProvider:
                 )
 
         record.original = input_data
+        print("update record")
+        
         pred_record = self.predict(record)
 
         return pred_record
@@ -328,10 +341,14 @@ class BasePredictionProvider:
                 ncols=120,
                 total=len(ds_selection),
             ):
+                print(f"record {i}")
+                
                 try:
                     record = DatasetRecord.model_validate(data)
+                    print("record validated")
                     pred_record = self.add_prediction(record)
-
+                    print("adding prediction")
+                    
                     if (
                         self.ignore_missing_predictions
                         and pred_record.status == ConversionStatus.FAILURE

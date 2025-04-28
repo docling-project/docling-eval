@@ -129,6 +129,12 @@ body {
   font-size: 0.9em; /* Smaller text */
   max-width: 100%;
 }
+td {
+  width: 25%;
+}
+.page td {
+  width:auto;
+}
 /* Create a flex container for columns */
 .container {
   display: flex;
