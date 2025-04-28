@@ -66,7 +66,7 @@ class DoclingDPBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             )
 
         assert self.dataset_local_path is not None
-        print(f"dataset_local_path: {self.dataset_local_path}")
+        _log.info(f"dataset_local_path: {self.dataset_local_path}")
 
         # Login using e.g. `huggingface-cli login` to access this dataset
         ds = load_dataset("ds4sd/docling-dpbench")

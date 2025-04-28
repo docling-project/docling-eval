@@ -70,19 +70,17 @@ class TimingsEvaluator(BaseEvaluator):
             total=len(ds_selection),
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
-
+            
             if data_record.status not in self._accepted_status:
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
                 rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
-
-            print("data_record.prediction_timings: ", data_record.prediction_timings)
             
             timings.append(data_record.prediction_timings)
             
-        dataset_timing_evaluation = DatasetTimingEvaluation(
-            timing_per_page_stats=compute_stats([_.time for _ in timings])
+        dataset_timings_evaluation = DatasetTimingsEvaluation(
+            timing_per_page_stats=compute_stats([_["pipeline_total"] for _ in timings], max_value_is_one=False, nr_bins=32)
         )
-        return dataset_layout_evaluation
+        return dataset_timings_evaluation

@@ -1,6 +1,7 @@
 import copy
 import platform
 from typing import Dict, List, Optional, Set
+import logging
 
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, FormatOption
@@ -23,6 +24,8 @@ from docling_eval.prediction_providers.base_prediction_provider import (
 )
 from docling_eval.utils.utils import docling_version, get_package_version
 
+
+_log = logging.getLogger(__name__)
 
 class DoclingPredictionProvider(BasePredictionProvider):
     """
@@ -71,6 +74,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
 
         # Enable the profiling to measure the time spent
         settings.debug.profile_pipeline_timings = profile_pipeline_timings
+        _log.info(f"profile_pipeline_timings: {profile_pipeline_timings}")
         
         self.doc_converter = DocumentConverter(format_options=format_options)
 
@@ -98,9 +102,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
             )
 
         # Convert the document
-        print("Convert the document: ", record.doc_id)
         res = self.doc_converter.convert(copy.deepcopy(record.original))
-        print("done converting, timings: ", res.timings)
         
         # Create prediction record
         pred_record = self.create_dataset_record_with_prediction(

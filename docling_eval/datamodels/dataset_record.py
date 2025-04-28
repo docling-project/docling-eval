@@ -210,6 +210,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
         record.update(
             {
                 self.get_field_alias("prediction_format"): self.prediction_format.value,
+                self.get_field_alias("prediction_timings"): self.prediction_timings,
             }
         )
 

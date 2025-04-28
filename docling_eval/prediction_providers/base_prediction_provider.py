@@ -14,6 +14,8 @@ from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm
 
+from docling.utils.profiling import ProfilingItem
+
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,
@@ -31,7 +33,7 @@ from docling_eval.utils.utils import (
 )
 from docling_eval.visualisation.visualisations import save_comparison_html_with_clusters
 
-# Get logger
+
 _log = logging.getLogger(__name__)
 
 # Default HTML export labels for visualization
@@ -118,8 +120,6 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction added
         """
-        print("predict")
-        
         pred_record = self.create_dataset_record_with_prediction(
             record,
             DoclingDocument(name="dummy"),
@@ -201,8 +201,6 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction
         """
-        print("create_dataset_record_with_prediction")
-        
         pred_page_images = []
         pred_pictures = []
         if predicted_doc is not None:
@@ -212,8 +210,6 @@ class BasePredictionProvider:
                 pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,
                 page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,
             )
-
-        print("timings: ", timings)
         
         data = {
             **record.as_record_dict(),
@@ -222,11 +218,23 @@ class BasePredictionProvider:
             "predicted_pictures": pred_pictures,
             "original_prediction": original_prediction,
             "prediction_format": self.prediction_format,
-            "prediction_timings": self.prediction_timings,
+            "prediction_timings": self._prediction_timings(timings),
             "predictor_info": self.info(),
         }
-        return DatasetRecordWithPrediction.model_validate(data)
+        record = DatasetRecordWithPrediction.model_validate(data)        
+        
+        return record
+        
+    def _prediction_timings(self, timings):
+        """Get prediction timings."""
 
+        result = {}
+        for key, val in timings.items():
+            if key=="pipeline_total":
+                result[key] = float(val.avg())
+                
+        return result
+                
     def add_prediction(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """
         Add a prediction to a dataset record.
@@ -237,11 +245,8 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction
         """
-        print("add_prediction")
-        
         # Copy the original input data to avoid modifying it
         input_data = copy.deepcopy(record.original)
-        print("copy done")
         
         # Convert Path to DocumentStream if needed
         if not isinstance(input_data, DocumentStream):
@@ -251,8 +256,6 @@ class BasePredictionProvider:
                 )
 
         record.original = input_data
-        print("update record")
-        
         pred_record = self.predict(record)
 
         return pred_record
@@ -341,13 +344,9 @@ class BasePredictionProvider:
                 ncols=120,
                 total=len(ds_selection),
             ):
-                print(f"record {i}")
-                
                 try:
                     record = DatasetRecord.model_validate(data)
-                    print("record validated")
                     pred_record = self.add_prediction(record)
-                    print("adding prediction")
                     
                     if (
                         self.ignore_missing_predictions

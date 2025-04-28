@@ -81,13 +81,15 @@ from docling_eval.prediction_providers.tableformer_provider import (
 )
 
 # Configure logging
-logging.getLogger("docling").setLevel(logging.WARNING)
-logging.getLogger("PIL").setLevel(logging.WARNING)
-logging.getLogger("transformers").setLevel(logging.WARNING)
-logging.getLogger("datasets").setLevel(logging.WARNING)
-logging.getLogger("filelock").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("docling_ibm_models").setLevel(logging.WARNING)
+logging_level = logging.WARNING
+#logging_level = logging.DEBUG
+logging.getLogger("docling").setLevel(logging_level)
+logging.getLogger("PIL").setLevel(logging_level)
+logging.getLogger("transformers").setLevel(logging_level)
+logging.getLogger("datasets").setLevel(logging_level)
+logging.getLogger("filelock").setLevel(logging_level)
+logging.getLogger("urllib3").setLevel(logging_level)
+logging.getLogger("docling_ibm_models").setLevel(logging_level)
 
 _log = logging.getLogger(__name__)
 
@@ -560,6 +562,23 @@ def visualize(
     if modality == EvaluationModality.END2END:
         _log.error("END2END visualization not supported")
 
+    elif modality == EvaluationModality.TIMINGS:
+        try:
+            with open(metrics_filename, "r") as fd:
+                timings_evaluation = DatasetTimingsEvaluation.model_validate_json(
+                    fd.read()
+                )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "time_to_solution_",
+                timings_evaluation.timing_per_page_stats,
+            )
+        except Exception as e:
+            _log.error(f"Error processing timings evaluation: {str(e)}")                
+        
     elif modality == EvaluationModality.LAYOUT:
         try:
             with open(metrics_filename, "r") as fd:
