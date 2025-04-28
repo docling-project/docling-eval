@@ -84,9 +84,9 @@ def compute_stats(
     std: float = statistics.stdev(values) if len(values) > 0 else -1
     logging.info(f"total: {total}, mean: {mean}, median: {median}, std: {std}")
 
-    max_value = max(values)
-    if max_value_is_one:
-        max_value = 1.0
+    max_value = 1.0
+    if not max_value_is_one and len(values) > 0:
+        max_value = max(values)
 
     # Compute the histogram
     hist, bins = np.histogram(values, bins=nr_bins, range=(0, max_value))
