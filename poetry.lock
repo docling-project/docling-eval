@@ -1686,6 +1686,18 @@ torch = "*"
 torchvision = ">=0.5"
 
 [[package]]
+name = "edit-distance"
+version = "1.0.6"
+description = "Computing edit distance on arbitrary Python sequences."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "edit_distance-1.0.6-py3-none-any.whl", hash = "sha256:019df0dcd07881d7ead52a3a6bb4cdd5b4d2fbe9d84ad5889f3b8afee524a2d8"},
+    {file = "edit_distance-1.0.6.tar.gz", hash = "sha256:bf0c1a2edd113d4159b31a55b3810c258dbbcb508fcf2fbc1da6cd51f936de2d"},
+]
+
+[[package]]
 name = "et-xmlfile"
 version = "2.0.0"
 description = "An implementation of lxml.xmlfile for the standard library"
@@ -8103,4 +8115,4 @@ hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "b8a1b8c98689671317302a460ee5de2099b9ce1d6d85390ecaa59a48dd8bfe90"
+content-hash = "3c26696faed177666264d17b3009529dc6f46dd84f71b43774aa4831fd225baa"
