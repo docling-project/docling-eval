@@ -441,7 +441,7 @@ def evaluate(
 
     elif modality == EvaluationModality.OCR:
         ocr_evaluator = OCREvaluator()
-        evaluation = ocr_evaluator(
+        evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,
         )
