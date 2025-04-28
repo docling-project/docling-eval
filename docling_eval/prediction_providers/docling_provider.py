@@ -1,14 +1,13 @@
 import copy
+import logging
 import platform
 from typing import Dict, List, Optional, Set
-import logging
 
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
 from pydantic import TypeAdapter
-
-from docling.datamodel.settings import settings
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -24,8 +23,8 @@ from docling_eval.prediction_providers.base_prediction_provider import (
 )
 from docling_eval.utils.utils import docling_version, get_package_version
 
-
 _log = logging.getLogger(__name__)
+
 
 class DoclingPredictionProvider(BasePredictionProvider):
     """
@@ -75,7 +74,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
         # Enable the profiling to measure the time spent
         settings.debug.profile_pipeline_timings = profile_pipeline_timings
         _log.info(f"profile_pipeline_timings: {profile_pipeline_timings}")
-        
+
         self.doc_converter = DocumentConverter(format_options=format_options)
 
     @property
@@ -95,7 +94,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
 
         Raises:
             RuntimeError: If original document stream is not available
-        """        
+        """
         if record.original is None:
             raise RuntimeError(
                 "Stream must be given for docling prediction provider to work."
@@ -103,13 +102,10 @@ class DoclingPredictionProvider(BasePredictionProvider):
 
         # Convert the document
         res = self.doc_converter.convert(copy.deepcopy(record.original))
-        
+
         # Create prediction record
         pred_record = self.create_dataset_record_with_prediction(
-            record,
-            res.document,
-            None,
-            res.timings
+            record, res.document, None, res.timings
         )
         pred_record.status = res.status
 

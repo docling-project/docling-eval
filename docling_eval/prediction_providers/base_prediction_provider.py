@@ -8,13 +8,12 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
+from docling.utils.profiling import ProfilingItem
 from docling.utils.utils import chunkify
 from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm
-
-from docling.utils.profiling import ProfilingItem
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -32,7 +31,6 @@ from docling_eval.utils.utils import (
     write_datasets_info,
 )
 from docling_eval.visualisation.visualisations import save_comparison_html_with_clusters
-
 
 _log = logging.getLogger(__name__)
 
@@ -210,7 +208,7 @@ class BasePredictionProvider:
                 pictures_column=BenchMarkColumns.PREDICTION_PICTURES.value,
                 page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,
             )
-        
+
         data = {
             **record.as_record_dict(),
             "predicted_doc": predicted_doc,
@@ -221,20 +219,20 @@ class BasePredictionProvider:
             "prediction_timings": self._prediction_timings(timings),
             "predictor_info": self.info(),
         }
-        record = DatasetRecordWithPrediction.model_validate(data)        
-        
+        record = DatasetRecordWithPrediction.model_validate(data)
+
         return record
-        
+
     def _prediction_timings(self, timings):
         """Get prediction timings."""
 
         result = {}
         for key, val in timings.items():
-            if key=="pipeline_total":
+            if key == "pipeline_total":
                 result[key] = float(val.avg())
-                
+
         return result
-                
+
     def add_prediction(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """
         Add a prediction to a dataset record.
@@ -247,7 +245,7 @@ class BasePredictionProvider:
         """
         # Copy the original input data to avoid modifying it
         input_data = copy.deepcopy(record.original)
-        
+
         # Convert Path to DocumentStream if needed
         if not isinstance(input_data, DocumentStream):
             if isinstance(input_data, Path):
@@ -347,7 +345,7 @@ class BasePredictionProvider:
                 try:
                     record = DatasetRecord.model_validate(data)
                     pred_record = self.add_prediction(record)
-                    
+
                     if (
                         self.ignore_missing_predictions
                         and pred_record.status == ConversionStatus.FAILURE

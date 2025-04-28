@@ -74,7 +74,9 @@ class DatasetStatistics(BaseModel):
         plt.savefig(figname)
 
 
-def compute_stats(values: List[float], max_value_is_one: bool = True, nr_bins: int = 20) -> DatasetStatistics:
+def compute_stats(
+    values: List[float], max_value_is_one: bool = True, nr_bins: int = 20
+) -> DatasetStatistics:
     total: int = len(values)
 
     mean: float = statistics.mean(values) if len(values) > 0 else -1
@@ -85,7 +87,7 @@ def compute_stats(values: List[float], max_value_is_one: bool = True, nr_bins: i
     max_value = max(values)
     if max_value_is_one:
         max_value = 1.0
-    
+
     # Compute the histogram
     hist, bins = np.histogram(values, bins=nr_bins, range=(0, max_value))
     logging.info(f"#-hist: {len(hist)}, #-bins: {len(bins)}")

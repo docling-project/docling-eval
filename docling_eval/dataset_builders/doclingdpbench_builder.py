@@ -17,6 +17,9 @@ from docling_eval.dataset_builders.dataset_builder import (
 )
 from docling_eval.utils.utils import get_binary, get_binhash
 
+# Get logger
+_log = logging.getLogger(__name__)
+
 
 class DoclingDPBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
     """

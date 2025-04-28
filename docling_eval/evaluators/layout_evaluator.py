@@ -152,8 +152,8 @@ class LayoutEvaluator(BaseEvaluator):
         # Select the split
         ds_selection: Dataset = ds[split]
 
-        true_labels, pred_labels, intersection_labels, union_labels = self._find_intersecting_labels(
-            ds_selection
+        true_labels, pred_labels, intersection_labels, union_labels = (
+            self._find_intersecting_labels(ds_selection)
         )
         true_labels_str = ", ".join(sorted(true_labels))
         logging.info(f"True labels: {true_labels_str}")
@@ -165,7 +165,7 @@ class LayoutEvaluator(BaseEvaluator):
         logging.info(f"Intersection labels: {intersection_labels_str}")
 
         union_labels_str = ", ".join(sorted(union_labels))
-        logging.info(f"Union labels: {union_labels_str}")        
+        logging.info(f"Union labels: {union_labels_str}")
 
         doc_ids = []
         ground_truths = []
@@ -496,7 +496,7 @@ class LayoutEvaluator(BaseEvaluator):
     def _find_intersecting_labels(
         self,
         ds: Dataset,
-    ) -> tuple[dict[str, int], dict[str, int], list[DocItemLabel]]:
+    ) -> tuple[dict[str, int], dict[str, int], list[DocItemLabel], list[DocItemLabel]]:
         r"""
         Compute counters per labels for the groundtruth, prediciton and their intersections
 
@@ -552,7 +552,7 @@ class LayoutEvaluator(BaseEvaluator):
         union_labels: List[DocItemLabel] = []
         for label, count in true_labels.items():
             union_labels.append(DocItemLabel(label))
-            
+
             if label in pred_labels:
                 intersection_labels.append(DocItemLabel(label))
 

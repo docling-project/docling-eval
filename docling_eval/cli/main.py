@@ -49,12 +49,6 @@ from docling_eval.dataset_builders.otsl_table_dataset_builder import (
 from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
-
-from docling_eval.evaluators.timings_evaluator import (
-    DatasetTimingsEvaluation,
-    TimingsEvaluator,
-)
-
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
@@ -74,6 +68,10 @@ from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
 )
+from docling_eval.evaluators.timings_evaluator import (
+    DatasetTimingsEvaluation,
+    TimingsEvaluator,
+)
 from docling_eval.prediction_providers.docling_provider import DoclingPredictionProvider
 from docling_eval.prediction_providers.file_provider import FilePredictionProvider
 from docling_eval.prediction_providers.tableformer_provider import (
@@ -82,7 +80,7 @@ from docling_eval.prediction_providers.tableformer_provider import (
 
 # Configure logging
 logging_level = logging.WARNING
-#logging_level = logging.DEBUG
+# logging_level = logging.DEBUG
 logging.getLogger("docling").setLevel(logging_level)
 logging.getLogger("PIL").setLevel(logging_level)
 logging.getLogger("transformers").setLevel(logging_level)
@@ -431,7 +429,7 @@ def evaluate(
 
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
-        
+
     elif modality == EvaluationModality.TIMINGS:
         timings_evaluator = TimingsEvaluator()
         evaluation = timings_evaluator(  # type: ignore
@@ -441,7 +439,7 @@ def evaluate(
 
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
-        
+
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
         evaluation = layout_evaluator(  # type: ignore
@@ -577,8 +575,8 @@ def visualize(
                 timings_evaluation.timing_per_page_stats,
             )
         except Exception as e:
-            _log.error(f"Error processing timings evaluation: {str(e)}")                
-        
+            _log.error(f"Error processing timings evaluation: {str(e)}")
+
     elif modality == EvaluationModality.LAYOUT:
         try:
             with open(metrics_filename, "r") as fd:

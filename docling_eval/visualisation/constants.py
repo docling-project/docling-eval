@@ -203,7 +203,6 @@ table tr:nth-child(even) td {
 </head>"""
 
 
-
 HTML_COMPARISON_PAGE_v1 = """<!DOCTYPE html>
 <html lang="en">
 <head>
