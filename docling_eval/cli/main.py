@@ -796,6 +796,7 @@ def create_gt(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
 ):
     """Create ground truth dataset only."""
     gt_dir = output_dir / "gt_dataset"
@@ -813,7 +814,7 @@ def create_gt(
         # Retrieve and save the dataset
         if dataset_builder.must_retrieve:
             dataset_builder.retrieve_input_dataset()
-        dataset_builder.save_to_disk(chunk_size=80)
+        dataset_builder.save_to_disk(chunk_size=chunk_size)
 
         _log.info(f"Ground truth dataset created at {gt_dir}")
     except ValueError as e:
@@ -913,6 +914,7 @@ def create(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
     prediction_provider: Annotated[
         Optional[PredictionProviderType],
         typer.Option(help="Type of prediction provider to use"),
@@ -933,6 +935,7 @@ def create(
         split=split,
         begin_index=begin_index,
         end_index=end_index,
+        chunk_size=chunk_size,
     )
 
     # Then create evaluation if provider specified

@@ -81,7 +81,7 @@ def compute_stats(
 
     mean: float = statistics.mean(values) if len(values) > 0 else -1
     median: float = statistics.median(values) if len(values) > 0 else -1
-    std: float = statistics.stdev(values) if len(values) > 0 else -1
+    std: float = statistics.stdev(values) if len(values) > 1 else 0.0
     logging.info(f"total: {total}, mean: {mean}, median: {median}, std: {std}")
 
     max_value = 1.0
