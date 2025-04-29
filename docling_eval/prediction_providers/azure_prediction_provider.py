@@ -348,7 +348,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     output=[AnalyzeOutputOption.FIGURES],
                 )
                 result = poller.result().as_dict()
-                result_json = json.dumps(result)
+                result_json = json.dumps(result, default=str)
                 _log.info(
                     f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
@@ -360,7 +360,6 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             pred_doc = self.convert_azure_output_to_docling(
                 json.loads(result_json), record
             )
-            result_orig = json.dumps(result_json)
 
         except Exception as e:
             _log.error(
@@ -374,7 +373,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             )  # Use copy of ground truth as fallback
 
         pred_record = self.create_dataset_record_with_prediction(
-            record, pred_doc, result_orig
+            record, pred_doc, result_json
         )
         pred_record.status = status
         return pred_record
