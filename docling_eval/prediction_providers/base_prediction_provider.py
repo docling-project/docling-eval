@@ -223,15 +223,21 @@ class BasePredictionProvider:
 
         return record
 
-    def _prediction_timings(self, timings):
+    def _prediction_timings(self, timings: Optional[dict]) -> dict:
         """Get prediction timings."""
 
-        result = {}
-        for key, val in timings.items():
-            if key == "pipeline_total":
-                result[key] = float(val.avg())
+        if isinstance(timings, dict):
+            result = {}
+            for key, val in timings.items():
+                if key == "pipeline_total":
+                    result[key] = float(val.avg())
 
-        return result
+            return result
+        elif timings is None:
+            return {}
+        else:
+            _log.warning(f"unknown type of timings: {timings}")
+            return {}
 
     def add_prediction(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """

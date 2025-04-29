@@ -225,33 +225,33 @@ def test_run_omnidocbench_e2e():
     )
 
 
-# @pytest.mark.dependency(
-#    depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
-#    scope="session",
-# )
-# def test_run_dpbench_tables():
-#    target_path = Path(f"./scratch/{BenchMarkNames.DPBENCH.value}/")
-#    tableformer_provider = TableFormerPredictionProvider(do_visualization=True)
-#
-#    tableformer_provider.create_prediction_dataset(
-#        name="DPBench tables eval",
-#        gt_dataset_dir=target_path / "gt_dataset",
-#        target_dataset_dir=target_path / "eval_dataset_tables",
-#    )
-#
-#    evaluate(
-#        modality=EvaluationModality.TABLE_STRUCTURE,
-#        benchmark=BenchMarkNames.DPBENCH,
-#        idir=target_path / "eval_dataset_tables",
-#        odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
-#    )
-#
-#    visualize(
-#        modality=EvaluationModality.TABLE_STRUCTURE,
-#        benchmark=BenchMarkNames.DPBENCH,
-#        idir=target_path / "eval_dataset_tables",
-#        odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
-#    )
+@pytest.mark.dependency(
+    depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
+    scope="session",
+)
+def test_run_dpbench_tables():
+    target_path = Path(f"./scratch/{BenchMarkNames.DPBENCH.value}/")
+    tableformer_provider = TableFormerPredictionProvider(do_visualization=True)
+
+    tableformer_provider.create_prediction_dataset(
+        name="DPBench tables eval",
+        gt_dataset_dir=target_path / "gt_dataset",
+        target_dataset_dir=target_path / "eval_dataset_tables",
+    )
+
+    evaluate(
+        modality=EvaluationModality.TABLE_STRUCTURE,
+        benchmark=BenchMarkNames.DPBENCH,
+        idir=target_path / "eval_dataset_tables",
+        odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
+    )
+
+    visualize(
+        modality=EvaluationModality.TABLE_STRUCTURE,
+        benchmark=BenchMarkNames.DPBENCH,
+        idir=target_path / "eval_dataset_tables",
+        odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
+    )
 
 
 @pytest.mark.skipif(
