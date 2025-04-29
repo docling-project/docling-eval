@@ -312,6 +312,7 @@ class BasePredictionProvider:
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
+        chunk_size: int = 80                
     ) -> None:
         """
         Create a prediction dataset from a ground truth dataset.
@@ -323,6 +324,7 @@ class BasePredictionProvider:
             split: Dataset split to process
             begin_index: Start index for processing (inclusive)
             end_index: End index for processing (exclusive), -1 means process all
+            chunk_size: items per chunk
         """
         # Load the dataset
         parquet_files = str(gt_dataset_dir / split / "*.parquet")
@@ -380,7 +382,6 @@ class BasePredictionProvider:
             (target_dataset_dir / "visualizations").mkdir(parents=True, exist_ok=True)
 
         # Process in chunks
-        chunk_size = 80
         max_num_chunks = sys.maxsize
 
         count = 0

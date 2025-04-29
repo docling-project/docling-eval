@@ -836,6 +836,7 @@ def create_eval(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
     # File provider required options
     file_prediction_format: Annotated[
         Optional[str],
@@ -855,6 +856,7 @@ def create_eval(
             help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
+    do_visualization: Annotated[bool, typer.Option(help="visualize the predictions")] = True,
 ):
     """Create evaluation dataset from existing ground truth."""
     gt_dir = gt_dir or output_dir / "gt_dataset"
@@ -882,6 +884,7 @@ def create_eval(
             file_source_path=file_source_path,
             file_prediction_format=file_format,
             artifacts_path=artifacts_path,
+            do_visualization=do_visualization,
         )
 
         # Get the dataset name from the benchmark
@@ -895,6 +898,7 @@ def create_eval(
             split=split,
             begin_index=begin_index,
             end_index=end_index,
+            chunk_size=chunk_size,
         )
 
         _log.info(f"Evaluation dataset created at {pred_dir}")
@@ -925,6 +929,7 @@ def create(
     file_source_path: Annotated[
         Optional[Path], typer.Option(help="Source path for File provider")
     ] = None,
+    do_visualization: Annotated[bool, typer.Option(help="visualize the predictions")] = True,    
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
@@ -947,8 +952,10 @@ def create(
             split=split,
             begin_index=begin_index,
             end_index=end_index,
+            chunk_size=chunk_size,
             file_prediction_format=file_prediction_format,
             file_source_path=file_source_path,
+            do_visualization=do_visualization,
         )
     else:
         _log.info(
