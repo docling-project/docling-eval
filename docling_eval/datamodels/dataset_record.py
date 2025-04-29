@@ -173,7 +173,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
     )
     original_prediction: Optional[str] = None
     prediction_format: PredictionFormats  # some enum type
-    prediction_timings: Dict = Field(alias="prediction_timings", default={})
+    prediction_timings: Optional[Dict] = Field(alias="prediction_timings", default=None)
 
     predicted_page_images: List[PIL.Image.Image] = Field(
         alias="PredictionPageImages", default=[]

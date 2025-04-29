@@ -223,7 +223,7 @@ class BasePredictionProvider:
 
         return record
 
-    def _prediction_timings(self, timings: Optional[dict]) -> dict:
+    def _prediction_timings(self, timings: Optional[dict]) -> Optional[dict]:
         """Get prediction timings."""
 
         if isinstance(timings, dict):
@@ -234,10 +234,10 @@ class BasePredictionProvider:
 
             return result
         elif timings is None:
-            return {}
+            return None
         else:
             _log.warning(f"unknown type of timings: {timings}")
-            return {}
+            return None
 
     def add_prediction(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """
