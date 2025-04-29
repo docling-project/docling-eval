@@ -22,6 +22,7 @@ _log = logging.getLogger(__name__)
 class DatasetTimingsEvaluation(DatasetEvaluation):
     """Dataset timing evaluation."""
 
+    timing_per_document_stats: DatasetStatistics
     timing_per_page_stats: DatasetStatistics
 
 
@@ -85,7 +86,7 @@ class TimingsEvaluator(BaseEvaluator):
                 rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
-            print(data_record.prediction_timings)
+            # print(data_record.prediction_timings)
             timings.append(data_record.prediction_timings)
 
         if rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] > 0:
@@ -95,11 +96,35 @@ class TimingsEvaluator(BaseEvaluator):
                 len(ds_selection),
             )
 
+        time_per_doc = []
+        time_per_page = []
+
+        for timing in timings:
+
+            if timing is not None:
+                for key, val in timing.items():
+                    if key == "pipeline_total":
+                        time_per_doc.extend(val)
+
+                    if key == "layout":
+                        _time_per_page = [0.0 for v in val]
+                        for k2, v2 in timing.items():
+                            if len(v2) == len(_time_per_page):
+                                for i, v in enumerate(v2):
+                                    _time_per_page[i] += v
+
+                        time_per_page.extend(_time_per_page)
+
         dataset_timings_evaluation = DatasetTimingsEvaluation(
-            timing_per_page_stats=compute_stats(
-                [_["pipeline_total"] for _ in timings],
+            timing_per_document_stats=compute_stats(
+                time_per_doc,
                 max_value_is_one=False,
                 nr_bins=32,
-            )
+            ),
+            timing_per_page_stats=compute_stats(
+                time_per_page,
+                max_value_is_one=False,
+                nr_bins=32,
+            ),
         )
         return dataset_timings_evaluation

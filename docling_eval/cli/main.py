@@ -88,6 +88,7 @@ logging.getLogger("datasets").setLevel(logging_level)
 logging.getLogger("filelock").setLevel(logging_level)
 logging.getLogger("urllib3").setLevel(logging_level)
 logging.getLogger("docling_ibm_models").setLevel(logging_level)
+logging.getLogger("matplotlib").setLevel(logging_level)
 
 _log = logging.getLogger(__name__)
 
@@ -571,7 +572,15 @@ def visualize(
                 odir,
                 benchmark,
                 modality,
-                "time_to_solution_",
+                "time_to_solution_per_doc",
+                timings_evaluation.timing_per_document_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "time_to_solution_per_page",
                 timings_evaluation.timing_per_page_stats,
             )
         except Exception as e:
