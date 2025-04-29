@@ -229,10 +229,18 @@ class BasePredictionProvider:
         if isinstance(timings, dict):
             result = {}
             for key, val in timings.items():
-                if key == "pipeline_total":
-                    result[key] = float(val.avg())
+                if isinstance(val, ProfilingItem):
+                    result[key] = val.times
+
+            if len(result) == 0:  # datasets does not like empty dicts
+                _log.warning(f"empty timings: {timings}")
+                return None
+
+            # import json
+            # print(json.dumps(result, indent=2))
 
             return result
+
         elif timings is None:
             return None
         else:

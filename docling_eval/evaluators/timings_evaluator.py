@@ -85,6 +85,7 @@ class TimingsEvaluator(BaseEvaluator):
                 rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 continue
 
+            print(data_record.prediction_timings)
             timings.append(data_record.prediction_timings)
 
         if rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] > 0:
