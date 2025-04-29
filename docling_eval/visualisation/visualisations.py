@@ -26,6 +26,7 @@ from docling_eval.visualisation.constants import (
     HTML_COMPARISON_PAGE_WITH_CLUSTERS,
     HTML_DEFAULT_HEAD_FOR_COMP,
     HTML_INSPECTION,
+    HTML_DEFAULT_HEAD_FOR_COMP_v2,
 )
 
 
@@ -136,7 +137,7 @@ def save_comparison_html_with_clusters(
     html_parts = [
         "<!DOCTYPE html>",
         "<html>",
-        HTML_DEFAULT_HEAD_FOR_COMP,
+        HTML_DEFAULT_HEAD_FOR_COMP_v2,
         "<body>",
     ]
 

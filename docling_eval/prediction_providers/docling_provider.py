@@ -1,8 +1,10 @@
 import copy
+import logging
 import platform
 from typing import Dict, List, Optional, Set
 
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
 from pydantic import TypeAdapter
@@ -20,6 +22,8 @@ from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
 from docling_eval.utils.utils import docling_version, get_package_version
+
+_log = logging.getLogger(__name__)
 
 
 class DoclingPredictionProvider(BasePredictionProvider):
@@ -47,6 +51,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
         ignore_missing_predictions: bool = True,
         true_labels: Optional[Set[DocItemLabel]] = None,
         pred_labels: Optional[Set[DocItemLabel]] = None,
+        profile_pipeline_timings: bool = True,
     ):
         """
         Initialize the Docling prediction provider.
@@ -65,6 +70,11 @@ class DoclingPredictionProvider(BasePredictionProvider):
             true_labels=true_labels,
             pred_labels=pred_labels,
         )
+
+        # Enable the profiling to measure the time spent
+        settings.debug.profile_pipeline_timings = profile_pipeline_timings
+        _log.info(f"profile_pipeline_timings: {profile_pipeline_timings}")
+
         self.doc_converter = DocumentConverter(format_options=format_options)
 
     @property
@@ -95,9 +105,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
 
         # Create prediction record
         pred_record = self.create_dataset_record_with_prediction(
-            record,
-            res.document,
-            None,
+            record, res.document, None, res.timings
         )
         pred_record.status = res.status
 
