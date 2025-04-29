@@ -42,9 +42,9 @@ pillow = "^10.3.0"
 evaluate = "^0.4.3"
 nltk = "^3.9.1"
 ibm-cos-sdk = "^2.1.40"
-azure-ai-formrecognizer = { version = "^3.3.0", optional = true }
+azure-ai-documentintelligence = { version = "^1.0.2", optional = true }
 azure-common = { version = "^1.1.28", optional = true }
-azure-core = { version = "^1.32.0", optional = true }
+azure-core = { version = "^1.33.0", optional = true }
 beautifulsoup4 = "^4.12.3"
 jiwer = "^3.1.0"
 urllib3 = "^1.24.2"
@@ -78,7 +78,7 @@ boto3-stubs = "^1.37.19"
 types-urllib3 = "^1.26.25.14"
 
 [tool.poetry.extras]
-hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3", "google-cloud-documentai"]
+hyperscalers = ["azure-ai-documentintelligence", "azure-common", "azure-core", "boto3", "google-cloud-documentai"]
 
 [tool.poetry.scripts]
 docling_eval = "docling_eval.cli.main:app"
