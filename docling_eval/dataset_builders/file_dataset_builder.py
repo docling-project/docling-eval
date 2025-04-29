@@ -108,7 +108,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
             # Create the ground truth Document
             true_doc = DoclingDocument(name=f"{filename}")
             if mime_type == "application/pdf":
-                _log.info(f"add_pages_to_true_doc: {filename}")
+                _log.debug(f"add_pages_to_true_doc: {filename}")
                 true_doc, _ = add_pages_to_true_doc(
                     pdf_path=filename, true_doc=true_doc, image_scale=2.0
                 )
@@ -127,7 +127,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
                     image=image_ref,
                 )
 
-                _log.info(f"add_pages_to_true_doc: {filename}")
+                _log.debug(f"add_pages_to_true_doc: {filename}")
                 true_doc.pages[1] = page_item
             else:
                 raise ValueError(
