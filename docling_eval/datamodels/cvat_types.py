@@ -189,7 +189,8 @@ class AnnotatedImage(BaseModel):
     page_img_files: List[Path] = []
     bbox_annotations: List[AnnotationBBox] = []  # Renamed from pred_boxes
     line_annotations: List[AnnotationLine] = []  # Renamed from pred_lines
-
+    page_to_bbox: dict[int, BoundingBox] = {}
+    
     def to_cvat(self, lines: bool = False) -> str:
         """
         Generate CVAT XML annotation for this image.
