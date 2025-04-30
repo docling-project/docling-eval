@@ -1,9 +1,11 @@
 import json
+import glob
 import logging
 import os
 import sys
 from pathlib import Path
 from typing import Annotated, Dict, Optional, Tuple
+from PyPDF2 import PdfReader, PdfWriter
 
 import typer
 from docling.datamodel.base_models import InputFormat
@@ -767,6 +769,49 @@ def visualize(
         _log.error(f"Unsupported modality for visualization: {modality}")
 
 
+@app.command()
+def prepare_cvat_documents(
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    source_dir: Annotated[Path, typer.Option(help="Dataset source path with pdf's")],
+    sliding_window: Annotated[int, typer.Option(help="sliding window")] = 1,
+    overlap_window: Annotated[int, typer.Option(help="overlap window")] = 0,
+):
+    """Prepare multipage pdf documents into chunks."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    pdf_paths = glob.glob(f"{source_dir}/**/*.pdf", recursive=True)
+    _log.info(f"#-pdfs: {pdf_paths}")
+    
+    for pdf_path in pdf_paths:
+        base_name = os.path.basename(pdf_path).replace(".pdf", "")
+        
+        try:
+            with open(pdf_path, 'rb') as pdf_file:
+                reader = PdfReader(pdf_file)
+                total_pages = len(reader.pages)
+
+                _log.info(f"Processing {pdf_path} ({total_pages} pages)")
+                
+                for start_page in range(0, total_pages):
+                    end_page = min(start_page + sliding_window, total_pages)
+
+                    # Create a new PDF with the pages in the current window
+                    writer = PdfWriter()
+                
+                    for page_num in range(start_page, end_page):
+                        writer.add_page(reader.pages[page_num])
+                
+                    # Save the new PDF
+                    output_path = os.path.join(output_dir, f"{base_name}_ps_{start_page}_pe_{end_page}.pdf")
+                    with open(output_path, 'wb') as output_file:
+                        writer.write(output_file)
+                
+        except Exception as e:
+            _log.error(f"Error processing {pdf_path}: {e}")
+    
+    
+    
+    
 @app.command()
 def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],

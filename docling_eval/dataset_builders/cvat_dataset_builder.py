@@ -686,7 +686,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         orig_file = desc.document_file
 
         if not (os.path.exists(orig_file)):
-            _log.error(f"Missing original files for {basename}")
+            _log.error(f"Missing original files for {basename}: {orig_file}")
+            exit(-1)
             return None
 
         orig_doc = DoclingDocument.load_from_json(filename=orig_file)
@@ -694,7 +695,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         # Original PDF file
         pdf_file = desc.bin_file
         if not os.path.exists(pdf_file):
-            _log.error(f"Missing PDF file for {basename}")
+            _log.error(f"Missing PDF file for {basename}: {pdf_file}")
             return None
 
         in_doc = InputDocument(
@@ -997,7 +998,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             for image_annot in annot_data["annotations"]["image"]:
                 basename = image_annot["@name"]
-
+                _log.info(f"basename: {basename}")
+                
                 if basename not in overview.img_annotations:
                     _log.warning(f"Skipping {basename}: not in overview file")
                     continue
@@ -1032,6 +1034,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             overview = AnnotationOverview.load_from_json(
                 self.benchmark_dirs.overview_file
             )
+            _log.info(f"loaded annotation overview file: {self.benchmark_dirs.overview_file}")
         except (FileNotFoundError, json.JSONDecodeError) as e:
             _log.error(f"Failed to load annotation overview file: {e}")
             raise
@@ -1041,7 +1044,9 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         if not annot_files:
             _log.error("No annotation files found in CVAT dir")
             raise
-
+        else:
+            _log.info(f"loaded annotation files: {len(annot_files)}")
+            
         # Calculate total items for effective indices
         total_items = len(overview.img_annotations)
         begin, end = self.get_effective_indices(total_items)
@@ -1082,7 +1087,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
                     page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
                 )
-
+                _log.info(f"page-numbers: {true_doc.pages.keys()}")
+                
                 # Get PDF as binary data
                 pdf_file = Path(desc.bin_file)
                 if not pdf_file.exists():
@@ -1133,9 +1139,14 @@ def find_table_data(doc: DoclingDocument, prov, iou_cutoff: float = 0.90):
             for item_prov in item.prov:
                 if item_prov.page_no != prov.page_no:
                     continue
+                
+                page_height = doc.pages[item_prov.page_no].size.height
 
-                # page_height = doc.pages[item_prov.page_no].size.height
-                iou = item_prov.bbox.intersection_over_union(prov.bbox)
+                item_bbox_bl = item_prov.bbox.to_bottom_left_origin(page_height=page_height)
+                prov_bbox_bl = prov.bbox.to_bottom_left_origin(page_height=page_height)
+                
+                # iou = item_prov.bbox.intersection_over_union(prov.bbox)
+                iou = item_bbox_bl.intersection_over_union(prov_bbox_bl)
 
                 if iou > iou_cutoff:
                     _log.info(f"Found matching table data with IoU: {iou:.2f}")
