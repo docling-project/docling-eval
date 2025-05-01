@@ -148,6 +148,7 @@ class BenchMarkDirs(BaseModel):
 
 class AnnotationBBox(BaseModel):
 
+    page_no: int 
     bbox_id: int
     bbox: BoundingBox
     label: DocItemLabel

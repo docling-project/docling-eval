@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from datasets import load_dataset
 from docling_core.types.doc import DocItemLabel
-from docling_core.types.doc.base import BoundingBox
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
 from docling_core.types.io import DocumentStream
 from pydantic import ValidationError
@@ -402,7 +402,6 @@ class CvatPreannotationBuilder:
                 _log.error(
                     f"Error processing document {doc_overview.doc_name}: {str(e)}"
                 )
-                exit(-1)
                 continue
             """
 
@@ -427,11 +426,13 @@ class CvatPreannotationBuilder:
 
         #for start_page in range(0, total_pages, sliding_window-overlap_window):
         for page_start in page_nos:
-            img_id += 1
-            
             page_end = min(page_start + sliding_window, max(page_nos)+1)
 
-            _log.info(f"{page_start} -> {page_end}")
+            # Skip if it is not of the correct size
+            if page_end-page_start != sliding_window:
+                continue
+
+            img_id += 1
             
             # Calculate bucket ID consistently for both folder and XML naming
             bucket_id = (img_id - 1) // self.bucket_size
@@ -461,7 +462,7 @@ class CvatPreannotationBuilder:
                 img_file=bucket_dir / filename,
             )        
 
-            page_imgs = []
+            page_imgs = {}
             for page_no in range(page_start, page_end):
                 
                 # Extract and save page image
@@ -470,7 +471,7 @@ class CvatPreannotationBuilder:
                     page_image = page_image_ref.pil_image
 
                     if page_image is not None:
-                        page_imgs.append(page_image)
+                        page_imgs[page_no] = page_image
                     else:
                         _log.warning(
                             f"Missing pillow image for page {page_no}, skipping..."
@@ -484,31 +485,36 @@ class CvatPreannotationBuilder:
                 _log.error(f"Could not extract enough page-images, skipping ...")
                 continue
 
-            skip: bool = False
-            for i in range(2, len(page_imgs)):
-                if page_imgs[i-1].height!=page_imgs[i].height:
+            skip = False
+            for page_no,img in page_imgs.items():
+                if page_imgs[page_start].height!=img.height:
                     skip = True
-
+                    
             if skip:
                 _log.error(f"No consistent image-heights, skipping ...")
                 continue                    
-
+            
             # One-liner to glue images horizontally (left to right)
-            combined_image = Image.new('RGB', (sum(img.width for img in page_imgs), page_imgs[0].height))
+            combined_image = Image.new('RGB', (sum(img.width for page_no,img in page_imgs.items()), page_imgs[page_start].height))
 
             x0=0
-            for img in page_imgs:
+            for page_no, img in page_imgs.items():
+                annotated_image.page_to_bbox[page_no] = BoundingBox(l=x0, r=x0+img.width,
+                                                                    b=0, t=img.height,
+                                                                    coord_origin=CoordOrigin.BOTTOMLEFT)
+                
                 combined_image.paste(img, (x0, 0))
                 x0 += img.width 
 
-            combined_image.show()
+            # combined_image.show()
                 
-            # Save combined images                
+            # Save combined images
+            _log.info(f"saving {annotated_image.img_file}")
             combined_image.save(annotated_image.img_file)
 
             annotated_image.img_w = combined_image.width
             annotated_image.img_h = combined_image.height
-            annotated_image.page_nos = range(page_start+1, page_end+1)
+            annotated_image.page_nos = range(page_start, page_end)
 
             # Save individual page images
             annotated_image.page_img_files = []
@@ -519,17 +525,36 @@ class CvatPreannotationBuilder:
                 # Save page image to both task directory and page images directory
                 page_img_file = self.benchmark_dirs.page_imgs_dir / page_filename
                 annotated_image.page_img_files.append(page_img_file)
-            
-                page_imgs[page_no-page_start].save(str(annotated_image.img_file))
-
-            print(annotated_image)
                 
+                _log.info(f"saving {page_img_file}")
+                page_imgs[page_no].save(str(page_img_file))
+
+            # Extract bounding boxes for annotation
+            page_bboxes = []
+            
+            for page_no in range(page_start, page_end):
+                bboxs = self._extract_page_bounding_boxes(
+                    doc=doc, page_no=page_no,
+                    img_w=annotated_image.page_to_bbox[page_no].width,
+                    img_h=annotated_image.page_to_bbox[page_no].height,
+                )
+
+                # Shift the bbox to the right
+                for _ in bboxs:
+                    _.bbox.l += annotated_image.page_to_bbox[page_no].l
+                    _.bbox.r += annotated_image.page_to_bbox[page_no].l
+                
+                page_bboxes.extend(bboxs)
+                print(page_bboxes)
+                
+            annotated_image.bbox_annotations = page_bboxes
+            bucket_annotations[bucket_id].append(annotated_image.to_cvat())
+
             # Add to overview using filename as key
             self.overview.img_annotations[filename] = annotated_image
-
-            exit(-1)
                 
-            
+        return img_id
+    
     def _process_each_page_in_the_document(self, doc, bucket_annotations, img_id):
         """Process each page in the document."""
         for page_no, page in doc.pages.items():
@@ -634,6 +659,7 @@ class CvatPreannotationBuilder:
 
                     page_bboxes.append(
                         AnnotationBBox(
+                            page_no=page_no,
                             bbox_id=len(page_bboxes),
                             label=item.label,
                             bbox=BoundingBox(
