@@ -312,7 +312,7 @@ class BasePredictionProvider:
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
-        chunk_size: int = 80                
+        chunk_size: int = 80,
     ) -> None:
         """
         Create a prediction dataset from a ground truth dataset.

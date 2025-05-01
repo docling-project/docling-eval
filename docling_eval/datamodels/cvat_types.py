@@ -148,7 +148,7 @@ class BenchMarkDirs(BaseModel):
 
 class AnnotationBBox(BaseModel):
 
-    page_no: int 
+    page_no: int
     bbox_id: int
     bbox: BoundingBox
     label: DocItemLabel
@@ -191,7 +191,7 @@ class AnnotatedImage(BaseModel):
     bbox_annotations: List[AnnotationBBox] = []  # Renamed from pred_boxes
     line_annotations: List[AnnotationLine] = []  # Renamed from pred_lines
     page_to_bbox: dict[int, BoundingBox] = {}
-    
+
     def to_cvat(self, lines: bool = False) -> str:
         """
         Generate CVAT XML annotation for this image.

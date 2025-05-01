@@ -1,11 +1,10 @@
-import json
 import glob
+import json
 import logging
 import os
 import sys
 from pathlib import Path
 from typing import Annotated, Dict, Optional, Tuple
-from PyPDF2 import PdfReader, PdfWriter
 
 import typer
 from docling.datamodel.base_models import InputFormat
@@ -19,6 +18,7 @@ from docling.datamodel.pipeline_options import (
 from docling.document_converter import FormatOption, PdfFormatOption
 from docling.models.factories import get_ocr_factory
 from docling.pipeline.vlm_pipeline import VlmPipeline
+from PyPDF2 import PdfReader, PdfWriter
 from tabulate import tabulate  # type: ignore
 
 from docling_eval.datamodels.types import (
@@ -778,40 +778,40 @@ def prepare_cvat_documents(
 ):
     """Prepare multipage pdf documents into chunks."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     pdf_paths = glob.glob(f"{source_dir}/**/*.pdf", recursive=True)
     _log.info(f"#-pdfs: {pdf_paths}")
-    
+
     for pdf_path in pdf_paths:
         base_name = os.path.basename(pdf_path).replace(".pdf", "")
-        
+
         try:
-            with open(pdf_path, 'rb') as pdf_file:
+            with open(pdf_path, "rb") as pdf_file:
                 reader = PdfReader(pdf_file)
                 total_pages = len(reader.pages)
 
                 _log.info(f"Processing {pdf_path} ({total_pages} pages)")
-                
+
                 for start_page in range(0, total_pages):
                     end_page = min(start_page + sliding_window, total_pages)
 
                     # Create a new PDF with the pages in the current window
                     writer = PdfWriter()
-                
+
                     for page_num in range(start_page, end_page):
                         writer.add_page(reader.pages[page_num])
-                
+
                     # Save the new PDF
-                    output_path = os.path.join(output_dir, f"{base_name}_ps_{start_page}_pe_{end_page}.pdf")
-                    with open(output_path, 'wb') as output_file:
+                    output_path = os.path.join(
+                        output_dir, f"{base_name}_ps_{start_page}_pe_{end_page}.pdf"
+                    )
+                    with open(output_path, "wb") as output_file:
                         writer.write(output_file)
-                
+
         except Exception as e:
             _log.error(f"Error processing {pdf_path}: {e}")
-    
-    
-    
-    
+
+
 @app.command()
 def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
@@ -901,7 +901,9 @@ def create_eval(
             help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
-    do_visualization: Annotated[bool, typer.Option(help="visualize the predictions")] = True,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create evaluation dataset from existing ground truth."""
     gt_dir = gt_dir or output_dir / "gt_dataset"
@@ -974,7 +976,9 @@ def create(
     file_source_path: Annotated[
         Optional[Path], typer.Option(help="Source path for File provider")
     ] = None,
-    do_visualization: Annotated[bool, typer.Option(help="visualize the predictions")] = True,    
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
