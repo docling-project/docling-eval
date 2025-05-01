@@ -300,9 +300,10 @@ class CvatPreannotationBuilder:
         """
         # Dictionary to store annotations by bucket ID
         bucket_annotations: dict[int, list[str]] = {}
-
+        
         img_id = 0
         for doc_overview in self.overview.doc_annotations:
+            
             #try:
             if True:
                 # Load document from the saved JSON file
@@ -488,6 +489,7 @@ class CvatPreannotationBuilder:
             skip = False
             for page_no,img in page_imgs.items():
                 if page_imgs[page_start].height!=img.height:
+                    _log.warning(f"{page_imgs[page_start].width} != {img.width} or {page_imgs[page_start].height} != {img.height}")
                     skip = True
                     
             if skip:
@@ -497,11 +499,19 @@ class CvatPreannotationBuilder:
             # One-liner to glue images horizontally (left to right)
             combined_image = Image.new('RGB', (sum(img.width for page_no,img in page_imgs.items()), page_imgs[page_start].height))
 
+            page_to_bbox = {}
+            
             x0=0
             for page_no, img in page_imgs.items():
+
                 annotated_image.page_to_bbox[page_no] = BoundingBox(l=x0, r=x0+img.width,
                                                                     b=0, t=img.height,
                                                                     coord_origin=CoordOrigin.BOTTOMLEFT)
+                """
+                page_to_bbox[page_no] = BoundingBox(l=x0, r=x0+img.width,
+                                                    b=0, t=img.height,
+                                                    coord_origin=CoordOrigin.BOTTOMLEFT)
+                """
                 
                 combined_image.paste(img, (x0, 0))
                 x0 += img.width 
@@ -514,7 +524,7 @@ class CvatPreannotationBuilder:
 
             annotated_image.img_w = combined_image.width
             annotated_image.img_h = combined_image.height
-            annotated_image.page_nos = range(page_start, page_end)
+            annotated_image.page_nos = [page_no for page_no in range(page_start, page_end)]
 
             # Save individual page images
             annotated_image.page_img_files = []
@@ -536,20 +546,23 @@ class CvatPreannotationBuilder:
                 bboxs = self._extract_page_bounding_boxes(
                     doc=doc, page_no=page_no,
                     img_w=annotated_image.page_to_bbox[page_no].width,
+                    # img_w=page_to_bbox[page_no].width,
                     img_h=annotated_image.page_to_bbox[page_no].height,
+                    # img_h=page_to_bbox[page_no].height,
                 )
 
                 # Shift the bbox to the right
                 for _ in bboxs:
                     _.bbox.l += annotated_image.page_to_bbox[page_no].l
+                    # _.bbox.l += page_to_bbox[page_no].l
                     _.bbox.r += annotated_image.page_to_bbox[page_no].l
+                    # _.bbox.r += page_to_bbox[page_no].l
                 
                 page_bboxes.extend(bboxs)
-                print(page_bboxes)
                 
             annotated_image.bbox_annotations = page_bboxes
             bucket_annotations[bucket_id].append(annotated_image.to_cvat())
-
+            
             # Add to overview using filename as key
             self.overview.img_annotations[filename] = annotated_image
                 
