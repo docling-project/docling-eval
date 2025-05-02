@@ -100,7 +100,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         for filename in tqdm(
             selected_filenames,
-            desc="Processing files for DP-Bench",
+            desc=f"Processing files for {self.name}",
             ncols=128,
         ):
             mime_type, _ = mimetypes.guess_type(filename)
@@ -108,6 +108,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
             # Create the ground truth Document
             true_doc = DoclingDocument(name=f"{filename}")
             if mime_type == "application/pdf":
+                _log.debug(f"add_pages_to_true_doc: {filename}")
                 true_doc, _ = add_pages_to_true_doc(
                     pdf_path=filename, true_doc=true_doc, image_scale=2.0
                 )
@@ -126,6 +127,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
                     image=image_ref,
                 )
 
+                _log.debug(f"add_pages_to_true_doc: {filename}")
                 true_doc.pages[1] = page_item
             else:
                 raise ValueError(
@@ -139,18 +141,20 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
                 page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
             )
 
-            # Get PDF as binary data
-            pdf_bytes = get_binary(filename)
-            pdf_stream = DocumentStream(name=filename.name, stream=BytesIO(pdf_bytes))
+            # Get source as binary data
+            source_bytes = get_binary(filename)
+            source_stream = DocumentStream(
+                name=filename.name, stream=BytesIO(source_bytes)
+            )
 
             # Create dataset record
             record = DatasetRecord(
                 doc_id=str(filename.name),
-                doc_hash=get_binhash(pdf_bytes),
+                doc_hash=get_binhash(source_bytes),
                 ground_truth_doc=true_doc,
                 ground_truth_pictures=true_pictures,
                 ground_truth_page_images=true_page_images,
-                original=pdf_stream,
+                original=source_stream,
                 mime_type=mime_type,
             )
 

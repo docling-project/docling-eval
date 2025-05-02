@@ -130,7 +130,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             evaluations.append(page_evaluation)
 
             if self._intermediate_evaluations_path:
-                self.save_intermediate_evalutions(
+                self.save_intermediate_evaluations(
                     "reading_order", i, doc_id, evaluations
                 )
 
@@ -292,7 +292,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             )
             text = item.text if isinstance(item, TextItem) else None
             label = item.label  # type: ignore
-            print(f"True {i}: {level} - {label}: {bbox} - {text}")
+            # print(f"True {i}: {level} - {label}: {bbox} - {text}")
 
 
 class ReadingOrderVisualizer:

@@ -7,6 +7,7 @@ from typing import Iterable, Optional, Union
 
 import ibm_boto3  # type: ignore
 from docling.utils.utils import chunkify
+from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
 from pydantic import BaseModel
 
@@ -15,7 +16,6 @@ from docling_eval.prediction_providers.base_prediction_provider import (
     TRUE_HTML_EXPORT_LABELS,
 )
 from docling_eval.utils.utils import save_shard_to_disk, write_datasets_info
-from docling_eval.visualisation.visualisations import save_inspection_html
 
 # Get logger
 _log = logging.getLogger(__name__)
@@ -276,10 +276,11 @@ class BaseEvaluationDatasetBuilder:
                 record_list.append(r.as_record_dict())
                 if do_visualization:
                     viz_path = self.target / "visualizations" / f"{r.doc_id}.html"
-                    save_inspection_html(
+                    r.ground_truth_doc.save_as_html(
                         filename=viz_path,
-                        doc=r.ground_truth_doc,
                         labels=TRUE_HTML_EXPORT_LABELS,
+                        image_mode=ImageRefMode.EMBEDDED,
+                        split_page_view=True,
                     )
 
             save_shard_to_disk(

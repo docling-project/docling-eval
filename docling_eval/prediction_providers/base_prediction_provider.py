@@ -8,6 +8,7 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
+from docling.utils.profiling import ProfilingItem
 from docling.utils.utils import chunkify
 from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.document import DoclingDocument
@@ -31,7 +32,6 @@ from docling_eval.utils.utils import (
 )
 from docling_eval.visualisation.visualisations import save_comparison_html_with_clusters
 
-# Get logger
 _log = logging.getLogger(__name__)
 
 # Default HTML export labels for visualization
@@ -165,7 +165,6 @@ class BasePredictionProvider:
                 / f"{prediction_record.doc_id}.html",
                 true_doc=gt_doc,
                 pred_doc=pred_doc,
-                page_image=prediction_record.ground_truth_page_images[0],
                 true_labels=self.true_labels,
                 pred_labels=self.pred_labels,
                 draw_reading_order=True,
@@ -187,6 +186,7 @@ class BasePredictionProvider:
         record: DatasetRecord,
         predicted_doc: Optional[DoclingDocument] = None,
         original_prediction: Optional[str] = None,
+        timings: Optional[dict] = None,
     ) -> DatasetRecordWithPrediction:
         """
         Create a dataset record with prediction from an input record.
@@ -216,9 +216,36 @@ class BasePredictionProvider:
             "predicted_pictures": pred_pictures,
             "original_prediction": original_prediction,
             "prediction_format": self.prediction_format,
+            "prediction_timings": self._prediction_timings(timings),
             "predictor_info": self.info(),
         }
-        return DatasetRecordWithPrediction.model_validate(data)
+        record = DatasetRecordWithPrediction.model_validate(data)
+
+        return record
+
+    def _prediction_timings(self, timings: Optional[dict]) -> Optional[dict]:
+        """Get prediction timings."""
+
+        if isinstance(timings, dict):
+            result = {}
+            for key, val in timings.items():
+                if isinstance(val, ProfilingItem):
+                    result[key] = val.times
+
+            if len(result) == 0:  # datasets does not like empty dicts
+                _log.warning(f"empty timings: {timings}")
+                return None
+
+            # import json
+            # print(json.dumps(result, indent=2))
+
+            return result
+
+        elif timings is None:
+            return None
+        else:
+            _log.warning(f"unknown type of timings: {timings}")
+            return None
 
     def add_prediction(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """

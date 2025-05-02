@@ -65,6 +65,7 @@ On our list for next benchmarks:
 - [CoMix](https://github.com/emanuelevivoli/CoMix/tree/main/docs/datasets)
 - [DocVQA](https://huggingface.co/datasets/lmms-lab/DocVQA)
 - [rd-tablebench](https://huggingface.co/datasets/reducto/rd-tablebench)
+- [BigDocs-Bench](https://huggingface.co/datasets/ServiceNow/BigDocs-Bench)
   
 ## Contributing
 
