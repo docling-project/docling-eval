@@ -9,6 +9,7 @@ from datasets import Image as Features_Image
 from datasets import Sequence, Value
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types import DoclingDocument
+from docling_core.types.doc.page import SegmentedPage
 from docling_core.types.io import DocumentStream
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -24,6 +25,9 @@ class DatasetRecord(
     doc_hash: Optional[str] = Field(alias="document_filehash", default=None)
 
     ground_truth_doc: DoclingDocument = Field(alias="GroundTruthDocument")
+    ground_truth_segmented_pages: List[SegmentedPage] = Field(
+        alias="ground_truth_segmented_pages", default=[]
+    )
     original: Optional[Union[DocumentStream, Path]] = Field(
         alias="BinaryDocument", default=None
     )
@@ -53,6 +57,7 @@ class DatasetRecord(
                 cls.get_field_alias("doc_path"): Value("string"),
                 cls.get_field_alias("doc_hash"): Value("string"),
                 cls.get_field_alias("ground_truth_doc"): Value("string"),
+                cls.get_field_alias("ground_truth_segmented_pages"): Sequence("string"),
                 cls.get_field_alias("ground_truth_pictures"): Sequence(
                     Features_Image()
                 ),
@@ -102,6 +107,9 @@ class DatasetRecord(
                 self.ground_truth_doc.export_to_dict()
             ),
             self.get_field_alias("ground_truth_pictures"): self.ground_truth_pictures,
+            self.get_field_alias("ground_truth_segmented_pages"): [
+                e.model_dump_json() for e in self.ground_truth_segmented_pages
+            ],
             self.get_field_alias(
                 "ground_truth_page_images"
             ): self.ground_truth_page_images,
@@ -143,6 +151,14 @@ class DatasetRecord(
         if gt_doc_alias in data and isinstance(data[gt_doc_alias], str):
             data[gt_doc_alias] = json.loads(data[gt_doc_alias])
 
+        gt_seg_pages_alias = cls.get_field_alias("ground_truth_segmented_pages")
+        if gt_seg_pages_alias in data:
+            for ix, item in enumerate(data[gt_seg_pages_alias]):
+                if isinstance(item, str):
+                    data[gt_seg_pages_alias][ix] = SegmentedPage.model_validate_json(
+                        item
+                    )
+
         gt_page_img_alias = cls.get_field_alias("ground_truth_page_images")
         if gt_page_img_alias in data:
             for ix, item in enumerate(data[gt_page_img_alias]):
@@ -171,6 +187,11 @@ class DatasetRecordWithPrediction(DatasetRecord):
     predicted_doc: Optional[DoclingDocument] = Field(
         alias="PredictedDocument", default=None
     )
+
+    predicted_segmented_pages: List[SegmentedPage] = Field(
+        alias="predicted_segmented_pages", default=[]
+    )
+
     original_prediction: Optional[str] = None
     prediction_format: PredictionFormats  # some enum type
     prediction_timings: Optional[Dict] = Field(alias="prediction_timings", default=None)
@@ -187,20 +208,22 @@ class DatasetRecordWithPrediction(DatasetRecord):
     @classmethod
     def features(cls):
         return {
-            cls.get_field_alias("predictor_info"): Value("string"),
-            cls.get_field_alias("status"): Value("string"),
             cls.get_field_alias("doc_id"): Value("string"),
             cls.get_field_alias("doc_path"): Value("string"),
             cls.get_field_alias("doc_hash"): Value("string"),
             cls.get_field_alias("ground_truth_doc"): Value("string"),
+            cls.get_field_alias("ground_truth_segmented_pages"): Sequence("string"),
             cls.get_field_alias("ground_truth_pictures"): Sequence(Features_Image()),
             cls.get_field_alias("ground_truth_page_images"): Sequence(Features_Image()),
-            cls.get_field_alias("predicted_doc"): Value("string"),
-            cls.get_field_alias("predicted_pictures"): Sequence(Features_Image()),
-            cls.get_field_alias("predicted_page_images"): Sequence(Features_Image()),
             cls.get_field_alias("original"): Value("string"),
             cls.get_field_alias("mime_type"): Value("string"),
             cls.get_field_alias("modalities"): Sequence(Value("string")),
+            cls.get_field_alias("predictor_info"): Value("string"),
+            cls.get_field_alias("status"): Value("string"),
+            cls.get_field_alias("predicted_doc"): Value("string"),
+            cls.get_field_alias("predicted_segmented_pages"): Sequence("string"),
+            cls.get_field_alias("predicted_pictures"): Sequence(Features_Image()),
+            cls.get_field_alias("predicted_page_images"): Sequence(Features_Image()),
             cls.get_field_alias("prediction_format"): Value("string"),
             cls.get_field_alias("prediction_timings"): Value("string"),
         }
@@ -220,6 +243,9 @@ class DatasetRecordWithPrediction(DatasetRecord):
                     self.get_field_alias("predicted_doc"): json.dumps(
                         self.predicted_doc.export_to_dict()
                     ),
+                    self.get_field_alias("predicted_segmented_pages"): [
+                        e.model_dump_json() for e in self.predicted_segmented_pages
+                    ],
                     self.get_field_alias("predicted_pictures"): self.predicted_pictures,
                     self.get_field_alias(
                         "predicted_page_images"
@@ -261,6 +287,14 @@ class DatasetRecordWithPrediction(DatasetRecord):
         pred_doc_alias = cls.get_field_alias("predicted_doc")
         if pred_doc_alias in data and isinstance(data[pred_doc_alias], str):
             data[pred_doc_alias] = json.loads(data[pred_doc_alias])
+
+        pred_seg_pages_alias = cls.get_field_alias("predicted_segmented_pages")
+        if pred_seg_pages_alias in data:
+            for ix, item in enumerate(data[pred_seg_pages_alias]):
+                if isinstance(item, str):
+                    data[pred_seg_pages_alias][ix] = SegmentedPage.model_validate_json(
+                        item
+                    )
 
         pred_page_img_alias = cls.get_field_alias("predicted_page_images")
         if pred_page_img_alias in data:
