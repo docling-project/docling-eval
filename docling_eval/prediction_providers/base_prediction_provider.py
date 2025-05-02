@@ -201,6 +201,7 @@ class BasePredictionProvider:
         """
         pred_page_images = []
         pred_pictures = []
+
         if predicted_doc is not None:
             # Extract images from the ground truth document
             predicted_doc, pred_pictures, pred_page_images = extract_images(

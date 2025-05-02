@@ -2,7 +2,7 @@ import json
 import logging
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
@@ -13,6 +13,12 @@ from docling_core.types.doc import (
     PageItem,
     ProvenanceItem,
     Size,
+)
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
 )
 from docling_core.types.io import DocumentStream
 from PIL import Image
@@ -54,7 +60,7 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
 
     def _create_ground_truth_doc(
         self, doc_id: str, gt_data: Dict, image: Image.Image
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """Create a DoclingDocument from ground truth data and image file."""
         true_doc = DoclingDocument(name=doc_id)
 
@@ -72,8 +78,19 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
         )
         true_doc.pages[1] = page_item
 
+        segmented_pages: Dict[int, SegmentedPage] = {}
+
         for page_idx, page in enumerate(gt_data["pages"], 1):
-            for text, bbox, _ in zip(page["text"], page["bbox"], page["score"]):
+            seg_page = SegmentedPage(
+                dimension=PageGeometry(
+                    angle=0,
+                    rect=BoundingRectangle.from_bounding_box(
+                        BoundingBox(l=0, t=0, r=image.width, b=image.height)
+                    ),
+                )
+            )
+
+            for text, bbox, score in zip(page["text"], page["bbox"], page["score"]):
                 bbox_obj = BoundingBox.from_tuple(
                     (
                         float(bbox[0]),
@@ -83,12 +100,18 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                     ),
                     CoordOrigin.TOPLEFT,
                 )
-                prov = ProvenanceItem(
-                    page_no=page_idx, bbox=bbox_obj, charspan=(0, len(text))
+                seg_page.textline_cells.append(
+                    TextCell(
+                        from_ocr=True,
+                        rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                        text=text,
+                        orig=text,
+                        confidence=score,
+                    )
                 )
-                true_doc.add_text(label=DocItemLabel.TEXT, text=text, prov=prov)
+            segmented_pages[page_idx] = seg_page
 
-        return true_doc
+        return true_doc, segmented_pages
 
     def iterate(self) -> Iterable[DatasetRecord]:
         if not self.retrieved and self.must_retrieve:
@@ -135,7 +158,9 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                 ):
                     image = image.convert("RGB")
 
-                true_doc = self._create_ground_truth_doc(doc_id, gt_data, image)
+                true_doc, seg_pages = self._create_ground_truth_doc(
+                    doc_id, gt_data, image
+                )
 
                 # Extract images from the ground truth document
                 true_doc, true_pictures, true_page_images = extract_images(
@@ -158,6 +183,7 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                     doc_id=doc_id,
                     doc_hash=get_binhash(img_bytes),
                     ground_truth_doc=true_doc,
+                    ground_truth_segmented_pages=seg_pages,
                     original=image_stream,
                     mime_type="image/png",
                     modalities=[
