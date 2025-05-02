@@ -431,6 +431,7 @@ def evaluate(
 
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
+        return None
 
     elif modality == EvaluationModality.TIMINGS:
         timings_evaluator = TimingsEvaluator()
