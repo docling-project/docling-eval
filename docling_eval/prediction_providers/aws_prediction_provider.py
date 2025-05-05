@@ -17,9 +17,9 @@ from docling_core.types.doc.document import (
 )
 from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.doc.page import (
-    SegmentedPage,
-    PageGeometry,
     BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
     TextCell,
 )
 from docling_core.types.io import DocumentStream
