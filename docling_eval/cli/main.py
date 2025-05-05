@@ -156,7 +156,7 @@ def get_dataset_builder(
     begin_index: int = 0,
     end_index: int = -1,
     dataset_source: Optional[Path] = None,
-    do_visualization: bool = True
+    do_visualization: bool = True,
 ):
     """Get the appropriate dataset builder for the given benchmark."""
     common_params = {
@@ -164,7 +164,7 @@ def get_dataset_builder(
         "split": split,
         "begin_index": begin_index,
         "end_index": end_index,
-        "do_visualization": do_visualization
+        "do_visualization": do_visualization,
     }
 
     if benchmark == BenchMarkNames.DPBENCH:
@@ -865,7 +865,9 @@ def create_gt(
         # Retrieve and save the dataset
         if dataset_builder.must_retrieve:
             dataset_builder.retrieve_input_dataset()
-        dataset_builder.save_to_disk(chunk_size=chunk_size, do_visualization=do_visualization)
+        dataset_builder.save_to_disk(
+            chunk_size=chunk_size, do_visualization=do_visualization
+        )
 
         _log.info(f"Ground truth dataset created at {gt_dir}")
     except ValueError as e:
