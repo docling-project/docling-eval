@@ -107,6 +107,9 @@ class DoclingPredictionProvider(BasePredictionProvider):
         pred_record = self.create_dataset_record_with_prediction(
             record, res.document, None, res.timings
         )
+        pred_record.predicted_segmented_pages = {
+            p.page_no: p.parsed_page for p in res.pages if p.parsed_page is not None
+        }
         pred_record.status = res.status
 
         return pred_record

@@ -252,6 +252,7 @@ def get_prediction_provider(
         pipeline_options.images_scale = 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
+        pipeline_options.generate_parsed_pages = True
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
