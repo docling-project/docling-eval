@@ -430,6 +430,7 @@ def evaluate(
 
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
+        return None
 
     elif modality == EvaluationModality.TIMINGS:
         timings_evaluator = TimingsEvaluator()
@@ -463,13 +464,13 @@ def evaluate(
 
     elif modality == EvaluationModality.OCR:
         ocr_evaluator = OCREvaluator()
-        ocr_evaluation = ocr_evaluator(
+        evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
-            json.dump(ocr_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
