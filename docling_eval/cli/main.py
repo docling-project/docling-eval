@@ -857,7 +857,6 @@ def create_gt(
             begin_index=begin_index,
             end_index=end_index,
             dataset_source=dataset_source,
-            do_visualization=do_visualization,
         )
 
         # Retrieve and save the dataset
