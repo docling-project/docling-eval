@@ -16,6 +16,12 @@ from docling_core.types.doc.document import (
     TableData,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.page import (
+    SegmentedPage,
+    PageGeometry,
+    BoundingRectangle,
+    TextCell,
+)
 from docling_core.types.io import DocumentStream
 
 from docling_eval.datamodels.dataset_record import (
@@ -189,6 +195,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         blocks_map = {block["Id"]: block for block in analyze_result.get("Blocks", [])}
 
         processed_pages = set()
+        segmented_pages: Dict[int, SegmentedPage] = {}
 
         # Get page dimensions from page block
         # AWS provides normalized coordinates, so we need to multiply by a typical page size
@@ -218,6 +225,23 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                 doc.pages[page_no] = page_item
 
+                # Create SegmentedPage Entry if not already present for the page number
+                if page_no not in segmented_pages.keys():
+                    seg_page = SegmentedPage(
+                        dimension=PageGeometry(
+                            angle=0,
+                            rect=BoundingRectangle.from_bounding_box(
+                                BoundingBox(
+                                    l=0,
+                                    t=0,
+                                    r=page_item.size.width,
+                                    b=page_item.size.height,
+                                )
+                            ),
+                        )
+                    )
+                    segmented_pages[page_no] = seg_page
+
             elif block["BlockType"] == "WORD" and block.get("Page", 1) == page_no:
                 text_content = block.get("Text", "")
                 bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
@@ -231,13 +255,15 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     coord_origin=CoordOrigin.TOPLEFT,
                 )
 
-                prov = ProvenanceItem(
-                    page_no=page_no,
-                    bbox=bbox_obj,
-                    charspan=(0, len(text_content)),
+                segmented_pages[page_no].textline_cells.append(
+                    TextCell(
+                        rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                        text=text_content,
+                        orig=text_content,
+                        # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
+                        from_ocr=False,
+                    )
                 )
-
-                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
             elif block["BlockType"] == "LAYOUT_TITLE":
                 text_content = block.get("Text", "")
@@ -277,7 +303,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                 table_prov, table_data = self.process_table(block, blocks_map, page_no)
                 doc.add_table(prov=table_prov, data=table_data, caption=None)
 
-        return doc
+        return doc, segmented_pages
 
     def _add_text(self, block, doc, height, page_no, width):
         """Maps AWS text to Docling text."""
@@ -499,7 +525,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     f"Successfully processed [{record.doc_id}] using AWS Textract API!"
                 )
 
-                pred_doc = self.convert_aws_output_to_docling(
+                pred_doc, pred_segmented_pages = self.convert_aws_output_to_docling(
                     result_json, record, file_bytes
                 )
             else:
@@ -518,6 +544,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         pred_record = self.create_dataset_record_with_prediction(
             record, pred_doc, result_orig
         )
+        pred_record.predicted_segmented_pages = pred_segmented_pages
         pred_record.status = status
         return pred_record
 
