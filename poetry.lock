@@ -1532,14 +1532,14 @@ vlm = ["accelerate (>=1.2.1,<2.0.0) ; sys_platform != \"darwin\" or platform_mac
 
 [[package]]
 name = "docling-core"
-version = "2.28.0"
+version = "2.29.0"
 description = "A python library to define and validate data types in Docling."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "docling_core-2.28.0-py3-none-any.whl", hash = "sha256:f1a01446996b90c4c151ec0ad247283888e6372f9dac0e356d06f8b9838ca4ca"},
-    {file = "docling_core-2.28.0.tar.gz", hash = "sha256:16a762c251063839d7b20624cd6f89c2488872377f8546b037e604606014fb66"},
+    {file = "docling_core-2.29.0-py3-none-any.whl", hash = "sha256:f6d27cfb548217754b1910b45db7e4711eaa1921a14ad0e4b19f7dd4c768b2d8"},
+    {file = "docling_core-2.29.0.tar.gz", hash = "sha256:ffef8b304e6773355b8049554a9a1891fcb7d9baa477a410d0fcc4184aae013c"},
 ]
 
 [package.dependencies]
@@ -7999,4 +7999,4 @@ hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "cb6c0e6bb0d3933f33a8da796cdf271aa55b8fe2fca39b64fee07e76393043d1"
+content-hash = "11fc6f3afb8db684d7423f5dfd9540cc7e3a415909bc177a4eac6e64aca69607"
