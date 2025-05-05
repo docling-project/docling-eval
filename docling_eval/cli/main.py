@@ -156,7 +156,6 @@ def get_dataset_builder(
     begin_index: int = 0,
     end_index: int = -1,
     dataset_source: Optional[Path] = None,
-    do_visualization: bool = True,
 ):
     """Get the appropriate dataset builder for the given benchmark."""
     common_params = {
@@ -164,7 +163,6 @@ def get_dataset_builder(
         "split": split,
         "begin_index": begin_index,
         "end_index": end_index,
-        "do_visualization": do_visualization,
     }
 
     if benchmark == BenchMarkNames.DPBENCH:
