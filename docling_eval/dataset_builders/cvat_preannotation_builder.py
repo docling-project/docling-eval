@@ -522,11 +522,6 @@ class CvatPreannotationBuilder:
                     t=img.height,
                     coord_origin=CoordOrigin.BOTTOMLEFT,
                 )
-                """
-                page_to_bbox[page_no] = BoundingBox(l=x0, r=x0+img.width,
-                                                    b=0, t=img.height,
-                                                    coord_origin=CoordOrigin.BOTTOMLEFT)
-                """
 
                 combined_image.paste(img, (x0, 0))
                 x0 += img.width

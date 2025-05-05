@@ -22,6 +22,7 @@ from docling_core.types.doc.document import (
     ProvenanceItem,
     TableData,
     TableItem,
+    ContentLayer,
 )
 from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.doc.page import SegmentedPage, SegmentedPdfPage, TextCellUnit
@@ -374,7 +375,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             group,
         )
 
-    def create_prov(
+    def create_prov_v1(
         self,
         box: Dict,
         page_no: int,
@@ -409,7 +410,76 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         prov = ProvenanceItem(page_no=page_no, bbox=bbox, charspan=(0, 0))
         return prov, bbox
 
-    def get_label_prov_and_text(
+    def create_prov_v2(
+        self,
+        box: Dict,
+        page_no: int,
+        page_bbox: BoundingBox,
+        # img_width: float,
+        # img_height: float,
+        pdf_width: float,
+        pdf_height: float,
+        origin: CoordOrigin = CoordOrigin.TOPLEFT,
+    ) -> Tuple[ProvenanceItem, BoundingBox]:
+        """
+        Create provenance item and bounding box from a box.
+
+        Args:
+            box: Box data
+            page_no: Page number
+            img_width: Image width
+            img_height: Image height
+            pdf_width: PDF width
+            pdf_height: PDF height
+            origin: Coordinate origin
+
+        Returns:
+            Tuple of (provenance_item, bounding_box)
+        """
+        bbox = BoundingBox(
+            l=pdf_width * (box["l"]-page_bbox.l) / float(page_bbox.width),
+            r=pdf_width * (box["r"]-page_bbox.l) / float(page_bbox.width),
+            b=pdf_height * box["b"] / float(page_bbox.height),
+            t=pdf_height * box["t"] / float(page_bbox.height),
+            coord_origin=origin,
+        )
+        prov = ProvenanceItem(page_no=page_no, bbox=bbox, charspan=(0, 0))
+        return prov, bbox
+
+    def get_page_no_and_coord_origin(self,
+                                     box: Dict,
+                                     desc: AnnotatedImage,
+                                     doc: DoclingDocument) -> tuple[int, BoundingBox, ImageRef]:
+        """
+        Get page-number and coord-origin for composed image.
+        """
+        page_no = -1
+        page_bbox = BoundingBox(l=0.0, r=0, t=0, b=0, coord_origin=CoordOrigin.TOPLEFT)
+
+        item_bbox = BoundingBox(l=box["l"],
+                                r=box["r"],
+                                t=box["t"],
+                                b=box["b"],
+                                coord_origin=CoordOrigin.TOPLEFT)
+        
+        for key, val in desc.page_to_bbox.items():
+            curr_page_bbox = val.to_top_left_origin(page_height=val.height)
+            
+            if item_bbox.intersection_over_self(curr_page_bbox)>0.99:
+                page_no = key
+                page_bbox = curr_page_bbox
+                # _log.info(f"item is on page {page_no}")
+
+        if page_no not in doc.pages:
+            raise ValueError(f"Page {page_no} not found in document")
+
+        if doc.pages[page_no].image is None:
+            raise ValueError(f"Page {page_no} has no image reference")
+                
+        return page_no, page_bbox, cast(ImageRef, doc.pages[page_no].image)
+
+    # FIXME: to be deleted ...
+    def get_label_prov_and_text_v1(
         self,
         box: Dict,
         page_no: int,
@@ -456,6 +526,55 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         text = text.replace("  ", " ")
         return label, prov, text
 
+    def get_label_prov_and_text_v2(
+        self,
+        box: Dict,
+        page_no: int,
+        page_bbox: BoundingBox,
+        # img_width: float,
+        # img_height: float,
+        pdf_width: float,
+        pdf_height: float,
+        parsed_page: SegmentedPdfPage,
+    ) -> Tuple[DocItemLabel, ProvenanceItem, str]:
+        """
+        Get label, provenance, and text from a box.
+
+        Args:
+            box: Box data
+            page_no: Page number
+            img_width: Image width
+            img_height: Image height
+            pdf_width: PDF width
+            pdf_height: PDF height
+            parser: PDF parser
+            parsed_page: Parsed page data
+
+        Returns:
+            Tuple of (label, provenance, text)
+        """
+        assert page_no > 0
+
+        prov, bbox = self.create_prov_v2(
+            box=box,
+            page_no=page_no,
+            page_bbox=page_bbox,
+            # img_width=img_width,
+            # img_height=img_height,
+            pdf_width=pdf_width,
+            pdf_height=pdf_height,
+        )
+
+        label = DocItemLabel(box["@label"])
+
+        # PDF coordinates have origin at bottom-left, convert accordingly
+        text_cells = parsed_page.get_cells_in_bbox(
+            cell_unit=TextCellUnit.LINE, bbox=prov.bbox
+        )
+        text = " ".join([t.text for t in text_cells])
+        text = text.replace("  ", " ")
+        return label, prov, text    
+
     def get_page_imageref(self, page_no: int, doc: DoclingDocument) -> ImageRef:
         """
         Get the image reference for a page.
@@ -478,6 +597,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
     def get_next_provs(
         self,
         page_no: int,
+        page_bbox: BoundingBox,
         boxid: int,
         text: str,
         boxes: List[Dict],
@@ -512,11 +632,12 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     boxid_ = merge["boxids"][l]
                     already_added.append(boxid_)
 
-                    _, prov_, text_ = self.get_label_prov_and_text(
+                    _, prov_, text_ = self.get_label_prov_and_text_v2(
                         box=boxes[boxid_],
                         page_no=page_no,
-                        img_width=true_page_imageref.size.width,
-                        img_height=true_page_imageref.size.height,
+                        page_bbox=page_bbox,
+                        # img_width=true_page_imageref.size.width,
+                        # img_height=true_page_imageref.size.height,
                         pdf_width=true_doc.pages[page_no].size.width,
                         pdf_height=true_doc.pages[page_no].size.height,
                         parsed_page=parsed_page,
@@ -534,6 +655,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         to_captions: List[Dict],
         item: FloatingItem,
         page_no: int,
+        page_bbox: BoundingBox,
         boxid: int,
         boxes: List[Dict],
         already_added: List[int],
@@ -568,11 +690,12 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
                     caption_box = boxes[boxid_]
 
-                    label, prov, text = self.get_label_prov_and_text(
+                    label, prov, text = self.get_label_prov_and_text_v2(
                         box=caption_box,
                         page_no=page_no,
-                        img_width=true_page_imageref.size.width,
-                        img_height=true_page_imageref.size.height,
+                        page_bbox=page_bbox,
+                        # img_width=true_page_imageref.size.width,
+                        # img_height=true_page_imageref.size.height,
                         pdf_width=true_doc.pages[page_no].size.width,
                         pdf_height=true_doc.pages[page_no].size.height,
                         parsed_page=parsed_page,
@@ -594,6 +717,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         to_footnotes: List[Dict],
         item: FloatingItem,
         page_no: int,
+        page_bbox: BoundingBox,
         boxid: int,
         boxes: List[Dict],
         already_added: List[int],
@@ -628,11 +752,12 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
                     footnote_box = boxes[boxid_]
 
-                    label, prov, text = self.get_label_prov_and_text(
+                    label, prov, text = self.get_label_prov_and_text_v2(
                         box=footnote_box,
                         page_no=page_no,
-                        img_width=true_page_imageref.size.width,
-                        img_height=true_page_imageref.size.height,
+                        page_bbox=page_bbox,
+                        # img_width=true_page_imageref.size.width,
+                        # img_height=true_page_imageref.size.height,
                         pdf_width=true_doc.pages[page_no].size.width,
                         pdf_height=true_doc.pages[page_no].size.height,
                         parsed_page=parsed_page,
@@ -729,7 +854,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             page_image = Image.open(str(img_file))
             img_width = page_image.width
             img_height = page_image.height
-
+            
             # Check if predicted document has the page
             if page_no not in orig_doc.pages or orig_doc.pages[page_no] is None:
                 _log.error(f"Missing page {page_no} in predicted document, skipping...")
@@ -771,21 +896,26 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 _log.warning(f"Box {boxid} is already added, skipping...")
                 continue
 
-            # FIXME: For simplicity, assume all boxes are on page 1
-            page_no = 1
+            # Get page-n0, bbox and image reference for the page
+            page_no, page_bbox, true_page_imageref = self.get_page_no_and_coord_origin(box=boxes[boxid],
+                                                                                       desc=desc,
+                                                                                       doc=new_doc)
+            
+            #img_width=true_page_imageref.size.width,
+            #img_height=true_page_imageref.size.height,)
 
             if page_no not in new_doc.pages or new_doc.pages[page_no] is None:
                 _log.error(f"Page {page_no} not found in document, skipping...")
                 continue
 
-            # Get image reference for the page
-            true_page_imageref = self.get_page_imageref(page_no=page_no, doc=new_doc)
+            # true_page_imageref = self.get_page_imageref(page_no=page_no, doc=new_doc)
 
             assert true_page_imageref.pil_image is not None
             true_page_pilimage: Image.Image = true_page_imageref.pil_image
 
             # Get label, provenance, and text for the box
-            label, prov, text = self.get_label_prov_and_text(
+            """
+            label, prov, text = self.get_label_prov_and_text_v1(
                 box=boxes[boxid],
                 page_no=page_no,
                 img_width=true_page_imageref.size.width,
@@ -794,10 +924,23 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 pdf_height=new_doc.pages[page_no].size.height,
                 parsed_page=parsed_pages[page_no],
             )
+            """
 
+            label, prov, text = self.get_label_prov_and_text_v2(
+                box=boxes[boxid],
+                page_no=page_no,
+                page_bbox=page_bbox,
+                # img_width=true_page_imageref.size.width,
+                # img_height=true_page_imageref.size.height,
+                pdf_width=new_doc.pages[page_no].size.width,
+                pdf_height=new_doc.pages[page_no].size.height,
+                parsed_page=parsed_pages[page_no],
+            )
+            
             # Process merged text
             next_provs, text, already_added = self.get_next_provs(
                 page_no=page_no,
+                page_bbox=page_bbox,
                 boxid=boxid,
                 text=text,
                 boxes=boxes,
@@ -812,21 +955,30 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 DocItemLabel.TEXT,
                 DocItemLabel.PARAGRAPH,
                 DocItemLabel.REFERENCE,
-                DocItemLabel.PAGE_HEADER,
-                DocItemLabel.PAGE_FOOTER,
                 DocItemLabel.TITLE,
-                DocItemLabel.FOOTNOTE,
             ]:
                 current_item = new_doc.add_text(label=label, prov=prov, text=text)
                 for next_prov in next_provs:
                     current_item.prov.append(next_prov)
 
+            elif label in [
+                    DocItemLabel.PAGE_HEADER,
+                    DocItemLabel.PAGE_FOOTER]:
+                new_doc.add_text(label=label, prov=prov, text=text, content_layer=ContentLayer.FURNITURE)
+                    
             elif label == DocItemLabel.SECTION_HEADER:
                 new_doc.add_text(label=label, prov=prov, text=text)
 
             elif label == DocItemLabel.CAPTION:
-                new_doc.add_text(label=label, prov=prov, text=text)
-
+                # new_doc.add_text(label=label, prov=prov, text=text)
+                _log.warning(f"Ignoring {label}: assuming it is assigned to other floating item")
+                continue
+            
+            elif label == DocItemLabel.FOOTNOTE:
+                # new_doc.add_text(label=label, prov=prov, text=text)
+                _log.warning(f"Ignoring {label}: assuming it is assigned to other floating item")
+                continue
+            
             elif label in [
                 DocItemLabel.CHECKBOX_SELECTED,
                 DocItemLabel.CHECKBOX_UNSELECTED,
@@ -847,6 +999,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     to_captions=to_captions,
                     item=code_item,
                     page_no=page_no,
+                    page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -876,8 +1029,9 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 new_doc, already_added = self.add_captions_to_item(
                     basename=basename,
                     to_captions=to_captions,
-                    item=table_item,
+                    item=table_item,                    
                     page_no=page_no,
+                    page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -890,6 +1044,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     to_footnotes=to_footnotes,
                     item=table_item,
                     page_no=page_no,
+                    page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -925,6 +1080,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     to_captions=to_captions,
                     item=picture_item,
                     page_no=page_no,
+                    page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -937,13 +1093,16 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     to_footnotes=to_footnotes,
                     item=picture_item,
                     page_no=page_no,
+                    page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
                     true_doc=new_doc,
                     parsed_page=parsed_pages[page_no],
                 )
-
+            else:
+                _log.error(f"Ignoring annotated label: {label}")
+                
         return new_doc
 
     def contains_reading_order(self, image_annot: Dict) -> bool:
