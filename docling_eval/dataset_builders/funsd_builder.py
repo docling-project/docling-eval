@@ -3,13 +3,20 @@ import json
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from datasets import DownloadManager
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import BoundingBox, ImageRef, PageItem, ProvenanceItem, Size
 from docling_core.types.doc.document import GraphCell, GraphData, GraphLink
 from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
+)
+from docling_core.types.io import DocumentStream
 from PIL import Image
 from tqdm import tqdm
 
@@ -193,9 +200,9 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
         bbox_instance = BoundingBox.enclosing_bbox(all_bboxes)
         return bbox_instance
 
-    def populate_key_value_item(
+    def _create_ground_truth_doc(
         self, doc: DoclingDocument, funsd_data: dict
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """
         Populate the key-value item from the FUNSD data.
 
@@ -210,6 +217,19 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
             raise ValueError("Invalid FUNSD data: missing 'form' key.")
 
         form_items = funsd_data["form"]
+        segmented_pages: Dict[int, SegmentedPage] = {}
+
+        page_item: PageItem = doc.pages[1]
+        seg_page = SegmentedPage(
+            dimension=PageGeometry(
+                angle=0,
+                rect=BoundingRectangle.from_bounding_box(
+                    BoundingBox(
+                        l=0, t=0, r=page_item.size.width, b=page_item.size.height
+                    )
+                ),
+            )
+        )
 
         cell_by_id = {}
         for item in form_items:
@@ -241,6 +261,21 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
                 label=GraphCellLabel.KEY,  # later to be updated by classify_cells
             )
             cell_by_id[cell_id] = cell
+
+            for word in item.get("words", []):
+                text = word.get("text", "")
+                bbox = word.get("box", [0, 0, 0, 0])
+                bbox_obj = self.convert_bbox(bbox)
+                seg_page.textline_cells.append(
+                    TextCell(
+                        from_ocr=True,
+                        rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                        text=text,
+                        orig=text,
+                    )
+                )
+
+        segmented_pages[doc.pages[1].page_no] = seg_page
 
         # unique linking pairs
         linking_set = set()
@@ -283,7 +318,7 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         sort_cell_ids(doc)
 
-        return doc
+        return doc, segmented_pages
 
     def iterate(self) -> Iterable[DatasetRecord]:
         """
@@ -358,7 +393,9 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
                 true_doc.pages[1] = page_item
 
                 # Populate document with key-value data
-                true_doc = self.populate_key_value_item(true_doc, funsd_data)
+                true_doc, seg_pages = self._create_ground_truth_doc(
+                    true_doc, funsd_data
+                )
 
                 # Extract images
                 true_doc, true_pictures, true_page_images = extract_images(
@@ -366,15 +403,18 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
                     pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
                     page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
                 )
-
+                image_stream = DocumentStream(
+                    name=img_path.stem, stream=io.BytesIO(img_bytes)
+                )
                 # Create dataset record
                 record = DatasetRecord(
                     doc_id=img_path.stem,
                     doc_hash=get_binhash(img_bytes),
                     ground_truth_doc=true_doc,
-                    original=None,
+                    ground_truth_segmented_pages=seg_pages,
+                    original=image_stream,
                     mime_type="image/png",
-                    modalities=[EvaluationModality.KEY_VALUE],
+                    modalities=[EvaluationModality.KEY_VALUE, EvaluationModality.OCR],
                     ground_truth_pictures=true_pictures,
                     ground_truth_page_images=true_page_images,
                 )
