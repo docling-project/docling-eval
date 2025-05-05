@@ -31,6 +31,9 @@ from docling_eval.dataset_builders.cvat_preannotation_builder import (
 )
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
+from docling_eval.dataset_builders.doclingdpbench_builder import (
+    DoclingDPBenchDatasetBuilder,
+)
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
@@ -65,6 +68,10 @@ from docling_eval.evaluators.table_evaluator import (
     DatasetTableEvaluation,
     TableEvaluator,
 )
+from docling_eval.evaluators.timings_evaluator import (
+    DatasetTimingsEvaluation,
+    TimingsEvaluator,
+)
 from docling_eval.prediction_providers.docling_provider import DoclingPredictionProvider
 from docling_eval.prediction_providers.file_provider import FilePredictionProvider
 from docling_eval.prediction_providers.tableformer_provider import (
@@ -72,7 +79,17 @@ from docling_eval.prediction_providers.tableformer_provider import (
 )
 
 # Configure logging
-logging.getLogger("docling").setLevel(logging.WARNING)
+logging_level = logging.WARNING
+# logging_level = logging.DEBUG
+logging.getLogger("docling").setLevel(logging_level)
+logging.getLogger("PIL").setLevel(logging_level)
+logging.getLogger("transformers").setLevel(logging_level)
+logging.getLogger("datasets").setLevel(logging_level)
+logging.getLogger("filelock").setLevel(logging_level)
+logging.getLogger("urllib3").setLevel(logging_level)
+logging.getLogger("docling_ibm_models").setLevel(logging_level)
+logging.getLogger("matplotlib").setLevel(logging_level)
+
 _log = logging.getLogger(__name__)
 
 app = typer.Typer(
@@ -149,6 +166,9 @@ def get_dataset_builder(
     if benchmark == BenchMarkNames.DPBENCH:
         return DPBenchDatasetBuilder(**common_params)  # type: ignore
 
+    elif benchmark == BenchMarkNames.DOCLING_DPBENCH:
+        return DoclingDPBenchDatasetBuilder(**common_params)  # type: ignore
+
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
         return DocLayNetV1DatasetBuilder(**common_params)  # type: ignore
 
@@ -188,14 +208,17 @@ def get_dataset_builder(
             name="CVAT", dataset_source=dataset_source, target=target, split=split
         )
     elif benchmark == BenchMarkNames.PLAIN_FILES:
-        assert dataset_source is not None
+        if dataset_source is None:
+            raise ValueError("dataset_source is required for PLAIN_FILES")
+
         return FileDatasetBuilder(
             name=dataset_source.name,
             dataset_source=dataset_source,
             target=target,
             split=split,
+            begin_index=begin_index,
+            end_index=end_index,
         )
-
     else:
         raise ValueError(f"Unsupported benchmark: {benchmark}")
 
@@ -209,7 +232,11 @@ def get_prediction_provider(
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
-    if provider_type == PredictionProviderType.DOCLING:
+    if (
+        provider_type == PredictionProviderType.DOCLING
+        or provider_type == PredictionProviderType.OCR_DOCLING
+        or provider_type == PredictionProviderType.EasyOCR_DOCLING
+    ):
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
@@ -233,6 +260,78 @@ def get_prediction_provider(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
                 InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.MacOCR_DOCLING:
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="ocrmac",
+        )
+
+        pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options,
+            do_table_structure=True,
+        )
+
+        pipeline_options.images_scale = 2.0
+        pipeline_options.generate_page_images = True
+        pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+
+    elif provider_type == PredictionProviderType.PDF_DOCLING:
+
+        ocr_factory = get_ocr_factory()
+
+        ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
+            kind="easyocr",
+        )
+
+        pdf_pipeline_options = PdfPipelineOptions(
+            do_ocr=False,
+            ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
+            do_table_structure=True,
+        )
+
+        pdf_pipeline_options.images_scale = 2.0
+        pdf_pipeline_options.generate_page_images = True
+        pdf_pipeline_options.generate_picture_images = True
+
+        ocr_pipeline_options = PdfPipelineOptions(
+            do_ocr=True,
+            ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
+            do_table_structure=True,
+        )
+
+        ocr_pipeline_options.images_scale = 2.0
+        ocr_pipeline_options.generate_page_images = True
+        ocr_pipeline_options.generate_picture_images = True
+
+        if artifacts_path is not None:
+            pdf_pipeline_options.artifacts_path = artifacts_path
+            ocr_pipeline_options.artifacts_path = artifacts_path
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+                InputFormat.IMAGE: PdfFormatOption(
+                    pipeline_options=ocr_pipeline_options
+                ),
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
@@ -331,6 +430,17 @@ def evaluate(
 
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
+        return None
+
+    elif modality == EvaluationModality.TIMINGS:
+        timings_evaluator = TimingsEvaluator()
+        evaluation = timings_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
+
+        with open(save_fn, "w") as fd:
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.LAYOUT:
         layout_evaluator = LayoutEvaluator()
@@ -354,13 +464,13 @@ def evaluate(
 
     elif modality == EvaluationModality.OCR:
         ocr_evaluator = OCREvaluator()
-        ocr_evaluation = ocr_evaluator(
+        evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,
         )
 
         with open(save_fn, "w") as fd:
-            json.dump(ocr_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
@@ -452,6 +562,31 @@ def visualize(
     if modality == EvaluationModality.END2END:
         _log.error("END2END visualization not supported")
 
+    elif modality == EvaluationModality.TIMINGS:
+        try:
+            with open(metrics_filename, "r") as fd:
+                timings_evaluation = DatasetTimingsEvaluation.model_validate_json(
+                    fd.read()
+                )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "time_to_solution_per_doc",
+                timings_evaluation.timing_per_document_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "time_to_solution_per_page",
+                timings_evaluation.timing_per_page_stats,
+            )
+        except Exception as e:
+            _log.error(f"Error processing timings evaluation: {str(e)}")
+
     elif modality == EvaluationModality.LAYOUT:
         try:
             with open(metrics_filename, "r") as fd:
@@ -466,6 +601,30 @@ def visualize(
                 modality,
                 "mAP_0.5_0.95",
                 layout_evaluation.map_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "precision",
+                layout_evaluation.segmentation_precision_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "recall",
+                layout_evaluation.segmentation_recall_stats,
+            )
+
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "f1",
+                layout_evaluation.segmentation_f1_stats,
             )
 
             # Append to layout statistics, the AP per classes
@@ -614,9 +773,14 @@ def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
     bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
+    use_predictions: Annotated[bool, typer.Option(help="use predictions")] = False,
 ):
+    """Create dataset ready to upload to CVAT starting from (ground-truth) dataset."""
     builder = CvatPreannotationBuilder(
-        dataset_source=gt_dir, target=output_dir, bucket_size=bucket_size
+        dataset_source=gt_dir,
+        target=output_dir,
+        bucket_size=bucket_size,
+        use_predictions=use_predictions,
     )
     builder.prepare_for_annotation()
 
@@ -633,6 +797,7 @@ def create_gt(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
 ):
     """Create ground truth dataset only."""
     gt_dir = output_dir / "gt_dataset"
@@ -650,7 +815,7 @@ def create_gt(
         # Retrieve and save the dataset
         if dataset_builder.must_retrieve:
             dataset_builder.retrieve_input_dataset()
-        dataset_builder.save_to_disk(chunk_size=80)
+        dataset_builder.save_to_disk(chunk_size=chunk_size)
 
         _log.info(f"Ground truth dataset created at {gt_dir}")
     except ValueError as e:
@@ -750,6 +915,7 @@ def create(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
     prediction_provider: Annotated[
         Optional[PredictionProviderType],
         typer.Option(help="Type of prediction provider to use"),
@@ -770,6 +936,7 @@ def create(
         split=split,
         begin_index=begin_index,
         end_index=end_index,
+        chunk_size=chunk_size,
     )
 
     # Then create evaluation if provider specified

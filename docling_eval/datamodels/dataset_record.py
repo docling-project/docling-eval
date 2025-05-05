@@ -173,6 +173,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
     )
     original_prediction: Optional[str] = None
     prediction_format: PredictionFormats  # some enum type
+    prediction_timings: Optional[Dict] = Field(alias="prediction_timings", default=None)
 
     predicted_page_images: List[PIL.Image.Image] = Field(
         alias="PredictionPageImages", default=[]
@@ -201,6 +202,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
             cls.get_field_alias("mime_type"): Value("string"),
             cls.get_field_alias("modalities"): Sequence(Value("string")),
             cls.get_field_alias("prediction_format"): Value("string"),
+            cls.get_field_alias("prediction_timings"): Value("string"),
         }
 
     def as_record_dict(self):
@@ -208,6 +210,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
         record.update(
             {
                 self.get_field_alias("prediction_format"): self.prediction_format.value,
+                self.get_field_alias("prediction_timings"): self.prediction_timings,
             }
         )
 

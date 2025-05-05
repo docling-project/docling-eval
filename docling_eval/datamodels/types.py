@@ -47,12 +47,14 @@ class EvaluationModality(str, Enum):
     OCR = "ocr"
     KEY_VALUE = "key_value"
     QUESTION_ANSWERING = "question_answering"
+    TIMINGS = "timings"
 
 
 class BenchMarkNames(str, Enum):
 
     # End-to-End
     DPBENCH = "DPBench"
+    DOCLING_DPBENCH = "DoclingDPBench"
     OMNIDOCBENCH = "OmniDocBench"
     WORDSCAPE = "WordScape"
 
@@ -118,6 +120,11 @@ class PredictionProviderType(str, Enum):
     """Types of prediction providers available."""
 
     DOCLING = "Docling"
+    PDF_DOCLING = "PDF_Docling"
+    OCR_DOCLING = "OCR_Docling"
+    MacOCR_DOCLING = "MacOCR_Docling"
+    EasyOCR_DOCLING = "EasyOCR_Docling"
+
     TABLEFORMER = "TableFormer"
     FILE = "File"
     SMOLDOCLING = "SmolDocling"

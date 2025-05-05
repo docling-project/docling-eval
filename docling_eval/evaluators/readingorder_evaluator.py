@@ -292,7 +292,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             )
             text = item.text if isinstance(item, TextItem) else None
             label = item.label  # type: ignore
-            print(f"True {i}: {level} - {label}: {bbox} - {text}")
+            # print(f"True {i}: {level} - {label}: {bbox} - {text}")
 
 
 class ReadingOrderVisualizer:
