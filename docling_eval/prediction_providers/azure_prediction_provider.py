@@ -20,6 +20,12 @@ from docling_core.types.doc.document import (
     TableCell,
     TableData,
 )
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
+)
 from docling_core.types.io import DocumentStream
 
 from docling_eval.datamodels.dataset_record import (
@@ -110,6 +116,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
     ) -> DoclingDocument:
         """Converts Azure Document Intelligence output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
+        segmented_pages: Dict[int, SegmentedPage] = {}
 
         for page in analyze_result.get("pages", []):
             page_no = page.get("page_number", 1)
@@ -133,6 +140,22 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             )
             doc.pages[page_no] = page_item
 
+            if page_no not in segmented_pages.keys():
+                seg_page = SegmentedPage(
+                    dimension=PageGeometry(
+                        angle=0,
+                        rect=BoundingRectangle.from_bounding_box(
+                            BoundingBox(
+                                l=0,
+                                t=0,
+                                r=page_item.size.width,
+                                b=page_item.size.height,
+                            )
+                        ),
+                    )
+                )
+                segmented_pages[page_no] = seg_page
+
             for word in page.get("words", []):
                 polygon = word.get("polygon", [])
                 bbox = self.extract_bbox_from_polygon(polygon)
@@ -147,17 +170,15 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     coord_origin=CoordOrigin.TOPLEFT,
                 )
 
-                prov = ProvenanceItem(
-                    page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
+                segmented_pages[page_no].textline_cells.append(
+                    TextCell(
+                        rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                        text=text_content,
+                        orig=text_content,
+                        # Keeping from_ocr flag False since Azure output doesn't indicate whether the given word is programmatic or OCR
+                        from_ocr=False,
+                    )
                 )
-
-                # TODO: This needs to be developed further. Azure responses contain full-page document information,
-                #       with text and layout features,
-                #       see https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/prebuilt/layout
-                #       This code only adds the primitive text content, without
-                #       layout labels or reading order, then all tables separately. This will work for plain
-                #       table datasets only.
-                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
         # Iterate over tables in the response and add to DoclingDocument
         self._add_tables(analyze_result, doc)
