@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from io import BytesIO
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeOutputOption
@@ -113,7 +113,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
 
     def convert_azure_output_to_docling(
         self, analyze_result, record: DatasetRecord
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """Converts Azure Document Intelligence output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
         segmented_pages: Dict[int, SegmentedPage] = {}
@@ -189,7 +189,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         # Iterate over figures and add them as pictures in DoclingDocument
         self._add_figures(analyze_result, doc)
 
-        return doc
+        return doc, segmented_pages
 
     def _add_figures(self, analyze_result, doc):
         for figure in analyze_result.get("figures", []):
@@ -378,7 +378,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf' and 'image/png'"
                 )
             # Convert the prediction to doclingDocument
-            pred_doc = self.convert_azure_output_to_docling(
+            pred_doc, pred_segmented_pages = self.convert_azure_output_to_docling(
                 json.loads(result_json), record
             )
 
@@ -396,6 +396,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         pred_record = self.create_dataset_record_with_prediction(
             record, pred_doc, result_json
         )
+        pred_record.predicted_segmented_pages = pred_segmented_pages
         pred_record.status = status
         return pred_record
 
