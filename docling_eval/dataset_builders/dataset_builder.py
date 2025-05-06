@@ -301,7 +301,7 @@ class BaseEvaluationDatasetBuilder:
                         # labels=TRUE_HTML_EXPORT_LABELS,
                         # image_mode=ImageRefMode.EMBEDDED,
                     )
-                    
+
             save_shard_to_disk(
                 items=record_list, dataset_path=test_dir, shard_id=chunk_count
             )
