@@ -74,16 +74,22 @@ class DatasetStatistics(BaseModel):
         plt.savefig(figname)
 
 
-def compute_stats(values: List[float]) -> DatasetStatistics:
+def compute_stats(
+    values: List[float], max_value_is_one: bool = True, nr_bins: int = 20
+) -> DatasetStatistics:
     total: int = len(values)
 
     mean: float = statistics.mean(values) if len(values) > 0 else -1
     median: float = statistics.median(values) if len(values) > 0 else -1
-    std: float = statistics.stdev(values) if len(values) > 0 else -1
+    std: float = statistics.stdev(values) if len(values) > 1 else 0.0
     logging.info(f"total: {total}, mean: {mean}, median: {median}, std: {std}")
 
-    # Compute the histogram with 20 bins between 0 and 1
-    hist, bins = np.histogram(values, bins=20, range=(0, 1))
+    max_value = 1.0
+    if not max_value_is_one and len(values) > 0:
+        max_value = max(values)
+
+    # Compute the histogram
+    hist, bins = np.histogram(values, bins=nr_bins, range=(0, max_value))
     logging.info(f"#-hist: {len(hist)}, #-bins: {len(bins)}")
 
     return DatasetStatistics(

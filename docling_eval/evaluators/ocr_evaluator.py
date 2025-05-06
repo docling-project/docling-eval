@@ -12,6 +12,7 @@ import pandas as pd
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import DoclingDocument
+from docling_core.types.doc.page import SegmentedPage, TextCellUnit
 from Levenshtein import distance as levenshtein_distance
 from pydantic import BaseModel
 from tqdm import tqdm
@@ -273,6 +274,15 @@ class OCREvaluator(BaseEvaluator):
 
             true_text_with_bboxes = self._extract_text_with_bboxes(true_doc)
             pred_text_with_bboxes = self._extract_text_with_bboxes(pred_doc)
+            true_segpages = data_record.ground_truth_segmented_pages
+            pred_segpages = data_record.predicted_segmented_pages
+
+            if not len(pred_segpages):
+                _log.error("There is no prediction for doc_id=%s", doc_id)
+                continue
+
+            true_text = self._extract_text(true_segpages)
+            pred_text = self._extract_text(pred_segpages)
 
             # matched_pairs, unmatched_true, unmatched_pred = self._match_text_regions(
             #     true_text_with_bboxes, pred_text_with_bboxes
