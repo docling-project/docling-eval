@@ -2,7 +2,7 @@ import importlib.metadata
 import json
 import logging
 import os
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 import boto3
 from docling.datamodel.base_models import ConversionStatus
@@ -188,7 +188,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
     def convert_aws_output_to_docling(
         self, analyze_result, record: DatasetRecord, file_bytes
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """Converts AWS Textract output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
 
