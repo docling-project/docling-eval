@@ -606,7 +606,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             name="image-group", label=GroupLabel.PICTURE_AREA, parent=picture_item
         )
         """
-        
+
         pagenos_to_bbox: dict[int, list[BoundingBox]] = {}
         for boxid_ in boxids:
 
@@ -656,7 +656,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             else:
                 pagenos_to_bbox[prov_.page_no] = [prov_.bbox]
             """
-            
+
         return picture_item, already_added
 
     def add_captions_to_item(
@@ -789,7 +789,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 return True, _["boxids"][1:]
 
         return False, []
-    
+
     def is_first_of_group(self, boxid: int, groups: list[dict]) -> tuple[bool, list]:
         """Is first of group."""
 
@@ -798,7 +798,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 return True, _["boxids"][1:]
 
         return False, []
-            
+
     def is_linked(
         self,
         boxid: int,
@@ -951,9 +951,11 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             if boxid in already_added:
                 _log.debug(f"Box {boxid} is already added, skipping...")
                 continue
-            
-            first_in_group, rest_in_group = self.is_first_of_group(boxid=boxid, groups=group)
-            
+
+            first_in_group, rest_in_group = self.is_first_of_group(
+                boxid=boxid, groups=group
+            )
+
             # Get page-number, bbox of page in image and original page-image reference for the page
             page_no, page_bbox, true_page_imageref = self.get_page_no_and_coord_origin(
                 box=boxes[boxid], desc=desc, doc=new_doc
@@ -1022,7 +1024,9 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             elif label == DocItemLabel.CAPTION:
 
-                if not self.is_linked(boxid=boxid, links=to_captions, merges=merges, groups=group):
+                if not self.is_linked(
+                    boxid=boxid, links=to_captions, merges=merges, groups=group
+                ):
                     _log.warning(f"Detected {label} that is not linked!")
                     new_doc.add_text(label=label, prov=prov, text=text)
                 else:
@@ -1031,7 +1035,9 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             elif label == DocItemLabel.FOOTNOTE:
 
-                if not self.is_linked(boxid=boxid, links=to_footnotes, merges=merges, groups=group):
+                if not self.is_linked(
+                    boxid=boxid, links=to_footnotes, merges=merges, groups=group
+                ):
                     _log.warning(f"Detected {label} that is not linked!")
                     new_doc.add_text(label=label, prov=prov, text=text)
                 else:
@@ -1080,7 +1086,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     true_doc=new_doc,
                     parsed_pages=parsed_pages,
                 )
-                
+
             elif label == DocItemLabel.FORM:
                 graph = GraphData(cells=[], links=[])
                 new_doc.add_form(graph=graph, prov=prov)
