@@ -305,11 +305,13 @@ class BaseEvaluationDatasetBuilder:
                         image_mode=ImageRefMode.EMBEDDED,
                     )
 
+                    """
                     r.ground_truth_doc.save_as_json(
                         filename=json_path,
                         # labels=TRUE_HTML_EXPORT_LABELS,
                         # image_mode=ImageRefMode.EMBEDDED,
                     )
+                    """
 
             save_shard_to_disk(
                 items=record_list, dataset_path=test_dir, shard_id=chunk_count
