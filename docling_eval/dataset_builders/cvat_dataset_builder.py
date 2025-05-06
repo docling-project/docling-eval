@@ -1116,17 +1116,17 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     )
                     boxid_to_nodeitem[boxid] = current_item
 
-                    for boxid in rest_in_group:
+                    for boxid_ in rest_in_group:
                         new_doc, already_added, list_item = self.add_listitems_to_group(
                             list_group=list_group,
-                            boxid=boxid,
+                            boxid=boxid_,
                             boxes=boxes,
                             already_added=already_added,
                             desc=desc,
                             true_doc=new_doc,
                             parsed_pages=parsed_pages,
                         )
-                        boxid_to_nodeitem[boxid] = list_item
+                        boxid_to_nodeitem[boxid_] = list_item
                 else:
                     _log.warning("Found a list-item without a parent.")
 
