@@ -23,8 +23,9 @@ from docling_core.types.doc.document import (
     ProvenanceItem,
     TableData,
     TableItem,
+    GroupItem,
 )
-from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.labels import DocItemLabel, GroupLabel
 from docling_core.types.doc.page import SegmentedPage, SegmentedPdfPage, TextCellUnit
 from docling_core.types.io import DocumentStream
 from PIL import Image
@@ -361,6 +362,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 merges.append(line)
             elif label in ["next_figure", "group"]:
                 group.append(line)
+            else:
+                _log.error(f"Ignoring lines with label {label}")
 
         return (
             basename,
@@ -597,15 +600,16 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
     def get_next_provs(
         self,
-        page_no: int,
-        page_bbox: BoundingBox,
+        # page_no: int,
+        # page_bbox: BoundingBox,
         boxid: int,
         text: str,
         boxes: List[Dict],
         merges: List[Dict],
-        already_added: List[int],
+        already_added: List[int],        
+        desc: AnnotatedImage,
         true_doc: DoclingDocument,
-        parsed_page: SegmentedPdfPage,
+        parsed_pages: dict[int, SegmentedPdfPage],
     ) -> Tuple[List[ProvenanceItem], str, List[int]]:
         """
         Get next provenance items for merged text.
@@ -624,32 +628,125 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         Returns:
             Tuple of (next_provenance_items, updated_text, updated_already_added)
         """
-        true_page_imageref = self.get_page_imageref(page_no=page_no, doc=true_doc)
+        #true_page_imageref = self.get_page_imageref(page_no=page_no, doc=true_doc)
 
+        labels_ = []
+        
         next_provs = []
         for merge in merges:
             if len(merge["boxids"]) > 1 and merge["boxids"][0] == boxid:
+                print(f"merges: {merges}")
                 for l in range(1, len(merge["boxids"])):
                     boxid_ = merge["boxids"][l]
                     already_added.append(boxid_)
 
-                    _, prov_, text_ = self.get_label_prov_and_text_v2(
+                    page_no_, page_bbox_, imgref_ = self.get_page_no_and_coord_origin(box=boxes[boxid_],
+                                                                                      desc=desc,
+                                                                                      doc=true_doc)
+
+                    label_, prov_, text_ = self.get_label_prov_and_text_v2(
                         box=boxes[boxid_],
-                        page_no=page_no,
-                        page_bbox=page_bbox,
+                        page_no=page_no_,
+                        page_bbox=page_bbox_,
                         # img_width=true_page_imageref.size.width,
                         # img_height=true_page_imageref.size.height,
-                        pdf_width=true_doc.pages[page_no].size.width,
-                        pdf_height=true_doc.pages[page_no].size.height,
-                        parsed_page=parsed_page,
+                        pdf_width=true_doc.pages[page_no_].size.width,
+                        pdf_height=true_doc.pages[page_no_].size.height,
+                        parsed_page=parsed_pages[page_no_],
                     )
 
                     prov_.charspan = (len(text) + 1, len(text) + 1 + len(text_))
                     text = text + " " + text_
                     next_provs.append(prov_)
 
+                    labels_.append(label_)
+
+                for _ in next_provs:
+                    print(f" => {_}")
+
+                    
+        assert len(set(labels_))<=1, f"{len(set(labels_))}<=1 for {labels_}"
+                    
         return next_provs, text, already_added
 
+    def get_grouped_images(
+        self,
+        boxid: int,
+        boxes: List[Dict],
+        group_lines: List[Dict],
+        already_added: List[int],
+        desc: AnnotatedImage,
+        true_doc: DoclingDocument,
+        parsed_pages: dict[int, SegmentedPdfPage],
+    ) -> tuple[GroupItem, set[int]]:
+        
+        boxids = [boxid]
+        for group_line in group_lines:
+            if len(group_line["boxids"]) > 1 and group_line["boxids"][0] == boxid:
+                for l in range(1, len(group_line["boxids"])):
+                    boxids.append(group_line["boxids"][l])                    
+                    already_added.append(boxids[-1])
+
+        # Add picture to document
+        picture_item = true_doc.add_picture(prov=None, image=None)
+
+        picture_group = true_doc.add_group(name="image-group", label=GroupLabel.UNSPECIFIED, parent=picture_item)
+
+        pagenos_to_bbox: dict[int, list[BoundingBox]] = {}
+        for boxid_ in boxids:
+
+            page_no_, page_bbox_, true_page_imgref_ = self.get_page_no_and_coord_origin(box=boxes[boxid_],
+                                                                                        desc=desc,
+                                                                                        doc=true_doc)
+
+            assert true_page_imgref_.pil_image is not None
+            true_page_pilimage_: Image.Image = true_page_imgref_.pil_image
+            
+            label_, prov_, text_ = self.get_label_prov_and_text_v2(
+                box=boxes[boxid_],
+                page_no=page_no_,
+                page_bbox=page_bbox_,
+                pdf_width=true_doc.pages[page_no_].size.width,
+                pdf_height=true_doc.pages[page_no_].size.height,
+                parsed_page=parsed_pages[page_no_],
+            )
+            picture_item.prov.append(prov_)
+            
+            # Crop image from page based on bounding box
+            crop_image = crop_bounding_box(
+                page_image=true_page_pilimage_,
+                page=true_doc.pages[page_no_],
+                bbox=prov_.bbox,
+            )
+
+            # Create image reference
+            imgref = ImageRef(
+                mimetype="image/png",
+                dpi=72,
+                size=Size(width=crop_image.width, height=crop_image.height),
+                uri=from_pil_to_base64uri(crop_image),
+            )
+
+            if true_doc.pages[page_no_].image is not None:
+                imgref.dpi = true_doc.pages[page_no_].image.dpi  # type: ignore
+
+            # Add picture to document
+            picture_item_ = true_doc.add_picture(prov=prov_, image=imgref, parent=picture_group)
+
+            if prov_.page_no in pagenos_to_bbox:
+                pagenos_to_bbox[prov_.page_no].append(prov_.bbox)
+            else:
+                pagenos_to_bbox[prov_.page_no] = [prov_.bbox]
+
+        print(pagenos_to_bbox)
+        print(picture_item)
+        
+        #for page_no, bboxs in pagenos_to_bbox.items():
+            
+                
+        return picture_item, already_added
+        
+    
     def add_captions_to_item(
         self,
         basename: str,
@@ -931,6 +1028,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 box=boxes[boxid],
                 page_no=page_no,
                 page_bbox=page_bbox,
+                # desc=desc,
+                # doc=new_doc
                 # img_width=true_page_imageref.size.width,
                 # img_height=true_page_imageref.size.height,
                 pdf_width=new_doc.pages[page_no].size.width,
@@ -940,15 +1039,17 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             # Process merged text
             next_provs, text, already_added = self.get_next_provs(
-                page_no=page_no,
-                page_bbox=page_bbox,
+                # page_no=page_no,
+                # page_bbox=page_bbox,
                 boxid=boxid,
                 text=text,
                 boxes=boxes,
                 merges=merges,
                 already_added=already_added,
+                desc=desc,
                 true_doc=new_doc,
-                parsed_page=parsed_pages[page_no],
+                # parsed_page=parsed_pages[page_no],
+                parsed_pages=parsed_pages,
             )
 
             # Add item to document based on label
@@ -1061,6 +1162,19 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
 
             elif label == DocItemLabel.PICTURE:
+
+                # Add picture(s) to document
+                picture_item, already_added = self.get_grouped_images(
+                    boxid=boxid,
+                    boxes=boxes,
+                    group_lines=group,
+                    already_added=already_added,
+                    desc=desc,
+                    true_doc=new_doc,
+                    parsed_pages=parsed_pages,
+                )
+
+                """
                 # Crop image from page based on bounding box
                 crop_image = crop_bounding_box(
                     page_image=true_page_pilimage,
@@ -1081,7 +1195,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
                 # Add picture to document
                 picture_item = new_doc.add_picture(prov=prov, image=imgref)
-
+                """
+                
                 # Add captions and footnotes to picture
                 new_doc, already_added = self.add_captions_to_item(
                     basename=basename,
