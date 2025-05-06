@@ -10,6 +10,7 @@ import evaluate
 import pandas as pd
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument
+from docling_core.types.doc.page import SegmentedPage, TextCellUnit
 from pydantic import BaseModel
 from tqdm import tqdm
 
@@ -91,15 +92,18 @@ class OCREvaluator(BaseEvaluator):
                 )
                 continue
 
-            true_doc = data_record.ground_truth_doc
-            pred_doc = data_record.predicted_doc
+            # true_doc = data_record.ground_truth_doc
+            # pred_doc = data_record.predicted_doc
 
-            if not pred_doc:
+            true_segpages = data_record.ground_truth_segmented_pages
+            pred_segpages = data_record.predicted_segmented_pages
+
+            if not len(pred_segpages):
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 continue
 
-            true_text = self._extract_text(true_doc)
-            pred_text = self._extract_text(pred_doc)
+            true_text = self._extract_text(true_segpages)
+            pred_text = self._extract_text(pred_segpages)
 
             if true_text and pred_text:
                 cer = self._compute_cer_score(true_text, pred_text)
@@ -143,9 +147,16 @@ class OCREvaluator(BaseEvaluator):
         result = self._cer_eval.compute(predictions=[pred_txt], references=[true_txt])
         return result
 
-    def _extract_text(self, doc: DoclingDocument) -> str:
+    def _extract_text(
+        self,
+        segmented_pages: Dict[int, SegmentedPage],
+        unit_type: TextCellUnit = TextCellUnit.LINE,
+    ) -> str:
         """Extract text from document JSON structure"""
         extracted_text = ""
-        for text_item in doc.texts:
-            extracted_text += text_item.text + " "
+
+        for page_no, seg_page in segmented_pages.items():
+            for text_item in seg_page.iterate_cells(unit_type=unit_type):
+                extracted_text += text_item.text + " "
+
         return extracted_text.strip()
