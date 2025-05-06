@@ -378,41 +378,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             group,
         )
 
-    def create_prov_v1(
-        self,
-        box: Dict,
-        page_no: int,
-        img_width: float,
-        img_height: float,
-        pdf_width: float,
-        pdf_height: float,
-        origin: CoordOrigin = CoordOrigin.TOPLEFT,
-    ) -> Tuple[ProvenanceItem, BoundingBox]:
-        """
-        Create provenance item and bounding box from a box.
-
-        Args:
-            box: Box data
-            page_no: Page number
-            img_width: Image width
-            img_height: Image height
-            pdf_width: PDF width
-            pdf_height: PDF height
-            origin: Coordinate origin
-
-        Returns:
-            Tuple of (provenance_item, bounding_box)
-        """
-        bbox = BoundingBox(
-            l=pdf_width * box["l"] / float(img_width),
-            r=pdf_width * box["r"] / float(img_width),
-            b=pdf_height * box["b"] / float(img_height),
-            t=pdf_height * box["t"] / float(img_height),
-            coord_origin=origin,
-        )
-        prov = ProvenanceItem(page_no=page_no, bbox=bbox, charspan=(0, 0))
-        return prov, bbox
-
     def create_prov_v2(
         self,
         box: Dict,
@@ -482,61 +447,11 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         return page_no, page_bbox, cast(ImageRef, doc.pages[page_no].image)
 
-    # FIXME: to be deleted ...
-    def get_label_prov_and_text_v1(
-        self,
-        box: Dict,
-        page_no: int,
-        img_width: float,
-        img_height: float,
-        pdf_width: float,
-        pdf_height: float,
-        parsed_page: SegmentedPdfPage,
-    ) -> Tuple[DocItemLabel, ProvenanceItem, str]:
-        """
-        Get label, provenance, and text from a box.
-
-        Args:
-            box: Box data
-            page_no: Page number
-            img_width: Image width
-            img_height: Image height
-            pdf_width: PDF width
-            pdf_height: PDF height
-            parser: PDF parser
-            parsed_page: Parsed page data
-
-        Returns:
-            Tuple of (label, provenance, text)
-        """
-        assert page_no > 0
-
-        prov, bbox = self.create_prov_v1(
-            box=box,
-            page_no=page_no,
-            img_width=img_width,
-            img_height=img_height,
-            pdf_width=pdf_width,
-            pdf_height=pdf_height,
-        )
-
-        label = DocItemLabel(box["@label"])
-
-        # PDF coordinates have origin at bottom-left, convert accordingly
-        text_cells = parsed_page.get_cells_in_bbox(
-            cell_unit=TextCellUnit.LINE, bbox=prov.bbox
-        )
-        text = " ".join([t.text for t in text_cells])
-        text = text.replace("  ", " ")
-        return label, prov, text
-
     def get_label_prov_and_text_v2(
         self,
         box: Dict,
         page_no: int,
-        page_bbox: BoundingBox,
-        # img_width: float,
-        # img_height: float,
+        page_bbox: BoundingBox,  # Bounding box inside the collated image (with multiple pages)
         pdf_width: float,
         pdf_height: float,
         parsed_page: SegmentedPdfPage,
@@ -577,6 +492,9 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         )
         text = " ".join([t.text for t in text_cells])
         text = text.replace("  ", " ")
+
+        prov.charspan = (0, len(text))
+
         return label, prov, text
 
     def get_page_imageref(self, page_no: int, doc: DoclingDocument) -> ImageRef:
@@ -600,8 +518,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
     def get_next_provs(
         self,
-        # page_no: int,
-        # page_bbox: BoundingBox,
         boxid: int,
         text: str,
         boxes: List[Dict],
@@ -872,6 +788,36 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         return true_doc, already_added
 
+    def is_linked(
+        self,
+        boxid: int,
+        links: list[dict],
+        groups: list[dict] = [],
+        merges: list[dict] = [],
+    ) -> bool:
+        """Check if boxid is in a link."""
+
+        # Find all boxids that are linked to the original boxid
+        # using the groups and merges
+        boxids = [boxid]
+        for _ in merges:
+            if boxid in _["boxids"]:
+                boxids.extend(_["boxids"])
+
+        for _ in groups:
+            if boxid in _["boxids"]:
+                boxids.extend(_["boxids"])
+
+        # If any of the associated boxids is linked, then
+        # consider it linked
+        boxids = list(set(boxids))
+        for link in links:
+            for bid in boxids:
+                if bid in link["boxids"]:
+                    return True
+
+        return False
+
     def create_true_document(
         self, basename: str, annot: Dict, desc: AnnotatedImage
     ) -> Optional[DoclingDocument]:
@@ -995,44 +941,23 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 _log.warning(f"Box {boxid} is already added, skipping...")
                 continue
 
-            # Get page-n0, bbox and image reference for the page
+            # Get page-number, bbox of page in image and original page-image reference for the page
             page_no, page_bbox, true_page_imageref = self.get_page_no_and_coord_origin(
                 box=boxes[boxid], desc=desc, doc=new_doc
             )
-
-            # img_width=true_page_imageref.size.width,
-            # img_height=true_page_imageref.size.height,)
 
             if page_no not in new_doc.pages or new_doc.pages[page_no] is None:
                 _log.error(f"Page {page_no} not found in document, skipping...")
                 continue
 
-            # true_page_imageref = self.get_page_imageref(page_no=page_no, doc=new_doc)
-
             assert true_page_imageref.pil_image is not None
             true_page_pilimage: Image.Image = true_page_imageref.pil_image
 
             # Get label, provenance, and text for the box
-            """
-            label, prov, text = self.get_label_prov_and_text_v1(
-                box=boxes[boxid],
-                page_no=page_no,
-                img_width=true_page_imageref.size.width,
-                img_height=true_page_imageref.size.height,
-                pdf_width=new_doc.pages[page_no].size.width,
-                pdf_height=new_doc.pages[page_no].size.height,
-                parsed_page=parsed_pages[page_no],
-            )
-            """
-
             label, prov, text = self.get_label_prov_and_text_v2(
                 box=boxes[boxid],
                 page_no=page_no,
                 page_bbox=page_bbox,
-                # desc=desc,
-                # doc=new_doc
-                # img_width=true_page_imageref.size.width,
-                # img_height=true_page_imageref.size.height,
                 pdf_width=new_doc.pages[page_no].size.width,
                 pdf_height=new_doc.pages[page_no].size.height,
                 parsed_page=parsed_pages[page_no],
@@ -1040,8 +965,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             # Process merged text
             next_provs, text, already_added = self.get_next_provs(
-                # page_no=page_no,
-                # page_bbox=page_bbox,
                 boxid=boxid,
                 text=text,
                 boxes=boxes,
@@ -1049,7 +972,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 already_added=already_added,
                 desc=desc,
                 true_doc=new_doc,
-                # parsed_page=parsed_pages[page_no],
                 parsed_pages=parsed_pages,
             )
 
@@ -1073,21 +995,37 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
 
             elif label == DocItemLabel.SECTION_HEADER:
-                new_doc.add_text(label=label, prov=prov, text=text)
+
+                print(boxes[boxid])
+
+                level = 1
+                if (
+                    "attribute" in boxes[boxid]
+                    and "@name" in boxes[boxid]["attribute"]
+                    and boxes[boxid]["attribute"]["@name"] == "level"
+                    and "#text" in boxes[boxid]["attribute"]
+                ):
+                    level = int(boxes[boxid]["attribute"]["#text"])
+
+                new_doc.add_heading(prov=prov, text=text, level=level)
 
             elif label == DocItemLabel.CAPTION:
-                # new_doc.add_text(label=label, prov=prov, text=text)
-                _log.warning(
-                    f"Ignoring {label}: assuming it is assigned to other floating item"
-                )
-                continue
+
+                if not self.is_linked(boxid=boxid, links=to_captions):
+                    _log.warning(f"Detected {label} that is not linked!")
+                    new_doc.add_text(label=label, prov=prov, text=text)
+                else:
+                    _log.debug(f"Ignoring {label}: assigned to other floating item")
+                    continue
 
             elif label == DocItemLabel.FOOTNOTE:
-                # new_doc.add_text(label=label, prov=prov, text=text)
-                _log.warning(
-                    f"Ignoring {label}: assuming it is assigned to other floating item"
-                )
-                continue
+
+                if not self.is_linked(boxid=boxid, links=to_footnotes):
+                    _log.warning(f"Detected {label} that is not linked!")
+                    new_doc.add_text(label=label, prov=prov, text=text)
+                else:
+                    _log.debug(f"Ignoring {label}: assigned to other floating item")
+                    continue
 
             elif label in [
                 DocItemLabel.CHECKBOX_SELECTED,

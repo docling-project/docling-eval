@@ -282,6 +282,9 @@ class BaseEvaluationDatasetBuilder:
                 if do_visualization:
                     viz_path = self.target / "visualizations" / f"{r.doc_id}.html"
                     json_path = self.target / "visualizations" / f"{r.doc_id}.json"
+                    json_path2 = (
+                        self.target / "visualizations" / f"{r.doc_id}_embed.json"
+                    )
 
                     tmp = insert_images_from_pil(
                         document=copy.deepcopy(r.ground_truth_doc),
@@ -294,6 +297,12 @@ class BaseEvaluationDatasetBuilder:
                         labels=TRUE_HTML_EXPORT_LABELS,
                         image_mode=ImageRefMode.EMBEDDED,
                         split_page_view=True,
+                    )
+
+                    tmp.save_as_json(
+                        filename=json_path2,
+                        # labels=TRUE_HTML_EXPORT_LABELS,
+                        image_mode=ImageRefMode.EMBEDDED,
                     )
 
                     r.ground_truth_doc.save_as_json(
