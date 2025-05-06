@@ -280,11 +280,13 @@ class BaseEvaluationDatasetBuilder:
             for r in record_chunk:
                 record_list.append(r.as_record_dict())
                 if do_visualization:
-                    viz_path = self.target / "visualizations" / f"{r.doc_id}.html"
-                    json_path = self.target / "visualizations" / f"{r.doc_id}.json"
-                    json_path2 = (
-                        self.target / "visualizations" / f"{r.doc_id}_embed.json"
+                    viz_path = (
+                        self.target / "visualizations" / f"{r.doc_id}.single.html"
                     )
+                    viz_path_split = (
+                        self.target / "visualizations" / f"{r.doc_id}.split.html"
+                    )
+                    json_path = self.target / "visualizations" / f"{r.doc_id}.json"
 
                     tmp = insert_images_from_pil(
                         document=copy.deepcopy(r.ground_truth_doc),
@@ -293,14 +295,21 @@ class BaseEvaluationDatasetBuilder:
                     )
 
                     tmp.save_as_html(
-                        filename=viz_path,
+                        filename=viz_path_split,
                         labels=TRUE_HTML_EXPORT_LABELS,
                         image_mode=ImageRefMode.EMBEDDED,
                         split_page_view=True,
                     )
 
+                    tmp.save_as_html(
+                        filename=viz_path,
+                        labels=TRUE_HTML_EXPORT_LABELS,
+                        image_mode=ImageRefMode.EMBEDDED,
+                        split_page_view=False,
+                    )
+
                     tmp.save_as_json(
-                        filename=json_path2,
+                        filename=json_path,
                         # labels=TRUE_HTML_EXPORT_LABELS,
                         image_mode=ImageRefMode.EMBEDDED,
                     )

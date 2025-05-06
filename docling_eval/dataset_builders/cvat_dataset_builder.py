@@ -20,6 +20,8 @@ from docling_core.types.doc.document import (
     GraphData,
     GroupItem,
     ImageRef,
+    ListItem,
+    NodeItem,
     PageItem,
     ProvenanceItem,
     TableData,
@@ -664,8 +666,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         basename: str,
         to_captions: List[Dict],
         item: FloatingItem,
-        # page_no: int,
-        # page_bbox: BoundingBox,
         boxid: int,
         boxes: List[Dict],
         already_added: List[int],
@@ -780,6 +780,38 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                         _log.warning(f"{label} != DocItemLabel.FOOTNOTE for {basename}")
 
         return true_doc, already_added
+
+    def add_listitems_to_group(
+        self,
+        list_group: GroupItem,
+        boxid: int,
+        boxes: List[Dict],
+        already_added: List[int],
+        desc: AnnotatedImage,
+        true_doc: DoclingDocument,
+        parsed_pages: dict[int, SegmentedPdfPage],
+    ) -> Tuple[DoclingDocument, List[int], ListItem]:
+        """
+        Add listitem to list-group.
+        """
+
+        page_no_, page_bbox_, imgref_ = self.get_page_no_and_coord_origin(
+            box=boxes[boxid], desc=desc, doc=true_doc
+        )
+
+        label, prov, text = self.get_label_prov_and_text(
+            box=boxes[boxid],
+            page_no=page_no_,
+            page_bbox=page_bbox_,
+            pdf_width=true_doc.pages[page_no_].size.width,
+            pdf_height=true_doc.pages[page_no_].size.height,
+            parsed_page=parsed_pages[page_no_],
+        )
+
+        list_item = true_doc.add_list_item(prov=prov, text=text, parent=list_group)
+        already_added.append(boxid)
+
+        return true_doc, already_added, list_item
 
     def is_first_of_merge(self, boxid: int, merges: list[dict]) -> tuple[bool, list]:
         """Is first of merge."""
@@ -947,7 +979,10 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
             _log.error(f"Invalid reading order for {basename}")
             return None
 
-        for boxid in reading_order["boxids"]:
+        boxids: list[int] = reading_order["boxids"]
+        boxid_to_nodeitem: dict[int, NodeItem] = {}
+
+        for ind, boxid in enumerate(boxids):
             if boxid in already_added:
                 _log.debug(f"Box {boxid} is already added, skipping...")
                 continue
@@ -1001,13 +1036,17 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 for next_prov in next_provs:
                     current_item.prov.append(next_prov)
 
+                boxid_to_nodeitem[boxid] = current_item
+
             elif label in [DocItemLabel.PAGE_HEADER, DocItemLabel.PAGE_FOOTER]:
-                new_doc.add_text(
+                current_item = new_doc.add_text(
                     label=label,
                     prov=prov,
                     text=text,
                     content_layer=ContentLayer.FURNITURE,
                 )
+
+                boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.SECTION_HEADER:
 
@@ -1020,7 +1059,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 ):
                     level = int(boxes[boxid]["attribute"]["#text"])
 
-                new_doc.add_heading(prov=prov, text=text, level=level)
+                current_item = new_doc.add_heading(prov=prov, text=text, level=level)
+                boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.CAPTION:
 
@@ -1028,7 +1068,9 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     boxid=boxid, links=to_captions, merges=merges, groups=group
                 ):
                     _log.warning(f"Detected {label} that is not linked!")
-                    new_doc.add_text(label=label, prov=prov, text=text)
+                    current_item = new_doc.add_text(label=label, prov=prov, text=text)
+                    boxid_to_nodeitem[boxid] = current_item
+
                 else:
                     _log.debug(f"Ignoring {label}: assigned to other floating item")
                     continue
@@ -1039,7 +1081,8 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     boxid=boxid, links=to_footnotes, merges=merges, groups=group
                 ):
                     _log.warning(f"Detected {label} that is not linked!")
-                    new_doc.add_text(label=label, prov=prov, text=text)
+                    current_item = new_doc.add_text(label=label, prov=prov, text=text)
+                    boxid_to_nodeitem[boxid] = current_item
                 else:
                     _log.debug(f"Ignoring {label}: assigned to other floating item")
                     continue
@@ -1048,23 +1091,76 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 DocItemLabel.CHECKBOX_SELECTED,
                 DocItemLabel.CHECKBOX_UNSELECTED,
             ]:
-                new_doc.add_text(label=label, prov=prov, text=text)
+                current_item = new_doc.add_text(label=label, prov=prov, text=text)
+                boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.LIST_ITEM:
-                new_doc.add_list_item(prov=prov, text=text)
+
+                if first_in_group:
+
+                    parent = None
+                    if (
+                        ind > 0
+                        and boxids[ind - 1] in boxid_to_nodeitem
+                        and isinstance(boxid_to_nodeitem[boxids[ind - 1]], ListItem)
+                    ):
+                        _log.debug("Found a list-item as a parent")
+                        parent = boxid_to_nodeitem[boxids[ind - 1]]
+
+                    list_group = new_doc.add_group(
+                        label=GroupLabel.ORDERED_LIST, parent=parent
+                    )
+
+                    current_item = new_doc.add_list_item(
+                        prov=prov, text=text, parent=list_group
+                    )
+                    boxid_to_nodeitem[boxid] = current_item
+
+                    for boxid in rest_in_group:
+                        new_doc, already_added, list_item = self.add_listitems_to_group(
+                            list_group=list_group,
+                            boxid=boxid,
+                            boxes=boxes,
+                            already_added=already_added,
+                            desc=desc,
+                            true_doc=new_doc,
+                            parsed_pages=parsed_pages,
+                        )
+                        boxid_to_nodeitem[boxid] = list_item
+                else:
+                    _log.warning("Found a list-item without a parent.")
+
+                    parent = None
+                    if (
+                        ind > 0
+                        and boxids[ind - 1] in boxid_to_nodeitem
+                        and isinstance(boxid_to_nodeitem[boxids[ind - 1]], ListItem)
+                    ):
+                        _log.debug("Found a list-item as a parent")
+                        parent = boxid_to_nodeitem[boxids[ind - 1]]
+
+                    # This could be commented out and is a case-by-case basis ...
+                    list_group = new_doc.add_group(
+                        label=GroupLabel.ORDERED_LIST, parent=parent
+                    )
+
+                    current_item = new_doc.add_list_item(
+                        prov=prov, text=text, parent=list_group
+                    )
+                    boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.FORMULA:
-                new_doc.add_text(label=label, prov=prov, text=text)
+                current_item = new_doc.add_text(label=label, prov=prov, text=text)
+                boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.CODE:
                 code_item = new_doc.add_code(text=text, prov=prov)
+                boxid_to_nodeitem[boxid] = code_item
 
                 new_doc, already_added = self.add_captions_to_item(
                     basename=basename,
                     to_captions=to_captions,
                     item=code_item,
-                    # page_no=page_no,
-                    # page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -1077,8 +1173,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     basename=basename,
                     to_footnotes=to_footnotes,
                     item=code_item,
-                    # page_no=page_no,
-                    # page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -1089,11 +1183,13 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             elif label == DocItemLabel.FORM:
                 graph = GraphData(cells=[], links=[])
-                new_doc.add_form(graph=graph, prov=prov)
+                current_item = new_doc.add_form(graph=graph, prov=prov)
+                boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.KEY_VALUE_REGION:
                 graph = GraphData(cells=[], links=[])
-                new_doc.add_key_values(graph=graph, prov=prov)
+                current_item = new_doc.add_key_values(graph=graph, prov=prov)
+                boxid_to_nodeitem[boxid] = current_item
 
             elif label in [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]:
                 # Try to find table data in original document
@@ -1104,14 +1200,13 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     table_data = TableData(num_rows=0, num_cols=0, table_cells=[])
 
                 table_item = new_doc.add_table(label=label, data=table_data, prov=prov)
+                boxid_to_nodeitem[boxid] = table_item
 
                 # Add captions and footnotes to table
                 new_doc, already_added = self.add_captions_to_item(
                     basename=basename,
                     to_captions=to_captions,
                     item=table_item,
-                    # page_no=page_no,
-                    # page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -1124,8 +1219,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     basename=basename,
                     to_footnotes=to_footnotes,
                     item=table_item,
-                    # page_no=page_no,
-                    # page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -1146,14 +1239,13 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     true_doc=new_doc,
                     parsed_pages=parsed_pages,
                 )
+                boxid_to_nodeitem[boxid] = picture_item
 
                 # Add captions and footnotes to picture
                 new_doc, already_added = self.add_captions_to_item(
                     basename=basename,
                     to_captions=to_captions,
                     item=picture_item,
-                    # page_no=page_no,
-                    # page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
@@ -1166,8 +1258,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     basename=basename,
                     to_footnotes=to_footnotes,
                     item=picture_item,
-                    # page_no=page_no,
-                    # page_bbox=page_bbox,
                     boxid=boxid,
                     boxes=boxes,
                     already_added=already_added,
