@@ -4,8 +4,22 @@ from pathlib import Path
 
 import pytest
 
-from docling_eval.cli.main import PredictionProviderType, get_prediction_provider
-from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
+from docling_eval.cli.main import (
+    PredictionProviderType,
+    create,
+    create_cvat,
+    create_eval,
+    create_gt,
+    evaluate,
+    get_prediction_provider,
+    visualize,
+)
+from docling_eval.datamodels.types import (
+    BenchMarkNames,
+    EvaluationModality,
+    PredictionFormats,
+    PredictionProviderType,
+)
 from docling_eval.dataset_builders.cvat_dataset_builder import CvatDatasetBuilder
 from docling_eval.dataset_builders.cvat_preannotation_builder import (
     CvatPreannotationBuilder,
@@ -100,3 +114,103 @@ def test_run_cvat_on_pred():
     )
     dataset_builder.retrieve_input_dataset()
     dataset_builder.save_to_disk(do_visualization=True)
+
+
+def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
+
+    # Stage 1: create a plain-file gt/eval-dataset
+    create(
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        dataset_source=idir,
+        output_dir=odir,
+        prediction_provider=PredictionProviderType.PDF_DOCLING,
+    )
+    assert os.path.exists(odir / "gt_dataset")
+    assert os.path.exists(odir / "eval_dataset")
+
+    # Stage 2: create the CVAT setup from pdfs
+    create_cvat(
+        gt_dir=odir / "eval_dataset/test",
+        output_dir=odir / "cvat_dataset_preannotated",
+        bucket_size=10,
+        use_predictions=True,
+    )
+    assert os.path.exists(odir / "cvat_dataset_preannotated")
+
+    # Stage 3: copy the manual annotations
+    shutil.copy(
+        annotation_xmlfile, odir / "cvat_dataset_preannotated/cvat_annotations/xmls"
+    )
+
+    # Stage 4: Create the dataset
+    create_gt(
+        benchmark=BenchMarkNames.CVAT,
+        dataset_source=odir / "cvat_dataset_preannotated",
+        output_dir=odir / "cvat_dataset_annotated",
+    )
+    assert os.path.exists(odir / "cvat_dataset_annotated")
+
+    # Stage 5.1: create predictions with pdf-docling and evaluate layout
+    create_eval(
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        gt_dir=odir / "cvat_dataset_annotated/gt_dataset",
+        output_dir=odir / "cvat_dataset_annotated/eval_pdf_docling",
+        prediction_provider=PredictionProviderType.PDF_DOCLING,
+    )
+    assert odir / "cvat_dataset_annotated/eval_pdf_docling"
+
+    evaluate(
+        modality=EvaluationModality.LAYOUT,
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        idir=odir / "cvat_dataset_annotated/eval_pdf_docling/eval_dataset",
+        odir=odir / "cvat_dataset_annotated/eval_pdf_docling",
+    )
+
+    visualize(
+        modality=EvaluationModality.LAYOUT,
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        idir=odir / "cvat_dataset_annotated/eval_pdf_docling",
+        odir=odir / "cvat_dataset_annotated/eval_pdf_docling",
+    )
+
+    # Stage 5.2: create predictions with macocr-docling and evaluate layout
+    create_eval(
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        gt_dir=odir / "cvat_dataset_annotated/gt_dataset",
+        output_dir=odir / "cvat_dataset_annotated/eval_macocr_docling",
+        prediction_provider=PredictionProviderType.MacOCR_DOCLING,
+    )
+    assert odir / "cvat_dataset_annotated/eval_macocr_docling"
+
+    evaluate(
+        modality=EvaluationModality.LAYOUT,
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        idir=odir / "cvat_dataset_annotated/eval_macocr_docling/eval_dataset",
+        odir=odir / "cvat_dataset_annotated/eval_macocr_docling",
+    )
+
+    visualize(
+        modality=EvaluationModality.LAYOUT,
+        benchmark=BenchMarkNames.PLAIN_FILES,
+        idir=odir / "cvat_dataset_annotated/eval_macocr_docling",
+        odir=odir / "cvat_dataset_annotated/eval_macocr_docling",
+    )
+
+
+def test_run_cvat_e2e():
+
+    run_cvat_e2e(
+        idir=Path("./tests/data/cvat_pdfs_dataset_e2e/case_01"),
+        odir=Path("./scratch/cvat_pdfs_dataset_e2e/case_01"),
+        annotation_xmlfile=Path(
+            "./tests/data/cvat_pdfs_dataset_e2e/case_01_annotations.xml"
+        ),
+    )
+
+    run_cvat_e2e(
+        idir=Path("./tests/data/cvat_pdfs_dataset_e2e/case_02"),
+        odir=Path("./scratch/cvat_pdfs_dataset_e2e/case_02"),
+        annotation_xmlfile=Path(
+            "./tests/data/cvat_pdfs_dataset_e2e/case_02_annotations.xml"
+        ),
+    )
