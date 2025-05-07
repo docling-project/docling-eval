@@ -74,7 +74,12 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
         region_name = os.getenv("AWS_REGION", "us-east-1")
 
-        self.textract_client = boto3.client("textract", region_name=region_name)
+        self.textract_client = boto3.client(
+            "textract",
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=region_name,
+        )
 
     def extract_bbox_from_geometry(self, geometry):
         """Helper function to extract bbox coordinates from AWS Textract geometry data."""

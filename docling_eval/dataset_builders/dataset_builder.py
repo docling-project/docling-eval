@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import sys
@@ -15,7 +16,11 @@ from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.prediction_providers.base_prediction_provider import (
     TRUE_HTML_EXPORT_LABELS,
 )
-from docling_eval.utils.utils import save_shard_to_disk, write_datasets_info
+from docling_eval.utils.utils import (
+    insert_images_from_pil,
+    save_shard_to_disk,
+    write_datasets_info,
+)
 
 # Get logger
 _log = logging.getLogger(__name__)
@@ -275,13 +280,51 @@ class BaseEvaluationDatasetBuilder:
             for r in record_chunk:
                 record_list.append(r.as_record_dict())
                 if do_visualization:
-                    viz_path = self.target / "visualizations" / f"{r.doc_id}.html"
-                    r.ground_truth_doc.save_as_html(
-                        filename=viz_path,
+                    """
+                    viz_path = (
+                        self.target / "visualizations" / f"{r.doc_id}.single.html"
+                    )
+                    """
+                    viz_path_split = self.target / "visualizations" / f"{r.doc_id}.html"
+                    # json_path = self.target / "visualizations" / f"{r.doc_id}.json"
+
+                    tmp = insert_images_from_pil(
+                        document=copy.deepcopy(r.ground_truth_doc),
+                        pictures=r.ground_truth_pictures,
+                        page_images=r.ground_truth_page_images,
+                    )
+
+                    tmp.save_as_html(
+                        filename=viz_path_split,
                         labels=TRUE_HTML_EXPORT_LABELS,
                         image_mode=ImageRefMode.EMBEDDED,
                         split_page_view=True,
                     )
+
+                    """
+                    tmp.save_as_html(
+                        filename=viz_path,
+                        labels=TRUE_HTML_EXPORT_LABELS,
+                        image_mode=ImageRefMode.EMBEDDED,
+                        split_page_view=False,
+                    )
+                    """
+
+                    """
+                    tmp.save_as_json(
+                        filename=json_path,
+                        # labels=TRUE_HTML_EXPORT_LABELS,
+                        # image_mode=ImageRefMode.EMBEDDED,
+                    )
+                    """
+
+                    """
+                    r.ground_truth_doc.save_as_json(
+                        filename=json_path,
+                        # labels=TRUE_HTML_EXPORT_LABELS,
+                        # image_mode=ImageRefMode.EMBEDDED,
+                    )
+                    """
 
             save_shard_to_disk(
                 items=record_list, dataset_path=test_dir, shard_id=chunk_count
