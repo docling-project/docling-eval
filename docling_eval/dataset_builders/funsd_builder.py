@@ -263,10 +263,12 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
             cell_by_id[cell_id] = cell
 
             for word in item.get("words", []):
-                text = word.get("text", "")
-                bbox = word.get("box", [0, 0, 0, 0])
+                text = word.get("text", None)
+                bbox = word.get("box", None)
+                if bbox is None or text is None:
+                    continue
                 bbox_obj = self.convert_bbox(bbox)
-                seg_page.textline_cells.append(
+                seg_page.word_cells.append(
                     TextCell(
                         from_ocr=True,
                         rect=BoundingRectangle.from_bounding_box(bbox_obj),
