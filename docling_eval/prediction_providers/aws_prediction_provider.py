@@ -23,6 +23,7 @@ from docling_core.types.doc.page import (
     TextCell,
 )
 from docling_core.types.io import DocumentStream
+from skimage.draw import polygon
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -243,27 +244,29 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     segmented_pages[page_no] = seg_page
 
             elif block["BlockType"] == "WORD" and block.get("Page", 1) == page_no:
-                text_content = block.get("Text", "")
-                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+                text_content = block.get("Text", None)
+                geometry = block.get("Geometry", None)
 
-                # Scale normalized coordinates to the page dimensions
-                bbox_obj = BoundingBox(
-                    l=bbox["l"] * width,
-                    t=bbox["t"] * height,
-                    r=bbox["r"] * width,
-                    b=bbox["b"] * height,
-                    coord_origin=CoordOrigin.TOPLEFT,
-                )
-
-                segmented_pages[page_no].textline_cells.append(
-                    TextCell(
-                        rect=BoundingRectangle.from_bounding_box(bbox_obj),
-                        text=text_content,
-                        orig=text_content,
-                        # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
-                        from_ocr=False,
+                if text_content is not None and geometry is not None:
+                    bbox = self.extract_bbox_from_geometry(geometry)
+                    # Scale normalized coordinates to the page dimensions
+                    bbox_obj = BoundingBox(
+                        l=bbox["l"] * width,
+                        t=bbox["t"] * height,
+                        r=bbox["r"] * width,
+                        b=bbox["b"] * height,
+                        coord_origin=CoordOrigin.TOPLEFT,
                     )
-                )
+
+                    segmented_pages[page_no].word_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
+                            from_ocr=False,
+                        )
+                    )
 
             elif block["BlockType"] == "LAYOUT_TITLE":
                 text_content = block.get("Text", "")
