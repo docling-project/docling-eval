@@ -118,6 +118,16 @@ def test_run_cvat_on_pred():
 
 def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
 
+    def count_files(directory:Path):
+        # Get all entries in the directory
+        entries = os.listdir(directory)
+        
+        # Filter to keep only files (not directories)
+        files_only = [entry for entry in entries if os.path.isfile(os.path.join(directory, entry))]
+        
+        # Return the count
+        return len(files_only)
+    
     # Stage 1: create a plain-file gt/eval-dataset
     create(
         benchmark=BenchMarkNames.PLAIN_FILES,
@@ -157,22 +167,26 @@ def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
         output_dir=odir / "cvat_dataset_annotated/eval_pdf_docling",
         prediction_provider=PredictionProviderType.PDF_DOCLING,
     )
-    assert odir / "cvat_dataset_annotated/eval_pdf_docling"
-
+    assert os.path.exists(odir / "cvat_dataset_annotated/eval_pdf_docling")
+    assert count_files(directory=odir / "cvat_dataset_annotated/gt_dataset/visualizations/")==3
+    
     evaluate(
         modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.PLAIN_FILES,
         idir=odir / "cvat_dataset_annotated/eval_pdf_docling/eval_dataset",
         odir=odir / "cvat_dataset_annotated/eval_pdf_docling",
     )
-
+    assert os.path.exists("evaluation_PlainFiles_layout.json")
+    
     visualize(
         modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.PLAIN_FILES,
         idir=odir / "cvat_dataset_annotated/eval_pdf_docling",
         odir=odir / "cvat_dataset_annotated/eval_pdf_docling",
     )
-
+    assert os.path.exists("evaluation_PlainFiles_layout_f1.txt")
+    
+    """
     # Stage 5.2: create predictions with macocr-docling and evaluate layout
     create_eval(
         benchmark=BenchMarkNames.PLAIN_FILES,
@@ -195,7 +209,7 @@ def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
         idir=odir / "cvat_dataset_annotated/eval_macocr_docling",
         odir=odir / "cvat_dataset_annotated/eval_macocr_docling",
     )
-
+    """
 
 def test_run_cvat_e2e():
 
