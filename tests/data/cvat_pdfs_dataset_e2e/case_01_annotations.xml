@@ -1,0 +1,1326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<annotations>
+  <version>1.1</version>
+  <meta>
+    <job>
+      <id>11</id>
+      <size>10</size>
+      <mode>annotation</mode>
+      <overlap>0</overlap>
+      <bugtracker></bugtracker>
+      <created>2025-05-01 04:58:09.899418+00:00</created>
+      <updated>2025-05-06 11:38:13.210060+00:00</updated>
+      <subset>default</subset>
+      <start_frame>0</start_frame>
+      <stop_frame>9</stop_frame>
+      <frame_filter></frame_filter>
+      <segments>
+        <segment>
+          <id>11</id>
+          <start>0</start>
+          <stop>9</stop>
+          <url>https://cvat.docling.accelerator.cafe/api/jobs/11</url>
+        </segment>
+      </segments>
+      <owner>
+        <username>Peter</username>
+        <email>taa@zurich.ibm.com</email>
+      </owner>
+      <assignee></assignee>
+      <labels>
+        <label>
+          <name>caption</name>
+          <color>#FFCC99</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>chart</name>
+          <color>#FFCCA4</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>footnote</name>
+          <color>#C8C8FF</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>formula</name>
+          <color>#C0C0C0</color>
+          <type>rectangle</type>
+          <attributes>
+            <attribute>
+              <name>latex</name>
+              <mutable>True</mutable>
+              <input_type>text</input_type>
+              <default_value></default_value>
+              <values></values>
+            </attribute>
+          </attributes>
+        </label>
+        <label>
+          <name>list_item</name>
+          <color>#9999FF</color>
+          <type>rectangle</type>
+          <attributes>
+            <attribute>
+              <name>level</name>
+              <mutable>True</mutable>
+              <input_type>number</input_type>
+              <default_value>1</default_value>
+              <values>1
+10
+1</values>
+            </attribute>
+          </attributes>
+        </label>
+        <label>
+          <name>page_footer</name>
+          <color>#CCFFCC</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>page_header</name>
+          <color>#CCFFCC</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>picture</name>
+          <color>#FFCCA4</color>
+          <type>rectangle</type>
+          <attributes>
+            <attribute>
+              <name>json</name>
+              <mutable>True</mutable>
+              <input_type>text</input_type>
+              <default_value></default_value>
+              <values></values>
+            </attribute>
+          </attributes>
+        </label>
+        <label>
+          <name>section_header</name>
+          <color>#FF9999</color>
+          <type>rectangle</type>
+          <attributes>
+            <attribute>
+              <name>level</name>
+              <mutable>True</mutable>
+              <input_type>number</input_type>
+              <default_value>1</default_value>
+              <values>1
+10
+1</values>
+            </attribute>
+          </attributes>
+        </label>
+        <label>
+          <name>table</name>
+          <color>#FFCCCC</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>text</name>
+          <color>#FFFF99</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>title</name>
+          <color>#FF9999</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>document_index</name>
+          <color>#DCDCDC</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>code</name>
+          <color>#7D7D7D</color>
+          <type>rectangle</type>
+          <attributes>
+            <attribute>
+              <name>code</name>
+              <mutable>True</mutable>
+              <input_type>text</input_type>
+              <default_value></default_value>
+              <values></values>
+            </attribute>
+          </attributes>
+        </label>
+        <label>
+          <name>checkbox_selected</name>
+          <color>#FFB6C1</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>checkbox_unselected</name>
+          <color>#FFB6C1</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>form</name>
+          <color>#C8FFFF</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>key_value_region</name>
+          <color>#B7410E</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>paragraph</name>
+          <color>#FFFF99</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>reference</name>
+          <color>#B0E0E6</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>table_row</name>
+          <color>#FF0000</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>table_column</name>
+          <color>#00FF00</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>table_group</name>
+          <color>#0000FF</color>
+          <type>rectangle</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>reading_order</name>
+          <color>#FF0000</color>
+          <type>polyline</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>to_caption</name>
+          <color>#00FF00</color>
+          <type>polyline</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>to_footnote</name>
+          <color>#00FF00</color>
+          <type>polyline</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>to_value</name>
+          <color>#00FF00</color>
+          <type>polyline</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>merge</name>
+          <color>#FF00FF</color>
+          <type>polyline</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>group</name>
+          <color>#FFFF00</color>
+          <type>polyline</type>
+          <attributes>
+          </attributes>
+        </label>
+      </labels>
+    </job>
+    <dumped>2025-05-06 11:39:39.138521+00:00</dumped>
+  </meta>
+  <image id="0" name="doc_32a7d8aa5e0c78888082fdbf7e514cb283f0140e4af1144ee94f5a6b2bfb7424_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="1254.87" ytl="74.80" xbr="1277.90" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="412.29" ytl="74.80" xbr="801.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1581.66" ytl="74.80" xbr="1970.50" ybr="86.65" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1105.89" ytl="74.80" xbr="1128.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="168.59" ytl="112.48" xbr="504.77" ybr="365.61" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="table" source="file" occluded="0" xtl="1253.58" ytl="148.75" xbr="2296.11" ybr="248.12" z_order="2">
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="1254.86" ytl="111.73" xbr="2042.92" ybr="140.72" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="460.85" xbr="588.75" ybr="684.83" z_order="3">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1267.00" ytl="254.35" xbr="1393.92" ybr="269.18" z_order="4">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="719.66" xbr="251.75" ybr="734.48" z_order="4">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="761.50" xbr="588.75" ybr="1299.22" z_order="5">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1266.43" ytl="271.48" xbr="1346.07" ybr="286.32" z_order="5">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1305.32" xbr="588.75" ybr="1489.97" z_order="6">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="703.76" ytl="113.23" xbr="1053.09" ybr="379.42" z_order="7">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="1254.87" ytl="314.20" xbr="1776.64" ybr="346.93" z_order="7">
+    </box>
+    <box label="table" source="file" occluded="0" xtl="1254.60" ytl="354.24" xbr="2296.30" ybr="648.77" z_order="8">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="695.13" ytl="393.20" xbr="1056.90" ybr="674.66" z_order="8">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="771.24" xbr="1127.91" ybr="869.72" z_order="9">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1267.00" ytl="654.98" xbr="1483.12" ybr="668.66" z_order="9">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="875.82" xbr="1127.92" ybr="1141.63" z_order="10">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1266.43" ytl="672.12" xbr="1796.34" ybr="685.79" z_order="10">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1267.36" ytl="689.25" xbr="1596.93" ybr="702.92" z_order="11">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="1179.82" xbr="944.12" ybr="1194.64" z_order="11">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1221.66" xbr="1127.91" ybr="1487.47" z_order="12">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1266.28" ytl="706.38" xbr="1361.85" ybr="720.05" z_order="12">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="1266.92" ytl="722.96" xbr="1477.85" ybr="738.57" z_order="13">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="785.75" xbr="1758.13" ybr="1156.14" z_order="14">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1336.64" ytl="1189.91" xbr="1676.35" ybr="1453.52" z_order="15">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.02" ytl="785.75" xbr="1914.54" ybr="800.57" z_order="16">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="827.59" xbr="2297.29" ybr="1197.98" z_order="17">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.02" ytl="1232.09" xbr="1943.29" ybr="1246.91" z_order="18">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="1273.93" xbr="2297.29" ybr="1351.49" z_order="19">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.02" ytl="1385.61" xbr="2061.80" ybr="1400.42" z_order="20">
+      <attribute name="level">1</attribute>
+    </box>
+    <polyline label="reading_order" source="manual" occluded="0" points="608.63,82.01;1121.30,78.53;317.42,256.39;380.20,401.12;225.00,563.30;240.70,725.47;137.81,1013.19;270.34,1395.08;852.76,218.03;917.28,497.03;819.63,713.26;861.48,842.30;783.01,1039.35;859.74,1189.31;793.47,1342.76;1267.78,78.53;1602.59,80.27;1466.57,125.61;1571.20,209.31;1297.43,259.88;1320.09,280.80;1285.22,327.89;1440.42,540.63;1302.66,659.20;1321.84,680.13;1306.14,695.82;1321.84,711.52;1306.14,732.44;1407.28,980.06;1354.97,1259.06;1443.90,1480.52;1869.38,791.73;2007.14,1023.65;1876.36,1239.88;1918.21,1313.12;1872.87,1391.59;1899.03,1445.65" z_order="21">
+    </polyline>
+    <box label="caption" source="manual" occluded="0" xtl="1286.96" ytl="1470.06" xbr="1726.39" ybr="1492.73" z_order="21">
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="619.10" ytl="690.59" xbr="1131.77" ybr="728.95" z_order="21">
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="82.01" ytl="385.43" xbr="596.43" ybr="418.56" z_order="21">
+    </box>
+    <polyline label="to_footnote" source="manual" occluded="0" points="1564.12,507.04;1385.36,656.61;1409.07,678.50;1336.11,694.92;1350.70,713.16;1341.58,731.40" z_order="21">
+    </polyline>
+    <polyline label="to_footnote" source="manual" occluded="0" points="1673.57,220.65;1343.40,260.78;1337.93,280.84" z_order="21">
+    </polyline>
+    <polyline label="merge" source="manual" occluded="0" points="552.83,1412.51;716.75,833.58" z_order="21">
+    </polyline>
+    <polyline label="group" source="manual" occluded="0" points="1011.45,366.25;1020.16,416.82" z_order="21">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="1539.81,439.49;1470.06,338.35" z_order="21">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="1698.49,197.10;1639.21,132.58" z_order="21">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="1560.74,1393.33;1574.69,1478.78" z_order="21">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="936.46,315.68;971.34,706.28" z_order="21">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="247.67,301.73;251.16,399.38" z_order="21">
+    </polyline>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="1427.44" xbr="2297.30" ybr="1484.09" z_order="21">
+    </box>
+  </image>
+  <image id="1" name="doc_497a347f9b061036d72b5a52f54d4d36148755fa713e138bc8b2d1800157628d_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="412.29" ytl="74.80" xbr="801.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1254.87" ytl="74.80" xbr="1277.90" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1581.66" ytl="74.80" xbr="1970.50" ybr="86.65" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1105.89" ytl="74.80" xbr="1128.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1436.43" ytl="111.88" xbr="2114.65" ybr="652.05" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="157.75" ytl="108.67" xbr="516.65" ybr="367.00" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="718.61" xbr="1437.00" ybr="733.42" z_order="3">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="157.63" ytl="384.86" xbr="516.71" ybr="646.69" z_order="3">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="760.44" xbr="1758.13" ybr="1130.83" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="735.34" xbr="588.75" ybr="1273.06" z_order="4">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="1305.32" xbr="242.95" ybr="1320.14" z_order="5">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1338.26" ytl="1174.07" xbr="1675.45" ybr="1419.15" z_order="5">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="718.61" xbr="2297.29" ybr="775.25" z_order="6">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1347.15" xbr="588.75" ybr="1487.47" z_order="6">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="781.36" xbr="2297.29" ybr="900.75" z_order="7">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="690.29" ytl="112.19" xbr="1065.96" ybr="387.69" z_order="7">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1877.21" ytl="932.39" xbr="2208.37" ybr="1176.99" z_order="8">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="682.71" ytl="410.47" xbr="1070.31" ybr="694.30" z_order="8">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1877.55" ytl="1193.80" xbr="2210.59" ybr="1437.30" z_order="9">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="775.98" xbr="1127.91" ybr="874.46" z_order="9">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="904.53" xbr="800.11" ybr="919.35" z_order="10">
+      <attribute name="level">2</attribute>
+    </box>
+    <polyline label="to_caption" source="manual" occluded="0" points="934.72,315.68;946.93,728.95" z_order="11">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="378.46,319.17;427.28,676.64" z_order="11">
+    </polyline>
+    <polyline label="reading_order" source="manual" occluded="0" points="624.33,76.78;1116.07,80.27;293.01,244.18;383.69,512.73;270.34,685.36;359.27,999.24;163.97,1313.12;238.95,1421.23;856.25,181.41;915.54,514.47;751.62,721.98;777.78,816.14;704.54,912.05;919.03,1238.14;1266.04,78.53;1604.33,80.27;1787.43,425.54;1606.07,676.64;1365.43,723.72;1450.88,908.56;1377.64,1288.71;1452.62,1463.08;1893.80,728.95;1930.42,821.37;1935.65,1006.21;2029.81,1273.01;1970.52,1477.03" z_order="11">
+    </polyline>
+    <box label="caption" source="manual" occluded="0" xtl="1360.20" ytl="664.43" xbr="2191.98" ybr="692.33" z_order="11">
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="1787.43" ytl="1452.62" xbr="2303.59" ybr="1494.47" z_order="11">
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="1250.34" ytl="1433.44" xbr="1764.76" ybr="1497.96" z_order="11">
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="620.84" ytl="708.03" xbr="1133.51" ybr="749.88" z_order="11">
+    </box>
+    <box label="caption" source="manual" occluded="0" xtl="82.01" ytl="660.95" xbr="591.20" ybr="702.80" z_order="11">
+    </box>
+    <polyline label="merge" source="manual" occluded="0" points="1674.08,861.48;1818.81,742.90" z_order="11">
+    </polyline>
+    <polyline label="merge" source="manual" occluded="0" points="526.68,1431.70;669.67,810.91" z_order="11">
+    </polyline>
+    <polyline label="group" source="manual" occluded="0" points="2169.31,1119.56;2185.01,1241.62" z_order="11">
+    </polyline>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="946.37" xbr="1127.91" ybr="1484.09" z_order="11">
+    </box>
+    <polyline label="group" source="manual" occluded="0" points="1032.37,338.35;1032.37,491.80" z_order="11">
+    </polyline>
+    <polyline label="group" source="manual" occluded="0" points="247.67,306.96;254.65,425.54" z_order="11">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="2050.74,1079.45;2174.55,1475.29" z_order="11">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="1593.87,1314.86;1625.26,1454.37" z_order="11">
+    </polyline>
+    <polyline label="to_caption" source="manual" occluded="0" points="1787.43,519.70;1708.96,681.87" z_order="11">
+    </polyline>
+  </image>
+  <image id="2" name="doc_5066b7d3522ec4d37f624fef09101c215a9108d4d3d7facd7916ee882dd46dd0_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="1603.29" ytl="74.80" xbr="1992.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="63.87" ytl="74.80" xbr="86.90" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="2296.89" ytl="74.80" xbr="2319.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="390.66" ytl="74.80" xbr="779.50" ybr="86.65" z_order="1">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="113.09" xbr="1363.83" ybr="127.91" z_order="2">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="table" source="file" occluded="0" xtl="62.58" ytl="148.75" xbr="1105.11" ybr="248.12" z_order="2">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="152.09" xbr="1779.75" ybr="195.81" z_order="3">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="63.86" ytl="111.73" xbr="851.92" ybr="140.72" z_order="3">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="199.89" xbr="1779.76" ybr="243.62" z_order="4">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="76.00" ytl="254.35" xbr="202.92" ybr="269.18" z_order="4">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="247.70" xbr="1779.75" ybr="275.49" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="75.43" ytl="271.48" xbr="155.07" ybr="286.32" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="279.58" xbr="1779.75" ybr="323.30" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="317.95" xbr="109.35" ybr="329.80" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="327.38" xbr="1779.76" ybr="371.11" z_order="7">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="335.08" xbr="585.64" ybr="346.93" z_order="7">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="375.19" xbr="1779.75" ybr="418.92" z_order="8">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="table" source="file" occluded="0" xtl="63.60" ytl="354.24" xbr="1105.30" ybr="648.77" z_order="8">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="423.00" xbr="1779.75" ybr="466.73" z_order="9">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="76.00" ytl="654.98" xbr="292.12" ybr="668.66" z_order="9">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="470.81" xbr="1779.75" ybr="514.53" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="75.43" ytl="672.12" xbr="605.34" ybr="685.79" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="76.36" ytl="689.25" xbr="405.93" ybr="702.92" z_order="11">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1282.83" ytl="518.62" xbr="1779.75" ybr="562.34" z_order="11">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1275.17" ytl="566.43" xbr="1779.75" ybr="610.15" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="75.28" ytl="706.38" xbr="170.85" ybr="720.05" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="75.92" ytl="722.96" xbr="286.85" ybr="738.57" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1275.15" ytl="614.24" xbr="1779.75" ybr="657.96" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="785.75" xbr="567.13" ybr="1156.14" z_order="14">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1275.15" ytl="662.05" xbr="1779.75" ybr="705.77" z_order="14">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="145.64" ytl="1189.91" xbr="485.35" ybr="1453.52" z_order="15">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1275.15" ytl="709.85" xbr="1779.75" ybr="753.58" z_order="15">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="785.75" xbr="723.54" ybr="800.57" z_order="16">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1275.15" ytl="757.66" xbr="1779.75" ybr="801.39" z_order="16">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="827.59" xbr="1106.29" ybr="1197.98" z_order="17">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="115.43" xbr="2318.91" ybr="175.09" z_order="17">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="1232.09" xbr="752.29" ybr="1246.91" z_order="18">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="179.18" xbr="2318.91" ybr="238.84" z_order="18">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="1273.93" xbr="1106.29" ybr="1351.49" z_order="19">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="242.92" xbr="2318.92" ybr="286.65" z_order="19">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="1385.61" xbr="870.80" ybr="1400.42" z_order="20">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="290.73" xbr="2318.91" ybr="334.46" z_order="20">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="1427.44" xbr="1106.30" ybr="1484.09" z_order="21">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="338.54" xbr="2317.91" ybr="366.33" z_order="21">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.34" ytl="370.41" xbr="2318.91" ybr="414.14" z_order="22">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="418.22" xbr="2318.91" ybr="461.95" z_order="23">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="466.03" xbr="2318.92" ybr="509.75" z_order="24">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="513.84" xbr="2318.91" ybr="541.63" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="545.71" xbr="2318.91" ybr="573.50" z_order="26">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="577.58" xbr="2318.91" ybr="621.31" z_order="27">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="625.39" xbr="2318.91" ybr="653.18" z_order="28">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="657.26" xbr="2318.91" ybr="700.99" z_order="29">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="705.07" xbr="2318.91" ybr="748.80" z_order="30">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1814.31" ytl="752.88" xbr="2318.91" ybr="796.61" z_order="31">
+      <attribute name="level">1</attribute>
+    </box>
+  </image>
+  <image id="3" name="doc_5165a3f6515cc3812b12f2302e0834a285ed488dcb0bb28011248835ea13fc72_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="1603.29" ytl="74.80" xbr="1992.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="63.87" ytl="74.80" xbr="86.90" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="2296.89" ytl="74.80" xbr="2319.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="390.66" ytl="74.80" xbr="779.50" ybr="86.65" z_order="1">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1359.59" ytl="112.48" xbr="1695.77" ybr="365.61" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="245.43" ytl="111.88" xbr="923.65" ybr="652.05" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="460.85" xbr="1779.75" ybr="684.83" z_order="3">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="718.61" xbr="246.00" ybr="733.42" z_order="3">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="719.66" xbr="1442.75" ybr="734.48" z_order="4">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="760.44" xbr="567.13" ybr="1130.83" z_order="4">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="147.26" ytl="1174.07" xbr="484.45" ybr="1419.15" z_order="5">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="761.50" xbr="1779.75" ybr="1299.22" z_order="5">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="718.61" xbr="1106.29" ybr="775.25" z_order="6">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="1305.32" xbr="1779.75" ybr="1489.97" z_order="6">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="781.36" xbr="1106.29" ybr="900.75" z_order="7">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1894.76" ytl="113.23" xbr="2244.09" ybr="379.42" z_order="7">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1886.13" ytl="393.20" xbr="2247.90" ybr="674.66" z_order="8">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="686.21" ytl="932.39" xbr="1017.37" ybr="1176.99" z_order="8">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="771.24" xbr="2318.91" ybr="869.72" z_order="9">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="686.55" ytl="1193.80" xbr="1019.59" ybr="1437.30" z_order="9">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="875.82" xbr="2318.92" ybr="1141.63" z_order="10">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="1179.82" xbr="2135.12" ybr="1194.64" z_order="11">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1221.66" xbr="2318.91" ybr="1487.47" z_order="12">
+    </box>
+  </image>
+  <image id="4" name="doc_5406d253d50e01d120a77495377a21243534b1e2e9110c635875a70950a4e6c3_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="63.87" ytl="74.80" xbr="86.90" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1603.29" ytl="74.80" xbr="1992.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="390.66" ytl="74.80" xbr="779.50" ybr="86.65" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="2296.89" ytl="74.80" xbr="2319.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1348.75" ytl="108.67" xbr="1707.65" ybr="367.00" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="195.88" ytl="184.84" xbr="351.52" ybr="244.48" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1348.63" ytl="384.86" xbr="1707.71" ybr="646.69" z_order="3">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="table" source="file" occluded="0" xtl="62.86" ytl="149.03" xbr="1106.61" ybr="304.28" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="735.34" xbr="1779.75" ybr="1273.06" z_order="4">
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="63.86" ytl="111.73" xbr="294.47" ybr="140.72" z_order="4">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="1305.32" xbr="1433.95" ybr="1320.14" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="76.00" ytl="310.05" xbr="273.38" ybr="323.72" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="1347.15" xbr="1779.75" ybr="1487.47" z_order="6">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="75.43" ytl="327.18" xbr="217.73" ybr="340.85" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1881.29" ytl="112.19" xbr="2256.96" ybr="387.69" z_order="7">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="76.36" ytl="344.31" xbr="291.16" ybr="357.99" z_order="7">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1873.71" ytl="410.47" xbr="2261.31" ybr="694.30" z_order="8">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="75.28" ytl="361.44" xbr="141.84" ybr="375.12" z_order="8">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="775.98" xbr="2318.91" ybr="874.46" z_order="9">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="404.55" xbr="567.13" ybr="694.48" z_order="9">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="904.53" xbr="1991.11" ybr="919.35" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="730.54" xbr="314.38" ybr="745.36" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="946.37" xbr="2318.91" ybr="1484.09" z_order="11">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="772.37" xbr="567.13" ybr="1017.27" z_order="11">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="1054.33" xbr="267.76" ybr="1069.14" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="1096.16" xbr="453.64" ybr="1110.97" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="1137.99" xbr="567.13" ybr="1487.47" z_order="14">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="1137.99" xbr="567.13" ybr="1487.47" z_order="15">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="537.88" xbr="968.56" ybr="552.69" z_order="16">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="579.71" xbr="1106.29" ybr="845.52" z_order="17">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="684.22" ytl="884.54" xbr="1021.24" ybr="1138.17" z_order="18">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="684.87" ytl="1161.68" xbr="1022.53" ybr="1420.44" z_order="19">
+      <attribute name="json"></attribute>
+    </box>
+  </image>
+  <image id="5" name="doc_662e02a56aafcf864102f427a57f3c61bb71b7f2a9419b2c83357efb5e698193_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="427.37" ytl="74.80" xbr="742.79" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1603.29" ytl="74.80" xbr="1992.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="62.08" ytl="124.55" xbr="183.09" ybr="257.79" z_order="1">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="2296.89" ytl="74.80" xbr="2319.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="438.48" ytl="126.63" xbr="737.66" ybr="141.21" z_order="2">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="113.09" xbr="1779.75" ybr="232.49" z_order="2">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="385.53" ytl="173.93" xbr="796.61" ybr="195.90" z_order="3">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="238.59" xbr="1779.75" ybr="797.23" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="343.39" ytl="237.98" xbr="837.54" ybr="252.57" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="803.33" xbr="1779.75" ybr="1236.47" z_order="4">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.86" ytl="334.68" xbr="907.14" ybr="394.14" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="1284.40" xbr="1484.56" ybr="1299.22" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="413.38" xbr="885.92" ybr="463.84" z_order="6">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="1326.24" xbr="1490.31" ybr="1341.05" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="63.86" ytl="478.61" xbr="948.57" ybr="509.42" z_order="7">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="1368.07" xbr="1779.75" ybr="1487.47" z_order="7">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="63.87" ytl="512.88" xbr="600.46" ybr="526.55" z_order="8">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="1368.07" xbr="1779.75" ybr="1487.47" z_order="8">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="590.39" xbr="229.32" ybr="590.50" z_order="9">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="181.07" xbr="2114.16" ybr="195.88" z_order="9">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="397.90" ytl="590.39" xbr="697.51" ybr="590.50" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="222.90" xbr="2318.91" ybr="470.30" z_order="10">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="63.07" ytl="614.86" xbr="330.41" ybr="670.88" z_order="11">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="500.04" xbr="2116.52" ybr="514.86" z_order="11">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="63.07" ytl="672.23" xbr="330.41" ybr="728.25" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="541.88" xbr="2318.92" ybr="975.02" z_order="12">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="63.07" ytl="729.60" xbr="330.41" ybr="766.50" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="1007.26" xbr="2024.49" ybr="1022.08" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="63.07" ytl="767.84" xbr="330.41" ybr="804.75" z_order="14">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1049.10" xbr="2318.91" ybr="1377.66" z_order="14">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="884.83" xbr="253.91" ybr="884.94" z_order="15">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="1409.90" xbr="2115.70" ybr="1424.72" z_order="15">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="913.52" xbr="309.52" ybr="976.77" z_order="16">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1451.74" xbr="2318.91" ybr="1487.47" z_order="16">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="982.05" xbr="257.05" ybr="993.90" z_order="17">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="1021.49" xbr="125.36" ybr="1067.60" z_order="18">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="1072.88" xbr="270.17" ybr="1119.00" z_order="19">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="395.52" ytl="624.02" xbr="682.19" ybr="831.52" z_order="20">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="401.55" ytl="884.83" xbr="531.86" ybr="884.94" z_order="21">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="397.41" ytl="914.34" xbr="1106.31" ybr="1139.52" z_order="22">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="836.09" ytl="1144.02" xbr="1106.31" ybr="1157.36" z_order="23">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="1234.84" xbr="729.71" ybr="1249.65" z_order="24">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="1276.67" xbr="1106.29" ybr="1416.98" z_order="25">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="63.86" ytl="1365.87" xbr="567.13" ybr="1416.72" z_order="26">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="990.17" ytl="109.92" xbr="1106.78" ybr="256.90" z_order="27">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="988.03" ytl="329.80" xbr="1108.69" ybr="379.53" z_order="28">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="page_footer" source="file" occluded="0" xtl="63.87" ytl="1441.17" xbr="375.54" ybr="1470.16" z_order="29">
+    </box>
+  </image>
+  <image id="6" name="doc_9356337981caeaf2c637147ea02e9c8b08bca7749df019ba8b0c94ac531f3940_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="412.29" ytl="74.80" xbr="801.13" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1254.87" ytl="74.80" xbr="1277.90" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1105.89" ytl="74.80" xbr="1128.93" ybr="86.65" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1581.66" ytl="74.80" xbr="1970.50" ybr="86.65" z_order="1">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="113.09" xbr="588.75" ybr="232.49" z_order="2">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1386.88" ytl="184.85" xbr="1542.52" ybr="244.46" z_order="2">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="238.59" xbr="588.75" ybr="797.23" z_order="3">
+    </box>
+    <box label="table" source="file" occluded="0" xtl="1253.87" ytl="149.02" xbr="2297.61" ybr="304.28" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="803.33" xbr="588.75" ybr="1236.47" z_order="4">
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="1254.86" ytl="111.73" xbr="1485.47" ybr="140.72" z_order="4">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="1284.40" xbr="293.56" ybr="1299.22" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1267.00" ytl="310.05" xbr="1464.38" ybr="323.72" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="1326.24" xbr="299.31" ybr="1341.05" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1266.43" ytl="327.18" xbr="1408.73" ybr="340.85" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1368.07" xbr="588.75" ybr="1487.47" z_order="7">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1267.36" ytl="344.31" xbr="1482.16" ybr="357.99" z_order="7">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1368.07" xbr="588.75" ybr="1487.47" z_order="8">
+    </box>
+    <box label="list_item" source="file" occluded="0" xtl="1266.28" ytl="361.44" xbr="1332.84" ybr="375.12" z_order="8">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="181.07" xbr="923.16" ybr="195.88" z_order="9">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="404.55" xbr="1758.13" ybr="694.48" z_order="9">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="222.90" xbr="1127.91" ybr="470.30" z_order="10">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="730.54" xbr="1505.38" ybr="745.36" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="500.04" xbr="925.52" ybr="514.86" z_order="11">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="772.37" xbr="1758.13" ybr="1017.27" z_order="11">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="541.88" xbr="1127.92" ybr="975.02" z_order="12">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="1054.33" xbr="1458.76" ybr="1069.14" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="1007.26" xbr="833.49" ybr="1022.08" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="1096.16" xbr="1644.64" ybr="1110.97" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1049.10" xbr="1127.91" ybr="1377.66" z_order="14">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="1137.99" xbr="1758.13" ybr="1487.47" z_order="14">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="1409.90" xbr="924.70" ybr="1424.72" z_order="15">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="1137.99" xbr="1758.13" ybr="1487.47" z_order="15">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1451.74" xbr="1127.91" ybr="1487.47" z_order="16">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.02" ytl="537.88" xbr="2159.56" ybr="552.69" z_order="16">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="579.71" xbr="2297.29" ybr="845.52" z_order="17">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1875.22" ytl="884.55" xbr="2212.24" ybr="1138.17" z_order="18">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1875.87" ytl="1161.68" xbr="2213.53" ybr="1420.44" z_order="19">
+      <attribute name="json"></attribute>
+    </box>
+  </image>
+  <image id="7" name="doc_b0db72e5566fad4844dfd68628d296c16aa7c2172edb308fe1fb41bac4df8aea_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="411.89" ytl="73.00" xbr="805.66" ybr="85.72" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1254.87" ytl="73.69" xbr="1277.88" ybr="85.54" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1105.92" ytl="73.69" xbr="1128.93" ybr="85.54" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1581.26" ytl="73.00" xbr="1975.03" ybr="85.72" z_order="1">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="113.09" xbr="588.75" ybr="316.15" z_order="2">
+    </box>
+    <box label="table" source="file" occluded="0" xtl="1252.98" ytl="149.11" xbr="1758.71" ybr="219.12" z_order="2">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="342.31" xbr="362.90" ybr="358.22" z_order="3">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="1254.86" ytl="111.73" xbr="1676.15" ybr="140.72" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="385.00" xbr="588.75" ybr="818.15" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.86" ytl="225.56" xbr="1758.12" ybr="256.37" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="824.25" xbr="588.75" ybr="901.81" z_order="5">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="292.24" xbr="1458.76" ybr="307.05" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="927.97" xbr="347.44" ybr="943.87" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="333.21" xbr="1664.38" ybr="349.12" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="970.66" xbr="588.76" ybr="1424.72" z_order="7">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="375.91" xbr="1758.13" ybr="599.88" z_order="7">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1430.82" xbr="588.75" ybr="1487.47" z_order="8">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="605.98" xbr="1758.13" ybr="829.96" z_order="8">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1430.82" xbr="588.75" ybr="1487.47" z_order="9">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="857.43" xbr="1573.54" ybr="873.33" z_order="9">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="180.68" xbr="803.43" ybr="196.58" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="900.12" xbr="1758.13" ybr="1145.01" z_order="10">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1306.46" ytl="1180.92" xbr="1702.87" ybr="1436.89" z_order="11">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="223.37" xbr="1127.91" ybr="447.35" z_order="11">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="479.20" xbr="833.82" ybr="495.11" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1819.56" ytl="112.89" xbr="2272.28" ybr="456.88" z_order="12">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="521.03" xbr="896.52" ybr="536.94" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1817.12" ytl="472.98" xbr="2269.31" ybr="800.38" z_order="13">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="542.81" xbr="1127.91" ybr="662.21" z_order="14">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="905.56" xbr="2297.28" ybr="941.29" z_order="14">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="624.65" ytl="681.19" xbr="1127.93" ybr="710.16" z_order="15">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.03" ytl="947.39" xbr="2297.29" ybr="1108.62" z_order="15">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="718.27" xbr="1127.91" ybr="838.53" z_order="16">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="1113.86" xbr="2297.29" ybr="1257.39" z_order="16">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="844.63" xbr="1127.91" ybr="901.28" z_order="17">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="1263.49" xbr="2297.29" ybr="1445.63" z_order="17">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="627.04" ytl="916.57" xbr="1127.93" ybr="962.06" z_order="18">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.03" ytl="1451.73" xbr="2297.29" ybr="1487.47" z_order="18">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="976.91" xbr="653.16" ybr="991.72" z_order="19">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="624.65" ytl="1009.12" xbr="1127.93" ybr="1039.68" z_order="20">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1047.79" xbr="1127.91" ybr="1126.21" z_order="21">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="648.57" ytl="1132.31" xbr="1070.34" ybr="1147.13" z_order="22">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="624.65" ytl="1162.97" xbr="1127.93" ybr="1195.08" z_order="23">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1200.85" xbr="1126.91" ybr="1240.01" z_order="24">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="624.65" ytl="1271.64" xbr="931.64" ybr="1287.54" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1293.41" xbr="1127.91" ybr="1350.06" z_order="26">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="624.65" ytl="1366.58" xbr="1127.93" ybr="1400.93" z_order="27">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1409.04" xbr="1127.91" ybr="1445.63" z_order="28">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1451.74" xbr="1127.91" ybr="1487.70" z_order="29">
+    </box>
+  </image>
+  <image id="8" name="doc_e407a1cf5502e43fca5d7d61b0d7566dc109e5c46f55d019f7c5679f387c7ff7_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="1602.89" ytl="73.00" xbr="1996.66" ybr="85.72" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="63.87" ytl="73.69" xbr="86.85" ybr="85.54" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="2296.92" ytl="73.69" xbr="2319.93" ybr="85.54" z_order="1">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="390.26" ytl="73.00" xbr="784.03" ybr="85.72" z_order="1">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="113.09" xbr="1779.75" ybr="316.15" z_order="2">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="113.09" xbr="567.13" ybr="420.74" z_order="2">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="342.31" xbr="1553.90" ybr="358.22" z_order="3">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="426.84" xbr="567.13" ybr="1027.31" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="385.00" xbr="1779.75" ybr="818.15" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="1033.41" xbr="567.13" ybr="1194.64" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="824.25" xbr="1779.75" ybr="901.81" z_order="5">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="1242.57" xbr="271.93" ybr="1257.39" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1276.49" ytl="927.97" xbr="1538.44" ybr="943.87" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="63.87" ytl="1283.54" xbr="271.31" ybr="1299.45" z_order="6">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="970.66" xbr="1779.76" ybr="1424.72" z_order="7">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="63.87" ytl="1325.25" xbr="567.13" ybr="1487.47" z_order="7">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="1430.82" xbr="1779.75" ybr="1487.47" z_order="8">
+    </box>
+    <box label="table" source="file" occluded="0" xtl="601.80" ytl="148.92" xbr="1106.47" ybr="263.35" z_order="8">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1276.49" ytl="1430.82" xbr="1779.75" ybr="1487.47" z_order="9">
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="603.02" ytl="111.73" xbr="849.89" ybr="140.72" z_order="9">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="180.68" xbr="1994.43" ybr="196.58" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="296.64" xbr="712.79" ybr="312.54" z_order="10">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="223.37" xbr="2318.91" ybr="447.35" z_order="11">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="339.33" xbr="1106.29" ybr="482.14" z_order="11">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.02" ytl="507.08" xbr="788.85" ybr="522.99" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="479.20" xbr="2024.82" ybr="495.11" z_order="12">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="549.78" xbr="1106.29" ybr="794.67" z_order="13">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="521.03" xbr="2087.52" ybr="536.94" z_order="13">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.03" ytl="822.11" xbr="849.87" ybr="838.01" z_order="14">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="542.81" xbr="2318.91" ybr="662.21" z_order="14">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="864.80" xbr="1106.29" ybr="1151.53" z_order="15">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="1815.65" ytl="681.19" xbr="2318.93" ybr="710.16" z_order="15">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="603.03" ytl="1178.96" xbr="884.96" ybr="1194.87" z_order="16">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="718.27" xbr="2318.91" ybr="838.53" z_order="16">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="603.02" ytl="1221.66" xbr="1106.29" ybr="1487.47" z_order="17">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="844.63" xbr="2318.91" ybr="901.28" z_order="17">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="1818.04" ytl="916.57" xbr="2318.93" ybr="962.06" z_order="18">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="976.91" xbr="1844.16" ybr="991.72" z_order="19">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="1815.65" ytl="1009.12" xbr="2318.93" ybr="1039.68" z_order="20">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1047.79" xbr="2318.91" ybr="1126.21" z_order="21">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1839.57" ytl="1132.31" xbr="2261.34" ybr="1147.13" z_order="22">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="1815.65" ytl="1162.97" xbr="2318.93" ybr="1195.08" z_order="23">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1200.85" xbr="2317.91" ybr="1240.01" z_order="24">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1815.65" ytl="1271.64" xbr="2122.64" ybr="1287.54" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1293.41" xbr="2318.91" ybr="1350.06" z_order="26">
+    </box>
+    <box label="formula" source="file" occluded="0" xtl="1815.65" ytl="1366.58" xbr="2318.93" ybr="1400.93" z_order="27">
+      <attribute name="latex"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1409.04" xbr="2318.91" ybr="1445.63" z_order="28">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1815.65" ytl="1451.74" xbr="2318.91" ybr="1487.70" z_order="29">
+    </box>
+  </image>
+  <image id="9" name="doc_f95360ac01844ef2fc92b26df9d7080f14609af514ce9bee3d8555c03cd01fca_ps_000001_pe_000003.png" width="2382" height="1587">
+    <box label="page_header" source="file" occluded="0" xtl="434.22" ytl="74.80" xbr="772.69" ybr="86.65" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1254.87" ytl="73.69" xbr="1277.85" ybr="85.54" z_order="0">
+    </box>
+    <box label="page_header" source="file" occluded="0" xtl="1581.26" ytl="73.00" xbr="1975.03" ybr="85.72" z_order="1">
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="84.44" ytl="125.32" xbr="205.20" ybr="259.78" z_order="1">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="113.09" xbr="1758.13" ybr="420.74" z_order="2">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="425.70" ytl="126.63" xbr="793.69" ybr="141.21" z_order="2">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="426.84" xbr="1758.13" ybr="1027.31" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="407.16" ytl="175.44" xbr="818.23" ybr="201.36" z_order="3">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="1033.41" xbr="1758.13" ybr="1194.64" z_order="4">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="362.95" ytl="237.98" xbr="857.08" ybr="252.57" z_order="4">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="1242.57" xbr="1462.93" ybr="1257.39" z_order="5">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="picture" source="file" occluded="0" xtl="1013.14" ytl="110.16" xbr="1129.65" ybr="256.59" z_order="5">
+      <attribute name="json"></attribute>
+    </box>
+    <box label="title" source="file" occluded="0" xtl="85.49" ytl="334.68" xbr="1113.52" ybr="394.14" z_order="6">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1254.87" ytl="1283.54" xbr="1462.31" ybr="1299.45" z_order="6">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1254.87" ytl="1325.25" xbr="1758.13" ybr="1487.47" z_order="7">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="413.38" xbr="895.44" ybr="440.25" z_order="7">
+    </box>
+    <box label="table" source="file" occluded="0" xtl="1792.80" ytl="148.92" xbr="2297.47" ybr="263.35" z_order="8">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="413.38" xbr="895.44" ybr="440.25" z_order="8">
+    </box>
+    <box label="caption" source="file" occluded="0" xtl="1794.02" ytl="111.73" xbr="2040.89" ybr="140.72" z_order="9">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="84.50" ytl="570.67" xbr="1127.94" ybr="629.97" z_order="10">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.02" ytl="296.64" xbr="1903.79" ybr="312.54" z_order="10">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="339.33" xbr="2297.29" ybr="482.14" z_order="11">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.02" ytl="507.08" xbr="1979.85" ybr="522.99" z_order="12">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="549.78" xbr="2297.29" ybr="794.67" z_order="13">
+    </box>
+    <box label="text" source="manual" occluded="0" xtl="85.49" ytl="734.40" xbr="322.13" ybr="800.65" z_order="13">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="827.56" xbr="146.99" ybr="840.28" z_order="14">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.03" ytl="822.11" xbr="2040.87" ybr="838.01" z_order="14">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="864.80" xbr="2297.29" ybr="1151.53" z_order="15">
+    </box>
+    <box label="text" source="manual" occluded="0" xtl="85.49" ytl="845.38" xbr="251.66" ybr="911.80" z_order="15">
+    </box>
+    <box label="section_header" source="manual" occluded="0" xtl="85.49" ytl="719.20" xbr="173.80" ybr="731.05" z_order="16">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="1794.03" ytl="1178.96" xbr="2075.96" ybr="1194.87" z_order="16">
+      <attribute name="level">2</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="1794.02" ytl="1221.66" xbr="2297.29" ybr="1487.47" z_order="17">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="419.03" ytl="721.10" xbr="1127.94" ybr="963.91" z_order="17">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="857.72" ytl="969.76" xbr="1127.93" ybr="983.09" z_order="18">
+    </box>
+    <box label="section_header" source="file" occluded="0" xtl="85.49" ytl="1063.36" xbr="212.18" ybr="1078.17" z_order="19">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="text" source="file" occluded="0" xtl="85.49" ytl="1105.19" xbr="588.75" ybr="1329.17" z_order="20">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="96.78" ytl="1383.24" xbr="391.71" ybr="1405.55" z_order="21">
+    </box>
+    <box label="footnote" source="file" occluded="0" xtl="90.14" ytl="1400.34" xbr="535.66" ybr="1434.24" z_order="22">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1063.36" xbr="1127.91" ybr="1329.17" z_order="23">
+    </box>
+    <box label="text" source="file" occluded="0" xtl="624.65" ytl="1335.27" xbr="1127.91" ybr="1433.75" z_order="24">
+    </box>
+    <polyline label="merge" source="manual" occluded="0" points="987.02,1373.76;1329.15,251.28" z_order="25">
+    </polyline>
+    <box label="section_header" source="manual" occluded="0" xtl="81.30" ytl="675.04" xbr="279.21" ybr="695.38" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="page_footer" source="file" occluded="0" xtl="85.49" ytl="1458.26" xbr="520.12" ybr="1487.24" z_order="25">
+    </box>
+    <polyline label="reading_order" source="manual" occluded="0" points="510.98,80.27;127.35,211.05;613.86,134.33;561.55,190.13;580.73,244.18;1082.94,163.97;509.24,355.79;540.63,425.54;481.34,455.18;493.54,477.85;211.05,538.88;233.72,594.68;158.74,685.36;122.12,723.72;141.30,767.32;101.19,835.32;123.86,878.92;479.59,685.36;510.98,781.27;924.26,978.31;174.43,1068.99;226.75,1211.98;113.40,1391.59;127.35,1412.51;97.71,1473.55;695.82,1163.15;739.42,1370.66;1266.04,78.53;1613.05,78.53;1421.23,270.34;1520.63,673.15;1388.10,1088.17;1433.44,1246.86;1398.56,1292.19;1578.90,1435.60;1854.40,126.00;1907.20,226.90;1847.30,304.60;1918.60,408.70;1850.50,514.30;1932.40,695.20;1870.90,831.10;1937.40,986.80;1864.98,1185.67;1954.40,1304.20" z_order="25">
+    </polyline>
+    <box label="section_header" source="manual" occluded="0" xtl="85.00" ytl="528.92" xbr="253.32" ybr="551.11" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="section_header" source="manual" occluded="0" xtl="416.09" ytl="673.19" xbr="552.96" ybr="697.23" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="manual" occluded="0" xtl="83.15" ytl="447.53" xbr="887.75" ybr="466.03" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <box label="list_item" source="manual" occluded="0" xtl="83.15" ytl="466.03" xbr="823.01" ybr="486.37" z_order="25">
+      <attribute name="level">1</attribute>
+    </box>
+    <polyline label="to_caption" source="manual" occluded="0" points="2014.12,205.82;1956.57,125.61" z_order="25">
+    </polyline>
+    <polyline label="merge" source="manual" occluded="0" points="531.91,1178.85;652.23,1128.28" z_order="25">
+    </polyline>
+  </image>
+</annotations>

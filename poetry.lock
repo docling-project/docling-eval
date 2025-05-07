@@ -1532,14 +1532,14 @@ vlm = ["accelerate (>=1.2.1,<2.0.0) ; sys_platform != \"darwin\" or platform_mac
 
 [[package]]
 name = "docling-core"
-version = "2.28.0"
+version = "2.30.0"
 description = "A python library to define and validate data types in Docling."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "docling_core-2.28.0-py3-none-any.whl", hash = "sha256:f1a01446996b90c4c151ec0ad247283888e6372f9dac0e356d06f8b9838ca4ca"},
-    {file = "docling_core-2.28.0.tar.gz", hash = "sha256:16a762c251063839d7b20624cd6f89c2488872377f8546b037e604606014fb66"},
+    {file = "docling_core-2.30.0-py3-none-any.whl", hash = "sha256:976648b95b44d1a0f5540b949a38aee284e9f078b4411385f8a31cd50b17573e"},
+    {file = "docling_core-2.30.0.tar.gz", hash = "sha256:5f064f80584803ae1e7b2818d6977ef2df7cd2e20168c7065443b07cc9de435f"},
 ]
 
 [package.dependencies]
@@ -5296,6 +5296,25 @@ files = [
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
+name = "pypdf2"
+version = "3.0.1"
+description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "PyPDF2-3.0.1.tar.gz", hash = "sha256:a74408f69ba6271f71b9352ef4ed03dc53a31aa404d29b5d31f53bfecfee1440"},
+    {file = "pypdf2-3.0.1-py3-none-any.whl", hash = "sha256:d16e4205cfee272fbdc0568b68d82be796540b1537508cef59388f839c191928"},
+]
+
+[package.extras]
+crypto = ["PyCryptodome"]
+dev = ["black", "flit", "pip-tools", "pre-commit (<2.18.0)", "pytest-cov", "wheel"]
+docs = ["myst_parser", "sphinx", "sphinx_rtd_theme"]
+full = ["Pillow", "PyCryptodome"]
+image = ["Pillow"]
+
+[[package]]
 name = "pypdfium2"
 version = "4.30.1"
 description = "Python bindings to PDFium"
@@ -7980,4 +7999,4 @@ hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "0567ed7bf16453af1997ddb9ba9c63b6edc80c59fd7b752457f1f2b1f5f4cf77"
+content-hash = "7f0ee074ca81e04176c000ac2147409a0cd4204abe3a8e57ac2b3d090755c558"
