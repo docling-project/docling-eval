@@ -771,14 +771,21 @@ def visualize(
 
 
 @app.command()
-def prepare_cvat_documents(
+def create_sliced_pdfs(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
-    source_dir: Annotated[Path, typer.Option(help="Dataset source path with pdf's")],
-    sliding_window: Annotated[int, typer.Option(help="sliding window")] = 1,
-    overlap_window: Annotated[int, typer.Option(help="overlap window")] = 0,
+    source_dir: Annotated[Path, typer.Option(help="Dataset source path with PDFs")],
+    slice_length: Annotated[int, typer.Option(help="sliding window")] = 1,
+    num_overlap: Annotated[int, typer.Option(help="overlap window")] = 0,
 ):
-    """Prepare multipage pdf documents into chunks."""
+    """Process multi-page pdf documents into chunks of slice_length with num_overlap overlapping pages in each slice."""
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    if slice_length < 1:
+        return ValueError("slice-length must be at least 1.")
+    if num_overlap > slice_length - 1:
+        return ValueError("num-overlap must be at most one less than slice-length")
+
+    num_overlap = max(num_overlap, 0)
 
     pdf_paths = glob.glob(f"{source_dir}/**/*.pdf", recursive=True)
     _log.info(f"#-pdfs: {pdf_paths}")
@@ -793,8 +800,8 @@ def prepare_cvat_documents(
 
                 _log.info(f"Processing {pdf_path} ({total_pages} pages)")
 
-                for start_page in range(0, total_pages):
-                    end_page = min(start_page + sliding_window, total_pages)
+                for start_page in range(0, total_pages, slice_length - num_overlap):
+                    end_page = min(start_page + slice_length, total_pages)
 
                     # Create a new PDF with the pages in the current window
                     writer = PdfWriter()
@@ -996,6 +1003,7 @@ def create(
         begin_index=begin_index,
         end_index=end_index,
         chunk_size=chunk_size,
+        do_visualization=do_visualization,
     )
 
     # Then create evaluation if provider specified

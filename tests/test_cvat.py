@@ -117,19 +117,6 @@ def test_run_cvat_on_pred():
 
 
 def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
-
-    def count_files(directory: Path):
-        # Get all entries in the directory
-        entries = os.listdir(directory)
-
-        # Filter to keep only files (not directories)
-        files_only = [
-            entry for entry in entries if os.path.isfile(os.path.join(directory, entry))
-        ]
-
-        # Return the count
-        return len(files_only)
-
     # Stage 1: create a plain-file gt/eval-dataset
     create(
         benchmark=BenchMarkNames.PLAIN_FILES,
