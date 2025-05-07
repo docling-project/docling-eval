@@ -6,7 +6,7 @@ from typing import Set
 
 from docling.datamodel.base_models import BoundingBox, Cluster
 from docling.utils.visualization import draw_clusters
-from docling_core.experimental.serializer.html import (
+from docling_core.transforms.serializer.html import (
     HTMLDocSerializer,
     HTMLOutputStyle,
     HTMLParams,
