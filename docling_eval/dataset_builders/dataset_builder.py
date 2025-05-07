@@ -309,13 +309,15 @@ class BaseEvaluationDatasetBuilder:
                         split_page_view=False,
                     )
                     """
+
                     """
                     tmp.save_as_json(
                         filename=json_path,
                         # labels=TRUE_HTML_EXPORT_LABELS,
-                        image_mode=ImageRefMode.EMBEDDED,
+                        # image_mode=ImageRefMode.EMBEDDED,
                     )
                     """
+
                     """
                     r.ground_truth_doc.save_as_json(
                         filename=json_path,
