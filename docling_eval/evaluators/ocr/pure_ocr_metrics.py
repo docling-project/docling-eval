@@ -83,7 +83,7 @@ def get_bbox_from_word(element: TextCell):
 
 def calculate_word_level_metrics(gt_text, pred_text):
     """
-    Calculates word-level comparison metrics using Levenshtein distance.
+    Calculates word-level comparison metrics using distance.
     Simplified: Returns hits=all GT words if texts match exactly, else hits=0.
     Returns substitutions = all GT words if texts differ but pred exists, else 0.
     """
