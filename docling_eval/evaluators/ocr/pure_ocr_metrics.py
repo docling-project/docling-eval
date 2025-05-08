@@ -182,8 +182,8 @@ def evaluate_single_pair(
             for r_valid, c_valid in zip(row_ind, col_ind):
                 iou = iou_matrix_valid[r_valid, c_valid]
                 if iou >= iou_threshold:
-                    gt_orig_idx = gt_map[r_valid]
-                    pred_orig_idx = pred_map[c_valid]
+                    gt_orig_idx = gt_map[int(r_valid)]
+                    pred_orig_idx = pred_map[int(c_valid)]
                     matched_pairs.append(
                         {"gt_idx": gt_orig_idx, "pred_idx": pred_orig_idx, "iou": iou}
                     )
