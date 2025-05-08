@@ -4,13 +4,20 @@ import logging
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from datasets import DownloadManager
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import BoundingBox, ImageRef, PageItem, ProvenanceItem, Size
 from docling_core.types.doc.document import GraphCell, GraphData, GraphLink
 from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
+)
+from docling_core.types.io import DocumentStream
 from PIL import Image
 from tqdm import tqdm
 
@@ -199,9 +206,9 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         bbox_instance = BoundingBox.enclosing_bbox(all_bboxes)
         return bbox_instance
 
-    def populate_key_value_item(
+    def _create_ground_truth_doc(
         self, doc: DoclingDocument, xfund_data: dict
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """
         Populate the key-value item from the XFUND data.
 
@@ -217,6 +224,19 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         form_items = xfund_data["document"]
 
+        segmented_pages: Dict[int, SegmentedPage] = {}
+
+        page_item: PageItem = doc.pages[1]
+        seg_page = SegmentedPage(
+            dimension=PageGeometry(
+                angle=0,
+                rect=BoundingRectangle.from_bounding_box(
+                    BoundingBox(
+                        l=0, t=0, r=page_item.size.width, b=page_item.size.height
+                    )
+                ),
+            )
+        )
         cell_by_id = {}
         for item in form_items:
             # We omit the items that are not relevant for key-value pairs.
@@ -247,6 +267,23 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
                 label=GraphCellLabel.KEY,  # later to be updated by classify_cells
             )
             cell_by_id[cell_id] = cell
+
+            for word in item.get("words", []):
+                text = word.get("text", None)
+                bbox = word.get("box", None)
+                if bbox is None or text is None:
+                    continue
+                bbox_obj = self.convert_bbox(bbox)
+                seg_page.word_cells.append(
+                    TextCell(
+                        from_ocr=True,
+                        rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                        text=text,
+                        orig=text,
+                    )
+                )
+
+        segmented_pages[doc.pages[1].page_no] = seg_page
 
         # Unique linking pairs
         linking_set = set()
@@ -289,7 +326,7 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         sort_cell_ids(doc)
 
-        return doc
+        return doc, segmented_pages
 
     def iterate(self) -> Iterable[DatasetRecord]:
         """
@@ -367,7 +404,7 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
                 true_doc.pages[1] = page_item
 
                 # Populate document with key-value data
-                true_doc = self.populate_key_value_item(true_doc, doc_data)
+                true_doc, seg_pages = self._create_ground_truth_doc(true_doc, doc_data)
 
                 # Extract images
                 true_doc, true_pictures, true_page_images = extract_images(
@@ -375,16 +412,19 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
                     pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
                     page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
                 )
-
+                image_stream = DocumentStream(
+                    name=img_path.stem, stream=io.BytesIO(img_bytes)
+                )
                 assert img.format is not None
                 # Create dataset record
                 record = DatasetRecord(
                     doc_id=Path(img_filename).stem,
                     doc_hash=get_binhash(img_bytes),
                     ground_truth_doc=true_doc,
-                    original=None,  # No original PDF/document stream
+                    ground_truth_segmented_pages=seg_pages,
+                    original=image_stream,
                     mime_type=f"image/{img.format.lower()}",
-                    modalities=[EvaluationModality.KEY_VALUE],
+                    modalities=[EvaluationModality.KEY_VALUE, EvaluationModality.OCR],
                     ground_truth_pictures=true_pictures,
                     ground_truth_page_images=true_page_images,
                 )
