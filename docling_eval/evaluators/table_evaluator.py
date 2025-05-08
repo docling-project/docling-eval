@@ -32,6 +32,7 @@ class TableEvaluation(UnitEvaluation):
     table_id: int = -1
     TEDS: float
     is_complex: bool = False
+    is_structure_only: bool = False
 
     true_ncols: int = -1
     pred_ncols: int = -1
@@ -227,7 +228,7 @@ class TableEvaluator(BaseEvaluator):
         dataset_evaluation = DatasetTableEvaluation(
             evaluated_samples=len(table_evaluations),
             rejected_samples=rejected_samples,
-            evaluations=table_evaluations,
+            evaluations=table_evaluations + table_struct_evaluations,
             TEDS=compute_stats(teds_all),
             TEDS_struct=compute_stats(teds_struct),
             TEDS_simple=compute_stats(teds_simple),
@@ -297,6 +298,7 @@ class TableEvaluator(BaseEvaluator):
                     pred_ncols=pred_table.data.num_cols,
                     true_nrows=true_table.data.num_rows,
                     pred_nrows=pred_table.data.num_rows,
+                    is_structure_only=structure_only,
                 )
                 table_evaluations.append(table_evaluation)
             except Exception:
