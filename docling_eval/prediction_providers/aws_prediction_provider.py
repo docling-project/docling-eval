@@ -2,13 +2,10 @@ import importlib.metadata
 import json
 import logging
 import os
-from io import BytesIO
-from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, Optional, Set, Tuple
 
 import boto3
 from docling.datamodel.base_models import ConversionStatus
-from docling_core.types import DoclingDocument
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
@@ -19,8 +16,14 @@ from docling_core.types.doc.document import (
     TableData,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
+)
 from docling_core.types.io import DocumentStream
-from PIL import Image
+from skimage.draw import polygon
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -186,13 +189,14 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
     def convert_aws_output_to_docling(
         self, analyze_result, record: DatasetRecord, file_bytes
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """Converts AWS Textract output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
 
         blocks_map = {block["Id"]: block for block in analyze_result.get("Blocks", [])}
 
         processed_pages = set()
+        segmented_pages: Dict[int, SegmentedPage] = {}
 
         # Get page dimensions from page block
         # AWS provides normalized coordinates, so we need to multiply by a typical page size
@@ -201,7 +205,6 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         im = record.ground_truth_page_images[0]
         width, height = im.size
 
-        # TODO: Can we get more detail than just "Text blocks" from AWS Textract? If they provide layout labels, let's use it here.
         for block in analyze_result.get("Blocks", []):
             if block["BlockType"] == "PAGE":
                 page_no = int(block.get("Page", 1))
@@ -223,33 +226,276 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                 doc.pages[page_no] = page_item
 
-            if block["BlockType"] == "WORD" and block.get("Page", 1) == page_no:
+                # Create SegmentedPage Entry if not already present for the page number
+                if page_no not in segmented_pages.keys():
+                    seg_page = SegmentedPage(
+                        dimension=PageGeometry(
+                            angle=0,
+                            rect=BoundingRectangle.from_bounding_box(
+                                BoundingBox(
+                                    l=0,
+                                    t=0,
+                                    r=page_item.size.width,
+                                    b=page_item.size.height,
+                                )
+                            ),
+                        )
+                    )
+                    segmented_pages[page_no] = seg_page
+
+            elif block["BlockType"] == "WORD" and block.get("Page", 1) == page_no:
+                text_content = block.get("Text", None)
+                geometry = block.get("Geometry", None)
+
+                if text_content is not None and geometry is not None:
+                    bbox = self.extract_bbox_from_geometry(geometry)
+                    # Scale normalized coordinates to the page dimensions
+                    bbox_obj = BoundingBox(
+                        l=bbox["l"] * width,
+                        t=bbox["t"] * height,
+                        r=bbox["r"] * width,
+                        b=bbox["b"] * height,
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    segmented_pages[page_no].word_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
+                            from_ocr=False,
+                        )
+                    )
+
+            elif block["BlockType"] == "LAYOUT_TITLE":
                 text_content = block.get("Text", "")
-                bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+                self._add_title(block, doc, height, page_no, text_content, width)
 
-                # Scale normalized coordinates to the page dimensions
-                bbox_obj = BoundingBox(
-                    l=bbox["l"] * width,
-                    t=bbox["t"] * height,
-                    r=bbox["r"] * width,
-                    b=bbox["b"] * height,
-                    coord_origin=CoordOrigin.TOPLEFT,
-                )
+            elif block["BlockType"] == "LAYOUT_HEADER":
+                self._add_page_header(block, doc, height, page_no, width)
 
-                prov = ProvenanceItem(
-                    page_no=page_no,
-                    bbox=bbox_obj,
-                    charspan=(0, len(text_content)),
-                )
+            elif block["BlockType"] == "LAYOUT_FOOTER":
+                self._add_page_footer(block, doc, height, page_no, width)
 
-                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+            elif block["BlockType"] == "LAYOUT_SECTION_HEADER":
+                self._add_heading(block, doc, height, page_no, width)
 
-            if block["BlockType"] == "TABLE":
+            elif block["BlockType"] == "LAYOUT_PAGE_NUMBER":
+                self._add_page_number(block, doc, height, page_no, width)
+
+            elif block["BlockType"] == "LAYOUT_LIST":
+                self._add_list(block, doc, height, page_no, width)
+
+            elif block["BlockType"] == "LAYOUT_FIGURE":
+                self._add_figure(block, doc, height, page_no, width)
+
+            elif block["BlockType"] == "LAYOUT_KEY_VALUE":
+                self._add_key_value(block, doc, height, page_no, width)
+
+            # This condition is to add only the layout of the table as predicted, doesn't contain the cell structure
+            elif block["BlockType"] == "LAYOUT_TABLE":
+                self._add_table_layout(block, doc, height, page_no, width)
+
+            elif block["BlockType"] == "LAYOUT_TEXT":
+                self._add_text(block, doc, height, page_no, width)
+
+            # This condition is to add output from actual tables API which adds detailed table
+            elif block["BlockType"] == "TABLE":
                 page_no = int(block.get("Page", 1))
                 table_prov, table_data = self.process_table(block, blocks_map, page_no)
                 doc.add_table(prov=table_prov, data=table_data, caption=None)
 
-        return doc
+        return doc, segmented_pages
+
+    def _add_text(self, block, doc, height, page_no, width):
+        """Maps AWS text to Docling text."""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+    def _add_table_layout(self, block, doc, height, page_no, width):
+        """Maps AWS table layout to Docling table layout"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_table(data=TableData(), prov=prov)
+
+    def _add_key_value(self, block, doc, height, page_no, width):
+        """Maps AWS Kew-Value pairs to Docling text"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+    def _add_figure(self, block, doc, height, page_no, width):
+        """Maps AWS Figure to Docling picture"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_picture(prov=prov)
+
+    def _add_list(self, block, doc, height, page_no, width):
+        """Maps AWS List to Docling List"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_list_item(text=text_content, prov=prov)
+
+    def _add_page_number(self, block, doc, height, page_no, width):
+        """Maps AWS page number to Docling text"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+    def _add_heading(self, block, doc, height, page_no, width):
+        """Maps AWS section header to Docling section header"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_heading(text=text_content, prov=prov)
+
+    def _add_page_footer(self, block, doc, height, page_no, width):
+        """Maps AWS page footer to Docling page footer"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_text(label=DocItemLabel.PAGE_FOOTER, text=text_content, prov=prov)
+
+    def _add_page_header(self, block, doc, height, page_no, width):
+        """Maps AWS page header to Docling page header"""
+        text_content = block.get("Text", "")
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_text(label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov)
+
+    def _add_title(self, block, doc, height, page_no, text_content, width):
+        """Maps AWS title to Docling title"""
+        bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
+        bbox_obj = BoundingBox(
+            l=bbox["l"] * width,
+            t=bbox["t"] * height,
+            r=bbox["r"] * width,
+            b=bbox["b"] * height,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        prov = ProvenanceItem(
+            page_no=page_no,
+            bbox=bbox_obj,
+            charspan=(0, len(text_content)),
+        )
+        doc.add_title(text=text_content, prov=prov)
 
     @property
     def prediction_format(self) -> PredictionFormats:
@@ -273,7 +519,8 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                 file_bytes = record.original.stream.read()
                 response = self.textract_client.analyze_document(
-                    Document={"Bytes": file_bytes}, FeatureTypes=["TABLES", "FORMS"]
+                    Document={"Bytes": file_bytes},
+                    FeatureTypes=["TABLES", "FORMS", "LAYOUT"],
                 )
                 result_orig = json.dumps(response, default=str)
                 result_json = json.loads(result_orig)
@@ -281,7 +528,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     f"Successfully processed [{record.doc_id}] using AWS Textract API!"
                 )
 
-                pred_doc = self.convert_aws_output_to_docling(
+                pred_doc, pred_segmented_pages = self.convert_aws_output_to_docling(
                     result_json, record, file_bytes
                 )
             else:
@@ -300,6 +547,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         pred_record = self.create_dataset_record_with_prediction(
             record, pred_doc, result_orig
         )
+        pred_record.predicted_segmented_pages = pred_segmented_pages
         pred_record.status = status
         return pred_record
 

@@ -3,9 +3,10 @@ import json
 import logging
 import os
 from io import BytesIO
-from pathlib import Path
 from typing import Dict, Optional, Set, Tuple
 
+from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.ai.documentintelligence.models import AnalyzeOutputOption
 from docling.datamodel.base_models import ConversionStatus
 
 # from docling_core.types import DoclingDocument
@@ -18,6 +19,12 @@ from docling_core.types.doc.document import (
     ProvenanceItem,
     TableCell,
     TableData,
+)
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
 )
 from docling_core.types.io import DocumentStream
 
@@ -64,13 +71,11 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         # TODO - Need a temp directory to save Azure outputs
         # Validate the required library
         try:
-            from azure.ai.formrecognizer import (  # type: ignore
-                AnalysisFeature,
-                DocumentAnalysisClient,
-            )
             from azure.core.credentials import AzureKeyCredential  # type: ignore
         except ImportError:
-            raise ImportError("azure-ai-formrecognizer library is not installed..")
+            raise ImportError(
+                "azure-ai-documentintelligence library is not installed.."
+            )
 
         # Validate the required endpoints to call the API
         endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
@@ -81,7 +86,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY must be set in environment variables."
             )
 
-        self.doc_intelligence_client = DocumentAnalysisClient(
+        self.doc_intelligence_client = DocumentIntelligenceClient(
             endpoint, AzureKeyCredential(key)
         )
 
@@ -108,9 +113,10 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
 
     def convert_azure_output_to_docling(
         self, analyze_result, record: DatasetRecord
-    ) -> DoclingDocument:
+    ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
         """Converts Azure Document Intelligence output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
+        segmented_pages: Dict[int, SegmentedPage] = {}
 
         for page in analyze_result.get("pages", []):
             page_no = page.get("page_number", 1)
@@ -134,32 +140,118 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             )
             doc.pages[page_no] = page_item
 
+            if page_no not in segmented_pages.keys():
+                seg_page = SegmentedPage(
+                    dimension=PageGeometry(
+                        angle=0,
+                        rect=BoundingRectangle.from_bounding_box(
+                            BoundingBox(
+                                l=0,
+                                t=0,
+                                r=page_item.size.width,
+                                b=page_item.size.height,
+                            )
+                        ),
+                    )
+                )
+                segmented_pages[page_no] = seg_page
+
             for word in page.get("words", []):
-                polygon = word.get("polygon", [])
-                bbox = self.extract_bbox_from_polygon(polygon)
+                polygon = word.get("polygon", None)
+                text_content = word.get("content", None)
 
-                text_content = word.get("content", "")
+                if text_content is not None and polygon is not None:
+                    bbox = self.extract_bbox_from_polygon(polygon)
+                    bbox_obj = BoundingBox(
+                        l=bbox["l"],
+                        t=bbox["t"],
+                        r=bbox["r"],
+                        b=bbox["b"],
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
 
-                bbox_obj = BoundingBox(
-                    l=bbox["l"],
-                    t=bbox["t"],
-                    r=bbox["r"],
-                    b=bbox["b"],
-                    coord_origin=CoordOrigin.TOPLEFT,
-                )
+                    segmented_pages[page_no].word_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            # Keeping from_ocr flag False since Azure output doesn't indicate whether the given word is programmatic or OCR
+                            from_ocr=False,
+                        )
+                    )
 
-                prov = ProvenanceItem(
-                    page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
-                )
+        # Iterate over tables in the response and add to DoclingDocument
+        self._add_tables(analyze_result, doc)
 
-                # TODO: This needs to be developed further. Azure responses contain full-page document information,
-                #       with text and layout features,
-                #       see https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/prebuilt/layout
-                #       This code only adds the primitive text content, without
-                #       layout labels or reading order, then all tables separately. This will work for plain
-                #       table datasets only.
+        # Iterate over paragraphs in the response and add populate fields like section headings, header-footer based on "role" field
+        self._handle_paragraphs_based_on_roles(analyze_result, doc)
+
+        # Iterate over figures and add them as pictures in DoclingDocument
+        self._add_figures(analyze_result, doc)
+
+        return doc, segmented_pages
+
+    def _add_figures(self, analyze_result, doc):
+        for figure in analyze_result.get("figures", []):
+            bounding_regions = figure["boundingRegions"][0]
+            page_no = bounding_regions["pageNumber"]
+            polygon = bounding_regions.get("polygon", [])
+            bbox = self.extract_bbox_from_polygon(polygon)
+
+            bbox_obj = BoundingBox(
+                l=bbox["l"],
+                t=bbox["t"],
+                r=bbox["r"],
+                b=bbox["b"],
+                coord_origin=CoordOrigin.TOPLEFT,
+            )
+
+            prov = ProvenanceItem(page_no=page_no, bbox=bbox_obj, charspan=(0, 0))
+            doc.add_picture(prov=prov)
+
+    def _handle_paragraphs_based_on_roles(self, analyze_result, doc):
+        for paragraph in analyze_result.get("paragraphs", []):
+            bounding_regions = paragraph["boundingRegions"][0]
+            page_no = bounding_regions["pageNumber"]
+            polygon = bounding_regions.get("polygon", [])
+            bbox = self.extract_bbox_from_polygon(polygon)
+
+            text_content = paragraph.get("content", "")
+
+            bbox_obj = BoundingBox(
+                l=bbox["l"],
+                t=bbox["t"],
+                r=bbox["r"],
+                b=bbox["b"],
+                coord_origin=CoordOrigin.TOPLEFT,
+            )
+
+            prov = ProvenanceItem(
+                page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
+            )
+
+            role = paragraph.get("role", None)
+            if role:
+                if role == "sectionHeading":
+                    doc.add_heading(text=text_content, prov=prov)
+                elif role == "title":
+                    doc.add_title(text=text_content, prov=prov)
+                elif role == "footnote":
+                    doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+                elif role == "pageHeader":
+                    doc.add_text(
+                        label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov
+                    )
+                elif role == "pageFooter":
+                    doc.add_text(
+                        label=DocItemLabel.PAGE_FOOTER, text=text_content, prov=prov
+                    )
+                elif role == "pageNumber":
+                    doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+            else:
                 doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
+    def _add_tables(self, analyze_result, doc):
         for table in analyze_result.get("tables", []):
             page_no = table.get("page_range", {}).get("first_page_number", 1)
             row_count = table.get("row_count", 0)
@@ -183,7 +275,6 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             table_cells = []
 
             for cell in table.get("cells", []):
-
                 cell_text = cell.get("content", "").strip()
                 row_index = cell.get("row_index", 0)
                 col_index = cell.get("column_index", 0)
@@ -221,8 +312,6 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
 
             doc.add_table(prov=table_prov, data=table_data, caption=None)
 
-        return doc
-
     @property
     def prediction_format(self) -> PredictionFormats:
         """Get the prediction format."""
@@ -255,10 +344,13 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     )
                 # Call the Azure API by passing in the image for prediction
                 poller = self.doc_intelligence_client.begin_analyze_document(
-                    "prebuilt-layout", record.original.stream, features=[]
+                    "prebuilt-layout",
+                    record.original.stream,
+                    features=[],
+                    output=[AnalyzeOutputOption.FIGURES],
                 )
-                result = poller.result()
-                result_json = result.to_dict()
+                result = poller.result().as_dict()
+                result_json = json.dumps(result)
                 _log.info(
                     f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
@@ -271,10 +363,13 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 record.ground_truth_page_images[0].save(buf, format="PNG")
 
                 poller = self.doc_intelligence_client.begin_analyze_document(
-                    "prebuilt-layout", BytesIO(buf.getvalue()), features=[]
+                    "prebuilt-layout",
+                    BytesIO(buf.getvalue()),
+                    features=[],
+                    output=[AnalyzeOutputOption.FIGURES],
                 )
-                result = poller.result()
-                result_json = result.to_dict()
+                result = poller.result().as_dict()
+                result_json = json.dumps(result, default=str)
                 _log.info(
                     f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
@@ -283,8 +378,9 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf' and 'image/png'"
                 )
             # Convert the prediction to doclingDocument
-            pred_doc = self.convert_azure_output_to_docling(result_json, record)
-            result_orig = json.dumps(result_json)
+            pred_doc, pred_segmented_pages = self.convert_azure_output_to_docling(
+                json.loads(result_json), record
+            )
 
         except Exception as e:
             _log.error(
@@ -298,13 +394,14 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             )  # Use copy of ground truth as fallback
 
         pred_record = self.create_dataset_record_with_prediction(
-            record, pred_doc, result_orig
+            record, pred_doc, result_json
         )
+        pred_record.predicted_segmented_pages = pred_segmented_pages
         pred_record.status = status
         return pred_record
 
     def info(self) -> Dict:
         return {
             "asset": PredictionProviderType.AZURE,
-            "version": importlib.metadata.version("azure-ai-formrecognizer"),
+            "version": importlib.metadata.version("azure-ai-documentintelligence"),
         }
