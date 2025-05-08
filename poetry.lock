@@ -7447,6 +7447,18 @@ files = [
 ]
 
 [[package]]
+name = "types-editdistance"
+version = "0.8.0.20250401"
+description = "Typing stubs for editdistance"
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "types_editdistance-0.8.0.20250401-py3-none-any.whl", hash = "sha256:f405cfd881ca6c43d76a2698bef13178ed0711fc47f815db731e5c8946edc88c"},
+    {file = "types_editdistance-0.8.0.20250401.tar.gz", hash = "sha256:98f73c5c8f0c72cf9c5f1521c16fb546185a901df478f96b97b0f49df6d58675"},
+]
+
+[[package]]
 name = "types-openpyxl"
 version = "3.1.5.20250306"
 description = "Typing stubs for openpyxl"
@@ -8028,4 +8040,4 @@ hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "e2e9392e5f1606a68ab0e1b30d1b0b110236ddfb5189f1b669b384c26f9b8566"
+content-hash = "f1b87c2ef1c867ad1672137d97938dd496b398a2953dcdd085c6fe4ca24ab00e"

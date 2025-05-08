@@ -78,6 +78,7 @@ xmltodict = "^0.14.2"
 types-protobuf = "^5.29.1.20250315"
 boto3-stubs = "^1.37.19"
 types-urllib3 = "^1.26.25.14"
+types-editdistance = "^0.8.0.20250401"
 
 [tool.poetry.extras]
 hyperscalers = ["azure-ai-formrecognizer", "azure-common", "azure-core", "boto3", "google-cloud-documentai"]

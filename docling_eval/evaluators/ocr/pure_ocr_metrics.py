@@ -127,7 +127,7 @@ def evaluate_single_pair(
     num_gt_original = len(gt_words)
     num_pred_original = len(pred_words)
 
-    pair_results = defaultdict(float)
+    pair_results: defaultdict[str, float] = defaultdict(float)
     pair_results["_num_gt_original"] = num_gt_original
     pair_results["_num_pred_original"] = num_pred_original
     pair_results["_num_matches"] = 0

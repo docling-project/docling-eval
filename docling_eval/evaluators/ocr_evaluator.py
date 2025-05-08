@@ -1,23 +1,15 @@
 import glob
-import json
 import logging
-import os
-import re
-import statistics
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import List, Optional
 
-import pandas as pd
 from datasets import Dataset, load_dataset
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
-from docling_core.types.doc.document import DoclingDocument
-from docling_core.types.doc.page import SegmentedPage, TextCellUnit
 from pydantic import BaseModel
 from tqdm import tqdm
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
-from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
+from docling_eval.datamodels.types import PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator
 from docling_eval.evaluators.ocr.pure_ocr_metrics import (
     calculate_aggregated_metrics,
@@ -155,7 +147,7 @@ class OCREvaluator(BaseEvaluator):
         ds_selection: Dataset = ds[split]
 
         page_evaluations_list: List[PageOcrEvaluation] = []
-        dataset_sum_of_doc_results = defaultdict(float)
+        dataset_sum_of_doc_results: defaultdict[str, float] = defaultdict(float)
         total_processed_page_pairs = 0
         num_valid_records = 0
 
@@ -181,7 +173,7 @@ class OCREvaluator(BaseEvaluator):
             true_segpages = data_record.ground_truth_segmented_pages
             pred_segpages = data_record.predicted_segmented_pages
 
-            current_doc_aggregated_results = defaultdict(float)
+            current_doc_aggregated_results: defaultdict[str, float] = defaultdict(float)
             doc_pages_processed_count = 0
 
             for page_no, true_seg_page in true_segpages.items():
@@ -216,7 +208,7 @@ class OCREvaluator(BaseEvaluator):
                     if self._intermediate_evaluations_path:
                         self.save_intermediate_evaluations(
                             evaluation_name="ocr_eval",
-                            enumerate_id=i,
+                            enunumerate_id=i,
                             doc_id=doc_id,
                             evaluations=[doc_evaluation.model_dump()],
                         )
