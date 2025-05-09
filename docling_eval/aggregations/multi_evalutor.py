@@ -213,7 +213,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
 
                 # Create the pred dataset
                 _log.info(
-                    "Creating predictions for: %s / %s / %s",
+                    "Creating predictions for: %s / %s",
                     benchmark.value,
                     provider_type.value,
                 )

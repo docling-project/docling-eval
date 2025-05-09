@@ -79,16 +79,17 @@ if __name__ == "__main__":
     Running multi-evaluation and consolidation inside a working directory and generate matrix reports
     
     The working directory must have the structure:
-
-    <working_dir_root>
-        |- "consolidation": Output: Generated consolidation reports (e.g. excel files)
-        |- [dataset_name]: Input/Output: One of the BenchMarkNames.
-              |- "_GT_": Input/Output: Reserved directory for the ground truth data for this dataset.
-              |- [experiment_name]: Input/Output: Can be a provider's name or anything else.
-                    |- "predictions": Reserved directory with the predictions as parquet files.
-                    |- [modality_name]: One of the EvaluationModality.
-                         |- "evaluation_xxx.json": Json file with evaluations.
-        
+    .
+    ├── consolidation
+    │   └── consolidation_matrix.xlsx
+    └── <benchmark_name>
+        ├── _GT_  [Dir with dataset in parquet format with the ground truth DoclingDocuments]
+        └── <experiment_name> [It can be the name of a provider or anything else]
+            ├── <modality1>
+            │   └── evaluation_<benchmark>_<modality1>.json
+            ├── <modality2>
+            │   └── evaluation_<benchmark>_<modality2>.json
+            └── predictions [Dir with dataset in parquet format with the prediction DoclingDocuments]
     """
     parser = argparse.ArgumentParser(
         description=desription, formatter_class=argparse.RawTextHelpFormatter
