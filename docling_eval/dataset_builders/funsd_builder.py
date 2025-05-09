@@ -368,6 +368,12 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
 
                 # Load image and annotation
                 img = Image.open(img_path)
+                if img.mode != "RGBA":
+                    _log.debug(
+                        f"Converting image {img_path.name} from {img.mode} to RGBA during dataset preparation."
+                    )
+                    img = img.convert("RGBA")
+
                 with open(annotation_path, "r", encoding="utf-8") as f:
                     funsd_data = json.load(f)
 

@@ -72,13 +72,25 @@ def filter_text(text, ignore_regex=None, ignore_single_chars=False):
     return text_str
 
 
-def get_text_from_element(element):
+def get_text_from_element(element: TextCell):
     """Safely extracts text"""
-    return str(element.get("text", element.get("orig", "")))
+    return element.text
 
 
 def get_bbox_from_word(element: TextCell):
-    return element.rect
+    rect = element.rect
+    if not rect:
+        return None
+
+    all_x = [rect.r_x0, rect.r_x1, rect.r_x2, rect.r_x3]
+    all_y = [rect.r_y0, rect.r_y1, rect.r_y2, rect.r_y3]
+
+    return {
+        "l": min(all_x),
+        "t": min(all_y),
+        "r": max(all_x),
+        "b": max(all_y),
+    }
 
 
 def calculate_word_level_metrics(gt_text, pred_text):
