@@ -9,6 +9,8 @@ from typing import Annotated, Dict, Optional, Tuple
 import typer
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import (
+    AcceleratorDevice,
+    AcceleratorOptions,
     PaginatedPipelineOptions,
     PdfPipelineOptions,
     VlmPipelineOptions,
@@ -244,6 +246,9 @@ def get_prediction_provider(
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
             kind="easyocr",
         )
+        accelerator_options = AcceleratorOptions(
+            num_threads=16,
+        )
 
         pipeline_options = PdfPipelineOptions(
             do_ocr=True,
@@ -255,6 +260,7 @@ def get_prediction_provider(
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
         pipeline_options.generate_parsed_pages = True
+        pipeline_options.accelerator_options = accelerator_options
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
