@@ -318,24 +318,24 @@ def extract_images(
     page_images_column: str,
 ):
 
-    pictures = []
-    page_images = []
+    pictures: list[PIL.Image.Image] = []
+    page_images: list[PIL.Image.Image] = []
 
     # Save page images
     for img_no, picture in enumerate(document.pictures):
-        if picture.image is not None:
-            # img = picture.image.pil_image
-            # pictures.append(to_pil(picture.image.uri))
+        if picture.image is not None and picture.image.pil_image is not None:
+            img_ind = len(pictures)
+
             pictures.append(picture.image.pil_image)
-            picture.image.uri = Path(f"{pictures_column}/{img_no}")
+            picture.image.uri = Path(f"{pictures_column}/{img_ind}")
 
     # Save page images
     for page_no, page in document.pages.items():
-        if page.image is not None:
-            # img = page.image.pil_image
-            # img.show()
+        if page.image is not None and page.image.pil_image is not None:
+            img_ind = len(page_images)
+
             page_images.append(page.image.pil_image)
-            page.image.uri = Path(f"{page_images_column}/{page_no}")
+            page.image.uri = Path(f"{page_images_column}/{img_ind}")
 
     return document, pictures, page_images
 
@@ -349,16 +349,35 @@ def insert_images_from_pil(
     # Inject picture images
     for pic_no, picture in enumerate(document.pictures):
         if picture.image is not None:
-            if pic_no < len(pictures):
-                picture.image._pil = pictures[pic_no]
-                picture.image.uri = from_pil_to_base64uri(pictures[pic_no])
+
+            uri = str(picture.image.uri)
+            if uri.startswith(BenchMarkColumns.GROUNDTRUTH_PICTURES) or uri.startswith(
+                BenchMarkColumns.PREDICTION_PICTURES
+            ):
+
+                img_parts = str(picture.image.uri).split("/")
+                img_ind = int(img_parts[-1])
+
+                assert img_ind < len(pictures)
+
+                picture.image._pil = pictures[img_ind]
+                picture.image.uri = from_pil_to_base64uri(pictures[img_ind])
 
     # Inject page images
     for page_no, page in document.pages.items():
         if page.image is not None:
-            if (page_no - 1) < len(page_images):
-                page.image._pil = page_images[page_no - 1]
-                page.image.uri = from_pil_to_base64uri(page_images[page_no - 1])
+
+            uri = str(page.image.uri)
+            if uri.startswith(
+                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
+            ) or uri.startswith(BenchMarkColumns.PREDICTION_PAGE_IMAGES):
+                img_parts = str(page.image.uri).split("/")
+                img_ind = int(img_parts[-1])
+
+                assert img_ind < len(page_images)
+
+                page.image._pil = page_images[img_ind]
+                page.image.uri = from_pil_to_base64uri(page_images[img_ind])
 
     return document
 

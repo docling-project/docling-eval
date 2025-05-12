@@ -569,12 +569,27 @@ def test_run_pixparse_builder():
     dataset_pixparse.retrieve_input_dataset()
     dataset_pixparse.save_to_disk()  # does all the job of iterating the dataset, making GT+prediction records, and saving them in shards as parquet.
     docling_provider = get_prediction_provider(PredictionProviderType.DOCLING)
+    docling_provider.ignore_missing_predictions = False
 
     docling_provider.create_prediction_dataset(
         name=dataset_pixparse.name,
         gt_dataset_dir=target_path / "gt_dataset",
         target_dataset_dir=target_path / "eval_dataset_e2e",
         end_index=5,
+    )
+
+    evaluate(
+        modality=EvaluationModality.OCR,
+        benchmark=BenchMarkNames.PIXPARSEIDL,
+        idir=target_path / "eval_dataset_e2e",
+        odir=target_path / "evaluations" / EvaluationModality.OCR.value,
+    )
+
+    visualize(
+        modality=EvaluationModality.OCR,
+        benchmark=BenchMarkNames.PIXPARSEIDL,
+        idir=target_path / "eval_dataset_e2e",
+        odir=target_path / "evaluations" / EvaluationModality.OCR.value,
     )
 
 

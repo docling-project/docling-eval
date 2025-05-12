@@ -7,9 +7,10 @@ from typing import Dict, List
 
 from datasets import load_dataset
 from docling_core.types.doc import DocItemLabel
-from docling_core.types.doc.base import BoundingBox
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
 from docling_core.types.io import DocumentStream
+from PIL import Image
 from pydantic import ValidationError
 
 from docling_eval.datamodels.cvat_types import (
@@ -288,7 +289,7 @@ class CvatPreannotationBuilder:
         with open(str(self.benchmark_dirs.project_desc_file), "w") as fw:
             json.dump(results, fw, indent=2)
 
-    def _create_preannotation_files(self) -> None:
+    def _create_preannotation_files(self, sliding_window: int = 2) -> None:
         """
         Create CVAT preannotation files.
 
@@ -297,14 +298,38 @@ class CvatPreannotationBuilder:
         correct file paths for later processing.
         """
         # Dictionary to store annotations by bucket ID
-        bucket_annotations: Dict[int, List[str]] = {}
+        bucket_annotations: dict[int, list[str]] = {}
 
         img_id = 0
         for doc_overview in self.overview.doc_annotations:
-            try:
+
+            # try:
+            if True:
                 # Load document from the saved JSON file
                 doc = DoclingDocument.load_from_json(doc_overview.document_file)
 
+                if sliding_window == 1 or doc_overview.mime_type != "application/pdf":
+                    img_id = self._process_each_page_in_the_document(
+                        img_id=img_id,
+                        bucket_annotations=bucket_annotations,
+                        doc=doc,
+                        doc_overview=doc_overview,
+                    )
+
+                elif sliding_window > 1 and doc_overview.mime_type == "application/pdf":
+                    img_id = self._process_pages_in_the_document_with_sliding_window(
+                        img_id=img_id,
+                        bucket_annotations=bucket_annotations,
+                        doc=doc,
+                        doc_overview=doc_overview,
+                        sliding_window=sliding_window,
+                        overlap_window=sliding_window,
+                    )
+
+                else:
+                    _log.error(f"no support for {doc_overview.document_file}")
+
+                """
                 # Process each page in the document
                 for page_no, page in doc.pages.items():
                     img_id += 1
@@ -374,12 +399,15 @@ class CvatPreannotationBuilder:
 
                     annotated_image.bbox_annotations = page_bboxes
                     bucket_annotations[bucket_id].append(annotated_image.to_cvat())
+                """
 
+            """
             except Exception as e:
                 _log.error(
                     f"Error processing document {doc_overview.doc_name}: {str(e)}"
                 )
                 continue
+            """
 
         # Write preannotation XML files for each bucket
         for bucket_id, annotations in bucket_annotations.items():
@@ -390,6 +418,245 @@ class CvatPreannotationBuilder:
         _log.info(
             f"Saved annotation overview to {self.benchmark_dirs.overview_file} with {len(self.overview.img_annotations)} images"
         )
+
+    def _process_pages_in_the_document_with_sliding_window(
+        self,
+        img_id: int,
+        bucket_annotations: dict[int, list[str]],
+        doc: DoclingDocument,
+        doc_overview: AnnotatedDoc,
+        sliding_window: int,
+        overlap_window: int,
+    ) -> int:
+        page_nos: list[int] = list(doc.pages.keys())
+
+        # for start_page in range(0, total_pages, sliding_window-overlap_window):
+        for page_start in page_nos:
+            page_end = min(page_start + sliding_window, max(page_nos) + 1)
+
+            # Skip if it is not of the correct size
+            if page_end - page_start != sliding_window:
+                continue
+
+            img_id += 1
+
+            # Calculate bucket ID consistently for both folder and XML naming
+            bucket_id = (img_id - 1) // self.bucket_size
+            bucket_dir = self.benchmark_dirs.tasks_dir / f"task_{bucket_id:02}"
+            os.makedirs(bucket_dir, exist_ok=True)
+
+            # Initialize bucket annotation list if needed
+            if bucket_id not in bucket_annotations:
+                bucket_annotations[bucket_id] = []
+
+            # Use document name and hash for consistent naming
+            doc_name = doc_overview.doc_name
+            doc_hash = doc_overview.doc_hash
+
+            # Create unique filename for the page image
+            filename = f"doc_{doc_hash}_ps_{page_start:06}_pe_{page_end:06}.png"
+
+            # Create annotated image record - using the SAME document file path
+            annotated_image = AnnotatedImage(
+                img_id=img_id,
+                mime_type=doc_overview.mime_type,
+                document_file=doc_overview.document_file,  # Use the consistent file path
+                bin_file=doc_overview.bin_file,
+                doc_name=doc_name,
+                doc_hash=doc_hash,
+                bucket_dir=bucket_dir,
+                img_file=bucket_dir / filename,
+            )
+
+            page_imgs = {}
+            for page_no in range(page_start, page_end):
+
+                # Extract and save page image
+                page_image_ref = doc.pages[page_no].image
+                if page_image_ref is not None:
+                    page_image = page_image_ref.pil_image
+
+                    if page_image is not None:
+                        page_imgs[page_no] = page_image
+                    else:
+                        _log.warning(
+                            f"Missing pillow image for page {page_no}, skipping..."
+                        )
+                else:
+                    _log.warning(
+                        f"Missing image reference for page {page_no}, skipping..."
+                    )
+
+            if len(page_imgs) != page_end - page_start:
+                _log.error(f"Could not extract enough page-images, skipping ...")
+                continue
+
+            skip = False
+            for page_no, img in page_imgs.items():
+                if page_imgs[page_start].height != img.height:
+                    _log.warning(
+                        f"{page_imgs[page_start].width} != {img.width} or {page_imgs[page_start].height} != {img.height}"
+                    )
+                    skip = True
+
+            if skip:
+                _log.error(f"No consistent image-heights, skipping ...")
+                continue
+
+            # One-liner to glue images horizontally (left to right)
+            combined_image = Image.new(
+                "RGB",
+                (
+                    sum(img.width for page_no, img in page_imgs.items()),
+                    page_imgs[page_start].height,
+                ),
+            )
+
+            x0 = 0
+            for page_no, img in page_imgs.items():
+
+                annotated_image.page_to_bbox[page_no] = BoundingBox(
+                    l=x0,
+                    r=x0 + img.width,
+                    b=0,
+                    t=img.height,
+                    coord_origin=CoordOrigin.BOTTOMLEFT,
+                )
+
+                combined_image.paste(img, (x0, 0))
+                x0 += img.width
+
+            # combined_image.show()
+
+            # Save combined images
+            _log.info(f"saving {annotated_image.img_file}")
+            combined_image.save(annotated_image.img_file)
+
+            annotated_image.img_w = combined_image.width
+            annotated_image.img_h = combined_image.height
+            annotated_image.page_nos = [
+                page_no for page_no in range(page_start, page_end)
+            ]
+
+            # Save individual page images
+            annotated_image.page_img_files = []
+            for page_no in range(page_start, page_end):
+                # Create unique filename for the page image
+                page_filename = f"doc_{doc_hash}_page_{page_no:06}.png"
+
+                # Save page image to both task directory and page images directory
+                page_img_file = self.benchmark_dirs.page_imgs_dir / page_filename
+                annotated_image.page_img_files.append(page_img_file)
+
+                _log.info(f"saving {page_img_file}")
+                page_imgs[page_no].save(str(page_img_file))
+
+            # Extract bounding boxes for annotation
+            page_bboxes = []
+
+            for page_no in range(page_start, page_end):
+                bboxs = self._extract_page_bounding_boxes(
+                    doc=doc,
+                    page_no=page_no,
+                    img_w=annotated_image.page_to_bbox[page_no].width,
+                    # img_w=page_to_bbox[page_no].width,
+                    img_h=annotated_image.page_to_bbox[page_no].height,
+                    # img_h=page_to_bbox[page_no].height,
+                )
+
+                # Shift the bbox to the right
+                for _ in bboxs:
+                    _.bbox.l += annotated_image.page_to_bbox[page_no].l
+                    # _.bbox.l += page_to_bbox[page_no].l
+                    _.bbox.r += annotated_image.page_to_bbox[page_no].l
+                    # _.bbox.r += page_to_bbox[page_no].l
+
+                page_bboxes.extend(bboxs)
+
+            annotated_image.bbox_annotations = page_bboxes
+            bucket_annotations[bucket_id].append(annotated_image.to_cvat())
+
+            # Add to overview using filename as key
+            self.overview.img_annotations[filename] = annotated_image
+
+        return img_id
+
+    def _process_each_page_in_the_document(
+        self,
+        img_id: int,
+        bucket_annotations: dict[int, list[str]],
+        doc: DoclingDocument,
+        doc_overview: AnnotatedDoc,
+    ) -> int:
+        """Process each page in the document."""
+        for page_no, page in doc.pages.items():
+            img_id += 1
+
+            # Calculate bucket ID consistently for both folder and XML naming
+            bucket_id = (img_id - 1) // self.bucket_size
+            bucket_dir = self.benchmark_dirs.tasks_dir / f"task_{bucket_id:02}"
+            os.makedirs(bucket_dir, exist_ok=True)
+
+            # Initialize bucket annotation list if needed
+            if bucket_id not in bucket_annotations:
+                bucket_annotations[bucket_id] = []
+
+            # Use document name and hash for consistent naming
+            doc_name = doc_overview.doc_name
+            doc_hash = doc_overview.doc_hash
+
+            # Create unique filename for the page image
+            filename = f"doc_{doc_hash}_page_{page_no:06}.png"
+
+            # Create annotated image record - using the SAME document file path
+            annotated_image = AnnotatedImage(
+                img_id=img_id,
+                mime_type=doc_overview.mime_type,
+                document_file=doc_overview.document_file,  # Use the consistent file path
+                bin_file=doc_overview.bin_file,
+                doc_name=doc_name,
+                doc_hash=doc_hash,
+                bucket_dir=bucket_dir,
+                img_file=bucket_dir / filename,
+            )
+
+            # Save page image to both task directory and page images directory
+            page_img_file = self.benchmark_dirs.page_imgs_dir / filename
+            annotated_image.page_img_files = [page_img_file]
+
+            # Extract and save page image
+            page_image_ref = page.image
+            if page_image_ref is not None:
+                page_image = page_image_ref.pil_image
+
+                if page_image is not None:
+                    page_image.save(str(annotated_image.img_file))
+                    page_image.save(str(annotated_image.page_img_files[0]))
+
+                    annotated_image.img_w = page_image.width
+                    annotated_image.img_h = page_image.height
+                    annotated_image.page_nos = [page_no]
+
+                    # Add to overview using filename as key
+                    self.overview.img_annotations[filename] = annotated_image
+                else:
+                    _log.warning(
+                        f"Missing pillow image for page {page_no}, skipping..."
+                    )
+                    continue
+            else:
+                _log.warning(f"Missing image reference for page {page_no}, skipping...")
+                continue
+
+            # Extract bounding boxes for annotation
+            page_bboxes = self._extract_page_bounding_boxes(
+                doc, page_no, annotated_image.img_w, annotated_image.img_h
+            )
+
+            annotated_image.bbox_annotations = page_bboxes
+            bucket_annotations[bucket_id].append(annotated_image.to_cvat())
+
+        return img_id
 
     def _extract_page_bounding_boxes(
         self, doc: DoclingDocument, page_no: int, img_w: int, img_h: int
@@ -422,6 +689,7 @@ class CvatPreannotationBuilder:
 
                     page_bboxes.append(
                         AnnotationBBox(
+                            page_no=page_no,
                             bbox_id=len(page_bboxes),
                             label=item.label,
                             bbox=BoundingBox(

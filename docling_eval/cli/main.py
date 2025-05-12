@@ -1,3 +1,4 @@
+import glob
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ from docling.datamodel.pipeline_options import (
 from docling.document_converter import FormatOption, PdfFormatOption
 from docling.models.factories import get_ocr_factory
 from docling.pipeline.vlm_pipeline import VlmPipeline
+from PyPDF2 import PdfReader, PdfWriter
 from tabulate import tabulate  # type: ignore
 
 from docling_eval.datamodels.types import (
@@ -252,6 +254,7 @@ def get_prediction_provider(
         pipeline_options.images_scale = 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
+        pipeline_options.generate_parsed_pages = True
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
@@ -769,6 +772,56 @@ def visualize(
 
 
 @app.command()
+def create_sliced_pdfs(
+    output_dir: Annotated[Path, typer.Option(help="Output directory")],
+    source_dir: Annotated[Path, typer.Option(help="Dataset source path with PDFs")],
+    slice_length: Annotated[int, typer.Option(help="sliding window")] = 1,
+    num_overlap: Annotated[int, typer.Option(help="overlap window")] = 0,
+):
+    """Process multi-page pdf documents into chunks of slice_length with num_overlap overlapping pages in each slice."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if slice_length < 1:
+        return ValueError("slice-length must be at least 1.")
+    if num_overlap > slice_length - 1:
+        return ValueError("num-overlap must be at most one less than slice-length")
+
+    num_overlap = max(num_overlap, 0)
+
+    pdf_paths = glob.glob(f"{source_dir}/**/*.pdf", recursive=True)
+    _log.info(f"#-pdfs: {pdf_paths}")
+
+    for pdf_path in pdf_paths:
+        base_name = os.path.basename(pdf_path).replace(".pdf", "")
+
+        try:
+            with open(pdf_path, "rb") as pdf_file:
+                reader = PdfReader(pdf_file)
+                total_pages = len(reader.pages)
+
+                _log.info(f"Processing {pdf_path} ({total_pages} pages)")
+
+                for start_page in range(0, total_pages, slice_length - num_overlap):
+                    end_page = min(start_page + slice_length, total_pages)
+
+                    # Create a new PDF with the pages in the current window
+                    writer = PdfWriter()
+
+                    for page_num in range(start_page, end_page):
+                        writer.add_page(reader.pages[page_num])
+
+                    # Save the new PDF
+                    output_path = os.path.join(
+                        output_dir, f"{base_name}_ps_{start_page}_pe_{end_page}.pdf"
+                    )
+                    with open(output_path, "wb") as output_file:
+                        writer.write(output_file)
+
+        except Exception as e:
+            _log.error(f"Error processing {pdf_path}: {e}")
+
+
+@app.command()
 def create_cvat(
     output_dir: Annotated[Path, typer.Option(help="Output directory")],
     gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
@@ -798,6 +851,9 @@ def create_gt(
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
     chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create ground truth dataset only."""
     gt_dir = output_dir / "gt_dataset"
@@ -815,7 +871,9 @@ def create_gt(
         # Retrieve and save the dataset
         if dataset_builder.must_retrieve:
             dataset_builder.retrieve_input_dataset()
-        dataset_builder.save_to_disk(chunk_size=chunk_size)
+        dataset_builder.save_to_disk(
+            chunk_size=chunk_size, do_visualization=do_visualization
+        )
 
         _log.info(f"Ground truth dataset created at {gt_dir}")
     except ValueError as e:
@@ -837,6 +895,7 @@ def create_eval(
     end_index: Annotated[
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
+    chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
     # File provider required options
     file_prediction_format: Annotated[
         Optional[str],
@@ -856,6 +915,9 @@ def create_eval(
             help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create evaluation dataset from existing ground truth."""
     gt_dir = gt_dir or output_dir / "gt_dataset"
@@ -883,6 +945,7 @@ def create_eval(
             file_source_path=file_source_path,
             file_prediction_format=file_format,
             artifacts_path=artifacts_path,
+            do_visualization=do_visualization,
         )
 
         # Get the dataset name from the benchmark
@@ -896,6 +959,7 @@ def create_eval(
             split=split,
             begin_index=begin_index,
             end_index=end_index,
+            chunk_size=chunk_size,
         )
 
         _log.info(f"Evaluation dataset created at {pred_dir}")
@@ -926,6 +990,9 @@ def create(
     file_source_path: Annotated[
         Optional[Path], typer.Option(help="Source path for File provider")
     ] = None,
+    do_visualization: Annotated[
+        bool, typer.Option(help="visualize the predictions")
+    ] = True,
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
@@ -937,6 +1004,7 @@ def create(
         begin_index=begin_index,
         end_index=end_index,
         chunk_size=chunk_size,
+        do_visualization=do_visualization,
     )
 
     # Then create evaluation if provider specified
@@ -948,8 +1016,10 @@ def create(
             split=split,
             begin_index=begin_index,
             end_index=end_index,
+            chunk_size=chunk_size,
             file_prediction_format=file_prediction_format,
             file_source_path=file_source_path,
+            do_visualization=do_visualization,
         )
     else:
         _log.info(
