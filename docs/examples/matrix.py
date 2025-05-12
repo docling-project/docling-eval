@@ -89,14 +89,19 @@ if __name__ == "__main__":
     ├── consolidation
     │   └── consolidation_matrix.xlsx
     └── <benchmark_name>
-        ├── _GT_  [Dir with dataset in parquet format with the ground truth DoclingDocuments]
-        └── <experiment_name> [It can be the name of a provider or anything else]
+        ├── gt_dataset [Dir with dataset in parquet format with the ground truth DoclingDocuments]
+        ├── <experiment_name1> [It can be the name of a provider or anything else]
+        │   ├── eval_dataset
+        │   └── evaluations
+        │        ├── <modality1>
+        │        │   └── evaluation_<benchmark>_<modality1>.json
+        │        └── <modality2>
+        │            └── evaluation_<benchmark>_<modality2>.json
+        └── <experiment_name2> [It can be the name of a provider or anything else]
             ├── eval_dataset
-            ├── <modality1>
-            │   └── evaluation_<benchmark>_<modality1>.json
-            ├── <modality2>
-            │   └── evaluation_<benchmark>_<modality2>.json
-            └── predictions [Dir with dataset in parquet format with the prediction DoclingDocuments]
+            └── evaluations
+                 └── <modality1>
+                     └── evaluation_<benchmark>_<modality1>.json
     """
     parser = argparse.ArgumentParser(
         description=desription, formatter_class=argparse.RawTextHelpFormatter

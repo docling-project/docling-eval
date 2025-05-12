@@ -119,9 +119,12 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
     """
 
     # Leaf dirs for GT, predictions, evaluations
-    GT_LEAF_DIR = "_GT_"
+    # GT_LEAF_DIR = "_GT_"
     # PRED_LEAF_DIR = "predictions"
+
+    GT_LEAF_DIR = "gt_dataset"
     PRED_LEAF_DIR = "eval_dataset"
+    EVALUATIONS_DIR = "evaluations"
 
     def __init__(
         self,
@@ -282,7 +285,11 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                         continue
 
                     eval_dir = (
-                        self._root_dir / benchmark.value / experiment / modality.value
+                        self._root_dir
+                        / benchmark.value
+                        / experiment
+                        / MultiEvaluator.EVALUATIONS_DIR
+                        / modality.value
                     )
                     # Check if the evaluations are already present
                     evaluation = load_evaluation(benchmark, modality, eval_dir)
@@ -389,7 +396,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                     continue
 
                 experiment = experiment_path.name
-                if experiment == "_GT_":
+                if experiment == MultiEvaluator.GT_LEAF_DIR:
                     continue
 
                 # Get the experiment
