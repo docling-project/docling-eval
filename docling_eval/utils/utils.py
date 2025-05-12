@@ -53,27 +53,12 @@ def get_binhash(binary_data: bytes) -> str:
 
 
 def write_datasets_info(
-    name: str, output_dir: Path, num_train_rows: int, num_test_rows: int
+    name: str,
+    output_dir: Path,
+    num_train_rows: int,
+    num_test_rows: int,
+    features: Features,
 ):
-    features = Features(
-        {
-            BenchMarkColumns.CONVERTER_VERSION: Value("string"),
-            BenchMarkColumns.STATUS: Value("string"),
-            BenchMarkColumns.DOC_ID: Value("string"),
-            BenchMarkColumns.DOC_PATH: Value("string"),
-            BenchMarkColumns.DOC_HASH: Value("string"),
-            BenchMarkColumns.GROUNDTRUTH: Value("string"),
-            BenchMarkColumns.GROUNDTRUTH_PICTURES: Sequence(Features_Image()),
-            BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: Sequence(Features_Image()),
-            BenchMarkColumns.PREDICTION: Value("string"),
-            BenchMarkColumns.PREDICTION_PICTURES: Sequence(Features_Image()),
-            BenchMarkColumns.PREDICTION_PAGE_IMAGES: Sequence(Features_Image()),
-            BenchMarkColumns.ORIGINAL: Value("string"),
-            BenchMarkColumns.MIMETYPE: Value("string"),
-            BenchMarkColumns.MODALITIES: Sequence(Value("string")),
-        }
-    )
-
     schema = features.to_dict()
     # print(json.dumps(schema, indent=2))
 

@@ -199,6 +199,16 @@ class CvatPreannotationBuilder:
         """
         results = []
 
+        default_attributes = [
+            {
+                "name": "content_layer",
+                "input_type": "select",
+                "mutable": True,
+                "values": ["BODY", "FURNITURE", "BACKGROUND"],
+                "default_value": "BODY",
+            }
+        ]
+
         # Add DocItemLabel properties
         for item in DocItemLabel:
             r, g, b = DocItemLabel.get_color(item)
@@ -208,7 +218,7 @@ class CvatPreannotationBuilder:
                     "name": item.value,
                     "color": rgb_to_hex(r, g, b),
                     "type": "rectangle",
-                    "attributes": [],
+                    "attributes": default_attributes.copy(),
                 }
             )
 
@@ -247,14 +257,32 @@ class CvatPreannotationBuilder:
                 )
 
             if item == DocItemLabel.PICTURE:
-                results[-1]["attributes"].append(
-                    {
-                        "name": "json",
-                        "mutable": True,
-                        "input_type": "text",
-                        "values": [""],
-                        "default_value": "",
-                    }
+                results[-1]["attributes"].extend(
+                    [
+                        {
+                            "name": "json",
+                            "mutable": True,
+                            "input_type": "text",
+                            "values": [""],
+                            "default_value": "",
+                        },
+                        {
+                            "name": "type",
+                            "input_type": "select",
+                            "mutable": True,
+                            "values": [
+                                "CHART",
+                                "INFOGRAPHIC",
+                                "SCREENSHOT",
+                                "UI_ELEMENT",
+                                "BARCODE",
+                                "LOGO",
+                                "PICTOGRAM",
+                                "OTHER",
+                            ],
+                            "default_value": "main",
+                        },
+                    ]
                 )
 
         # Add TableComponentLabel properties
