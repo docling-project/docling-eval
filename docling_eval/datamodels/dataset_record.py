@@ -66,7 +66,7 @@ class DatasetRecord(
                 cls.get_field_alias("ground_truth_page_images"): Sequence(
                     Features_Image()
                 ),
-                cls.get_field_alias("original"): Value("string"),
+                cls.get_field_alias("original"): Value("binary"),
                 cls.get_field_alias("mime_type"): Value("string"),
                 cls.get_field_alias("modalities"): Sequence(Value("string")),
             }
@@ -207,26 +207,34 @@ class DatasetRecordWithPrediction(DatasetRecord):
 
     @classmethod
     def features(cls):
-        return {
-            cls.get_field_alias("doc_id"): Value("string"),
-            cls.get_field_alias("doc_path"): Value("string"),
-            cls.get_field_alias("doc_hash"): Value("string"),
-            cls.get_field_alias("ground_truth_doc"): Value("string"),
-            cls.get_field_alias("ground_truth_segmented_pages"): Value("string"),
-            cls.get_field_alias("ground_truth_pictures"): Sequence(Features_Image()),
-            cls.get_field_alias("ground_truth_page_images"): Sequence(Features_Image()),
-            cls.get_field_alias("original"): Value("string"),
-            cls.get_field_alias("mime_type"): Value("string"),
-            cls.get_field_alias("modalities"): Sequence(Value("string")),
-            cls.get_field_alias("predictor_info"): Value("string"),
-            cls.get_field_alias("status"): Value("string"),
-            cls.get_field_alias("predicted_doc"): Value("string"),
-            cls.get_field_alias("predicted_segmented_pages"): Value("string"),
-            cls.get_field_alias("predicted_pictures"): Sequence(Features_Image()),
-            cls.get_field_alias("predicted_page_images"): Sequence(Features_Image()),
-            cls.get_field_alias("prediction_format"): Value("string"),
-            cls.get_field_alias("prediction_timings"): Value("string"),
-        }
+        return Features(
+            {
+                cls.get_field_alias("doc_id"): Value("string"),
+                cls.get_field_alias("doc_path"): Value("string"),
+                cls.get_field_alias("doc_hash"): Value("string"),
+                cls.get_field_alias("ground_truth_doc"): Value("string"),
+                cls.get_field_alias("ground_truth_segmented_pages"): Value("string"),
+                cls.get_field_alias("ground_truth_pictures"): Sequence(
+                    Features_Image()
+                ),
+                cls.get_field_alias("ground_truth_page_images"): Sequence(
+                    Features_Image()
+                ),
+                cls.get_field_alias("original"): Value("binary"),
+                cls.get_field_alias("mime_type"): Value("string"),
+                cls.get_field_alias("modalities"): Sequence(Value("string")),
+                cls.get_field_alias("predictor_info"): Value("string"),
+                cls.get_field_alias("status"): Value("string"),
+                cls.get_field_alias("predicted_doc"): Value("string"),
+                cls.get_field_alias("predicted_segmented_pages"): Value("string"),
+                cls.get_field_alias("predicted_pictures"): Sequence(Features_Image()),
+                cls.get_field_alias("predicted_page_images"): Sequence(
+                    Features_Image()
+                ),
+                cls.get_field_alias("prediction_format"): Value("string"),
+                cls.get_field_alias("prediction_timings"): Value("string"),
+            }
+        )
 
     def as_record_dict(self):
         record = super().as_record_dict()

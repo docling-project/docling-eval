@@ -345,4 +345,5 @@ class BaseEvaluationDatasetBuilder:
             output_dir=self.target,
             num_train_rows=0,
             num_test_rows=count,
+            features=DatasetRecord.features(),
         )
