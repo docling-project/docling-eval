@@ -294,6 +294,12 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                     # Check if the evaluations are already present
                     evaluation = load_evaluation(benchmark, modality, eval_dir)
                     if not evaluation:
+                        _log.info(
+                            "Evaluate benchmark: %s, for experiment: %s, for modality: %s",
+                            benchmark.value,
+                            experiment,
+                            modality,
+                        )
                         evaluation = evaluate(
                             modality, benchmark, pred_dir, eval_dir, split
                         )
