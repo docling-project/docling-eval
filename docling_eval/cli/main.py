@@ -351,14 +351,14 @@ def get_prediction_provider(
         pipeline_options.generate_picture_images = True
 
         pipeline_options.vlm_options = smoldocling_vlm_conversion_options
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
+
         if sys.platform == "darwin":
             try:
                 import mlx_vlm  # type: ignore
 
                 pipeline_options.vlm_options = smoldocling_vlm_mlx_conversion_options
-
-                if artifacts_path is not None:
-                    pipeline_options.artifacts_path = artifacts_path
 
             except ImportError:
                 _log.warning(
