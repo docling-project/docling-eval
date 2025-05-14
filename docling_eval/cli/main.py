@@ -227,10 +227,13 @@ def get_dataset_builder(
 
 def get_prediction_provider(
     provider_type: PredictionProviderType,
+    *,
     file_source_path: Optional[Path] = None,
     file_prediction_format: Optional[PredictionFormats] = None,
     do_visualization: bool = True,
+    do_table_structure: bool = True,
     artifacts_path: Optional[Path] = None,
+    image_scale_factor: Optional[float] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -248,10 +251,10 @@ def get_prediction_provider(
         pipeline_options = PdfPipelineOptions(
             do_ocr=True,
             ocr_options=ocr_options,
-            do_table_structure=True,
+            do_table_structure=do_table_structure,
         )
 
-        pipeline_options.images_scale = 2.0
+        pipeline_options.images_scale = image_scale_factor or 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
         pipeline_options.generate_parsed_pages = True
@@ -278,10 +281,10 @@ def get_prediction_provider(
         pipeline_options = PdfPipelineOptions(
             do_ocr=True,
             ocr_options=ocr_options,
-            do_table_structure=True,
+            do_table_structure=do_table_structure,
         )
 
-        pipeline_options.images_scale = 2.0
+        pipeline_options.images_scale = image_scale_factor or 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
 
@@ -308,20 +311,20 @@ def get_prediction_provider(
         pdf_pipeline_options = PdfPipelineOptions(
             do_ocr=False,
             ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
-            do_table_structure=True,
+            do_table_structure=do_table_structure,
         )
 
-        pdf_pipeline_options.images_scale = 2.0
+        pdf_pipeline_options.images_scale = image_scale_factor or 2.0
         pdf_pipeline_options.generate_page_images = True
         pdf_pipeline_options.generate_picture_images = True
 
         ocr_pipeline_options = PdfPipelineOptions(
             do_ocr=True,
             ocr_options=ocr_options,  # we need to provide OCR options in order to not break the parquet serialization
-            do_table_structure=True,
+            do_table_structure=do_table_structure,
         )
 
-        ocr_pipeline_options.images_scale = 2.0
+        ocr_pipeline_options.images_scale = image_scale_factor or 2.0
         ocr_pipeline_options.generate_page_images = True
         ocr_pipeline_options.generate_picture_images = True
 
@@ -343,7 +346,7 @@ def get_prediction_provider(
     elif provider_type == PredictionProviderType.SMOLDOCLING:
         pipeline_options = VlmPipelineOptions()
 
-        pipeline_options.images_scale = 2.0
+        pipeline_options.images_scale = image_scale_factor or 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
 
@@ -918,6 +921,13 @@ def create_eval(
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
+    image_scale_factor: Annotated[
+        float,
+        typer.Option(help="Scale of page images used in prediction (only Docling)"),
+    ] = 2.0,
+    do_table_structure: Annotated[
+        bool, typer.Option(help="Include table structure predictions (only Docling)")
+    ] = True,
 ):
     """Create evaluation dataset from existing ground truth."""
     gt_dir = gt_dir or output_dir / "gt_dataset"
@@ -946,6 +956,8 @@ def create_eval(
             file_prediction_format=file_format,
             artifacts_path=artifacts_path,
             do_visualization=do_visualization,
+            image_scale_factor=image_scale_factor,
+            do_table_structure=do_table_structure,
         )
 
         # Get the dataset name from the benchmark
@@ -993,6 +1005,13 @@ def create(
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
+    image_scale_factor: Annotated[
+        float,
+        typer.Option(help="Scale of page images used in prediction (only Docling)"),
+    ] = 2.0,
+    do_table_structure: Annotated[
+        bool, typer.Option(help="Include table structure predictions (only Docling)")
+    ] = True,
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
@@ -1020,6 +1039,8 @@ def create(
             file_prediction_format=file_prediction_format,
             file_source_path=file_source_path,
             do_visualization=do_visualization,
+            image_scale_factor=image_scale_factor,
+            do_table_structure=do_table_structure,
         )
     else:
         _log.info(

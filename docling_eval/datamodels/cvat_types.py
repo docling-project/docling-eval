@@ -62,7 +62,7 @@ class TableComponentLabel(str, Enum):
             TableComponentLabel.TABLE_COL: (0, 255, 0),
             TableComponentLabel.TABLE_GROUP: (0, 0, 255),
         }
-        return color_map[label]
+        return color_map.get(label, (0, 0, 0))
 
 
 class BenchMarkDirs(BaseModel):

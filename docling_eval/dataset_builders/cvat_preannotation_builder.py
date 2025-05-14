@@ -9,6 +9,7 @@ from datasets import load_dataset
 from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
+from docling_core.types.doc.labels import GraphCellLabel, TableCellLabel
 from docling_core.types.io import DocumentStream
 from PIL import Image
 from pydantic import ValidationError
@@ -211,6 +212,17 @@ class CvatPreannotationBuilder:
 
         # Add DocItemLabel properties
         for item in DocItemLabel:
+            if item in [
+                DocItemLabel.KEY_VALUE_REGION,
+                DocItemLabel.PARAGRAPH,
+                DocItemLabel.PAGE_HEADER,
+                DocItemLabel.PAGE_FOOTER,
+                DocItemLabel.TITLE,
+                DocItemLabel.CHART,
+                DocItemLabel.REFERENCE,
+            ]:
+                continue
+
             r, g, b = DocItemLabel.get_color(item)
 
             results.append(
@@ -286,15 +298,42 @@ class CvatPreannotationBuilder:
                 )
 
         # Add TableComponentLabel properties
-        for table_item in TableComponentLabel:
-            r, g, b = TableComponentLabel.get_color(table_item)
+        for table_component_label in TableComponentLabel:
+            r, g, b = TableComponentLabel.get_color(table_component_label)
 
             results.append(
                 {
-                    "name": table_item.value,
+                    "name": table_component_label.value,
                     "color": rgb_to_hex(r, g, b),
                     "type": "rectangle",
-                    "attributes": [],
+                    "attributes": default_attributes.copy(),
+                }
+            )
+
+        # Add TableCellLabel properties
+        for table_cell_label in TableCellLabel:
+            r, g, b = TableCellLabel.get_color(table_cell_label)
+
+            results.append(
+                {
+                    "name": table_cell_label.value,
+                    "color": rgb_to_hex(r, g, b),
+                    "type": "rectangle",
+                    "attributes": default_attributes.copy(),
+                }
+            )
+
+        for graph_item in GraphCellLabel:
+            if graph_item in [GraphCellLabel.UNSPECIFIED, GraphCellLabel.CHECKBOX]:
+                continue
+            r, g, b = GraphCellLabel.get_color(graph_item)
+
+            results.append(
+                {
+                    "name": graph_item.value,
+                    "color": rgb_to_hex(r, g, b),
+                    "type": "rectangle",
+                    "attributes": default_attributes.copy(),
                 }
             )
 
