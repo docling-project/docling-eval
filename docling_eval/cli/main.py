@@ -1,6 +1,7 @@
 import glob
 import json
 import logging
+import multiprocessing
 import os
 import sys
 from pathlib import Path
@@ -246,8 +247,9 @@ def get_prediction_provider(
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
             kind="easyocr",
         )
+        # Use all CPU cores
         accelerator_options = AcceleratorOptions(
-            num_threads=16,
+            num_threads=multiprocessing.cpu_count(),
         )
 
         pipeline_options = PdfPipelineOptions(
