@@ -392,11 +392,13 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
             Dict[Path, Dict[EvaluationModality, DatasetEvaluationType]],
         ] = {}
 
+        # Get the benchmark
         for benchmark_path in multi_evaluation_path.iterdir():
             try:
                 benchmark = BenchMarkNames(benchmark_path.name)
             except ValueError:
                 continue
+            # Get the experiment
             for experiment_path in benchmark_path.iterdir():
                 if not experiment_path.is_dir():
                     continue
@@ -405,8 +407,9 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                 if experiment == MultiEvaluator.GT_LEAF_DIR:
                     continue
 
-                # Get the experiment
-                for modality_path in experiment_path.iterdir():
+                # Load the evaluations for each modality
+                evaluations_path = experiment_path / MultiEvaluator.EVALUATIONS_DIR
+                for modality_path in evaluations_path.iterdir():
                     try:
                         modality = EvaluationModality(modality_path.name)
                     except ValueError:
@@ -426,5 +429,5 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                         experiment=experiment,
                     )
 
-        multi_evalution: MultiEvaluation = MultiEvaluation(evaluations=evaluations)
-        return multi_evalution
+        multi_evaluation: MultiEvaluation = MultiEvaluation(evaluations=evaluations)
+        return multi_evaluation
