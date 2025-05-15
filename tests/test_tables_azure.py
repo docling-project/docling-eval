@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from docling_eval.cli.main import evaluate, visualize
 from docling_eval.datamodels.types import BenchMarkNames, EvaluationModality
 from docling_eval.dataset_builders.otsl_table_dataset_builder import (
-    FintabNetDatasetBuilder,
+    FintabNetDatasetBuilder, PubTabNetDatasetBuilder,
 )
 from docling_eval.prediction_providers.azure_prediction_provider import (
     AzureDocIntelligencePredictionProvider,
@@ -72,9 +72,9 @@ def test_run_pubtabnet_builder():
         do_visualization=True, ignore_missing_predictions=True
     )
 
-    dataset = FintabNetDatasetBuilder(
+    dataset = PubTabNetDatasetBuilder(
         target=target_path / "gt_dataset",
-        end_index=5,
+        end_index=15,
     )
 
     # dataset.retrieve_input_dataset()  # fetches the source dataset from HF
