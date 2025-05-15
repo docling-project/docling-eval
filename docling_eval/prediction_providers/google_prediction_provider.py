@@ -18,6 +18,12 @@ from docling_core.types.doc.document import (
     TableData,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    TextCell,
+)
 from docling_core.types.io import DocumentStream
 from google.cloud import documentai  # type: ignore
 from google.oauth2 import service_account
@@ -144,6 +150,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
     def convert_google_output_to_docling(self, document, record: DatasetRecord):
         """Converts Google Document AI output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
+        segmented_pages: Dict[int, SegmentedPage] = {}
 
         for page in document.get("pages", []):
             page_no = page.get("pageNumber", 1)
@@ -165,6 +172,23 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 image=image_ref,
             )
             doc.pages[page_no] = page_item
+
+            # Create SegmentedPage Entry if not already present for the page number
+            if page_no not in segmented_pages.keys():
+                seg_page = SegmentedPage(
+                    dimension=PageGeometry(
+                        angle=0,
+                        rect=BoundingRectangle.from_bounding_box(
+                            BoundingBox(
+                                l=0,
+                                t=0,
+                                r=page_item.size.width,
+                                b=page_item.size.height,
+                            )
+                        ),
+                    )
+                )
+                segmented_pages[page_no] = seg_page
 
             # TODO: Can we get more detail than just "Text blocks" from Google DocAI? If they provide layout labels, let's use it here.
             for paragraph in page.get("paragraphs", []):
@@ -202,6 +226,47 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 )
 
                 doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+            for token in page.get("tokens", []):
+                # Extract text content from text_anchor and text_segments
+                text_content = ""
+                if "layout" in token and "textAnchor" in token["layout"]:
+                    for text_segment in token["layout"]["textAnchor"].get(
+                        "textSegments", []
+                    ):
+                        if "endIndex" in text_segment:
+                            start_index = int(text_segment.get("startIndex", 0))
+                            end_index = int(text_segment.get("endIndex", 0))
+                            if document.get("text") and start_index < len(
+                                document["text"]
+                            ):
+                                text_content += document["text"][start_index:end_index]
+
+                # Extract token bounding box
+                vertices = (
+                    token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
+                )
+                token_bbox = (
+                    None if not vertices else self.extract_bbox_from_vertices(vertices)
+                )
+
+                if text_content and token_bbox is not None:
+                    bbox_obj = BoundingBox(
+                        l=token_bbox["l"],
+                        t=token_bbox["t"],
+                        r=token_bbox["r"],
+                        b=token_bbox["b"],
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+                    segmented_pages[page_no].word_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
+                            from_ocr=False,
+                        )
+                    )
 
             # TODO: Can we make sure the tables and the text is inserted in reading-order, instead of all tables at the end?
             for table in page.get("tables", []):
@@ -252,7 +317,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
                 doc.add_table(data=table_data, prov=table_prov)
 
-        return doc
+        return doc, segmented_pages
 
     @property
     def prediction_format(self) -> PredictionFormats:
@@ -316,7 +381,9 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     f"Successfully processed [{record.doc_id}] using Google Document AI API!"
                 )
 
-                pred_doc = self.convert_google_output_to_docling(result_json, record)
+                pred_doc, pred_segmented_pages = self.convert_google_output_to_docling(
+                    result_json, record
+                )
             else:
                 raise RuntimeError(
                     f"Unsupported mime type: {record.mime_type}. GoogleDocAIPredictionProvider supports 'application/pdf' and 'image/png'"
@@ -333,6 +400,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         pred_record = self.create_dataset_record_with_prediction(
             record, pred_doc, json.dumps(result_json)
         )
+        pred_record.predicted_segmented_pages = pred_segmented_pages
         pred_record.status = status
         return pred_record
 

@@ -19,7 +19,7 @@ _log = logging.getLogger(__name__)
 def evaluate(
     root_dir: Path,
     benchmarks: List[BenchMarkNames],
-    providers: List[PredictionProviderType],
+    experiments: List[str],
     modalities: List[EvaluationModality],
 ):
     r""" """
@@ -27,7 +27,7 @@ def evaluate(
     me: MultiEvaluator = MultiEvaluator(root_dir)
 
     _log.info("Evaluating...")
-    m_evals = me(providers, benchmarks, modalities)
+    m_evals = me(experiments, benchmarks, modalities)
     _log.info("Finish evaluation")
 
 
@@ -48,27 +48,33 @@ def main(args):
     task = args.task
     working_dir = Path(args.working_dir)
     benchmarks = (
-        [BenchMarkNames(x) for x in args.benchmarks] if args.benchmarks else None
+        [BenchMarkNames(x) for x in args.benchmarks.split(",")]
+        if args.benchmarks
+        else None
     )
-    providers = (
-        [PredictionProviderType(x) for x in args.providers] if args.providers else None
+    experiments_or_providers = (
+        args.experiments_or_providers.split(",")
+        if args.experiments_or_providers
+        else None
     )
     modalities = (
-        [EvaluationModality(x) for x in args.modalities] if args.modalities else None
+        [EvaluationModality(x) for x in args.modalities.split(",")]
+        if args.modalities
+        else None
     )
 
     if task == "evaluate":
-        if not benchmarks or not providers or not modalities:
-            _log.error("Required Benchmarks/Providers/Modalities")
+        if not benchmarks or not experiments_or_providers or not modalities:
+            _log.error("Required Benchmarks/Experiments/Modalities")
             return
-        evaluate(working_dir, benchmarks, providers, modalities)
+        evaluate(working_dir, benchmarks, experiments_or_providers, modalities)
     elif task == "consolidate":
         consolidate(working_dir)
     elif task == "both":
-        if not benchmarks or not providers or not modalities:
+        if not benchmarks or not experiments_or_providers or not modalities:
             _log.error("Required Benchmarks/Providers/Modalities")
             return
-        evaluate(working_dir, benchmarks, providers, modalities)
+        evaluate(working_dir, benchmarks, experiments_or_providers, modalities)
         consolidate(working_dir)
     else:
         _log.error("Unsupported task: %s", task)
@@ -79,16 +85,23 @@ if __name__ == "__main__":
     Running multi-evaluation and consolidation inside a working directory and generate matrix reports
     
     The working directory must have the structure:
-
-    <working_dir_root>
-        |- "consolidation": Output: Generated consolidation reports (e.g. excel files)
-        |- [dataset_name]: Input/Output: One of the BenchMarkNames.
-              |- "_GT_": Input/Output: Reserved directory for the ground truth data for this dataset.
-              |- [experiment_name]: Input/Output: Can be a provider's name or anything else.
-                    |- "predictions": Reserved directory with the predictions as parquet files.
-                    |- [modality_name]: One of the EvaluationModality.
-                         |- "evaluation_xxx.json": Json file with evaluations.
-        
+    .
+    ├── consolidation
+    │   └── consolidation_matrix.xlsx
+    └── <benchmark_name>
+        ├── gt_dataset [Dir with dataset in parquet format with the ground truth DoclingDocuments]
+        ├── <experiment_name1> [It can be the name of a provider or anything else]
+        │   ├── eval_dataset
+        │   └── evaluations
+        │        ├── <modality1>
+        │        │   └── evaluation_<benchmark>_<modality1>.json
+        │        └── <modality2>
+        │            └── evaluation_<benchmark>_<modality2>.json
+        └── <experiment_name2> [It can be the name of a provider or anything else]
+            ├── eval_dataset
+            └── evaluations
+                 └── <modality1>
+                     └── evaluation_<benchmark>_<modality1>.json
     """
     parser = argparse.ArgumentParser(
         description=desription, formatter_class=argparse.RawTextHelpFormatter
@@ -108,26 +121,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "-b",
         "--benchmarks",
-        nargs="+",
         required=False,
         default=None,
-        help=f"Evaluate: Space separated list of {[x.value for x in BenchMarkNames]}",
+        help=f"Evaluate: Comma separated list of {[x.value for x in BenchMarkNames]}",
     )
     parser.add_argument(
-        "-p",
-        "--providers",
-        nargs="+",
+        "-e",
+        "--experiments_or_providers",
         required=False,
         default=None,
-        help=f"Evaluate: Space separated list of {[x.value for x in PredictionProviderType]}",
+        help=f"Evaluate: Comma separated list of experiments or providers names.",
     )
     parser.add_argument(
         "-m",
         "--modalities",
-        nargs="+",
         required=False,
         default=None,
-        help=f"Evaluate: Space separated list of {[x.value for x in EvaluationModality]}",
+        help=f"Evaluate: Comma separated list of {[x.value for x in EvaluationModality]}",
     )
     args = parser.parse_args()
     main(args)
