@@ -785,34 +785,10 @@ def visualize(
 
             log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.txt"
             with open(log_filename, "w") as fd:
-                fd.write(
-                    f"{benchmark.value} size: {len(ocr_evaluation.evaluations)}\n\n"
-                )
-            log_and_save_stats(
-                odir,
-                benchmark,
-                modality,
-                "F1",
-                ocr_evaluation.f1_score,
-                log_filename=log_filename,
-            )
-            log_and_save_stats(
-                odir,
-                benchmark,
-                modality,
-                "Precision",
-                ocr_evaluation.precision,
-                log_filename=log_filename,
-            )
-            log_and_save_stats(
-                odir,
-                benchmark,
-                modality,
-                "Recall",
-                ocr_evaluation.recall,
-                log_filename=log_filename,
-            )
-
+                fd.write(f"{benchmark.value}\n\n")
+                fd.write(f"F1 Score: {ocr_evaluation.f1_score:.2f}\n")
+                fd.write(f"Recall: {ocr_evaluation.recall:.2f}\n")
+                fd.write(f"Precision: {ocr_evaluation.precision:.2f}\n")
         except Exception as e:
             _log.error(f"Error processing markdown text evaluation: {str(e)}")
 

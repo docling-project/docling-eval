@@ -429,7 +429,7 @@ class OCRVisualizer:
         true_page = true_segpages[page_idx]
 
         if page_idx not in pred_segpages:
-            page_idx = list(pred_segpages.keys())[0] if pred_segpages else None
+            page_idx = list(pred_segpages.keys())[0] if pred_segpages else -1
 
         pred_page = pred_segpages.get(page_idx, None)
 

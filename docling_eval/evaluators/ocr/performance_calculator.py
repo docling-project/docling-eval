@@ -89,10 +89,10 @@ class ModelPerformanceCalculator:
         self.__reset_matched_property()
         self.gt_json_unified = copy.deepcopy(gt_data)
         self.prediction_json_unified = copy.deepcopy(prediction_data)
-        self.gt_boxes_that_are_fn_after_refinement = []
-        self.prediction_boxes_that_are_fp_after_refinement = []
-        self.prediction_boxes_that_were_merged = []
-        self.gt_boxes_that_were_merged = []
+        self.gt_boxes_that_are_fn_after_refinement: list = []
+        self.prediction_boxes_that_are_fp_after_refinement: list = []
+        self.prediction_boxes_that_were_merged: list = []
+        self.gt_boxes_that_were_merged: list = []
         self.fp_boxes = BoxesTypes([], [], [])
         self.fn_boxes = BoxesTypes([], [], [])
         self.__do_evaluation()

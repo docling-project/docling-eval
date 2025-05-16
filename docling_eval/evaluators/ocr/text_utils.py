@@ -3,7 +3,7 @@ from collections import namedtuple
 import edit_distance
 
 EPS = 1.0e-6
-edit_distance_chars_map = {}
+edit_distance_chars_map: dict[str, str] = {}
 BoxesTypes = namedtuple("BoxesTypes", ["zero_iou", "low_iou", "ambiguous_match"])
 
 

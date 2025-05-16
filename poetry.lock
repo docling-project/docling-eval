@@ -1630,6 +1630,17 @@ torch = "*"
 torchvision = ">=0.5"
 
 [[package]]
+name = "edit-distance"
+version = "1.0.6"
+description = "Computing edit distance on arbitrary Python sequences."
+optional = false
+python-versions = "*"
+files = [
+    {file = "edit_distance-1.0.6-py3-none-any.whl", hash = "sha256:019df0dcd07881d7ead52a3a6bb4cdd5b4d2fbe9d84ad5889f3b8afee524a2d8"},
+    {file = "edit_distance-1.0.6.tar.gz", hash = "sha256:bf0c1a2edd113d4159b31a55b3810c258dbbcb508fcf2fbc1da6cd51f936de2d"},
+]
+
+[[package]]
 name = "editdistance"
 version = "0.8.1"
 description = "Fast implementation of the edit distance (Levenshtein distance)"
@@ -7754,4 +7765,4 @@ hyperscalers = ["azure-ai-documentintelligence", "azure-common", "azure-core", "
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "4047f08a26099276cb17eb4e213db2116e0b3a930afaf00b255559fd08bb355c"
+content-hash = "396ba437aa6a71d6f51ceb1ffaab58865a5f76b30e53c27494d5440860b78381"

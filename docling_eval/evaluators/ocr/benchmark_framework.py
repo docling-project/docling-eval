@@ -3,7 +3,6 @@ import traceback
 from collections import namedtuple
 
 import numpy as np
-from tabulate import tabulate
 from tqdm import tqdm
 
 from docling_eval.evaluators.ocr.performance_calculator import (
@@ -574,10 +573,4 @@ class ModelBenchmark:
                 }
                 data_only_list.append((metadata, overall_metrics_results))
 
-        print(f"Prediction Source: {self.model_name}")
-        if len(table_data) > 1:
-            print(tabulate(table_data, headers="firstrow", tablefmt="psql"))
-        else:
-            print("No data to tabulate.")
-        print()
         return data_only_list

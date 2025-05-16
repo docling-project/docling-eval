@@ -54,6 +54,7 @@ boto3 = { version = "^1.37.8", optional = true }
 google-cloud-documentai = { version = "^3.2.0", optional = true }
 pypdf2 = "^3.0.1"
 editdistance = "^0.8.1"
+edit-distance = "^1.0.6"
 
 [tool.poetry.group.dev.dependencies]
 black = {extras = ["jupyter"], version = "^24.4.2"}
