@@ -118,6 +118,7 @@ module = [
     "pypdfium2.*",    
     "lxml.*",
     "distance.*",
+    "edit_distance.*",
     "datasets.*",
     "apted.*",
     "nltk.*",
