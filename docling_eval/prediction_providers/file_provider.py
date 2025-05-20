@@ -180,8 +180,9 @@ class FilePredictionProvider(BasePredictionProvider):
             # Build DoclingDocument
             doctags_page = DocTagsPage(tokens=doctags, image=page_image)
             doctags_doc = DocTagsDocument(pages=[doctags_page])
-            doc = DoclingDocument(name=record.doc_id)
-            doc.load_from_doctags(doctags_doc)
+            doc = DoclingDocument.load_from_doctags(
+                doctags_doc, document_name=record.doc_id
+            )
 
             return doc
         except Exception as e:
