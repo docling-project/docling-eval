@@ -39,7 +39,7 @@ def test_run_fintabnet_builder():
 
     dataset = FintabNetDatasetBuilder(
         target=target_path / "gt_dataset",
-        end_index=5,
+        end_index=15,
     )
 
     # dataset.retrieve_input_dataset()  # fetches the source dataset from HF
