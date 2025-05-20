@@ -38,7 +38,7 @@ from docling_eval.datamodels.types import PredictionFormats, PredictionProviderT
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import from_pil_to_base64uri
+from docling_eval.utils.utils import from_pil_to_base64uri, global_merge
 
 _log = logging.getLogger(__name__)
 
@@ -384,6 +384,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 pred_doc, pred_segmented_pages = self.convert_google_output_to_docling(
                     result_json, record
                 )
+                pred_segmented_pages = global_merge(pred_segmented_pages)
             else:
                 raise RuntimeError(
                     f"Unsupported mime type: {record.mime_type}. GoogleDocAIPredictionProvider supports 'application/pdf' and 'image/png'"

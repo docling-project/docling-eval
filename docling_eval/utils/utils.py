@@ -1,4 +1,5 @@
 import base64
+import copy
 import hashlib
 import io
 import json
@@ -19,7 +20,7 @@ from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
-from docling_core.types.doc.base import BoundingBox, Size
+from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
     GraphData,
@@ -29,6 +30,7 @@ from docling_core.types.doc.document import (
     TableData,
 )
 from docling_core.types.doc.labels import GraphCellLabel
+from docling_core.types.doc.page import BoundingRectangle, SegmentedPage, TextCell
 from PIL import Image
 from pydantic import AnyUrl
 from torch import Tensor
@@ -38,6 +40,12 @@ from docling_eval.datamodels.types import (
     EvaluationModality,
     PredictionProviderType,
 )
+
+SPECIAL_CHARS = list("*:;,.?()!@#$%^&[]{}/\\\"'~+-_<>=")
+CLOSE_THRESHOLD = 0.3
+NUMBERS_CLOSE_THRESHOLD = 0.7
+CLOSE_LEFT_THRESHOLD = 0.7
+INSIDE_THRESHOLD = 0.15
 
 
 def get_binhash(binary_data: bytes) -> str:
@@ -624,3 +632,376 @@ def modalities_of_prediction_type(
         return None
 
     return prediction_provider_class.prediction_modalities
+
+
+def get_y_axis_iou(rect1: BoundingRectangle, rect2: BoundingRectangle):
+    """Calculate the IoU (Intersection over Union) in the y-axis between two BoundingRectangle objects."""
+    top1 = min(rect1.r_y0, rect1.r_y1, rect1.r_y2, rect1.r_y3)
+    bottom1 = max(rect1.r_y0, rect1.r_y1, rect1.r_y2, rect1.r_y3)
+
+    # Find top and bottom of rect2
+    top2 = min(rect2.r_y0, rect2.r_y1, rect2.r_y2, rect2.r_y3)
+    bottom2 = max(rect2.r_y0, rect2.r_y1, rect2.r_y2, rect2.r_y3)
+
+    y_overlap = max(0, min(bottom1, bottom2) - max(top1, top2))
+    y_union = max(bottom1, bottom2) - min(top1, top2)
+
+    return y_overlap / y_union if y_union > 0 else 0
+
+
+def text_cell_to_word_dict(cell: TextCell):
+    """Convert a TextCell to a word dictionary format used by the merging functions."""
+    left = min(cell.rect.r_x0, cell.rect.r_x1, cell.rect.r_x2, cell.rect.r_x3)
+    top = min(cell.rect.r_y0, cell.rect.r_y1, cell.rect.r_y2, cell.rect.r_y3)
+    right = max(cell.rect.r_x0, cell.rect.r_x1, cell.rect.r_x2, cell.rect.r_x3)
+    bottom = max(cell.rect.r_y0, cell.rect.r_y1, cell.rect.r_y2, cell.rect.r_y3)
+
+    bbox = (left, top, right, bottom)
+    return {
+        "word": cell.text,
+        "bbox": bbox,
+        "rect": cell.rect,
+        "orig": cell.orig,
+        "from_ocr": cell.from_ocr,
+    }
+
+
+def word_dict_to_text_cell(word_dict):
+    """Convert a word dictionary back to a TextCell."""
+    if "rect" in word_dict:
+        rect = word_dict["rect"]
+    else:
+        bbox = word_dict["bbox"]
+        rect = BoundingRectangle(
+            r_x0=bbox[0],  # left-top
+            r_y0=bbox[1],
+            r_x1=bbox[2],  # right-top
+            r_y1=bbox[1],
+            r_x2=bbox[2],  # right-bottom
+            r_y2=bbox[3],
+            r_x3=bbox[0],  # left-bottom
+            r_y3=bbox[3],
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+
+    return TextCell(
+        rect=rect,
+        text=word_dict["word"],
+        orig=word_dict.get("orig", word_dict["word"]),
+        from_ocr=word_dict.get("from_ocr", False),
+    )
+
+
+def find_close_right_and_left(
+    special_char_word, words_array, threshold, only_numbers=False
+):
+    """Find words that are close to the left and right of a special character word."""
+    special_char_left = special_char_word["bbox"][0]
+    special_char_right = special_char_word["bbox"][2]
+
+    left_found = False
+    right_found = False
+
+    left_word = None
+    right_word = None
+    found_flag = False
+
+    for word in words_array:
+        y_axis_iou = get_y_axis_iou(special_char_word["rect"], word["rect"])
+        if y_axis_iou < 0.6:
+            continue
+
+        bbox = word["bbox"]
+        left = bbox[0]
+        right = bbox[2]
+        top = bbox[1]
+        bottom = bbox[3]
+        height = bottom - top + 1
+        margin = int(threshold * height + 0.5)
+        inside_margin = -int(INSIDE_THRESHOLD * height + 0.5)
+
+        if not left_found:
+            left_diff = special_char_left - right
+            end_char = word["word"][-1] if word["word"] else ""
+            if (left_diff <= margin) and (left_diff >= 0):
+                if (not only_numbers) or (only_numbers and end_char.isdigit()):
+                    left_found = True
+                    left_word = word
+                    if right_found:
+                        found_flag = True
+                        break
+
+        if not right_found:
+            right_diff = left - special_char_right
+            start_char = word["word"][0] if word["word"] else ""
+            if (right_diff <= margin) and (right_diff >= inside_margin):
+                if (not only_numbers) or (only_numbers and start_char.isdigit()):
+                    right_found = True
+                    right_word = word
+                    if left_found:
+                        found_flag = True
+                        break
+
+    return found_flag, left_word, right_word
+
+
+def find_close_right(special_char_word, words_array, threshold):
+    """Find words that are close to the right of a special character word."""
+    special_char_right = special_char_word["bbox"][2]
+
+    right_word = None
+    found_flag = False
+
+    for word in words_array:
+        y_axis_iou = get_y_axis_iou(special_char_word["rect"], word["rect"])
+        if y_axis_iou < 0.6:
+            continue
+
+        bbox = word["bbox"]
+        left = bbox[0]
+        top = bbox[1]
+        bottom = bbox[3]
+        height = bottom - top + 1
+        margin = int(threshold * height + 0.5)
+        inside_margin = -int(INSIDE_THRESHOLD * height + 0.5)
+
+        right_diff = left - special_char_right
+        if (right_diff <= margin) and (right_diff >= inside_margin):
+            right_word = word
+            found_flag = True
+            break
+
+    return found_flag, right_word
+
+
+def find_close_left(special_char_word, words_array, threshold):
+    """Find words that are close to the left of a special character word."""
+    special_char_left = special_char_word["bbox"][0]
+
+    left_word = None
+    found_flag = False
+
+    for word in words_array:
+        y_axis_iou = get_y_axis_iou(special_char_word["rect"], word["rect"])
+        if y_axis_iou < 0.6:
+            continue
+
+        bbox = word["bbox"]
+        right = bbox[2]
+        top = bbox[1]
+        bottom = bbox[3]
+        height = bottom - top + 1
+        margin = int(threshold * height + 0.5)
+        inside_margin = -int(INSIDE_THRESHOLD * height + 0.5)
+
+        left_diff = special_char_left - right
+        if (left_diff <= margin) and (left_diff >= inside_margin):
+            left_word = word
+            found_flag = True
+            break
+
+    return found_flag, left_word
+
+
+def merge_close_left_and_right(
+    words_array, special_char_array, threshold, only_numbers
+):
+    """Merge words that have special characters between them."""
+    words_array = copy.deepcopy(words_array)
+    found = True
+    while found:
+        found = False
+        for word in words_array:
+            if word["word"] in special_char_array:
+                words_array_minus_special = copy.deepcopy(words_array)
+                words_array_minus_special.remove(word)
+                find_flag, left_word, right_word = find_close_right_and_left(
+                    word, words_array_minus_special, threshold, only_numbers
+                )
+                if find_flag:
+                    new_content = left_word["word"] + word["word"] + right_word["word"]
+                    new_left = left_word["bbox"][0]
+                    new_right = right_word["bbox"][2]
+                    new_top = min(
+                        left_word["bbox"][1], word["bbox"][1], right_word["bbox"][1]
+                    )
+                    new_bottom = max(
+                        left_word["bbox"][3], word["bbox"][3], right_word["bbox"][3]
+                    )
+
+                    new_rect = BoundingRectangle(
+                        r_x0=new_left,
+                        r_y0=new_top,
+                        r_x1=new_right,
+                        r_y1=new_top,
+                        r_x2=new_right,
+                        r_y2=new_bottom,
+                        r_x3=new_left,
+                        r_y3=new_bottom,
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    new_word = copy.deepcopy(word)
+                    new_word["word"] = new_content
+                    new_word["rect"] = new_rect
+                    new_word["bbox"] = (new_left, new_top, new_right, new_bottom)
+                    new_word["merge"] = True
+
+                    words_array.remove(left_word)
+                    words_array.remove(word)
+                    words_array.remove(right_word)
+                    words_array.append(new_word)
+                    found = True
+                    break
+    return words_array
+
+
+def merge_to_the_right(words_array, special_char_array, threshold):
+    """Merge words where the special character is at the end of a word."""
+    words_array = copy.deepcopy(words_array)
+    found = True
+    while found:
+        found = False
+        for word in words_array:
+            if word["word"] and word["word"][-1] in special_char_array:
+                words_array_minus_special = copy.deepcopy(words_array)
+                words_array_minus_special.remove(word)
+                find_flag, right_word = find_close_right(
+                    word, words_array_minus_special, threshold
+                )
+                if find_flag:
+                    new_content = word["word"] + right_word["word"]
+                    new_left = word["bbox"][0]
+                    new_right = right_word["bbox"][2]
+                    new_top = min(word["bbox"][1], right_word["bbox"][1])
+                    new_bottom = max(word["bbox"][3], right_word["bbox"][3])
+
+                    new_rect = BoundingRectangle(
+                        r_x0=new_left,
+                        r_y0=new_top,
+                        r_x1=new_right,
+                        r_y1=new_top,
+                        r_x2=new_right,
+                        r_y2=new_bottom,
+                        r_x3=new_left,
+                        r_y3=new_bottom,
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    new_word = copy.deepcopy(word)
+                    new_word["word"] = new_content
+                    new_word["rect"] = new_rect
+                    new_word["bbox"] = (new_left, new_top, new_right, new_bottom)
+                    new_word["merge"] = True
+
+                    words_array.remove(word)
+                    words_array.remove(right_word)
+                    words_array.append(new_word)
+                    found = True
+                    break
+    return words_array
+
+
+def merge_to_the_left(words_array, special_char_array, threshold):
+    """Merge words where the special character is at the beginning of a word."""
+    words_array = copy.deepcopy(words_array)
+    found = True
+    while found:
+        found = False
+        for word in words_array:
+            if word["word"] and word["word"][0] in special_char_array:
+                words_array_minus_special = copy.deepcopy(words_array)
+                words_array_minus_special.remove(word)
+                find_flag, left_word = find_close_left(
+                    word, words_array_minus_special, threshold
+                )
+                if find_flag:
+                    new_content = left_word["word"] + word["word"]
+                    new_left = left_word["bbox"][0]
+                    new_right = word["bbox"][2]
+                    new_top = min(left_word["bbox"][1], word["bbox"][1])
+                    new_bottom = max(left_word["bbox"][3], word["bbox"][3])
+
+                    new_rect = BoundingRectangle(
+                        r_x0=new_left,
+                        r_y0=new_top,
+                        r_x1=new_right,
+                        r_y1=new_top,
+                        r_x2=new_right,
+                        r_y2=new_bottom,
+                        r_x3=new_left,
+                        r_y3=new_bottom,
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    new_word = copy.deepcopy(word)
+                    new_word["word"] = new_content
+                    new_word["rect"] = new_rect
+                    new_word["bbox"] = (new_left, new_top, new_right, new_bottom)
+                    new_word["merge"] = True
+
+                    words_array.remove(left_word)
+                    words_array.remove(word)
+                    words_array.append(new_word)
+                    found = True
+                    break
+    return words_array
+
+
+def global_merge(segmented_pages: Dict[int, SegmentedPage]) -> Dict[int, SegmentedPage]:
+    """
+    Merges close word cells in the segmented pages based on specified criteria.
+
+    Args:
+        segmented_pages: Dictionary mapping page numbers to SegmentedPage objects
+
+    Returns:
+        Updated dictionary of segmented pages with merged word cells
+    """
+    result_pages = {}
+
+    for page_no, page in segmented_pages.items():
+        words_arr = [text_cell_to_word_dict(cell) for cell in page.word_cells]
+
+        # Apply merging functions
+        new_words_arr = merge_close_left_and_right(
+            words_arr,
+            special_char_array=SPECIAL_CHARS,
+            threshold=CLOSE_THRESHOLD,
+            only_numbers=False,
+        )
+        new_words_arr2 = merge_close_left_and_right(
+            new_words_arr,
+            special_char_array=list(",.-/"),
+            threshold=NUMBERS_CLOSE_THRESHOLD,
+            only_numbers=True,
+        )
+        new_words_arr3 = merge_to_the_left(
+            new_words_arr2,
+            special_char_array=list(",."),
+            threshold=CLOSE_LEFT_THRESHOLD,
+        )
+        new_words_arr4 = merge_to_the_left(
+            new_words_arr3, special_char_array=SPECIAL_CHARS, threshold=CLOSE_THRESHOLD
+        )
+        new_words_arr5 = merge_to_the_right(
+            new_words_arr4, special_char_array=SPECIAL_CHARS, threshold=CLOSE_THRESHOLD
+        )
+        new_words_arr6 = merge_to_the_left(
+            new_words_arr5,
+            special_char_array=list(")]}"),
+            threshold=CLOSE_LEFT_THRESHOLD,
+        )
+        new_words_arr7 = merge_to_the_right(
+            new_words_arr6,
+            special_char_array=list("([{"),
+            threshold=CLOSE_LEFT_THRESHOLD,
+        )
+
+        merged_cells = [word_dict_to_text_cell(word) for word in new_words_arr7]
+
+        page.word_cells = merged_cells
+
+        result_pages[page_no] = page
+
+    return result_pages
