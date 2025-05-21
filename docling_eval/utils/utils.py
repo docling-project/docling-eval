@@ -1,5 +1,4 @@
 import base64
-import copy
 import hashlib
 import io
 import json
@@ -13,14 +12,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 import PIL.Image
 from bs4 import BeautifulSoup  # type: ignore
-from datasets import Dataset, Features
-from datasets import Image as Features_Image
-from datasets import Sequence, Value, load_dataset
+from datasets import Dataset, Features, load_dataset
 from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc.base import BoundingBox, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
     GraphData,
@@ -30,7 +27,6 @@ from docling_core.types.doc.document import (
     TableData,
 )
 from docling_core.types.doc.labels import GraphCellLabel
-from docling_core.types.doc.page import BoundingRectangle, SegmentedPage, TextCell
 from PIL import Image
 from pydantic import AnyUrl
 from torch import Tensor
