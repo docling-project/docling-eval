@@ -79,7 +79,7 @@ def test_run_xfund_builder():
     google_provider.create_prediction_dataset(
         name=dataset.name,
         gt_dataset_dir=target_path / "gt_dataset",
-        split="val",
+        split="val",  # NOTE: Xfund has val split instead of test
         target_dataset_dir=target_path / "eval_dataset",
     )
 
