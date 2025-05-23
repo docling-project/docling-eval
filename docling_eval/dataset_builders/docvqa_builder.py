@@ -117,30 +117,31 @@ class DocVQADatasetBuilder(BaseEvaluationDatasetBuilder):
             )
 
             answer_index = index + 1
-            for answer in qa_item["answers"]:
-                cells.append(
-                    GraphCell(
-                        label=GraphCellLabel.VALUE,
-                        cell_id=answer_index,
-                        text=answer,
-                        orig=answer,
+            if "answers" in qa_items and isinstance(qa_item["answers"], list):
+                for answer in qa_item["answers"]:
+                    cells.append(
+                        GraphCell(
+                            label=GraphCellLabel.VALUE,
+                            cell_id=answer_index,
+                            text=answer,
+                            orig=answer,
+                        )
                     )
-                )
-                links.extend(
-                    [
-                        GraphLink(
-                            label=GraphLinkLabel.TO_VALUE,
-                            source_cell_id=index,
-                            target_cell_id=answer_index,
-                        ),
-                        GraphLink(
-                            label=GraphLinkLabel.TO_KEY,
-                            source_cell_id=answer_index,
-                            target_cell_id=index,
-                        ),
-                    ]
-                )
-                answer_index += 1
+                    links.extend(
+                        [
+                            GraphLink(
+                                label=GraphLinkLabel.TO_VALUE,
+                                source_cell_id=index,
+                                target_cell_id=answer_index,
+                            ),
+                            GraphLink(
+                                label=GraphLinkLabel.TO_KEY,
+                                source_cell_id=answer_index,
+                                target_cell_id=index,
+                            ),
+                        ]
+                    )
+                    answer_index += 1
 
             index = answer_index
 
