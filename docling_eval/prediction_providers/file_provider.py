@@ -182,7 +182,7 @@ class FilePredictionProvider(BasePredictionProvider):
             with open(doctags_fn, "r") as fd:
                 doctags = fd.read()
 
-            page_image = None
+            page_image: Optional[Image.Image] = None
 
             # Try to get an image file for the predictions:
             # 1. Check the pred_images_path.
@@ -190,14 +190,18 @@ class FilePredictionProvider(BasePredictionProvider):
             # 3. Look inside the same dir as the doctag files.
             if self._prediction_images_path:
                 page_image_fn = self._prediction_images_path / f"{record.doc_id}.png"
+                if page_image_fn.is_file():
+                    page_image = Image.open(page_image_fn)
+                else:
+                    _log.warning("Failed to load pred image: %s", page_image_fn)
             elif self._use_ground_truth_page_images:
                 page_image = record.ground_truth_page_images[0]
             else:
                 page_image_fn = self._prediction_source_path / f"{record.doc_id}.png"
-            if page_image_fn.is_file():
-                page_image = Image.open(page_image_fn)
-            else:
-                _log.warning("Failed to load pred image: %s", page_image_fn)
+                if page_image_fn.is_file():
+                    page_image = Image.open(page_image_fn)
+                else:
+                    _log.warning("Failed to load pred image: %s", page_image_fn)
 
             # Build DoclingDocument
             doctags_page = DocTagsPage(tokens=doctags, image=page_image)
