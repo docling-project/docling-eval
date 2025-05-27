@@ -56,8 +56,7 @@ def docling_document_from_doctags(
 
     doctags_page = DocTagsPage(tokens=doctags, image=page_image)
     doctags_doc = DocTagsDocument(pages=[doctags_page])
-    pred_doc = DoclingDocument(name=doc_id)
-    pred_doc.load_from_doctags(doctags_doc)
+    pred_doc = DoclingDocument.load_from_doctags(doctags_doc, document_name=doc_id)
 
     return pred_doc
 
