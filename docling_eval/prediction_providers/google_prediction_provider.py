@@ -3,13 +3,12 @@ import importlib.metadata
 import json
 import logging
 import os
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types import DoclingDocument
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
-    DoclingDocument,
     ImageRef,
     PageItem,
     ProvenanceItem,
@@ -24,10 +23,9 @@ from docling_core.types.doc.page import (
     TextCell,
 )
 from docling_core.types.io import DocumentStream
-from google.cloud import documentai  # type: ignore
+from google.cloud import documentai
 from google.oauth2 import service_account
 from google.protobuf.json_format import MessageToDict
-from PIL.Image import Image
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -41,361 +39,410 @@ from docling_eval.utils.utils import from_pil_to_base64uri
 
 _log = logging.getLogger(__name__)
 
-SPECIAL_CHARS = list("*:;,.?()!@#$%^&[]{}/\\\"'~+-_<>=")
-CLOSE_THRESHOLD = 0.3
-NUMBERS_CLOSE_THRESHOLD = 0.7
-CLOSE_LEFT_THRESHOLD = 0.7
-INSIDE_THRESHOLD = 0.15
 
+class _WordMerger:
+    SPECIAL_CHARS: List[str] = list("*:;,.?()!@#$%^&[]{}/\\\"'~+-_<>=")
+    CLOSE_THRESHOLD: float = 0.3
+    NUMBERS_CLOSE_THRESHOLD: float = 0.7
+    CLOSE_LEFT_THRESHOLD: float = 0.7
+    INSIDE_THRESHOLD: float = 0.15
 
-def get_y_axis_iou(rect1: BoundingRectangle, rect2: BoundingRectangle):
-    """Calculate the IoU (Intersection over Union) in the y-axis between two BoundingRectangle objects."""
-    top1 = min(rect1.r_y0, rect1.r_y1, rect1.r_y2, rect1.r_y3)
-    bottom1 = max(rect1.r_y0, rect1.r_y1, rect1.r_y2, rect1.r_y3)
+    @staticmethod
+    def _get_y_axis_iou(rect1: BoundingRectangle, rect2: BoundingRectangle) -> float:
+        bb1 = rect1.to_bounding_box()
+        bb2 = rect2.to_bounding_box()
 
-    top2 = min(rect2.r_y0, rect2.r_y1, rect2.r_y2, rect2.r_y3)
-    bottom2 = max(rect2.r_y0, rect2.r_y1, rect2.r_y2, rect2.r_y3)
+        y_overlap = max(0.0, min(bb1.b, bb2.b) - max(bb1.t, bb2.t))
+        y_union_span = max(bb1.b, bb2.b) - min(bb1.t, bb2.t)
 
-    y_overlap = max(0, min(bottom1, bottom2) - max(top1, top2))
-    y_union = max(bottom1, bottom2) - min(top1, top2)
+        return y_overlap / y_union_span if y_union_span > 0 else 0.0
 
-    return y_overlap / y_union if y_union > 0 else 0
+    def _find_close_right_and_left(
+        self,
+        special_char_cell: TextCell,
+        word_cells: List[TextCell],
+        threshold: float,
+        only_numbers: bool = False,
+    ) -> Tuple[bool, Optional[TextCell], Optional[TextCell]]:
+        special_char_bb = special_char_cell.rect.to_bounding_box()
+        special_char_left_coord = special_char_bb.l
+        special_char_right_coord = special_char_bb.r
 
+        left_found_cell: Optional[TextCell] = None
+        right_found_cell: Optional[TextCell] = None
 
-def text_cell_to_word_dict(cell: TextCell):
-    """Convert a TextCell to a word dictionary format used by the merging functions."""
-    left = min(cell.rect.r_x0, cell.rect.r_x1, cell.rect.r_x2, cell.rect.r_x3)
-    top = min(cell.rect.r_y0, cell.rect.r_y1, cell.rect.r_y2, cell.rect.r_y3)
-    right = max(cell.rect.r_x0, cell.rect.r_x1, cell.rect.r_x2, cell.rect.r_x3)
-    bottom = max(cell.rect.r_y0, cell.rect.r_y1, cell.rect.r_y2, cell.rect.r_y3)
+        for word_cell in word_cells:
+            y_axis_iou = self._get_y_axis_iou(special_char_cell.rect, word_cell.rect)
+            if y_axis_iou < 0.6:
+                continue
 
-    bbox = (left, top, right, bottom)
-    return {
-        "word": cell.text,
-        "bbox": bbox,
-        "rect": cell.rect,
-        "orig": cell.orig,
-        "from_ocr": cell.from_ocr,
-    }
+            word_bb = word_cell.rect.to_bounding_box()
+            word_left_coord = word_bb.l
+            word_right_coord = word_bb.r
 
+            height = (word_bb.b - word_bb.t) + 1.0
+            margin = int(threshold * height + 0.5)
+            inside_margin_offset = int(self.INSIDE_THRESHOLD * height + 0.5)
 
-def word_dict_to_text_cell(word_dict):
-    """Convert a word dictionary back to a TextCell."""
-    if "rect" in word_dict:
-        rect = word_dict["rect"]
-    else:
-        bbox = word_dict["bbox"]
-        rect = BoundingRectangle(
-            r_x0=bbox[0],
-            r_y0=bbox[1],
-            r_x1=bbox[2],
-            r_y1=bbox[1],
-            r_x2=bbox[2],
-            r_y2=bbox[3],
-            r_x3=bbox[0],
-            r_y3=bbox[3],
-            coord_origin=CoordOrigin.TOPLEFT,
+            if not left_found_cell:
+                left_diff = special_char_left_coord - word_right_coord
+                end_char = word_cell.text[-1] if word_cell.text else ""
+                if (left_diff <= margin) and (left_diff >= 0):
+                    if (not only_numbers) or (only_numbers and end_char.isdigit()):
+                        left_found_cell = word_cell
+                        if right_found_cell:
+                            return True, left_found_cell, right_found_cell
+
+            if not right_found_cell:
+                right_diff = word_left_coord - special_char_right_coord
+                start_char = word_cell.text[0] if word_cell.text else ""
+                if (right_diff <= margin) and (right_diff >= -inside_margin_offset):
+                    if (not only_numbers) or (only_numbers and start_char.isdigit()):
+                        right_found_cell = word_cell
+                        if left_found_cell:
+                            return True, left_found_cell, right_found_cell
+
+        return (
+            (left_found_cell is not None and right_found_cell is not None),
+            left_found_cell,
+            right_found_cell,
         )
 
-    return TextCell(
-        rect=rect,
-        text=word_dict["word"],
-        orig=word_dict.get("orig", word_dict["word"]),
-        from_ocr=word_dict.get("from_ocr", False),
-    )
+    def _find_close_right(
+        self, special_char_cell: TextCell, word_cells: List[TextCell], threshold: float
+    ) -> Tuple[bool, Optional[TextCell]]:
+        special_char_bb = special_char_cell.rect.to_bounding_box()
+        special_char_right_coord = special_char_bb.r
 
+        right_found_cell: Optional[TextCell] = None
 
-def find_close_right_and_left(
-    special_char_word, words_array, threshold, only_numbers=False
-):
-    special_char_left = special_char_word["bbox"][0]
-    special_char_right = special_char_word["bbox"][2]
+        for word_cell in word_cells:
+            y_axis_iou = self._get_y_axis_iou(special_char_cell.rect, word_cell.rect)
+            if y_axis_iou < 0.6:
+                continue
 
-    left_found = False
-    right_found = False
+            word_bb = word_cell.rect.to_bounding_box()
+            word_left_coord = word_bb.l
+            height = (word_bb.b - word_bb.t) + 1.0
+            margin = int(threshold * height + 0.5)
+            inside_margin_offset = int(self.INSIDE_THRESHOLD * height + 0.5)
 
-    left_word = None
-    right_word = None
-    found_flag = False
+            right_diff = word_left_coord - special_char_right_coord
+            if (right_diff <= margin) and (right_diff >= -inside_margin_offset):
+                right_found_cell = word_cell
+                return True, right_found_cell
 
-    for word in words_array:
-        y_axis_iou = get_y_axis_iou(special_char_word["rect"], word["rect"])
-        if y_axis_iou < 0.6:
-            continue
+        return False, None
 
-        bbox = word["bbox"]
-        left = bbox[0]
-        right = bbox[2]
-        top = bbox[1]
-        bottom = bbox[3]
-        height = bottom - top + 1
-        margin = int(threshold * height + 0.5)
-        inside_margin = -int(INSIDE_THRESHOLD * height + 0.5)
+    def _find_close_left(
+        self, special_char_cell: TextCell, word_cells: List[TextCell], threshold: float
+    ) -> Tuple[bool, Optional[TextCell]]:
+        special_char_bb = special_char_cell.rect.to_bounding_box()
+        special_char_left_coord = special_char_bb.l
 
-        if not left_found:
-            left_diff = special_char_left - right
-            end_char = word["word"][-1] if word["word"] else ""
-            if (left_diff <= margin) and (left_diff >= 0):
-                if (not only_numbers) or (only_numbers and end_char.isdigit()):
-                    left_found = True
-                    left_word = word
-                    if right_found:
-                        found_flag = True
+        left_found_cell: Optional[TextCell] = None
+
+        for word_cell in word_cells:
+            y_axis_iou = self._get_y_axis_iou(special_char_cell.rect, word_cell.rect)
+            if y_axis_iou < 0.6:
+                continue
+
+            word_bb = word_cell.rect.to_bounding_box()
+            word_right_coord = word_bb.r
+            height = (word_bb.b - word_bb.t) + 1.0
+            margin = int(threshold * height + 0.5)
+            inside_margin_offset = int(self.INSIDE_THRESHOLD * height + 0.5)
+
+            left_diff = special_char_left_coord - word_right_coord
+            if (left_diff <= margin) and (left_diff >= -inside_margin_offset):
+                left_found_cell = word_cell
+                return True, left_found_cell
+
+        return False, None
+
+    def _merge_close_left_and_right(
+        self,
+        current_word_cells: List[TextCell],
+        special_char_list: List[str],
+        threshold: float,
+        only_numbers: bool,
+    ) -> List[TextCell]:
+        active_word_cells = copy.deepcopy(current_word_cells)
+
+        processed_list_changed_in_iteration = True
+        while processed_list_changed_in_iteration:
+            processed_list_changed_in_iteration = False
+            for special_char_cell_candidate in active_word_cells:
+                if special_char_cell_candidate.text in special_char_list:
+                    candidate_neighbors = [
+                        cell
+                        for cell in active_word_cells
+                        if cell is not special_char_cell_candidate
+                    ]
+
+                    found_neighbors, left_neighbor_cell, right_neighbor_cell = (
+                        self._find_close_right_and_left(
+                            special_char_cell_candidate,
+                            candidate_neighbors,
+                            threshold,
+                            only_numbers,
+                        )
+                    )
+
+                    if found_neighbors and left_neighbor_cell and right_neighbor_cell:
+                        special_char_bb = (
+                            special_char_cell_candidate.rect.to_bounding_box()
+                        )
+                        left_bb = left_neighbor_cell.rect.to_bounding_box()
+                        right_bb = right_neighbor_cell.rect.to_bounding_box()
+
+                        new_l = left_bb.l
+                        new_r = right_bb.r
+                        new_t = min(left_bb.t, special_char_bb.t, right_bb.t)
+                        new_b = max(left_bb.b, special_char_bb.b, right_bb.b)
+
+                        current_coord_origin = (
+                            special_char_cell_candidate.rect.coord_origin
+                        )
+                        new_bounding_rect = BoundingRectangle(
+                            r_x0=new_l,
+                            r_y0=new_t,
+                            r_x1=new_r,
+                            r_y1=new_t,
+                            r_x2=new_r,
+                            r_y2=new_b,
+                            r_x3=new_l,
+                            r_y3=new_b,
+                            coord_origin=current_coord_origin,
+                        )
+
+                        new_text_val = (
+                            left_neighbor_cell.text
+                            + special_char_cell_candidate.text
+                            + right_neighbor_cell.text
+                        )
+                        new_orig_val = (
+                            left_neighbor_cell.orig
+                            + special_char_cell_candidate.orig
+                            + right_neighbor_cell.orig
+                        )
+                        new_from_ocr_val = (
+                            left_neighbor_cell.from_ocr
+                            or special_char_cell_candidate.from_ocr
+                            or right_neighbor_cell.from_ocr
+                        )
+
+                        newly_merged_cell = TextCell(
+                            rect=new_bounding_rect,
+                            text=new_text_val,
+                            orig=new_orig_val,
+                            from_ocr=new_from_ocr_val,
+                            confidence=special_char_cell_candidate.confidence,
+                            text_direction=special_char_cell_candidate.text_direction,
+                        )
+
+                        active_word_cells.remove(left_neighbor_cell)
+                        active_word_cells.remove(special_char_cell_candidate)
+                        active_word_cells.remove(right_neighbor_cell)
+                        active_word_cells.append(newly_merged_cell)
+
+                        processed_list_changed_in_iteration = True
                         break
+        return active_word_cells
 
-        if not right_found:
-            right_diff = left - special_char_right
-            start_char = word["word"][0] if word["word"] else ""
-            if (right_diff <= margin) and (right_diff >= inside_margin):
-                if (not only_numbers) or (only_numbers and start_char.isdigit()):
-                    right_found = True
-                    right_word = word
-                    if left_found:
-                        found_flag = True
+    def _merge_to_the_right(
+        self,
+        current_word_cells: List[TextCell],
+        special_char_list: List[str],
+        threshold: float,
+    ) -> List[TextCell]:
+        active_word_cells = copy.deepcopy(current_word_cells)
+        processed_list_changed_in_iteration = True
+        while processed_list_changed_in_iteration:
+            processed_list_changed_in_iteration = False
+            for leading_cell_candidate in active_word_cells:
+                if (
+                    leading_cell_candidate.text
+                    and leading_cell_candidate.text[-1] in special_char_list
+                ):
+                    candidate_neighbors = [
+                        cell
+                        for cell in active_word_cells
+                        if cell is not leading_cell_candidate
+                    ]
+
+                    found_neighbor, right_neighbor_cell = self._find_close_right(
+                        leading_cell_candidate, candidate_neighbors, threshold
+                    )
+
+                    if found_neighbor and right_neighbor_cell:
+                        leading_bb = leading_cell_candidate.rect.to_bounding_box()
+                        right_bb = right_neighbor_cell.rect.to_bounding_box()
+
+                        new_l = leading_bb.l
+                        new_r = right_bb.r
+                        new_t = min(leading_bb.t, right_bb.t)
+                        new_b = max(leading_bb.b, right_bb.b)
+
+                        current_coord_origin = leading_cell_candidate.rect.coord_origin
+                        new_bounding_rect = BoundingRectangle(
+                            r_x0=new_l,
+                            r_y0=new_t,
+                            r_x1=new_r,
+                            r_y1=new_t,
+                            r_x2=new_r,
+                            r_y2=new_b,
+                            r_x3=new_l,
+                            r_y3=new_b,
+                            coord_origin=current_coord_origin,
+                        )
+
+                        new_text_val = (
+                            leading_cell_candidate.text + right_neighbor_cell.text
+                        )
+                        new_orig_val = (
+                            leading_cell_candidate.orig + right_neighbor_cell.orig
+                        )
+                        new_from_ocr_val = (
+                            leading_cell_candidate.from_ocr
+                            or right_neighbor_cell.from_ocr
+                        )
+
+                        newly_merged_cell = TextCell(
+                            rect=new_bounding_rect,
+                            text=new_text_val,
+                            orig=new_orig_val,
+                            from_ocr=new_from_ocr_val,
+                            confidence=leading_cell_candidate.confidence,
+                            text_direction=leading_cell_candidate.text_direction,
+                        )
+
+                        active_word_cells.remove(leading_cell_candidate)
+                        active_word_cells.remove(right_neighbor_cell)
+                        active_word_cells.append(newly_merged_cell)
+
+                        processed_list_changed_in_iteration = True
                         break
+        return active_word_cells
 
-    return found_flag, left_word, right_word
+    def _merge_to_the_left(
+        self,
+        current_word_cells: List[TextCell],
+        special_char_list: List[str],
+        threshold: float,
+    ) -> List[TextCell]:
+        active_word_cells = copy.deepcopy(current_word_cells)
+        processed_list_changed_in_iteration = True
+        while processed_list_changed_in_iteration:
+            processed_list_changed_in_iteration = False
+            for trailing_cell_candidate in active_word_cells:
+                if (
+                    trailing_cell_candidate.text
+                    and trailing_cell_candidate.text[0] in special_char_list
+                ):
+                    candidate_neighbors = [
+                        cell
+                        for cell in active_word_cells
+                        if cell is not trailing_cell_candidate
+                    ]
 
-
-def find_close_right(special_char_word, words_array, threshold):
-    special_char_right = special_char_word["bbox"][2]
-
-    right_word = None
-    found_flag = False
-
-    for word in words_array:
-        y_axis_iou = get_y_axis_iou(special_char_word["rect"], word["rect"])
-        if y_axis_iou < 0.6:
-            continue
-
-        bbox = word["bbox"]
-        left = bbox[0]
-        top = bbox[1]
-        bottom = bbox[3]
-        height = bottom - top + 1
-        margin = int(threshold * height + 0.5)
-        inside_margin = -int(INSIDE_THRESHOLD * height + 0.5)
-
-        right_diff = left - special_char_right
-        if (right_diff <= margin) and (right_diff >= inside_margin):
-            right_word = word
-            found_flag = True
-            break
-
-    return found_flag, right_word
-
-
-def find_close_left(special_char_word, words_array, threshold):
-    special_char_left = special_char_word["bbox"][0]
-
-    left_word = None
-    found_flag = False
-
-    for word in words_array:
-        y_axis_iou = get_y_axis_iou(special_char_word["rect"], word["rect"])
-        if y_axis_iou < 0.6:
-            continue
-
-        bbox = word["bbox"]
-        right = bbox[2]
-        top = bbox[1]
-        bottom = bbox[3]
-        height = bottom - top + 1
-        margin = int(threshold * height + 0.5)
-        inside_margin = -int(INSIDE_THRESHOLD * height + 0.5)
-
-        left_diff = special_char_left - right
-        if (left_diff <= margin) and (left_diff >= inside_margin):
-            left_word = word
-            found_flag = True
-            break
-
-    return found_flag, left_word
-
-
-def merge_close_left_and_right(
-    words_array, special_char_array, threshold, only_numbers
-):
-    words_array = copy.deepcopy(words_array)
-    found = True
-    while found:
-        found = False
-        for word in words_array:
-            if word["word"] in special_char_array:
-                words_array_minus_special = copy.deepcopy(words_array)
-                words_array_minus_special.remove(word)
-                find_flag, left_word, right_word = find_close_right_and_left(
-                    word, words_array_minus_special, threshold, only_numbers
-                )
-                if find_flag:
-                    new_content = left_word["word"] + word["word"] + right_word["word"]
-                    new_left = left_word["bbox"][0]
-                    new_right = right_word["bbox"][2]
-                    new_top = min(
-                        left_word["bbox"][1], word["bbox"][1], right_word["bbox"][1]
-                    )
-                    new_bottom = max(
-                        left_word["bbox"][3], word["bbox"][3], right_word["bbox"][3]
+                    found_neighbor, left_neighbor_cell = self._find_close_left(
+                        trailing_cell_candidate, candidate_neighbors, threshold
                     )
 
-                    new_rect = BoundingRectangle(
-                        r_x0=new_left,
-                        r_y0=new_top,
-                        r_x1=new_right,
-                        r_y1=new_top,
-                        r_x2=new_right,
-                        r_y2=new_bottom,
-                        r_x3=new_left,
-                        r_y3=new_bottom,
-                        coord_origin=CoordOrigin.TOPLEFT,
-                    )
+                    if found_neighbor and left_neighbor_cell:
+                        trailing_bb = trailing_cell_candidate.rect.to_bounding_box()
+                        left_bb = left_neighbor_cell.rect.to_bounding_box()
 
-                    new_word = copy.deepcopy(word)
-                    new_word["word"] = new_content
-                    new_word["rect"] = new_rect
-                    new_word["bbox"] = (new_left, new_top, new_right, new_bottom)
-                    new_word["merge"] = True
+                        new_l = left_bb.l
+                        new_r = trailing_bb.r
+                        new_t = min(left_bb.t, trailing_bb.t)
+                        new_b = max(left_bb.b, trailing_bb.b)
 
-                    words_array.remove(left_word)
-                    words_array.remove(word)
-                    words_array.remove(right_word)
-                    words_array.append(new_word)
-                    found = True
-                    break
-    return words_array
+                        current_coord_origin = trailing_cell_candidate.rect.coord_origin
+                        new_bounding_rect = BoundingRectangle(
+                            r_x0=new_l,
+                            r_y0=new_t,
+                            r_x1=new_r,
+                            r_y1=new_t,
+                            r_x2=new_r,
+                            r_y2=new_b,
+                            r_x3=new_l,
+                            r_y3=new_b,
+                            coord_origin=current_coord_origin,
+                        )
 
+                        new_text_val = (
+                            left_neighbor_cell.text + trailing_cell_candidate.text
+                        )
+                        new_orig_val = (
+                            left_neighbor_cell.orig + trailing_cell_candidate.orig
+                        )
+                        new_from_ocr_val = (
+                            left_neighbor_cell.from_ocr
+                            or trailing_cell_candidate.from_ocr
+                        )
 
-def merge_to_the_right(words_array, special_char_array, threshold):
-    words_array = copy.deepcopy(words_array)
-    found = True
-    while found:
-        found = False
-        for word in words_array:
-            if word["word"] and word["word"][-1] in special_char_array:
-                words_array_minus_special = copy.deepcopy(words_array)
-                words_array_minus_special.remove(word)
-                find_flag, right_word = find_close_right(
-                    word, words_array_minus_special, threshold
-                )
-                if find_flag:
-                    new_content = word["word"] + right_word["word"]
-                    new_left = word["bbox"][0]
-                    new_right = right_word["bbox"][2]
-                    new_top = min(word["bbox"][1], right_word["bbox"][1])
-                    new_bottom = max(word["bbox"][3], right_word["bbox"][3])
+                        newly_merged_cell = TextCell(
+                            rect=new_bounding_rect,
+                            text=new_text_val,
+                            orig=new_orig_val,
+                            from_ocr=new_from_ocr_val,
+                            confidence=trailing_cell_candidate.confidence,
+                            text_direction=trailing_cell_candidate.text_direction,
+                        )
 
-                    new_rect = BoundingRectangle(
-                        r_x0=new_left,
-                        r_y0=new_top,
-                        r_x1=new_right,
-                        r_y1=new_top,
-                        r_x2=new_right,
-                        r_y2=new_bottom,
-                        r_x3=new_left,
-                        r_y3=new_bottom,
-                        coord_origin=CoordOrigin.TOPLEFT,
-                    )
+                        active_word_cells.remove(left_neighbor_cell)
+                        active_word_cells.remove(trailing_cell_candidate)
+                        active_word_cells.append(newly_merged_cell)
 
-                    new_word = copy.deepcopy(word)
-                    new_word["word"] = new_content
-                    new_word["rect"] = new_rect
-                    new_word["bbox"] = (new_left, new_top, new_right, new_bottom)
-                    new_word["merge"] = True
+                        processed_list_changed_in_iteration = True
+                        break
+        return active_word_cells
 
-                    words_array.remove(word)
-                    words_array.remove(right_word)
-                    words_array.append(new_word)
-                    found = True
-                    break
-    return words_array
+    def apply_word_merging_to_page(self, page: SegmentedPage) -> SegmentedPage:
+        initial_word_cells: List[TextCell] = list(page.word_cells)
 
+        merged_cells_step1 = self._merge_close_left_and_right(
+            initial_word_cells,
+            special_char_list=self.SPECIAL_CHARS,
+            threshold=self.CLOSE_THRESHOLD,
+            only_numbers=False,
+        )
+        merged_cells_step2 = self._merge_close_left_and_right(
+            merged_cells_step1,
+            special_char_list=list(",.-/"),
+            threshold=self.NUMBERS_CLOSE_THRESHOLD,
+            only_numbers=True,
+        )
+        merged_cells_step3 = self._merge_to_the_left(
+            merged_cells_step2,
+            special_char_list=list(",."),
+            threshold=self.CLOSE_LEFT_THRESHOLD,
+        )
+        merged_cells_step4 = self._merge_to_the_left(
+            merged_cells_step3,
+            special_char_list=self.SPECIAL_CHARS,
+            threshold=self.CLOSE_THRESHOLD,
+        )
+        merged_cells_step5 = self._merge_to_the_right(
+            merged_cells_step4,
+            special_char_list=self.SPECIAL_CHARS,
+            threshold=self.CLOSE_THRESHOLD,
+        )
+        merged_cells_step6 = self._merge_to_the_left(
+            merged_cells_step5,
+            special_char_list=list(")]}"),
+            threshold=self.CLOSE_LEFT_THRESHOLD,
+        )
+        final_merged_cells = self._merge_to_the_right(
+            merged_cells_step6,
+            special_char_list=list("([{"),
+            threshold=self.CLOSE_LEFT_THRESHOLD,
+        )
 
-def merge_to_the_left(words_array, special_char_array, threshold):
-    words_array = copy.deepcopy(words_array)
-    found = True
-    while found:
-        found = False
-        for word in words_array:
-            if word["word"] and word["word"][0] in special_char_array:
-                words_array_minus_special = copy.deepcopy(words_array)
-                words_array_minus_special.remove(word)
-                find_flag, left_word = find_close_left(
-                    word, words_array_minus_special, threshold
-                )
-                if find_flag:
-                    new_content = left_word["word"] + word["word"]
-                    new_left = left_word["bbox"][0]
-                    new_right = word["bbox"][2]
-                    new_top = min(left_word["bbox"][1], word["bbox"][1])
-                    new_bottom = max(left_word["bbox"][3], word["bbox"][3])
-
-                    new_rect = BoundingRectangle(
-                        r_x0=new_left,
-                        r_y0=new_top,
-                        r_x1=new_right,
-                        r_y1=new_top,
-                        r_x2=new_right,
-                        r_y2=new_bottom,
-                        r_x3=new_left,
-                        r_y3=new_bottom,
-                        coord_origin=CoordOrigin.TOPLEFT,
-                    )
-
-                    new_word = copy.deepcopy(word)
-                    new_word["word"] = new_content
-                    new_word["rect"] = new_rect
-                    new_word["bbox"] = (new_left, new_top, new_right, new_bottom)
-                    new_word["merge"] = True
-
-                    words_array.remove(left_word)
-                    words_array.remove(word)
-                    words_array.append(new_word)
-                    found = True
-                    break
-    return words_array
-
-
-def _apply_word_merging_to_page(page: SegmentedPage) -> SegmentedPage:
-    words_arr = [text_cell_to_word_dict(cell) for cell in page.word_cells]
-
-    new_words_arr = merge_close_left_and_right(
-        words_arr,
-        special_char_array=SPECIAL_CHARS,
-        threshold=CLOSE_THRESHOLD,
-        only_numbers=False,
-    )
-    new_words_arr2 = merge_close_left_and_right(
-        new_words_arr,
-        special_char_array=list(",.-/"),
-        threshold=NUMBERS_CLOSE_THRESHOLD,
-        only_numbers=True,
-    )
-    new_words_arr3 = merge_to_the_left(
-        new_words_arr2,
-        special_char_array=list(",."),
-        threshold=CLOSE_LEFT_THRESHOLD,
-    )
-    new_words_arr4 = merge_to_the_left(
-        new_words_arr3, special_char_array=SPECIAL_CHARS, threshold=CLOSE_THRESHOLD
-    )
-    new_words_arr5 = merge_to_the_right(
-        new_words_arr4, special_char_array=SPECIAL_CHARS, threshold=CLOSE_THRESHOLD
-    )
-    new_words_arr6 = merge_to_the_left(
-        new_words_arr5,
-        special_char_array=list(")]}"),
-        threshold=CLOSE_LEFT_THRESHOLD,
-    )
-    new_words_arr7 = merge_to_the_right(
-        new_words_arr6,
-        special_char_array=list("([{"),
-        threshold=CLOSE_LEFT_THRESHOLD,
-    )
-
-    merged_cells = [word_dict_to_text_cell(word) for word in new_words_arr7]
-
-    page.word_cells = merged_cells
-    return page
+        page.word_cells = final_merged_cells
+        return page
 
 
 class GoogleDocAIPredictionProvider(BasePredictionProvider):
@@ -444,6 +491,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         )
 
         self.google_processor_name = f"projects/{google_project_id}/locations/{google_location}/processors/{google_processor_id}"
+        self._word_merger = _WordMerger()
 
     def extract_bbox_from_vertices(self, vertices):
         if len(vertices) >= 4:
@@ -655,7 +703,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
                 doc.add_table(data=table_data, prov=table_prov)
 
-            segmented_pages[page_no] = _apply_word_merging_to_page(
+            segmented_pages[page_no] = self._word_merger.apply_word_merging_to_page(
                 segmented_pages[page_no]
             )
         return doc, segmented_pages
@@ -681,11 +729,9 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         pred_segmented_pages = {}
 
         try:
-            if record.mime_type in ["application/pdf", "image/png"]:
+            if record.mime_type in ["application/pdf", "image/png", "image/jpeg"]:
                 file_content = record.original.stream.read()
-
                 record.original.stream.seek(0)
-
                 raw_document = documentai.RawDocument(
                     content=file_content, mime_type=record.mime_type
                 )
@@ -701,7 +747,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                         # If these are not specified, tables are not output
                         premium_features=documentai.OcrConfig.PremiumFeatures(
                             compute_style_info=False,
-                            enable_math_ocr=False,  # Enable to use Math OCR Model
+                            enable_math_ocr=False,
                             enable_selection_mark_detection=True,
                         ),
                     ),
@@ -722,7 +768,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 _log.info(
                     f"Successfully processed [{record.doc_id}] using Google Document AI API!"
                 )
-
                 pred_doc, pred_segmented_pages = self.convert_google_output_to_docling(
                     result_json, record
                 )
