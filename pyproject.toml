@@ -48,6 +48,7 @@ dependencies = [
     'pandas (>=2.2.3,<3.0.0)',
     'openpyxl (>=3.1.5,<4.0.0)',
     'pypdf2 (>=3.0.1,<4.0.0)',
+    "xmltodict (>=0.14.2,<0.15.0)",
 ]
 
 [project.urls]
@@ -84,7 +85,6 @@ dev = [
     "types-protobuf~=5.29",
     "boto3-stubs~=1.37",
     "types-urllib3~=1.26",
-    "xmltodict~=0.14",
     "coverage~=7.6",
     "pytest~=8.3",
     "pytest-cov>=6.1.1",
