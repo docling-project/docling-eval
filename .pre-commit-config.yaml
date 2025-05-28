@@ -4,30 +4,23 @@ repos:
     hooks:
       - id: black
         name: Black
-        entry: poetry run black docling_eval tests docs/examples
+        entry: uv run --no-sync black docling_eval tests docs/examples
         pass_filenames: false
         language: system
         files: '\.py$'
       - id: isort
         name: isort
-        entry: poetry run isort docling_eval tests docs/examples
+        entry: uv run --no-sync isort docling_eval tests docs/examples
         pass_filenames: false
         language: system
         files: '\.py$'
-#      - id: flake8
-#        name: flake8
-#        entry: poetry run flake8 docling
-#        pass_filenames: false
-#        language: system
-#        files: '\.py$'
       - id: mypy
         name: MyPy
-        entry: poetry run mypy docling_eval tests docs/examples
+        entry: uv run --no-sync mypy docling_eval tests docs/examples
         pass_filenames: false
         language: system
         files: '\.py$'
-      - id: poetry
-        name: Poetry check
-        entry: poetry check --lock
-        pass_filenames: false
-        language: system
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.7.8
+    hooks:
+      - id: uv-lock

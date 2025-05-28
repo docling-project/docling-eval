@@ -41,7 +41,7 @@ How to evaluate:
 1. Generate the HF parquet dataset out of the `dt` files.
 
 ```bash
-poetry run docling_eval \
+uv run docling_eval \
     create-eval \
     --benchmark DocLayNetV2 \
     --gt-dir "/Users/nli/data/DocLayNetV2/gt_dataset" \
@@ -59,7 +59,7 @@ Also it generates visualizations of the predictions inside: `/Users/nli/data/Smo
 2. Use the predictions dataset to make evaluations for the `layout` modality:
 
 ```bash
-poetry run docling_eval \
+uv run docling_eval \
     evaluate \
     --modality layout \
     --benchmark DocLayNetV2 \
@@ -71,7 +71,7 @@ The generated evaluations will be placed in: `/Users/nli/data/SmolDocling_eval_d
 3. Generate visualizations for the evaluations:
 
 ```bash
-poetry run docling_eval \
+uv run docling_eval \
     visualize \
     --modality layout \
     --benchmark DocLayNetV2 \

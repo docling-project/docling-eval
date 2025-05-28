@@ -26,7 +26,7 @@ from docling_eval.dataset_builders.cvat_preannotation_builder import (
 )
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 
 @pytest.mark.skipif(

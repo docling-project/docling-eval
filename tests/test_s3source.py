@@ -10,7 +10,7 @@ from docling_eval.dataset_builders.dataset_builder import (
     S3Source,
 )
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 # Get logger
 _log = logging.getLogger(__name__)
