@@ -151,19 +151,19 @@ class _ModelPerformanceCalculator:
     def __get_overlapped_gt_words(
         self, prediction_word: Word
     ) -> List[Tuple[Word, BenchmarkIntersectionInfo]]:
-        box_key: Tuple[float, float, float, float] = box_to_key(
+        box_key_val: Tuple[float, float, float, float] = box_to_key(
             prediction_word.location
         )
-        if box_key in self.prediction_to_gt_boxes_map:
-            return self.prediction_to_gt_boxes_map[box_key]
+        if box_key_val in self.prediction_to_gt_boxes_map:
+            return self.prediction_to_gt_boxes_map[box_key_val]
         return []
 
     def __get_overlapped_prediction_words(
         self, gt_word: Word
     ) -> List[Tuple[Word, BenchmarkIntersectionInfo]]:
-        gt_box_key: Tuple[float, float, float, float] = box_to_key(gt_word.location)
-        if gt_box_key in self.gt_to_prediction_boxes_map:
-            return self.gt_to_prediction_boxes_map[gt_box_key]
+        gt_box_key_val: Tuple[float, float, float, float] = box_to_key(gt_word.location)
+        if gt_box_key_val in self.gt_to_prediction_boxes_map:
+            return self.gt_to_prediction_boxes_map[gt_box_key_val]
         return []
 
     def __reset_matched_property(self) -> None:
@@ -283,21 +283,26 @@ class _ModelPerformanceCalculator:
             Tuple[Word, List[Tuple[Word, BenchmarkIntersectionInfo]]]
         ] = []
 
+        gt_boxes_to_be_removed_keys = {
+            box_to_key(b.location) for b in gt_boxes_to_be_removed_from_match_list
+        }
         temp_gt_pred_list: List[
             Tuple[Word, List[Tuple[Word, BenchmarkIntersectionInfo]]]
         ] = [
             (gt_word, intersections_list)
             for (gt_word, intersections_list) in gt_to_predictions_tmp
-            if not gt_word.location
-            in [b.location for b in gt_boxes_to_be_removed_from_match_list]
+            if box_to_key(gt_word.location) not in gt_boxes_to_be_removed_keys
         ]
+
+        gt_fn_after_refinement_keys = {
+            box_to_key(b.location) for b in self.gt_boxes_that_are_fn_after_refinement
+        }
         final_gt_pred_list: List[
             Tuple[Word, List[Tuple[Word, BenchmarkIntersectionInfo]]]
         ] = [
             (gt_word, intersections_list)
             for (gt_word, intersections_list) in temp_gt_pred_list
-            if not gt_word.location
-            in [b.location for b in self.gt_boxes_that_are_fn_after_refinement]
+            if box_to_key(gt_word.location) not in gt_fn_after_refinement_keys
         ]
         for gt_word_item in self.gt_boxes_that_are_fn_after_refinement:
             self.false_negatives.append(gt_word_item)
@@ -321,57 +326,65 @@ class _ModelPerformanceCalculator:
                 prediction_word_item: Word = intersections[0][0]
                 self.gt_and_prediction_matches.append((gt_word, prediction_word_item))
 
+        merged_prediction_loc_keys = {
+            box_to_key(b.location) for b in self.prediction_boxes_that_were_merged
+        }
         new_fp: List[Word] = [
             pred_word
             for pred_word in self.false_positives
-            if not pred_word.location
-            in [b.location for b in self.prediction_boxes_that_were_merged]
+            if box_to_key(pred_word.location) not in merged_prediction_loc_keys
         ]
         self.false_positives = new_fp
+
         new_fn: List[Word] = [
             gt_word_item
             for gt_word_item in self.false_negatives
-            if not gt_word_item.location
-            in [b.location for b in gt_boxes_to_be_removed_from_match_list]
+            if box_to_key(gt_word_item.location) not in gt_boxes_to_be_removed_keys
         ]
         self.false_negatives = new_fn
+
+        current_false_negatives_keys = {
+            box_to_key(fn.location) for fn in self.false_negatives
+        }
+        current_false_positives_keys = {
+            box_to_key(fp.location) for fp in self.false_positives
+        }
 
         zero_iou_fn: List[Word] = [
             word
             for word in self.fn_boxes.zero_iou
-            if word.location in [b.location for b in self.false_negatives]
+            if box_to_key(word.location) in current_false_negatives_keys
         ]
         ambiguous_match_fn: List[Word] = [
             word
             for word in self.fn_boxes.ambiguous_match
-            if word.location in [b.location for b in self.false_negatives]
+            if box_to_key(word.location) in current_false_negatives_keys
         ]
+        ambiguous_match_fn_keys = {box_to_key(fn.location) for fn in ambiguous_match_fn}
         low_iou_fn: List[Word] = [
             word
             for word in self.fn_boxes.low_iou
-            if word.location in [b.location for b in self.false_negatives]
-        ]
-        low_iou_fn = [
-            word
-            for word in low_iou_fn
-            if word.location not in [b.location for b in ambiguous_match_fn]
+            if box_to_key(word.location) in current_false_negatives_keys
+            and box_to_key(word.location) not in ambiguous_match_fn_keys
         ]
         self.fn_boxes = BoxesTypes(zero_iou_fn, low_iou_fn, ambiguous_match_fn)
 
         zero_iou_fp: List[Word] = [
             word
             for word in self.fp_boxes.zero_iou
-            if word.location in [b.location for b in self.false_positives]
-        ]
-        low_iou_fp: List[Word] = [
-            word
-            for word in self.fp_boxes.low_iou
-            if word.location in [b.location for b in self.false_positives]
+            if box_to_key(word.location) in current_false_positives_keys
         ]
         ambiguous_match_fp: List[Word] = [
             word
             for word in self.fp_boxes.ambiguous_match
-            if word.location in [b.location for b in self.false_positives]
+            if box_to_key(word.location) in current_false_positives_keys
+        ]
+        ambiguous_match_fp_keys = {box_to_key(fp.location) for fp in ambiguous_match_fp}
+        low_iou_fp: List[Word] = [
+            word
+            for word in self.fp_boxes.low_iou
+            if box_to_key(word.location) in current_false_positives_keys
+            and box_to_key(word.location) not in ambiguous_match_fp_keys
         ]
         self.fp_boxes = BoxesTypes(zero_iou_fp, low_iou_fp, ambiguous_match_fp)
 
@@ -470,10 +483,10 @@ class _ModelPerformanceCalculator:
             )
             sum_norm_ed_insensitive += norm_ed_insensitive_val
             matched_pairs_perfect_recognition_insensitive_weighted_sum += (
-                gt_word.word_weight if 0 == word_edit_distance_insensitive else 0
+                gt_word.word_weight if 0 == word_edit_distance_insensitive else 0.0
             )
             matched_pairs_imperfect_recognition_insensitive_weighted_sum += (
-                0 if 0 == word_edit_distance_insensitive else gt_word.word_weight
+                gt_word.word_weight if 0 != word_edit_distance_insensitive else 0.0
             )
             sum_edit_distance_intersection_insensitive += word_edit_distance_insensitive
 
@@ -483,10 +496,10 @@ class _ModelPerformanceCalculator:
             norm_ed_val: float = word_edit_distance / max_word_length
             sum_norm_ed += norm_ed_val
             matched_pairs_perfect_recognition_sensitive_weighted_sum += (
-                gt_word.word_weight if 0 == word_edit_distance else 0
+                gt_word.word_weight if 0 == word_edit_distance else 0.0
             )
             matched_pairs_imperfect_recognition_sensitive_weighted_sum += (
-                0 if 0 == word_edit_distance else gt_word.word_weight
+                gt_word.word_weight if 0 != word_edit_distance else 0.0
             )
             sum_edit_distance_intersection_sensitive += word_edit_distance
 
@@ -542,7 +555,7 @@ class _ModelPerformanceCalculator:
             )
             / denominator_union
             if denominator_union > 0
-            else 0
+            else 0.0
         )
 
         image_avg_edit_distance_union_insensitive: float = (
@@ -553,19 +566,19 @@ class _ModelPerformanceCalculator:
             )
             / denominator_union
             if denominator_union > 0
-            else 0
+            else 0.0
         )
 
         image_avg_edit_distance_intersection_sensitive: float = (
             (sum_edit_distance_intersection_sensitive / sum_max_length_intersection)
             if sum_max_length_intersection > 0
-            else 0
+            else 0.0
         )
 
         image_avg_edit_distance_intersection_insensitive: float = (
             (sum_edit_distance_intersection_insensitive / sum_max_length_intersection)
             if sum_max_length_intersection > 0
-            else 0
+            else 0.0
         )
 
         num_false_positives: int = len(self.false_positives)
@@ -597,7 +610,7 @@ class _ModelPerformanceCalculator:
                 / denominator_wa_intersection_sensitive
             )
             if denominator_wa_intersection_sensitive > 0
-            else 0
+            else 0.0
         )
 
         denominator_wa_intersection_insensitive: float = max(
@@ -611,7 +624,7 @@ class _ModelPerformanceCalculator:
                 / denominator_wa_intersection_insensitive
             )
             if denominator_wa_intersection_insensitive > 0
-            else 0
+            else 0.0
         )
 
         denominator_wa_union_sensitive: float = max(
@@ -627,7 +640,7 @@ class _ModelPerformanceCalculator:
                 / denominator_wa_union_sensitive
             )
             if denominator_wa_union_sensitive > 0
-            else 0
+            else 0.0
         )
 
         denominator_wa_union_insensitive: float = max(
@@ -643,7 +656,7 @@ class _ModelPerformanceCalculator:
                 / denominator_wa_union_insensitive
             )
             if denominator_wa_union_insensitive > 0
-            else 0
+            else 0.0
         )
 
         calculated_norm_ed_tp_only: float = sum_norm_ed / max(
@@ -659,42 +672,42 @@ class _ModelPerformanceCalculator:
             (sum_norm_ed + num_false_positives + num_false_negatives_unfiltered)
             / denominator_norm_ed_all_cells
             if denominator_norm_ed_all_cells > 0
-            else 0
+            else 0.0
         )
 
         orientation_accuracy: float = sum_correct_orientation / max(
-            1, num_of_orientation_set
+            1.0, float(num_of_orientation_set)
         )
 
         metrics_summary_data = {
             "num_prediction_cells": num_prediction_cells,
             "number_of_gt_cells": num_gt_cells,
             "number_of_false_positive_detections": num_false_positives,
-            "norm_ed_tp_only": 100 * (1 - calculated_norm_ed_tp_only),
-            "norm_ed_all_cells": 100 * (1 - calculated_norm_ed_all_cells),
+            "norm_ed_tp_only": 100.0 * (1.0 - calculated_norm_ed_tp_only),
+            "norm_ed_all_cells": 100.0 * (1.0 - calculated_norm_ed_all_cells),
             "num_true_positive_matches": num_true_positive_matches,
             "number_of_false_negative_detections": num_false_negatives_unfiltered,
             "without_ignored_chars_false_negatives": num_false_negatives_no_ignored_chars,
             "without_single_chars_false_negatives": num_false_negatives_no_single_chars,
-            "detection_precision": 100 * detection_precision,
-            "detection_recall": 100 * detection_recall,
-            "detection_f1_score": 100 * detection_f1_score,
-            "word_accuracy_intersection_case_sensitive": 100
+            "detection_precision": 100.0 * detection_precision,
+            "detection_recall": 100.0 * detection_recall,
+            "detection_f1_score": 100.0 * detection_f1_score,
+            "word_accuracy_intersection_case_sensitive": 100.0
             * word_accuracy_intersection_case_sensitive,
-            "word_accuracy_intersection_case_insensitive": 100
+            "word_accuracy_intersection_case_insensitive": 100.0
             * word_accuracy_intersection_case_insensitive,
-            "word_accuracy_union_case_sensitive": 100
+            "word_accuracy_union_case_sensitive": 100.0
             * word_accuracy_union_case_sensitive,
-            "word_accuracy_union_case_insensitive": 100
+            "word_accuracy_union_case_insensitive": 100.0
             * word_accuracy_union_case_insensitive,
-            "edit_score_intersection_case_sensitive_not_avg_over_words": 100
-            * (1 - image_avg_edit_distance_intersection_sensitive),
-            "edit_score_intersection_case_insensitive_not_avg_over_words": 100
-            * (1 - image_avg_edit_distance_intersection_insensitive),
-            "edit_score_union_case_sensitive_not_avg_over_words": 100
-            * (1 - image_avg_edit_distance_union_sensitive),
-            "edit_score_union_case_insensitive_not_avg_over_words": 100
-            * (1 - image_avg_edit_distance_union_insensitive),
+            "edit_score_intersection_case_sensitive_not_avg_over_words": 100.0
+            * (1.0 - image_avg_edit_distance_intersection_sensitive),
+            "edit_score_intersection_case_insensitive_not_avg_over_words": 100.0
+            * (1.0 - image_avg_edit_distance_intersection_insensitive),
+            "edit_score_union_case_sensitive_not_avg_over_words": 100.0
+            * (1.0 - image_avg_edit_distance_union_sensitive),
+            "edit_score_union_case_insensitive_not_avg_over_words": 100.0
+            * (1.0 - image_avg_edit_distance_union_insensitive),
             "sum_edit_distance_intersection_case_sensitive_not_avg_over_words": sum_edit_distance_intersection_sensitive,
             "sum_edit_distance_intersection_case_insensitive_not_avg_over_words": sum_edit_distance_intersection_insensitive,
             "sum_max_length_intersection": sum_max_length_intersection,
@@ -721,7 +734,7 @@ class _ModelPerformanceCalculator:
                 self.prediction_boxes_that_were_merged
             ),
             "gt_boxes_that_were_merged": len(self.gt_boxes_that_were_merged),
-            "orientation_accuracy": 100 * orientation_accuracy,
+            "orientation_accuracy": 100.0 * orientation_accuracy,
         }
 
         summary_instance = ImageMetricsSummary.model_validate(metrics_summary_data)
