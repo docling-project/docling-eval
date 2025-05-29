@@ -94,7 +94,7 @@ class TEDScorer:
             self._tokenize(n)
         if node.tag != "unk":
             self._tokens.append(f"</{node.tag}>")
-        if node.tag != "td" and node.tail is not None:
+        if (node.tag not in ["td", "th"]) and node.tail is not None:
             self._tokens += list(node.tail)
 
     def _tree_convert_html(
@@ -103,7 +103,7 @@ class TEDScorer:
         r"""
         Converts HTML tree to the format required by apted
         """
-        if node.tag == "td":
+        if node.tag in ["td", "th"]:
             if convert_cell:
                 self._tokens = []
                 self._tokenize(node)
@@ -121,7 +121,7 @@ class TEDScorer:
             new_node = TableTree(node.tag, None, None, None, *deque())
         if parent is not None:
             parent.children.append(new_node)
-        if node.tag != "td":
+        if node.tag not in ["td", "th"]:
             for n in node.getchildren():
                 self._tree_convert_html(n, convert_cell, new_node)
         # if parent is None:
