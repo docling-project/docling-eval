@@ -48,7 +48,8 @@ class FilePredictionProvider(BasePredictionProvider):
         ignore_missing_predictions: bool = True,
         true_labels: Optional[Set[DocItemLabel]] = None,
         pred_labels: Optional[Set[DocItemLabel]] = None,
-        use_ground_truth_page_images: bool = False,
+        use_ground_truth_page_images: bool = True,
+        prediction_images_path: Optional[Path] = None,
     ):
         """
         Initialize the file prediction provider.
@@ -61,6 +62,8 @@ class FilePredictionProvider(BasePredictionProvider):
             ignore_missing_predictions: Whether to ignore missing predictions
             true_labels: Set of DocItemLabel to use for ground truth visualization
             pred_labels: Set of DocItemLabel to use for prediction visualization
+            use_ground_truth_page_images: Flag to use the GT page images for the predictions.
+            prediction_images_path: Directory to load the prediction images
         """
         super().__init__(
             do_visualization=do_visualization,
@@ -69,6 +72,7 @@ class FilePredictionProvider(BasePredictionProvider):
             pred_labels=pred_labels,
         )
         self._use_ground_truth_page_images = use_ground_truth_page_images
+        self._prediction_images_path = prediction_images_path
 
         self._supported_prediction_formats = [
             PredictionFormats.DOCTAGS,
@@ -91,6 +95,17 @@ class FilePredictionProvider(BasePredictionProvider):
         # Validate if the source_path exists
         if not self._prediction_source_path.is_dir():
             raise RuntimeError(f"Missing source path: {self._prediction_source_path}")
+
+        # Log the source path for the images
+        if prediction_format == PredictionFormats.DOCTAGS:
+            msg = "The prediction images will be loaded from "
+            if self._prediction_images_path:
+                msg += f"{str(self._prediction_images_path)}"
+            elif self._use_ground_truth_page_images:
+                msg += "the GT dataset"
+            else:
+                msg += f"{str(self._prediction_source_path)}"
+            _log.info(msg)
 
     def info(self) -> Dict:
         """Get information about the prediction provider."""
@@ -167,21 +182,33 @@ class FilePredictionProvider(BasePredictionProvider):
             with open(doctags_fn, "r") as fd:
                 doctags = fd.read()
 
-            page_image = None
+            page_image: Optional[Image.Image] = None
 
-            if self._use_ground_truth_page_images:
+            # Try to get an image file for the predictions:
+            # 1. Check the pred_images_path.
+            # 2. Use the GT page image if the corresponding flag is set.
+            # 3. Look inside the same dir as the doctag files.
+            if self._prediction_images_path:
+                page_image_fn = self._prediction_images_path / f"{record.doc_id}.png"
+                if page_image_fn.is_file():
+                    page_image = Image.open(page_image_fn)
+                else:
+                    _log.warning("Failed to load pred image: %s", page_image_fn)
+            elif self._use_ground_truth_page_images:
                 page_image = record.ground_truth_page_images[0]
             else:
-                # Check if an optional page image is present
                 page_image_fn = self._prediction_source_path / f"{record.doc_id}.png"
                 if page_image_fn.is_file():
                     page_image = Image.open(page_image_fn)
+                else:
+                    _log.warning("Failed to load pred image: %s", page_image_fn)
 
             # Build DoclingDocument
             doctags_page = DocTagsPage(tokens=doctags, image=page_image)
             doctags_doc = DocTagsDocument(pages=[doctags_page])
-            doc = DoclingDocument(name=record.doc_id)
-            doc.load_from_doctags(doctags_doc)
+            doc = DoclingDocument.load_from_doctags(
+                doctags_doc, document_name=record.doc_id
+            )
 
             return doc
         except Exception as e:

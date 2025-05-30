@@ -10,14 +10,11 @@ from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 from docling_eval.dataset_builders.omnidocbench_builder import (
     OmniDocBenchDatasetBuilder,
 )
-from docling_eval.dataset_builders.otsl_table_dataset_builder import (
-    FintabNetDatasetBuilder,
-)
 from docling_eval.prediction_providers.aws_prediction_provider import (
     AWSTextractPredictionProvider,
 )
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 logging.getLogger("botocore").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
@@ -37,7 +34,7 @@ def test_run_dpbench_builder():
 
     dataset = DPBenchDatasetBuilder(
         target=target_path / "gt_dataset",
-        end_index=20,
+        end_index=15,
     )
 
     dataset.retrieve_input_dataset()
@@ -75,7 +72,7 @@ def test_run_omnidocbench_builder():
 
     dataset = OmniDocBenchDatasetBuilder(
         target=target_path / "gt_dataset",
-        end_index=5,
+        end_index=15,
     )
 
     dataset.retrieve_input_dataset()

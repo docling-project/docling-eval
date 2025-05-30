@@ -60,6 +60,5 @@ class DocTagsFilesToDoclingDocumentAdapter:
         """
         doctags_page = DocTagsPage(tokens=doctags)
         doctags_doc = DocTagsDocument(pages=[doctags_page])
-        doc = DoclingDocument(name=doc_id)
-        doc.load_from_doctags(doctags_doc)
+        doc = DoclingDocument.load_from_doctags(doctags_doc, document_name=doc_id)
         return doc

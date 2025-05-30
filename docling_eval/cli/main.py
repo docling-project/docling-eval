@@ -236,6 +236,8 @@ def get_prediction_provider(
     *,
     file_source_path: Optional[Path] = None,
     file_prediction_format: Optional[PredictionFormats] = None,
+    file_use_ground_truth_images: bool = True,
+    file_images_path: Optional[Path] = None,
     do_visualization: bool = True,
     do_table_structure: bool = True,
     artifacts_path: Optional[Path] = None,
@@ -312,7 +314,6 @@ def get_prediction_provider(
         )
 
     elif provider_type == PredictionProviderType.PDF_DOCLING:
-
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
@@ -410,7 +411,8 @@ def get_prediction_provider(
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
             ignore_missing_files=True,
-            use_ground_truth_page_images=False,
+            use_ground_truth_page_images=file_use_ground_truth_images,
+            prediction_images_path=file_images_path,
         )
 
     else:
@@ -936,7 +938,19 @@ def create_eval(
     file_source_path: Annotated[
         Optional[Path],
         typer.Option(
-            help="Source path for File provider (required if using FILE provider)"
+            help="Source path for prediction files (required if using FILE provider)"
+        ),
+    ] = None,
+    file_use_ground_truth_images: Annotated[
+        bool,
+        typer.Option(
+            help="Use the GT images to construct the prediction dataset (if using FILE provider)"
+        ),
+    ] = True,
+    file_images_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Source path for the prediction images (if using FILE provider)"
         ),
     ] = None,
     artifacts_path: Annotated[
@@ -981,6 +995,8 @@ def create_eval(
             provider_type=prediction_provider,
             file_source_path=file_source_path,
             file_prediction_format=file_format,
+            file_use_ground_truth_images=file_use_ground_truth_images,
+            file_images_path=file_images_path,
             artifacts_path=artifacts_path,
             do_visualization=do_visualization,
             image_scale_factor=image_scale_factor,

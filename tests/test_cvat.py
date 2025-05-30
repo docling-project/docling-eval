@@ -26,7 +26,7 @@ from docling_eval.dataset_builders.cvat_preannotation_builder import (
 )
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 
 @pytest.mark.skipif(
@@ -217,7 +217,6 @@ def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
 
 
 def test_run_cvat_e2e():
-
     run_cvat_e2e(
         idir=Path("./tests/data/cvat_pdfs_dataset_e2e/case_01"),
         odir=Path("./scratch/cvat_pdfs_dataset_e2e/case_01"),

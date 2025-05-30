@@ -119,7 +119,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         segmented_pages: Dict[int, SegmentedPage] = {}
 
         for page in analyze_result.get("pages", []):
-            page_no = page.get("page_number", 1)
+            page_no = page.get("pageNumber", 1)
 
             page_width = page.get("width")
             page_height = page.get("height")
@@ -253,11 +253,12 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
 
     def _add_tables(self, analyze_result, doc):
         for table in analyze_result.get("tables", []):
-            page_no = table.get("page_range", {}).get("first_page_number", 1)
-            row_count = table.get("row_count", 0)
-            col_count = table.get("column_count", 0)
+            bounding_region = table["boundingRegions"][0]
+            page_no = bounding_region.get("pageNumber", 1)
+            row_count = table.get("rowCount", 0)
+            col_count = table.get("columnCount", 0)
 
-            table_polygon = table.get("bounding_regions", [{}])[0].get("polygon", [])
+            table_polygon = bounding_region.get("polygon", [])
             table_bbox = self.extract_bbox_from_polygon(table_polygon)
 
             table_bbox_obj = BoundingBox(
@@ -276,12 +277,15 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
 
             for cell in table.get("cells", []):
                 cell_text = cell.get("content", "").strip()
-                row_index = cell.get("row_index", 0)
-                col_index = cell.get("column_index", 0)
-                row_span = cell.get("row_span", 1)
-                col_span = cell.get("column_span", 1)
+                row_index = cell.get("rowIndex", 0)
+                col_index = cell.get("columnIndex", 0)
+                row_span = cell.get("rowSpan", 1)
+                col_span = cell.get("colSpan", 1)
+                kind = cell.get("kind", None)
+                is_row_header = True if kind == "rowHeader" else False
+                is_col_header = True if kind == "columnHeader" else False
 
-                cell_polygon = cell.get("bounding_regions", [{}])[0].get("polygon", [])
+                cell_polygon = cell.get("boundingRegions", [{}])[0].get("polygon", [])
                 cell_bbox = self.extract_bbox_from_polygon(cell_polygon)
 
                 table_cell = TableCell(
@@ -299,8 +303,8 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     start_col_offset_idx=col_index,
                     end_col_offset_idx=col_index + col_span,
                     text=cell_text,
-                    column_header=False,
-                    row_header=False,
+                    column_header=is_col_header,
+                    row_header=is_row_header,
                     row_section=False,
                 )
 

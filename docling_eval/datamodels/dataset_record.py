@@ -21,7 +21,6 @@ seg_adapter = TypeAdapter(Dict[int, SegmentedPage])
 class DatasetRecord(
     BaseModel
 ):  # TODO make predictionrecord class, factor prediction-related fields there.
-
     doc_id: str = Field(alias="document_id")
     doc_path: Optional[Path] = Field(alias="document_filepath", default=None)
     doc_hash: Optional[str] = Field(alias="document_filehash", default=None)
@@ -78,7 +77,6 @@ class DatasetRecord(
         pictures_field_prefix: str,
         pages_field_prefix: str,
     ):
-
         pictures = []
         page_images = []
 

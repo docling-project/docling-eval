@@ -100,7 +100,6 @@ class TimingsEvaluator(BaseEvaluator):
         time_per_page = []
 
         for timing in timings:
-
             if timing is not None:
                 for key, val in timing.items():
                     if key == "pipeline_total":

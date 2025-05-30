@@ -19,7 +19,6 @@ from docling_eval.evaluators.ocr.processing_utils import (
 
 
 class _OcrBenchmark:
-
     def __init__(
         self,
         model_identifier: str,
@@ -68,10 +67,12 @@ class _OcrBenchmark:
         copied_prediction_words = copy.deepcopy(raw_prediction_words)
         copied_ground_truth_words = copy.deepcopy(raw_ground_truth_words)
 
-        filtered_gt_words, filtered_prediction_words, ignored_zones = (
-            self.ignore_zone_filter.filter_words_in_ignore_zones(
-                copied_prediction_words, copied_ground_truth_words
-            )
+        (
+            filtered_gt_words,
+            filtered_prediction_words,
+            ignored_zones,
+        ) = self.ignore_zone_filter.filter_words_in_ignore_zones(
+            copied_prediction_words, copied_ground_truth_words
         )
         self.image_to_ignore_zones_map[image_identifier] = ignored_zones
 

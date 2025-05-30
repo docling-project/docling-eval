@@ -27,7 +27,6 @@ BoxClassification = namedtuple(
 
 
 class _OcrPerformanceCalculator:
-
     def __init__(
         self,
         prediction_words: List[Word],

@@ -180,13 +180,15 @@ class _WordMerger:
                         if cell is not special_char_cell_candidate
                     ]
 
-                    found_neighbors, left_neighbor_cell, right_neighbor_cell = (
-                        self._find_close_right_and_left(
-                            special_char_cell_candidate,
-                            candidate_neighbors,
-                            threshold,
-                            only_numbers,
-                        )
+                    (
+                        found_neighbors,
+                        left_neighbor_cell,
+                        right_neighbor_cell,
+                    ) = self._find_close_right_and_left(
+                        special_char_cell_candidate,
+                        candidate_neighbors,
+                        threshold,
+                        only_numbers,
                     )
 
                     if found_neighbors and left_neighbor_cell and right_neighbor_cell:

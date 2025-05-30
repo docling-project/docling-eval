@@ -53,7 +53,6 @@ class EvaluationModality(str, Enum):
 
 
 class BenchMarkNames(str, Enum):
-
     # End-to-End
     DPBENCH = "DPBench"
     DOCLING_DPBENCH = "DoclingDPBench"
