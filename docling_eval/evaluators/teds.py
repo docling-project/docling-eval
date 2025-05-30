@@ -28,7 +28,7 @@ class CustomConfig(Config):
             or (node1.rowspan != node2.rowspan)
         ):
             return 1.0
-        if node1.tag == "td":
+        if node1.tag in ["td", "th"]:
             if node1.content or node2.content:
                 return self.normalized_distance(node1.content, node2.content)
         return 0.0
@@ -44,7 +44,7 @@ class TableTree(Tree):
 
     def bracket(self):
         """Show tree using brackets notation"""
-        if self.tag == "td":
+        if self.tag in ["td", "th"]:
             result = '"tag": %s, "colspan": %d, "rowspan": %d, "text": %s' % (
                 self.tag,
                 self.colspan,
