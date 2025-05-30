@@ -1,25 +1,24 @@
 from typing import Any, List, Optional
 
+from docling_core.types.doc import BoundingBox
+from docling_core.types.doc.page import TextCell
 from pydantic import BaseModel, Field
 
 
-class Location(BaseModel):
-    left: float
-    top: float
-    width: float
-    height: float
-    right: float
-    bottom: float
+class _CalculationConstants:
+    EPS: float = 1.0e-6
 
 
-class Word(BaseModel):
-    word: str
+class Word(TextCell):
     vertical: bool
-    location: Location
     polygon: List[List[float]]
     matched: bool = Field(default=False)
     ignore_zone: Optional[bool] = None
     to_remove: Optional[bool] = None
+
+    @property
+    def bbox(self) -> BoundingBox:
+        return self.rect.to_bounding_box()
 
 
 class BenchmarkIntersectionInfo(BaseModel):

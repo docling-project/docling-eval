@@ -3,15 +3,14 @@ from typing import Any, Dict, List, Tuple
 from docling_eval.evaluators.ocr.evaluation_models import (
     BenchmarkIntersectionInfo,
     Word,
+    _CalculationConstants,
 )
 from docling_eval.evaluators.ocr.geometry_utils import (
     box_to_key,
     calculate_box_intersection_info,
     calculate_box_intersection_info_extended,
-    convert_locations_to_float,
     is_horizontal,
 )
-from docling_eval.evaluators.ocr.processing_utils import _CalculationConstants
 
 detection_match_condition_iou_coverage_threshold: Any = (
     lambda boxes_info: boxes_info.prediction_box_portion_covered > 0.5
@@ -32,8 +31,6 @@ def match_ground_truth_to_prediction_words(
         Tuple[float, float, float, float], List[Tuple[Word, BenchmarkIntersectionInfo]]
     ],
 ]:
-    convert_locations_to_float(prediction_words)
-    convert_locations_to_float(ground_truth_words)
 
     gt_to_prediction_map: Dict[
         Tuple[float, float, float, float], List[Tuple[Word, BenchmarkIntersectionInfo]]
@@ -49,9 +46,7 @@ def match_ground_truth_to_prediction_words(
                 iou_val,
                 gt_portion_covered,
                 pred_portion_covered,
-            ) = calculate_box_intersection_info(
-                gt_word_item.location, pred_word_item.location
-            )
+            ) = calculate_box_intersection_info(gt_word_item.bbox, pred_word_item.bbox)
             if intersect_area > 0:
                 intersections_list.append(
                     (
@@ -68,7 +63,7 @@ def match_ground_truth_to_prediction_words(
                     )
                 )
         key_for_gt_box: Tuple[float, float, float, float] = box_to_key(
-            gt_word_item.location
+            gt_word_item.bbox
         )
         if len(intersections_list) > 1:
             intersections_list = sorted(
@@ -90,9 +85,7 @@ def match_ground_truth_to_prediction_words(
                 iou_val,
                 gt_portion_covered,
                 pred_portion_covered,
-            ) = calculate_box_intersection_info(
-                gt_word_item.location, pred_word_item.location
-            )
+            ) = calculate_box_intersection_info(gt_word_item.bbox, pred_word_item.bbox)
             if intersect_area > 0:
                 intersections_list_pred_to_gt.append(
                     (
@@ -109,7 +102,7 @@ def match_ground_truth_to_prediction_words(
                     )
                 )
         key_for_pred_box: Tuple[float, float, float, float] = box_to_key(
-            pred_word_item.location
+            pred_word_item.bbox
         )
         intersections_list_pred_to_gt = sorted(
             intersections_list_pred_to_gt, key=lambda x: x[1].intersection_area
@@ -142,14 +135,12 @@ def refine_prediction_to_many_gt_boxes(
         can_be_added_to_line: bool = True
         for anchor_box, _ in [sorted_intersections[0]]:
             (_, _, _, _, _, x_iou, y_iou) = calculate_box_intersection_info_extended(
-                gt_box.location, anchor_box.location
+                gt_box.bbox, anchor_box.bbox
             )
 
-            height_ratio: float = min(
-                gt_box.location.height, anchor_box.location.height
-            ) / max(
-                gt_box.location.height + _CalculationConstants.EPS,
-                anchor_box.location.height + _CalculationConstants.EPS,
+            height_ratio: float = min(gt_box.bbox.height, anchor_box.bbox.height) / max(
+                gt_box.bbox.height + _CalculationConstants.EPS,
+                anchor_box.bbox.height + _CalculationConstants.EPS,
             )
             are_words_in_same_line: bool = (
                 (x_iou < 0.2 and y_iou > 0)
@@ -176,14 +167,12 @@ def refine_prediction_to_many_gt_boxes(
         can_be_added_to_column: bool = True
         for anchor_box, _ in [sorted_intersections[0]]:
             (_, _, _, _, _, x_iou, y_iou) = calculate_box_intersection_info_extended(
-                gt_box.location, anchor_box.location
+                gt_box.bbox, anchor_box.bbox
             )
 
-            width_ratio: float = min(
-                gt_box.location.width, anchor_box.location.width
-            ) / max(
-                gt_box.location.width + _CalculationConstants.EPS,
-                anchor_box.location.width + _CalculationConstants.EPS,
+            width_ratio: float = min(gt_box.bbox.width, anchor_box.bbox.width) / max(
+                gt_box.bbox.width + _CalculationConstants.EPS,
+                anchor_box.bbox.width + _CalculationConstants.EPS,
             )
 
             are_words_in_same_column: bool = (

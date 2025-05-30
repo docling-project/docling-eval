@@ -6,23 +6,15 @@ from typing import Any, Dict, List, Optional, Tuple
 from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_core.types.doc.page import (
     BoundingRectangle,
-    PageGeometry,
     SegmentedPage,
     TextCell,
+    TextDirection,
 )
 
-from docling_eval.evaluators.ocr.evaluation_models import Location, Word
-from docling_eval.evaluators.ocr.geometry_utils import (
-    create_polygon_from_rect,
-    get_x_axis_overlap,
-    get_y_axis_overlap,
-)
+from docling_eval.evaluators.ocr.evaluation_models import Word, _CalculationConstants
+from docling_eval.evaluators.ocr.geometry_utils import create_polygon_from_bbox
 
 _log = logging.getLogger(__name__)
-
-
-class _CalculationConstants:
-    EPS: float = 1.0e-6
 
 
 def extract_word_from_text_cell(text_cell: TextCell, page_height: float) -> Word:
@@ -38,12 +30,9 @@ def extract_word_from_text_cell(text_cell: TextCell, page_height: float) -> Word
     ]
 
     bbox = rect_to_process.to_bounding_box()
-    left_val: float = float(bbox.l)
-    top_val: float = float(bbox.t)
-    right_val: float = float(bbox.r)
-    bottom_val: float = float(bbox.b)
-    width_val: float = right_val - left_val
-    height_val: float = bottom_val - top_val
+
+    width_val: float = bbox.width
+    height_val: float = bbox.height
 
     is_vertical_flag: bool = False
     if (
@@ -53,83 +42,102 @@ def extract_word_from_text_cell(text_cell: TextCell, page_height: float) -> Word
     ):
         is_vertical_flag = True
 
-    location_obj: Location = Location(
-        left=left_val,
-        top=top_val,
-        width=width_val,
-        height=height_val,
-        right=right_val,
-        bottom=bottom_val,
-    )
-
     return Word(
-        word=text_cell.text,
+        rect=rect_to_process,
+        text=text_cell.text,
+        orig=text_cell.orig,
+        text_direction=text_cell.text_direction,
+        confidence=text_cell.confidence,
+        from_ocr=text_cell.from_ocr,
         vertical=is_vertical_flag,
-        location=location_obj,
         polygon=polygon_points,
     )
 
 
 def convert_word_to_text_cell(word_obj: Word) -> TextCell:
-    bbox = BoundingBox(
-        l=word_obj.location.left,
-        t=word_obj.location.top,
-        r=word_obj.location.right,
-        b=word_obj.location.bottom,
+    source_bbox = word_obj.bbox
+
+    bbox_for_conversion = BoundingBox(
+        l=source_bbox.l,
+        t=source_bbox.t,
+        r=source_bbox.r,
+        b=source_bbox.b,
         coord_origin=CoordOrigin.TOPLEFT,
     )
+    if source_bbox.coord_origin != CoordOrigin.TOPLEFT:
+        pass
 
-    text_cell_rect = BoundingRectangle.from_bounding_box(bbox)
+    text_cell_rect = BoundingRectangle.from_bounding_box(bbox_for_conversion)
 
     return TextCell(
         rect=text_cell_rect,
-        text=word_obj.word,
-        orig=word_obj.word,
-        confidence=1.0,
-        from_ocr=True,
+        text=word_obj.text,
+        orig=word_obj.orig,
+        confidence=word_obj.confidence,
+        text_direction=word_obj.text_direction,
+        from_ocr=word_obj.from_ocr,
     )
 
 
 def merge_words_into_one(
     words: List[Word], add_space_between_words: bool = True
 ) -> Word:
+    if not words:
+        default_bbox = BoundingBox(l=0, t=0, r=0, b=0, coord_origin=CoordOrigin.TOPLEFT)
+        default_rect = BoundingRectangle.from_bounding_box(default_bbox)
+        return Word(
+            text="",
+            rect=default_rect,
+            orig="",
+            confidence=1.0,
+            from_ocr=False,
+            text_direction=TextDirection.LEFT_TO_RIGHT,
+            vertical=False,
+            polygon=create_polygon_from_bbox(default_bbox),
+        )
+
     separator: str = " " if add_space_between_words else ""
-    merged_text: str = ""
+    merged_text_parts = []
 
     min_left: float = float("inf")
     min_top: float = float("inf")
-    max_right: float = 0.0
-    max_bottom: float = 0.0
+    max_right: float = -float("inf")
+    max_bottom: float = -float("inf")
 
-    sorted_words: List[Word] = sorted(words, key=lambda k: k.location.left)
+    sorted_words: List[Word] = sorted(words, key=lambda k: k.bbox.l)
+
+    first_word_for_metadata = sorted_words[0]
 
     for word_item in sorted_words:
-        merged_text = merged_text + separator + word_item.word
-        min_left = min(min_left, word_item.location.left)
-        min_top = min(min_top, word_item.location.top)
-        max_right = max(max_right, word_item.location.right)
-        max_bottom = max(max_bottom, word_item.location.bottom)
+        merged_text_parts.append(word_item.text)
+        current_bbox = word_item.bbox
+        min_left = min(min_left, current_bbox.l)
+        min_top = min(min_top, current_bbox.t)
+        max_right = max(max_right, current_bbox.r)
+        max_bottom = max(max_bottom, current_bbox.b)
 
-    merged_text = merged_text.lstrip()
+    merged_text: str = separator.join(merged_text_parts)
 
-    merged_location = Location(
-        top=min_top,
-        left=min_left,
-        width=max_right - min_left,
-        height=max_bottom - min_top,
-        right=max_right,
-        bottom=max_bottom,
+    merged_bbox = BoundingBox(
+        l=min_left,
+        t=min_top,
+        r=max_right,
+        b=max_bottom,
+        coord_origin=CoordOrigin.TOPLEFT,
     )
 
-    merged_polygon: List[List[float]] = create_polygon_from_rect(merged_location)
-
-    is_vertical_flag: bool = words[0].vertical if words else False
+    merged_polygon: List[List[float]] = create_polygon_from_bbox(merged_bbox)
+    merged_rect = BoundingRectangle.from_bounding_box(merged_bbox)
 
     return Word(
-        word=merged_text,
-        location=merged_location,
+        text=merged_text,
+        rect=merged_rect,
+        orig=merged_text,
+        confidence=first_word_for_metadata.confidence,
+        from_ocr=any(w.from_ocr for w in sorted_words),
+        text_direction=first_word_for_metadata.text_direction,
+        vertical=first_word_for_metadata.vertical,
         polygon=merged_polygon,
-        vertical=is_vertical_flag,
     )
 
 
@@ -150,10 +158,10 @@ class _IgnoreZoneFilter:
 
         for ignore_zone_word in ignore_zones:
             self._mark_intersecting_words_for_removal(
-                ignore_zone_word.location, ground_truth_words
+                ignore_zone_word.bbox, ground_truth_words
             )
             self._mark_intersecting_words_for_removal(
-                ignore_zone_word.location, prediction_words
+                ignore_zone_word.bbox, prediction_words
             )
 
         filtered_ground_truth_words: List[Word] = [
@@ -166,21 +174,21 @@ class _IgnoreZoneFilter:
         return filtered_ground_truth_words, filtered_prediction_words, ignore_zones
 
     def _mark_intersecting_words_for_removal(
-        self, ignore_zone_location: Location, words_list: List[Word]
+        self, ignore_zone_bbox: BoundingBox, words_list: List[Word]
     ) -> None:
         for word_item in words_list:
-            if self._check_intersection(word_item.location, ignore_zone_location):
+            if self._check_intersection(word_item.bbox, ignore_zone_bbox):
                 word_item.to_remove = True
 
-    def _check_intersection(self, rect1: Location, rect2: Location) -> bool:
-        rect1_width: float = rect1.width
-        rect1_height: float = rect1.height
+    def _check_intersection(self, bbox1: BoundingBox, bbox2: BoundingBox) -> bool:
+        bbox1_width: float = bbox1.width
+        bbox1_height: float = bbox1.height
 
-        x_overlap: float = get_x_axis_overlap(rect1, rect2)
-        y_overlap: float = get_y_axis_overlap(rect1, rect2)
+        x_overlap: float = bbox1.x_overlap_with(bbox2)
+        y_overlap: float = bbox1.y_overlap_with(bbox2)
 
-        x_overlap_ratio: float = 0.0 if rect1_width == 0 else x_overlap / rect1_width
-        y_overlap_ratio: float = 0.0 if rect1_height == 0 else y_overlap / rect1_height
+        x_overlap_ratio: float = 0.0 if bbox1_width == 0 else x_overlap / bbox1_width
+        y_overlap_ratio: float = 0.0 if bbox1_height == 0 else y_overlap / bbox1_height
 
         if y_overlap_ratio < 0.1 or x_overlap_ratio < 0.1:
             return False

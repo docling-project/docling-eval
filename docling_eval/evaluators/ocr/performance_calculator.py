@@ -8,6 +8,7 @@ from docling_eval.evaluators.ocr.evaluation_models import (
     BenchmarkIntersectionInfo,
     OcrMetricsSummary,
     Word,
+    _CalculationConstants,
 )
 from docling_eval.evaluators.ocr.geometry_utils import box_to_key
 from docling_eval.evaluators.ocr.matching_logic import (
@@ -16,7 +17,6 @@ from docling_eval.evaluators.ocr.matching_logic import (
     refine_prediction_to_many_gt_boxes,
 )
 from docling_eval.evaluators.ocr.processing_utils import (
-    _CalculationConstants,
     convert_word_to_text_cell,
     merge_words_into_one,
 )
@@ -102,7 +102,7 @@ class _OcrPerformanceCalculator:
         self, prediction_word: Word
     ) -> List[Tuple[Word, BenchmarkIntersectionInfo]]:
         box_key_val: Tuple[float, float, float, float] = box_to_key(
-            prediction_word.location
+            prediction_word.bbox
         )
         return self.prediction_to_gt_overlap_map.get(box_key_val, [])
 
@@ -110,7 +110,7 @@ class _OcrPerformanceCalculator:
         self, ground_truth_word: Word
     ) -> List[Tuple[Word, BenchmarkIntersectionInfo]]:
         gt_box_key_val: Tuple[float, float, float, float] = box_to_key(
-            ground_truth_word.location
+            ground_truth_word.bbox
         )
         return self.gt_to_prediction_overlap_map.get(gt_box_key_val, [])
 
@@ -235,11 +235,11 @@ class _OcrPerformanceCalculator:
                     self.gt_boxes_flagged_as_fn_post_refinement.append(gt_box)
 
         gt_boxes_consumed_keys = {
-            box_to_key(b.location) for b in gt_boxes_consumed_by_prediction_merges
+            box_to_key(b.bbox) for b in gt_boxes_consumed_by_prediction_merges
         }
 
         gt_fn_post_refinement_keys = {
-            box_to_key(b.location) for b in self.gt_boxes_flagged_as_fn_post_refinement
+            box_to_key(b.bbox) for b in self.gt_boxes_flagged_as_fn_post_refinement
         }
 
         final_gt_to_prediction_matches: List[
@@ -247,8 +247,8 @@ class _OcrPerformanceCalculator:
         ] = [
             (gt_word, intersections_list)
             for (gt_word, intersections_list) in gt_to_potential_prediction_matches
-            if box_to_key(gt_word.location) not in gt_boxes_consumed_keys
-            and box_to_key(gt_word.location) not in gt_fn_post_refinement_keys
+            if box_to_key(gt_word.bbox) not in gt_boxes_consumed_keys
+            and box_to_key(gt_word.bbox) not in gt_fn_post_refinement_keys
         ]
 
         for gt_word_item in self.gt_boxes_flagged_as_fn_post_refinement:
@@ -277,46 +277,46 @@ class _OcrPerformanceCalculator:
                 )
 
         merged_prediction_loc_keys = {
-            box_to_key(b.location) for b in self.prediction_boxes_that_were_merged
+            box_to_key(b.bbox) for b in self.prediction_boxes_that_were_merged
         }
 
         self.current_false_positives = [
             pred_word
             for pred_word in self.current_false_positives
-            if box_to_key(pred_word.location) not in merged_prediction_loc_keys
+            if box_to_key(pred_word.bbox) not in merged_prediction_loc_keys
         ]
 
         self.current_false_negatives = [
             gt_word_item
             for gt_word_item in self.current_false_negatives
-            if box_to_key(gt_word_item.location) not in gt_boxes_consumed_keys
+            if box_to_key(gt_word_item.bbox) not in gt_boxes_consumed_keys
         ]
 
         current_false_negatives_keys = {
-            box_to_key(fn.location) for fn in self.current_false_negatives
+            box_to_key(fn.bbox) for fn in self.current_false_negatives
         }
         current_false_positives_keys = {
-            box_to_key(fp.location) for fp in self.current_false_positives
+            box_to_key(fp.bbox) for fp in self.current_false_positives
         }
 
         final_zero_iou_fn = [
             w
             for w in self.fn_box_classifications.zero_iou
-            if box_to_key(w.location) in current_false_negatives_keys
+            if box_to_key(w.bbox) in current_false_negatives_keys
         ]
         final_ambiguous_match_fn = [
             w
             for w in self.fn_box_classifications.ambiguous_match
-            if box_to_key(w.location) in current_false_negatives_keys
+            if box_to_key(w.bbox) in current_false_negatives_keys
         ]
         final_ambiguous_match_fn_keys = {
-            box_to_key(fn.location) for fn in final_ambiguous_match_fn
+            box_to_key(fn.bbox) for fn in final_ambiguous_match_fn
         }
         final_low_iou_fn = [
             w
             for w in self.fn_box_classifications.low_iou
-            if box_to_key(w.location) in current_false_negatives_keys
-            and box_to_key(w.location) not in final_ambiguous_match_fn_keys
+            if box_to_key(w.bbox) in current_false_negatives_keys
+            and box_to_key(w.bbox) not in final_ambiguous_match_fn_keys
         ]
         self.fn_box_classifications = BoxClassification(
             final_zero_iou_fn, final_low_iou_fn, final_ambiguous_match_fn
@@ -325,21 +325,21 @@ class _OcrPerformanceCalculator:
         final_zero_iou_fp = [
             w
             for w in self.fp_box_classifications.zero_iou
-            if box_to_key(w.location) in current_false_positives_keys
+            if box_to_key(w.bbox) in current_false_positives_keys
         ]
         final_ambiguous_match_fp = [
             w
             for w in self.fp_box_classifications.ambiguous_match
-            if box_to_key(w.location) in current_false_positives_keys
+            if box_to_key(w.bbox) in current_false_positives_keys
         ]
         final_ambiguous_match_fp_keys = {
-            box_to_key(fp.location) for fp in final_ambiguous_match_fp
+            box_to_key(fp.bbox) for fp in final_ambiguous_match_fp
         }
         final_low_iou_fp = [
             w
             for w in self.fp_box_classifications.low_iou
-            if box_to_key(w.location) in current_false_positives_keys
-            and box_to_key(w.location) not in final_ambiguous_match_fp_keys
+            if box_to_key(w.bbox) in current_false_positives_keys
+            and box_to_key(w.bbox) not in final_ambiguous_match_fp_keys
         ]
         self.fp_box_classifications = BoxClassification(
             final_zero_iou_fp, final_low_iou_fp, final_ambiguous_match_fp
