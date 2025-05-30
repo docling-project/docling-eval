@@ -191,7 +191,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         max_num_chunks: int = sys.maxsize,
         do_visualization: bool = False,
     ) -> None:
-
         if do_visualization:
             html_output_dir = self.target / "visualizations"
             os.makedirs(html_output_dir, exist_ok=True)
@@ -592,7 +591,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
         true_doc: DoclingDocument,
         parsed_pages: dict[int, SegmentedPdfPage],
     ) -> tuple[FloatingItem, list[int]]:
-
         boxids = [boxid]
         for group_line in group_lines:
             if len(group_line["boxids"]) > 1 and group_line["boxids"][0] == boxid:
@@ -611,7 +609,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         pagenos_to_bbox: dict[int, list[BoundingBox]] = {}
         for boxid_ in boxids:
-
             page_no_, page_bbox_, true_page_imgref_ = self.get_page_no_and_coord_origin(
                 box=boxes[boxid_], desc=desc, doc=true_doc
             )
@@ -1049,7 +1046,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.SECTION_HEADER:
-
                 level = 1
                 if (
                     "attribute" in boxes[boxid]
@@ -1063,7 +1059,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.CAPTION:
-
                 if not self.is_linked(
                     boxid=boxid, links=to_captions, merges=merges, groups=group
                 ):
@@ -1076,7 +1071,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                     continue
 
             elif label == DocItemLabel.FOOTNOTE:
-
                 if not self.is_linked(
                     boxid=boxid, links=to_footnotes, merges=merges, groups=group
                 ):
@@ -1095,9 +1089,7 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 boxid_to_nodeitem[boxid] = current_item
 
             elif label == DocItemLabel.LIST_ITEM:
-
                 if first_in_group:
-
                     parent = None
                     if (
                         ind > 0
@@ -1228,7 +1220,6 @@ class CvatDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
 
             elif label == DocItemLabel.PICTURE:
-
                 # Add picture(s) to document
                 picture_item, already_added = self.get_grouped_images(
                     boxid=boxid,

@@ -62,7 +62,10 @@ from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
     MarkdownTextEvaluator,
 )
-from docling_eval.evaluators.ocr_evaluator import OCREvaluator
+from docling_eval.evaluators.ocr_evaluator import (
+    OcrDatasetEvaluationResult,
+    OCREvaluator,
+)
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -311,7 +314,6 @@ def get_prediction_provider(
         )
 
     elif provider_type == PredictionProviderType.PDF_DOCLING:
-
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
@@ -778,6 +780,22 @@ def visualize(
                 md_evaluation.meteor_stats,
                 log_filename=log_filename,
             )
+        except Exception as e:
+            _log.error(f"Error processing markdown text evaluation: {str(e)}")
+
+    elif modality == EvaluationModality.OCR:
+        try:
+            with open(metrics_filename, "r") as fd:
+                ocr_evaluation = OcrDatasetEvaluationResult.model_validate_json(
+                    fd.read()
+                )
+
+            log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.txt"
+            with open(log_filename, "w") as fd:
+                fd.write(f"{benchmark.value}\n\n")
+                fd.write(f"F1 Score: {ocr_evaluation.f1_score:.2f}\n")
+                fd.write(f"Recall: {ocr_evaluation.recall:.2f}\n")
+                fd.write(f"Precision: {ocr_evaluation.precision:.2f}\n")
         except Exception as e:
             _log.error(f"Error processing markdown text evaluation: {str(e)}")
 

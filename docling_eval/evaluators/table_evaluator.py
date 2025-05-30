@@ -49,7 +49,6 @@ class DatasetTableEvaluation(DatasetEvaluation):
     TEDS_complex: DatasetStatistics
 
     def save_histogram_delta_row_col(self, figname: Path):
-
         delta_row = {i: 0 for i in range(-10, 11)}
         delta_col = {i: 0 for i in range(-10, 11)}
 
@@ -254,7 +253,6 @@ class TableEvaluator(BaseEvaluator):
         ), "len(true_tables)!=len(pred_tables)"
 
         for table_id in range(len(true_tables)):  # , len(pred_tables)):
-
             # Avoid items of type DocItemLabel.DOCUMENT_INDEX
             if true_tables[table_id].label != DocItemLabel.TABLE:
                 logging.warning(

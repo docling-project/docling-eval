@@ -217,7 +217,6 @@ def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
 
 
 def test_run_cvat_e2e():
-
     run_cvat_e2e(
         idir=Path("./tests/data/cvat_pdfs_dataset_e2e/case_01"),
         odir=Path("./scratch/cvat_pdfs_dataset_e2e/case_01"),

@@ -117,7 +117,6 @@ def parse_arguments():
 
 
 def main():
-
     # Set logging level for the 'docling' package
     # logging.getLogger('docling').setLevel(logging.WARNING)
 
@@ -141,7 +140,6 @@ def main():
     tid, sid = 0, 0
 
     for pdf_file in tqdm(pdf_files, total=len(pdf_files), ncols=128):
-
         # Create the predicted Document
         try:
             conv_results = doc_converter.convert(source=pdf_file, raises_on_error=True)

@@ -87,7 +87,6 @@ class DatasetLayoutEvaluation(DatasetEvaluation):
     segmentation_f1_stats: DatasetStatistics
 
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
-
         headers = ["label", "Class mAP[0.5:0.95]"]
 
         self.evaluations_per_class = sorted(
@@ -152,9 +151,12 @@ class LayoutEvaluator(BaseEvaluator):
         # Select the split
         ds_selection: Dataset = ds[split]
 
-        true_labels, pred_labels, intersection_labels, union_labels = (
-            self._find_intersecting_labels(ds_selection)
-        )
+        (
+            true_labels,
+            pred_labels,
+            intersection_labels,
+            union_labels,
+        ) = self._find_intersecting_labels(ds_selection)
         true_labels_str = ", ".join(sorted(true_labels))
         logging.info(f"True labels: {true_labels_str}")
 
@@ -472,7 +474,6 @@ class LayoutEvaluator(BaseEvaluator):
     def _compute_average_iou_with_labels_across_iou(
         self, pred_boxes, pred_labels, gt_boxes, gt_labels
     ):
-
         res_50 = self._compute_average_iou_with_labels(
             pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.50
         )
@@ -615,7 +616,6 @@ class LayoutEvaluator(BaseEvaluator):
         # pred_tl_bboxes = []
 
         for page_no, items in true_pages_to_objects.items():
-
             page_size = true_doc.pages[page_no].size
 
             page_height = page_size.height
@@ -641,7 +641,6 @@ class LayoutEvaluator(BaseEvaluator):
             )
 
         for page_no, items in pred_pages_to_objects.items():
-
             page_size = pred_doc.pages[page_no].size
 
             page_height = page_size.height

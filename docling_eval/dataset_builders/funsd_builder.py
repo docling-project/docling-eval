@@ -18,6 +18,7 @@ from docling_core.types.doc.page import (
 )
 from docling_core.types.io import DocumentStream
 from PIL import Image
+from PIL.Image import Image as PillowImageType
 from tqdm import tqdm
 
 from docling_eval.datamodels.dataset_record import DatasetRecord
@@ -367,7 +368,13 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
 
                 # Load image and annotation
-                img = Image.open(img_path)
+                img: PillowImageType = Image.open(img_path)
+                if img.mode != "RGBA":
+                    _log.debug(
+                        f"Converting image {img_path.name} from {img.mode} to RGBA during dataset preparation."
+                    )
+                    img = img.convert("RGBA")
+
                 with open(annotation_path, "r", encoding="utf-8") as f:
                     funsd_data = json.load(f)
 

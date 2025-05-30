@@ -66,7 +66,6 @@ class TableComponentLabel(str, Enum):
 
 
 class BenchMarkDirs(BaseModel):
-
     source_dir: Path = Path("")
     target_dir: Path = Path("")
 
@@ -94,7 +93,6 @@ class BenchMarkDirs(BaseModel):
     overview_file: Path = Path("")
 
     def set_up_directory_structure(self, source: Path, target: Path) -> "BenchMarkDirs":
-
         assert os.path.exists(str(source)), f"os.path.exists({source})"
 
         self.source_dir = source
@@ -147,7 +145,6 @@ class BenchMarkDirs(BaseModel):
 
 
 class AnnotationBBox(BaseModel):
-
     page_no: int
     bbox_id: int
     bbox: BoundingBox
@@ -158,7 +155,6 @@ class AnnotationBBox(BaseModel):
 
 
 class AnnotationLine(BaseModel):
-
     line: List[AnnotationBBox]
     label: DocLinkLabel
 
@@ -216,7 +212,6 @@ class AnnotatedImage(BaseModel):
 
 
 class AnnotationOverview(BaseModel):
-
     doc_annotations: List[AnnotatedDoc] = []
     img_annotations: Dict[str, AnnotatedImage] = {}
 

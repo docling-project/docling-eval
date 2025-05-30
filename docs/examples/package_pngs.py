@@ -125,7 +125,6 @@ def parse_arguments():
 
 
 def main():
-
     # Set logging level for the 'docling' package
     # logging.getLogger('docling').setLevel(logging.WARNING)
 
@@ -149,7 +148,6 @@ def main():
     tid, sid = 0, 0
 
     for img_file in tqdm(img_files, total=len(img_files), ncols=128):
-
         # Create the predicted Document
         try:
             conv_results = doc_converter.convert(source=img_file, raises_on_error=True)

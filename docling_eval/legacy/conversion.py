@@ -72,7 +72,6 @@ def create_image_docling_converter(
     ocr_engine: str = EasyOcrOptions.kind,
     timings: bool = True,
 ):
-
     force_ocr: bool = True
     ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
         kind=ocr_engine,

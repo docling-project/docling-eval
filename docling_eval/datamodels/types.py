@@ -24,9 +24,11 @@ class BenchMarkColumns(str, Enum):
 
     GROUNDTRUTH_PAGE_IMAGES = "GroundTruthPageImages"
     GROUNDTRUTH_PICTURES = "GroundTruthPictures"
+    GROUNDTRUTH_SEGMENTED_PAGES = "ground_truth_segmented_pages"
 
     PREDICTION_PAGE_IMAGES = "PredictionPageImages"
     PREDICTION_PICTURES = "PredictionPictures"
+    PREDICTED_SEGMENTED_PAGES = "predicted_segmented_pages"
 
     MIMETYPE = "mimetype"
     TIMINGS = "timings"
@@ -51,7 +53,6 @@ class EvaluationModality(str, Enum):
 
 
 class BenchMarkNames(str, Enum):
-
     # End-to-End
     DPBENCH = "DPBench"
     DOCLING_DPBENCH = "DoclingDPBench"

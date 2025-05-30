@@ -49,6 +49,7 @@ dependencies = [
     'openpyxl (>=3.1.5,<4.0.0)',
     'pypdf2 (>=3.0.1,<4.0.0)',
     "xmltodict (>=0.14.2,<0.15.0)",
+    'edit-distance (>=1.0.6,<2.0.0)',
 ]
 
 [project.urls]
@@ -125,6 +126,7 @@ module = [
     "pypdfium2.*",
     "lxml.*",
     "distance.*",
+    "edit_distance.*",
     "datasets.*",
     "apted.*",
     "nltk.*",

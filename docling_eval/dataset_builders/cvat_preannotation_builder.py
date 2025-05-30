@@ -369,7 +369,6 @@ class CvatPreannotationBuilder:
 
         img_id = 0
         for doc_overview in self.overview.doc_annotations:
-
             # try:
             if True:
                 # Load document from the saved JSON file
@@ -537,7 +536,6 @@ class CvatPreannotationBuilder:
 
             page_imgs = {}
             for page_no in range(page_start, page_end):
-
                 # Extract and save page image
                 page_image_ref = doc.pages[page_no].image
                 if page_image_ref is not None:
@@ -581,7 +579,6 @@ class CvatPreannotationBuilder:
 
             x0 = 0
             for page_no, img in page_imgs.items():
-
                 annotated_image.page_to_bbox[page_no] = BoundingBox(
                     l=x0,
                     r=x0 + img.width,

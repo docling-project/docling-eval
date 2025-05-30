@@ -1,16 +1,14 @@
+import copy
 import importlib.metadata
 import json
 import logging
 import os
-from io import BytesIO
-from pathlib import Path
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types import DoclingDocument
-from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
+from docling_core.types.doc import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
-    DoclingDocument,
     ImageRef,
     PageItem,
     ProvenanceItem,
@@ -25,10 +23,9 @@ from docling_core.types.doc.page import (
     TextCell,
 )
 from docling_core.types.io import DocumentStream
-from google.cloud import documentai  # type: ignore
+from google.cloud import documentai
 from google.oauth2 import service_account
-from google.protobuf.json_format import MessageToDict  # Convert to JSON for storage
-from PIL.Image import Image
+from google.protobuf.json_format import MessageToDict
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -43,9 +40,414 @@ from docling_eval.utils.utils import from_pil_to_base64uri
 _log = logging.getLogger(__name__)
 
 
-class GoogleDocAIPredictionProvider(BasePredictionProvider):
-    """Provider that calls the Google Document AI API for document processing."""
+class _WordMerger:
+    SPECIAL_CHARS: List[str] = list("*:;,.?()!@#$%^&[]{}/\\\"'~+-_<>=")
+    CLOSE_THRESHOLD: float = 0.3
+    NUMBERS_CLOSE_THRESHOLD: float = 0.7
+    CLOSE_LEFT_THRESHOLD: float = 0.7
+    INSIDE_THRESHOLD: float = 0.15
 
+    @staticmethod
+    def _get_y_axis_iou(rect1: BoundingRectangle, rect2: BoundingRectangle) -> float:
+        bb1 = rect1.to_bounding_box()
+        bb2 = rect2.to_bounding_box()
+
+        y_overlap = max(0.0, min(bb1.b, bb2.b) - max(bb1.t, bb2.t))
+        y_union_span = max(bb1.b, bb2.b) - min(bb1.t, bb2.t)
+
+        return y_overlap / y_union_span if y_union_span > 0 else 0.0
+
+    def _find_close_right_and_left(
+        self,
+        special_char_cell: TextCell,
+        word_cells: List[TextCell],
+        threshold: float,
+        only_numbers: bool = False,
+    ) -> Tuple[bool, Optional[TextCell], Optional[TextCell]]:
+        special_char_bb = special_char_cell.rect.to_bounding_box()
+        special_char_left_coord = special_char_bb.l
+        special_char_right_coord = special_char_bb.r
+
+        left_found_cell: Optional[TextCell] = None
+        right_found_cell: Optional[TextCell] = None
+
+        for word_cell in word_cells:
+            y_axis_iou = self._get_y_axis_iou(special_char_cell.rect, word_cell.rect)
+            if y_axis_iou < 0.6:
+                continue
+
+            word_bb = word_cell.rect.to_bounding_box()
+            word_left_coord = word_bb.l
+            word_right_coord = word_bb.r
+
+            height = (word_bb.b - word_bb.t) + 1.0
+            margin = int(threshold * height + 0.5)
+            inside_margin_offset = int(self.INSIDE_THRESHOLD * height + 0.5)
+
+            if not left_found_cell:
+                left_diff = special_char_left_coord - word_right_coord
+                end_char = word_cell.text[-1] if word_cell.text else ""
+                if (left_diff <= margin) and (left_diff >= 0):
+                    if (not only_numbers) or (only_numbers and end_char.isdigit()):
+                        left_found_cell = word_cell
+                        if right_found_cell:
+                            return True, left_found_cell, right_found_cell
+
+            if not right_found_cell:
+                right_diff = word_left_coord - special_char_right_coord
+                start_char = word_cell.text[0] if word_cell.text else ""
+                if (right_diff <= margin) and (right_diff >= -inside_margin_offset):
+                    if (not only_numbers) or (only_numbers and start_char.isdigit()):
+                        right_found_cell = word_cell
+                        if left_found_cell:
+                            return True, left_found_cell, right_found_cell
+
+        return (
+            (left_found_cell is not None and right_found_cell is not None),
+            left_found_cell,
+            right_found_cell,
+        )
+
+    def _find_close_right(
+        self, special_char_cell: TextCell, word_cells: List[TextCell], threshold: float
+    ) -> Tuple[bool, Optional[TextCell]]:
+        special_char_bb = special_char_cell.rect.to_bounding_box()
+        special_char_right_coord = special_char_bb.r
+
+        right_found_cell: Optional[TextCell] = None
+
+        for word_cell in word_cells:
+            y_axis_iou = self._get_y_axis_iou(special_char_cell.rect, word_cell.rect)
+            if y_axis_iou < 0.6:
+                continue
+
+            word_bb = word_cell.rect.to_bounding_box()
+            word_left_coord = word_bb.l
+            height = (word_bb.b - word_bb.t) + 1.0
+            margin = int(threshold * height + 0.5)
+            inside_margin_offset = int(self.INSIDE_THRESHOLD * height + 0.5)
+
+            right_diff = word_left_coord - special_char_right_coord
+            if (right_diff <= margin) and (right_diff >= -inside_margin_offset):
+                right_found_cell = word_cell
+                return True, right_found_cell
+
+        return False, None
+
+    def _find_close_left(
+        self, special_char_cell: TextCell, word_cells: List[TextCell], threshold: float
+    ) -> Tuple[bool, Optional[TextCell]]:
+        special_char_bb = special_char_cell.rect.to_bounding_box()
+        special_char_left_coord = special_char_bb.l
+
+        left_found_cell: Optional[TextCell] = None
+
+        for word_cell in word_cells:
+            y_axis_iou = self._get_y_axis_iou(special_char_cell.rect, word_cell.rect)
+            if y_axis_iou < 0.6:
+                continue
+
+            word_bb = word_cell.rect.to_bounding_box()
+            word_right_coord = word_bb.r
+            height = (word_bb.b - word_bb.t) + 1.0
+            margin = int(threshold * height + 0.5)
+            inside_margin_offset = int(self.INSIDE_THRESHOLD * height + 0.5)
+
+            left_diff = special_char_left_coord - word_right_coord
+            if (left_diff <= margin) and (left_diff >= -inside_margin_offset):
+                left_found_cell = word_cell
+                return True, left_found_cell
+
+        return False, None
+
+    def _merge_close_left_and_right(
+        self,
+        current_word_cells: List[TextCell],
+        special_char_list: List[str],
+        threshold: float,
+        only_numbers: bool,
+    ) -> List[TextCell]:
+        active_word_cells = copy.deepcopy(current_word_cells)
+
+        processed_list_changed_in_iteration = True
+        while processed_list_changed_in_iteration:
+            processed_list_changed_in_iteration = False
+            for special_char_cell_candidate in active_word_cells:
+                if special_char_cell_candidate.text in special_char_list:
+                    candidate_neighbors = [
+                        cell
+                        for cell in active_word_cells
+                        if cell is not special_char_cell_candidate
+                    ]
+
+                    (
+                        found_neighbors,
+                        left_neighbor_cell,
+                        right_neighbor_cell,
+                    ) = self._find_close_right_and_left(
+                        special_char_cell_candidate,
+                        candidate_neighbors,
+                        threshold,
+                        only_numbers,
+                    )
+
+                    if found_neighbors and left_neighbor_cell and right_neighbor_cell:
+                        special_char_bb = (
+                            special_char_cell_candidate.rect.to_bounding_box()
+                        )
+                        left_bb = left_neighbor_cell.rect.to_bounding_box()
+                        right_bb = right_neighbor_cell.rect.to_bounding_box()
+
+                        new_l = left_bb.l
+                        new_r = right_bb.r
+                        new_t = min(left_bb.t, special_char_bb.t, right_bb.t)
+                        new_b = max(left_bb.b, special_char_bb.b, right_bb.b)
+
+                        current_coord_origin = (
+                            special_char_cell_candidate.rect.coord_origin
+                        )
+                        new_bounding_rect = BoundingRectangle(
+                            r_x0=new_l,
+                            r_y0=new_t,
+                            r_x1=new_r,
+                            r_y1=new_t,
+                            r_x2=new_r,
+                            r_y2=new_b,
+                            r_x3=new_l,
+                            r_y3=new_b,
+                            coord_origin=current_coord_origin,
+                        )
+
+                        new_text_val = (
+                            left_neighbor_cell.text
+                            + special_char_cell_candidate.text
+                            + right_neighbor_cell.text
+                        )
+                        new_orig_val = (
+                            left_neighbor_cell.orig
+                            + special_char_cell_candidate.orig
+                            + right_neighbor_cell.orig
+                        )
+                        new_from_ocr_val = (
+                            left_neighbor_cell.from_ocr
+                            or special_char_cell_candidate.from_ocr
+                            or right_neighbor_cell.from_ocr
+                        )
+
+                        newly_merged_cell = TextCell(
+                            rect=new_bounding_rect,
+                            text=new_text_val,
+                            orig=new_orig_val,
+                            from_ocr=new_from_ocr_val,
+                            confidence=special_char_cell_candidate.confidence,
+                            text_direction=special_char_cell_candidate.text_direction,
+                        )
+
+                        active_word_cells.remove(left_neighbor_cell)
+                        active_word_cells.remove(special_char_cell_candidate)
+                        active_word_cells.remove(right_neighbor_cell)
+                        active_word_cells.append(newly_merged_cell)
+
+                        processed_list_changed_in_iteration = True
+                        break
+        return active_word_cells
+
+    def _merge_to_the_right(
+        self,
+        current_word_cells: List[TextCell],
+        special_char_list: List[str],
+        threshold: float,
+    ) -> List[TextCell]:
+        active_word_cells = copy.deepcopy(current_word_cells)
+        processed_list_changed_in_iteration = True
+        while processed_list_changed_in_iteration:
+            processed_list_changed_in_iteration = False
+            for leading_cell_candidate in active_word_cells:
+                if (
+                    leading_cell_candidate.text
+                    and leading_cell_candidate.text[-1] in special_char_list
+                ):
+                    candidate_neighbors = [
+                        cell
+                        for cell in active_word_cells
+                        if cell is not leading_cell_candidate
+                    ]
+
+                    found_neighbor, right_neighbor_cell = self._find_close_right(
+                        leading_cell_candidate, candidate_neighbors, threshold
+                    )
+
+                    if found_neighbor and right_neighbor_cell:
+                        leading_bb = leading_cell_candidate.rect.to_bounding_box()
+                        right_bb = right_neighbor_cell.rect.to_bounding_box()
+
+                        new_l = leading_bb.l
+                        new_r = right_bb.r
+                        new_t = min(leading_bb.t, right_bb.t)
+                        new_b = max(leading_bb.b, right_bb.b)
+
+                        current_coord_origin = leading_cell_candidate.rect.coord_origin
+                        new_bounding_rect = BoundingRectangle(
+                            r_x0=new_l,
+                            r_y0=new_t,
+                            r_x1=new_r,
+                            r_y1=new_t,
+                            r_x2=new_r,
+                            r_y2=new_b,
+                            r_x3=new_l,
+                            r_y3=new_b,
+                            coord_origin=current_coord_origin,
+                        )
+
+                        new_text_val = (
+                            leading_cell_candidate.text + right_neighbor_cell.text
+                        )
+                        new_orig_val = (
+                            leading_cell_candidate.orig + right_neighbor_cell.orig
+                        )
+                        new_from_ocr_val = (
+                            leading_cell_candidate.from_ocr
+                            or right_neighbor_cell.from_ocr
+                        )
+
+                        newly_merged_cell = TextCell(
+                            rect=new_bounding_rect,
+                            text=new_text_val,
+                            orig=new_orig_val,
+                            from_ocr=new_from_ocr_val,
+                            confidence=leading_cell_candidate.confidence,
+                            text_direction=leading_cell_candidate.text_direction,
+                        )
+
+                        active_word_cells.remove(leading_cell_candidate)
+                        active_word_cells.remove(right_neighbor_cell)
+                        active_word_cells.append(newly_merged_cell)
+
+                        processed_list_changed_in_iteration = True
+                        break
+        return active_word_cells
+
+    def _merge_to_the_left(
+        self,
+        current_word_cells: List[TextCell],
+        special_char_list: List[str],
+        threshold: float,
+    ) -> List[TextCell]:
+        active_word_cells = copy.deepcopy(current_word_cells)
+        processed_list_changed_in_iteration = True
+        while processed_list_changed_in_iteration:
+            processed_list_changed_in_iteration = False
+            for trailing_cell_candidate in active_word_cells:
+                if (
+                    trailing_cell_candidate.text
+                    and trailing_cell_candidate.text[0] in special_char_list
+                ):
+                    candidate_neighbors = [
+                        cell
+                        for cell in active_word_cells
+                        if cell is not trailing_cell_candidate
+                    ]
+
+                    found_neighbor, left_neighbor_cell = self._find_close_left(
+                        trailing_cell_candidate, candidate_neighbors, threshold
+                    )
+
+                    if found_neighbor and left_neighbor_cell:
+                        trailing_bb = trailing_cell_candidate.rect.to_bounding_box()
+                        left_bb = left_neighbor_cell.rect.to_bounding_box()
+
+                        new_l = left_bb.l
+                        new_r = trailing_bb.r
+                        new_t = min(left_bb.t, trailing_bb.t)
+                        new_b = max(left_bb.b, trailing_bb.b)
+
+                        current_coord_origin = trailing_cell_candidate.rect.coord_origin
+                        new_bounding_rect = BoundingRectangle(
+                            r_x0=new_l,
+                            r_y0=new_t,
+                            r_x1=new_r,
+                            r_y1=new_t,
+                            r_x2=new_r,
+                            r_y2=new_b,
+                            r_x3=new_l,
+                            r_y3=new_b,
+                            coord_origin=current_coord_origin,
+                        )
+
+                        new_text_val = (
+                            left_neighbor_cell.text + trailing_cell_candidate.text
+                        )
+                        new_orig_val = (
+                            left_neighbor_cell.orig + trailing_cell_candidate.orig
+                        )
+                        new_from_ocr_val = (
+                            left_neighbor_cell.from_ocr
+                            or trailing_cell_candidate.from_ocr
+                        )
+
+                        newly_merged_cell = TextCell(
+                            rect=new_bounding_rect,
+                            text=new_text_val,
+                            orig=new_orig_val,
+                            from_ocr=new_from_ocr_val,
+                            confidence=trailing_cell_candidate.confidence,
+                            text_direction=trailing_cell_candidate.text_direction,
+                        )
+
+                        active_word_cells.remove(left_neighbor_cell)
+                        active_word_cells.remove(trailing_cell_candidate)
+                        active_word_cells.append(newly_merged_cell)
+
+                        processed_list_changed_in_iteration = True
+                        break
+        return active_word_cells
+
+    def apply_word_merging_to_page(self, page: SegmentedPage) -> SegmentedPage:
+        initial_word_cells: List[TextCell] = list(page.word_cells)
+
+        merged_cells_step1 = self._merge_close_left_and_right(
+            initial_word_cells,
+            special_char_list=self.SPECIAL_CHARS,
+            threshold=self.CLOSE_THRESHOLD,
+            only_numbers=False,
+        )
+        merged_cells_step2 = self._merge_close_left_and_right(
+            merged_cells_step1,
+            special_char_list=list(",.-/"),
+            threshold=self.NUMBERS_CLOSE_THRESHOLD,
+            only_numbers=True,
+        )
+        merged_cells_step3 = self._merge_to_the_left(
+            merged_cells_step2,
+            special_char_list=list(",."),
+            threshold=self.CLOSE_LEFT_THRESHOLD,
+        )
+        merged_cells_step4 = self._merge_to_the_left(
+            merged_cells_step3,
+            special_char_list=self.SPECIAL_CHARS,
+            threshold=self.CLOSE_THRESHOLD,
+        )
+        merged_cells_step5 = self._merge_to_the_right(
+            merged_cells_step4,
+            special_char_list=self.SPECIAL_CHARS,
+            threshold=self.CLOSE_THRESHOLD,
+        )
+        merged_cells_step6 = self._merge_to_the_left(
+            merged_cells_step5,
+            special_char_list=list(")]}"),
+            threshold=self.CLOSE_LEFT_THRESHOLD,
+        )
+        final_merged_cells = self._merge_to_the_right(
+            merged_cells_step6,
+            special_char_list=list("([{"),
+            threshold=self.CLOSE_LEFT_THRESHOLD,
+        )
+
+        page.word_cells = final_merged_cells
+        return page
+
+
+class GoogleDocAIPredictionProvider(BasePredictionProvider):
     def __init__(
         self,
         do_visualization: bool = False,
@@ -91,9 +493,9 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         )
 
         self.google_processor_name = f"projects/{google_project_id}/locations/{google_location}/processors/{google_processor_id}"
+        self._word_merger = _WordMerger()
 
     def extract_bbox_from_vertices(self, vertices):
-        """Helper function to extract bbox coordinates from vertices."""
         if len(vertices) >= 4:
             return {
                 "l": vertices[0].get("x", 0),
@@ -104,9 +506,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         return {"l": 0, "t": 0, "r": 0, "b": 0}
 
     def process_table_row(self, row, row_index, document, table_data, is_header=False):
-        """Process a table row and add cells to table_data."""
         for cell_index, cell in enumerate(row.get("cells", [])):
-            # Get the content inside the cell
             cell_text_content = ""
             if "layout" in cell and "textAnchor" in cell["layout"]:
                 for text_segment in cell["layout"]["textAnchor"].get(
@@ -117,7 +517,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     if document.get("text") and start_index < len(document["text"]):
                         cell_text_content += document["text"][start_index:end_index]
 
-            # Get cell boundaries
             cell_bbox = self.extract_bbox_from_vertices(
                 cell.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
             )
@@ -140,15 +539,13 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 end_col_offset_idx=cell_index + col_span,
                 text=cell_text_content.strip(),
                 column_header=is_header,
-                row_header=not is_header
-                and cell_index == 0,  # First column might be row header
+                row_header=not is_header and cell_index == 0,
                 row_section=False,
             )
 
             table_data.table_cells.append(table_cell)
 
     def convert_google_output_to_docling(self, document, record: DatasetRecord):
-        """Converts Google Document AI output to DoclingDocument format."""
         doc = DoclingDocument(name=record.doc_id)
         segmented_pages: Dict[int, SegmentedPage] = {}
 
@@ -159,7 +556,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
             im = record.ground_truth_page_images[page_no - 1]
 
-            # Add page with image
             image_ref = ImageRef(
                 mimetype=f"image/png",
                 dpi=72,
@@ -173,7 +569,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
             )
             doc.pages[page_no] = page_item
 
-            # Create SegmentedPage Entry if not already present for the page number
             if page_no not in segmented_pages.keys():
                 seg_page = SegmentedPage(
                     dimension=PageGeometry(
@@ -190,9 +585,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 )
                 segmented_pages[page_no] = seg_page
 
-            # TODO: Can we get more detail than just "Text blocks" from Google DocAI? If they provide layout labels, let's use it here.
             for paragraph in page.get("paragraphs", []):
-                # Extract text content from text_anchor and text_segments
                 text_content = ""
                 if "layout" in paragraph and "textAnchor" in paragraph["layout"]:
                     for text_segment in paragraph["layout"]["textAnchor"].get(
@@ -206,7 +599,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                             ):
                                 text_content += document["text"][start_index:end_index]
 
-                # Extract paragraph bounding box
                 para_bbox = self.extract_bbox_from_vertices(
                     paragraph.get("layout", {})
                     .get("boundingPoly", {})
@@ -228,7 +620,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
             for token in page.get("tokens", []):
-                # Extract text content from text_anchor and text_segments
                 text_content = ""
                 if "layout" in token and "textAnchor" in token["layout"]:
                     for text_segment in token["layout"]["textAnchor"].get(
@@ -242,7 +633,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                             ):
                                 text_content += document["text"][start_index:end_index]
 
-                # Extract token bounding box
                 vertices = (
                     token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
                 )
@@ -263,12 +653,10 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                             rect=BoundingRectangle.from_bounding_box(bbox_obj),
                             text=text_content,
                             orig=text_content,
-                            # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
                             from_ocr=False,
                         )
                     )
 
-            # TODO: Can we make sure the tables and the text is inserted in reading-order, instead of all tables at the end?
             for table in page.get("tables", []):
                 table_bbox = self.extract_bbox_from_vertices(
                     table.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
@@ -277,7 +665,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 num_rows = len(table.get("headerRows", [])) + len(
                     table.get("bodyRows", [])
                 )
-                num_cols = 0  # Will be calculated based on cells
+                num_cols = 0
                 table_bbox_obj = BoundingBox(
                     l=table_bbox["l"],
                     t=table_bbox["t"],
@@ -293,7 +681,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 table_data = TableData(
                     table_cells=[],
                     num_rows=num_rows,
-                    num_cols=0,  # Will update as we process cells
+                    num_cols=0,
                     grid=[],
                 )
 
@@ -317,6 +705,9 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
                 doc.add_table(data=table_data, prov=table_prov)
 
+            segmented_pages[page_no] = self._word_merger.apply_word_merging_to_page(
+                segmented_pages[page_no]
+            )
         return doc, segmented_pages
 
     @property
@@ -335,15 +726,14 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 "Original document must be a DocumentStream for PDF or image files"
             )
 
+        result_json = {}
+        pred_doc = None
+        pred_segmented_pages = {}
+
         try:
-            if record.mime_type in ["application/pdf", "image/png"]:
-                # Get file content and mime type
+            if record.mime_type in ["application/pdf", "image/png", "image/jpeg"]:
                 file_content = record.original.stream.read()
-
-                # Reset stream position
                 record.original.stream.seek(0)
-
-                # Process the document
                 raw_document = documentai.RawDocument(
                     content=file_content, mime_type=record.mime_type
                 )
@@ -359,7 +749,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                         # If these are not specified, tables are not output
                         premium_features=documentai.OcrConfig.PremiumFeatures(
                             compute_style_info=False,
-                            enable_math_ocr=False,  # Enable to use Math OCR Model
+                            enable_math_ocr=False,
                             enable_selection_mark_detection=True,
                         ),
                     ),
@@ -380,7 +770,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 _log.info(
                     f"Successfully processed [{record.doc_id}] using Google Document AI API!"
                 )
-
                 pred_doc, pred_segmented_pages = self.convert_google_output_to_docling(
                     result_json, record
                 )
@@ -393,9 +782,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
             status = ConversionStatus.FAILURE
             if not self.ignore_missing_predictions:
                 raise
-            pred_doc = record.ground_truth_doc.model_copy(
-                deep=True
-            )  # Use copy of ground truth as fallback
+            pred_doc = record.ground_truth_doc.model_copy(deep=True)
 
         pred_record = self.create_dataset_record_with_prediction(
             record, pred_doc, json.dumps(result_json)
