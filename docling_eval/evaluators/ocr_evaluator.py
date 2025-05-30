@@ -228,7 +228,7 @@ class OCRVisualizer:
         self._text_label_color: str = "black"
         self._visualization_subdir_name: str = "ocr_visualizations"
 
-        self._default_font: ImageFont.ImageFont = ImageFont.load_default()
+        self._default_font: Any = ImageFont.load_default()
         try:
             self._rendering_font: ImageFont.FreeTypeFont = ImageFont.truetype(
                 "arial.ttf", size=10
