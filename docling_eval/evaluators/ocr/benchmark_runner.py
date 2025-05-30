@@ -10,15 +10,15 @@ from docling_eval.evaluators.ocr.evaluation_models import (
     OcrMetricsSummary,
     Word,
 )
-from docling_eval.evaluators.ocr.performance_calculator import OcrPerformanceCalculator
+from docling_eval.evaluators.ocr.performance_calculator import _OcrPerformanceCalculator
 from docling_eval.evaluators.ocr.processing_utils import (
-    CalculationConstants,
-    IgnoreZoneFilter,
+    _CalculationConstants,
+    _IgnoreZoneFilter,
     extract_word_from_text_cell,
 )
 
 
-class OcrBenchmark:
+class _OcrBenchmark:
 
     def __init__(
         self,
@@ -36,12 +36,12 @@ class OcrBenchmark:
 
         self.image_metrics_results: List[OcrBenchmarkEntry] = []
         self.image_to_performance_calculator_map: Dict[
-            str, OcrPerformanceCalculator
+            str, _OcrPerformanceCalculator
         ] = {}
         self.image_to_ignore_zones_map: Dict[str, List[Word]] = {}
         self.calculator_type: str = performance_calculator_type
 
-        self.ignore_zone_filter: IgnoreZoneFilter = IgnoreZoneFilter()
+        self.ignore_zone_filter: _IgnoreZoneFilter = _IgnoreZoneFilter()
 
     def process_single_page_pair(
         self,
@@ -75,9 +75,9 @@ class OcrBenchmark:
         )
         self.image_to_ignore_zones_map[image_identifier] = ignored_zones
 
-        perf_calculator: Optional[OcrPerformanceCalculator] = None
+        perf_calculator: Optional[_OcrPerformanceCalculator] = None
         if self.calculator_type == "general":
-            perf_calculator = OcrPerformanceCalculator(
+            perf_calculator = _OcrPerformanceCalculator(
                 prediction_words=filtered_prediction_words,
                 ground_truth_words=filtered_gt_words,
                 prediction_segmented_page_metadata=prediction_page,
@@ -126,24 +126,24 @@ class OcrBenchmark:
                         summed_metrics[key] = ""
 
         total_true_positives: float = summed_metrics.get(
-            "num_true_positive_matches", CalculationConstants.EPS
+            "num_true_positive_matches", _CalculationConstants.EPS
         )
         total_predictions: float = summed_metrics.get(
-            "num_prediction_cells", CalculationConstants.EPS
+            "num_prediction_cells", _CalculationConstants.EPS
         )
         total_ground_truths: float = summed_metrics.get(
-            "number_of_gt_cells", CalculationConstants.EPS
+            "number_of_gt_cells", _CalculationConstants.EPS
         )
 
         overall_precision: float = total_true_positives / max(
-            CalculationConstants.EPS, total_predictions
+            _CalculationConstants.EPS, total_predictions
         )
         overall_recall: float = total_true_positives / max(
-            CalculationConstants.EPS, total_ground_truths
+            _CalculationConstants.EPS, total_ground_truths
         )
         overall_f1_score: float = (2 * overall_recall * overall_precision) / max(
             overall_recall + overall_precision,
-            CalculationConstants.EPS,
+            _CalculationConstants.EPS,
         )
 
         aggregated_metrics_data = {

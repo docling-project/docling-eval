@@ -11,7 +11,7 @@ from docling_eval.evaluators.ocr.geometry_utils import (
     convert_locations_to_float,
     is_horizontal,
 )
-from docling_eval.evaluators.ocr.processing_utils import CalculationConstants
+from docling_eval.evaluators.ocr.processing_utils import _CalculationConstants
 
 detection_match_condition_iou_coverage_threshold: Any = (
     lambda boxes_info: boxes_info.prediction_box_portion_covered > 0.5
@@ -148,8 +148,8 @@ def refine_prediction_to_many_gt_boxes(
             height_ratio: float = min(
                 gt_box.location.height, anchor_box.location.height
             ) / max(
-                gt_box.location.height + CalculationConstants.EPS,
-                anchor_box.location.height + CalculationConstants.EPS,
+                gt_box.location.height + _CalculationConstants.EPS,
+                anchor_box.location.height + _CalculationConstants.EPS,
             )
             are_words_in_same_line: bool = (
                 (x_iou < 0.2 and y_iou > 0)
@@ -182,8 +182,8 @@ def refine_prediction_to_many_gt_boxes(
             width_ratio: float = min(
                 gt_box.location.width, anchor_box.location.width
             ) / max(
-                gt_box.location.width + CalculationConstants.EPS,
-                anchor_box.location.width + CalculationConstants.EPS,
+                gt_box.location.width + _CalculationConstants.EPS,
+                anchor_box.location.width + _CalculationConstants.EPS,
             )
 
             are_words_in_same_column: bool = (

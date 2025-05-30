@@ -16,7 +16,7 @@ from tqdm import tqdm
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator
-from docling_eval.evaluators.ocr.benchmark_runner import OcrBenchmark
+from docling_eval.evaluators.ocr.benchmark_runner import _OcrBenchmark
 from docling_eval.evaluators.ocr.evaluation_models import (
     DocumentEvaluationEntry,
     OcrDatasetEvaluationResult,
@@ -55,7 +55,7 @@ class OCREvaluator(BaseEvaluator):
         use_space_for_prediction_merge = True
         use_space_for_gt_merge = True
 
-        benchmark_tool = OcrBenchmark(
+        benchmark_tool = _OcrBenchmark(
             model_identifier="ocr_model_under_test",
             ignore_zone_filter_type=ignore_zone_filter_config,
             add_space_for_merged_prediction_words=use_space_for_prediction_merge,

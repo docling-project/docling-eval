@@ -16,7 +16,7 @@ from docling_eval.evaluators.ocr.matching_logic import (
     refine_prediction_to_many_gt_boxes,
 )
 from docling_eval.evaluators.ocr.processing_utils import (
-    CalculationConstants,
+    _CalculationConstants,
     convert_word_to_text_cell,
     merge_words_into_one,
 )
@@ -26,7 +26,7 @@ BoxClassification = namedtuple(
 )
 
 
-class OcrPerformanceCalculator:
+class _OcrPerformanceCalculator:
 
     def __init__(
         self,
@@ -381,13 +381,13 @@ class OcrPerformanceCalculator:
         num_true_positive_matches: int = len(self.confirmed_gt_prediction_matches)
 
         precision: float = num_true_positive_matches / max(
-            CalculationConstants.EPS, num_prediction_cells_final
+            _CalculationConstants.EPS, num_prediction_cells_final
         )
         recall: float = num_true_positive_matches / max(
-            CalculationConstants.EPS, num_gt_cells_final
+            _CalculationConstants.EPS, num_gt_cells_final
         )
         f1_score: float = (2 * recall * precision) / max(
-            recall + precision, CalculationConstants.EPS
+            recall + precision, _CalculationConstants.EPS
         )
 
         metrics_summary_data = {

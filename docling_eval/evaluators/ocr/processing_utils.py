@@ -21,7 +21,7 @@ from docling_eval.evaluators.ocr.geometry_utils import (
 _log = logging.getLogger(__name__)
 
 
-class CalculationConstants:
+class _CalculationConstants:
     EPS: float = 1.0e-6
 
 
@@ -47,7 +47,7 @@ def extract_word_from_text_cell(text_cell: TextCell, page_height: float) -> Word
 
     is_vertical_flag: bool = False
     if (
-        width_val > CalculationConstants.EPS
+        width_val > _CalculationConstants.EPS
         and height_val > (2 * width_val)
         and len(text_cell.text) > 1
     ):
@@ -133,7 +133,7 @@ def merge_words_into_one(
     )
 
 
-class IgnoreZoneFilter:
+class _IgnoreZoneFilter:
     def __init__(self) -> None:
         pass
 
