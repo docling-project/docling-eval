@@ -127,10 +127,10 @@ class _OcrBenchmark:
                         summed_metrics[key] = ""
 
         total_true_positives: float = summed_metrics.get(
-            "num_true_positive_matches", _CalculationConstants.EPS
+            "number_of_true_positive_matches", _CalculationConstants.EPS
         )
         total_predictions: float = summed_metrics.get(
-            "num_prediction_cells", _CalculationConstants.EPS
+            "number_of_prediction_cells", _CalculationConstants.EPS
         )
         total_ground_truths: float = summed_metrics.get(
             "number_of_gt_cells", _CalculationConstants.EPS

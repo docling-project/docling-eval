@@ -377,12 +377,12 @@ class _OcrPerformanceCalculator:
         num_false_negatives: int = len(self.current_false_negatives)
         num_gt_cells_final: int = len(self.ground_truth_words_final_set)
         num_prediction_cells_final: int = len(self.prediction_words_final_set)
-        num_true_positive_matches: int = len(self.confirmed_gt_prediction_matches)
+        number_of_true_positive_matches: int = len(self.confirmed_gt_prediction_matches)
 
-        precision: float = num_true_positive_matches / max(
+        precision: float = number_of_true_positive_matches / max(
             _CalculationConstants.EPS, num_prediction_cells_final
         )
-        recall: float = num_true_positive_matches / max(
+        recall: float = number_of_true_positive_matches / max(
             _CalculationConstants.EPS, num_gt_cells_final
         )
         f1_score: float = (2 * recall * precision) / max(
@@ -390,14 +390,14 @@ class _OcrPerformanceCalculator:
         )
 
         metrics_summary_data = {
-            "num_prediction_cells": num_prediction_cells_final,
+            "number_of_prediction_cells": num_prediction_cells_final,
             "number_of_gt_cells": num_gt_cells_final,
             "number_of_false_positive_detections": num_false_positives,
-            "num_true_positive_matches": num_true_positive_matches,
+            "number_of_true_positive_matches": number_of_true_positive_matches,
             "number_of_false_negative_detections": num_false_negatives,
             "detection_precision": 100.0 * precision,
             "detection_recall": 100.0 * recall,
-            "detection_f1_score": 100.0 * f1_score,
+            "detection_f1": 100.0 * f1_score,
         }
 
         summary_instance = OcrMetricsSummary.model_validate(metrics_summary_data)

@@ -34,14 +34,14 @@ class BenchmarkIntersectionInfo(BaseModel):
 
 
 class OcrMetricsSummary(BaseModel):
-    num_prediction_cells: int
+    number_of_prediction_cells: int
     number_of_gt_cells: int
     number_of_false_positive_detections: int
-    num_true_positive_matches: int
+    number_of_true_positive_matches: int
     number_of_false_negative_detections: int
     detection_precision: float
     detection_recall: float
-    detection_f1_score: float
+    detection_f1: float
 
     class Config:
         populate_by_name = True
