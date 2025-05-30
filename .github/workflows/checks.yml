@@ -91,6 +91,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - name: Install package
-        run: uv pip install dist/*.whl
+        run: |
+          uv pip install dist/*.whl
+          uv pip install ".[hyperscalers]"
       - name: Run docling-eval
         run: docling-eval --help
