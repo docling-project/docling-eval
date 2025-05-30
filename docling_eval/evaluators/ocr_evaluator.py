@@ -11,87 +11,23 @@ from datasets import Dataset, load_dataset
 from docling_core.types.doc import CoordOrigin
 from docling_core.types.doc.page import BoundingRectangle, PageGeometry, SegmentedPage
 from PIL import Image, ImageDraw, ImageFont
-from pydantic import BaseModel
 from tqdm import tqdm
 
+from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator
-from docling_eval.evaluators.ocr.benchmark_constants import OcrReportEvaluationEntry
-from docling_eval.evaluators.ocr.benchmark_framework import _ModelBenchmark
+from docling_eval.evaluators.ocr.benchmark_runner import OcrBenchmark
+from docling_eval.evaluators.ocr.evaluation_models import (
+    DocumentEvaluationEntry,
+    OcrDatasetEvaluationResult,
+)
+from docling_eval.evaluators.ocr.processing_utils import parse_segmented_pages
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
-
-
 _log = logging.getLogger(__name__)
-
-
-class DatasetOcrEvaluation(BaseModel):
-    f1_score: float = 0.0
-    recall: float = 0.0
-    precision: float = 0.0
-
-
-def _parse_segmented_pages_from_raw(
-    segpages_data_raw: Any, doc_id: str
-) -> Optional[Dict[int, SegmentedPage]]:
-    segmented_pages_map: Dict[int, SegmentedPage] = {}
-    if isinstance(segpages_data_raw, (bytes, str)):
-        try:
-            segpages_dict_payload: Any = json.loads(segpages_data_raw)
-        except json.JSONDecodeError as e:
-            _log.warning(
-                f"JSONDecodeError for doc {doc_id}: {e}. Data: {str(segpages_data_raw)[:200]}"
-            )
-            return None
-    elif isinstance(segpages_data_raw, dict):
-        segpages_dict_payload = segpages_data_raw
-    else:
-        _log.warning(
-            f"Unrecognized segmented_pages data format for doc {doc_id}: {type(segpages_data_raw)}"
-        )
-        return None
-
-    if not isinstance(segpages_dict_payload, dict):
-        _log.warning(
-            f"Expected dict payload for segmented_pages for doc {doc_id}, got {type(segpages_dict_payload)}"
-        )
-        return None
-
-    for page_idx_str, page_data_item in segpages_dict_payload.items():
-        try:
-            page_idx: int = int(page_idx_str)
-        except ValueError:
-            _log.warning(
-                f"Invalid page index string '{page_idx_str}' for doc {doc_id}. Skipping page."
-            )
-            continue
-
-        try:
-            if isinstance(page_data_item, dict):
-                segmented_pages_map[page_idx] = SegmentedPage.model_validate(
-                    page_data_item
-                )
-            elif isinstance(page_data_item, str):
-                segmented_pages_map[page_idx] = SegmentedPage.model_validate_json(
-                    page_data_item
-                )
-            elif isinstance(page_data_item, SegmentedPage):
-                segmented_pages_map[page_idx] = page_data_item
-            else:
-                _log.warning(
-                    f"Unrecognized page_data format for doc {doc_id}, page {page_idx}: {type(page_data_item)}"
-                )
-                continue
-        except Exception as e_page_val:
-            _log.error(
-                f"Error validating page data for doc {doc_id}, page {page_idx}: {e_page_val}"
-            )
-            traceback.print_exc()
-            continue
-    return segmented_pages_map if segmented_pages_map else None
 
 
 class OCREvaluator(BaseEvaluator):
@@ -112,36 +48,43 @@ class OCREvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-    ) -> DatasetOcrEvaluation:
-        ignore_zone_filter_type = "default"
-        add_space_prediction = True
-        add_space_gt = True
-        benchmark_runner = _ModelBenchmark(
-            model_name="ocr_iocr",
-            ignore_zone_filter=ignore_zone_filter_type,
-            add_space_between_merged_prediction_words=add_space_prediction,
-            add_space_between_merged_gt_words=add_space_gt,
+    ) -> OcrDatasetEvaluationResult:
+        dataset_path = ds_path
+        data_split_name = split
+        ignore_zone_filter_config = "default"
+        use_space_for_prediction_merge = True
+        use_space_for_gt_merge = True
+
+        benchmark_tool = OcrBenchmark(
+            model_identifier="ocr_model_under_test",
+            ignore_zone_filter_type=ignore_zone_filter_config,
+            add_space_for_merged_prediction_words=use_space_for_prediction_merge,
+            add_space_for_merged_gt_words=use_space_for_gt_merge,
         )
 
-        _log.info("Loading the split '%s' from: '%s'", split, ds_path)
-        split_path = str(ds_path / split / "*.parquet")
-        split_files = glob.glob(split_path)
-        if not split_files:
+        _log.info("Loading data split '%s' from: '%s'", data_split_name, dataset_path)
+        path_to_split_files = str(dataset_path / data_split_name / "*.parquet")
+        dataset_files = glob.glob(path_to_split_files)
+        if not dataset_files:
             _log.warning(
-                "No parquet files found for split '%s' in '%s'", split, ds_path
+                "No parquet files found for split '%s' in '%s'",
+                data_split_name,
+                dataset_path,
             )
-            return DatasetOcrEvaluation()
+            return OcrDatasetEvaluationResult()
 
-        _log.info("Found %d files: %s", len(split_files), split_files)
-        ds = load_dataset("parquet", data_files={split: split_files})
-        _log.info("Overview of dataset: %s", ds)
+        _log.info(
+            "Found %d files for processing: %s", len(dataset_files), dataset_files
+        )
+        hf_dataset = load_dataset(
+            "parquet", data_files={data_split_name: dataset_files}
+        )
+        _log.info("Dataset overview: %s", hf_dataset)
 
-        ds_selection: Dataset = ds[split]
+        selected_dataset_split: Dataset = hf_dataset[data_split_name]
+        processed_item_count = 0
 
-        num_processed_items = 0
-        final_metrics_results: List[Dict[str, Any]] = []
-
-        empty_rect = BoundingRectangle(
+        empty_bounding_rect = BoundingRectangle(
             r_x0=0,
             r_y0=0,
             r_x1=0,
@@ -152,470 +95,465 @@ class OCREvaluator(BaseEvaluator):
             r_y3=0,
             coord_origin=CoordOrigin.TOPLEFT,
         )
-        empty_page_geometry = PageGeometry(angle=0, rect=empty_rect)
-        fallback_segmented_page = SegmentedPage(dimension=empty_page_geometry)
+        empty_page_dims = PageGeometry(angle=0, rect=empty_bounding_rect)
 
-        for i, data_item_row in tqdm(
-            enumerate(ds_selection),
-            desc="Evaluating OCR",
+        for i, data_row in tqdm(
+            enumerate(selected_dataset_split),
+            desc="Evaluating OCR performance",
             ncols=120,
-            total=len(ds_selection),
+            total=len(selected_dataset_split),
         ):
-            if BenchMarkColumns.DOC_ID not in data_item_row:
+            if BenchMarkColumns.DOC_ID not in data_row:
                 _log.warning(
-                    f"Skipping item {i} due to missing '{BenchMarkColumns.DOC_ID}'."
+                    f"Skipping item {i} due to missing '{BenchMarkColumns.DOC_ID}' column."
                 )
                 continue
 
-            doc_id_value: str = data_item_row[BenchMarkColumns.DOC_ID]
+            # NOTE: Somehow the validation of the data record is not working as expected
+            # try:
+            #     data_record = DatasetRecordWithPrediction.model_validate(data_row)
+            # except Exception as e:
+            #     _log.error("Failed to validate record %d: %s. Data: %s", i, e, data_row)
+            #     raise RuntimeError(
+            #         f"Failed to validate record {i}: {e}. Data: {data_row}"
+            #     )
 
-            gt_segmented_page: SegmentedPage = copy.deepcopy(fallback_segmented_page)
-            pred_segmented_page: SegmentedPage = copy.deepcopy(fallback_segmented_page)
+            # doc_id = data_record.doc_id
 
-            gt_segpages_column_key = BenchMarkColumns.GROUNDTRUTH_SEGMENTED_PAGES
-            if (
-                gt_segpages_column_key in data_item_row
-                and data_item_row[gt_segpages_column_key]
-            ):
+            # if data_record.status not in self._accepted_status:
+            #     _log.warning(
+            #         "Skipping record %s due to status: %s", doc_id, data_record.status
+            #     )
+            #     continue
+
+            # true_segpages = data_record.ground_truth_segmented_pages
+            # pred_segpages = data_record.predicted_segmented_pages
+
+            document_id: str = data_row[BenchMarkColumns.DOC_ID]
+            gt_page_data: SegmentedPage = SegmentedPage(dimension=empty_page_dims)
+            pred_page_data: SegmentedPage = SegmentedPage(dimension=empty_page_dims)
+
+            page_identifier_for_benchmark: str = document_id
+
+            gt_seg_pages_key = BenchMarkColumns.GROUNDTRUTH_SEGMENTED_PAGES
+
+            if gt_seg_pages_key in data_row and data_row[gt_seg_pages_key]:
                 try:
-                    gt_segmented_pages_map_data: Optional[Dict[int, SegmentedPage]] = (
-                        _parse_segmented_pages_from_raw(
-                            data_item_row[gt_segpages_column_key], doc_id_value
-                        )
+                    gt_pages_map: Optional[Dict[int, SegmentedPage]] = (
+                        parse_segmented_pages(data_row[gt_seg_pages_key], document_id)
                     )
-                    if gt_segmented_pages_map_data:
-                        page_to_process_idx_gt: int = sorted(
-                            gt_segmented_pages_map_data.keys()
-                        )[0]
-                        gt_segmented_page = gt_segmented_pages_map_data[
-                            page_to_process_idx_gt
-                        ]
+                    if gt_pages_map:
+                        first_page_idx_gt: int = sorted(gt_pages_map.keys())[0]
+                        gt_page_data = gt_pages_map[first_page_idx_gt]
+                        page_identifier_for_benchmark = (
+                            f"{document_id}_p{first_page_idx_gt}"
+                        )
                     else:
-                        _log.warning(
-                            f"No valid GT segmented pages for {doc_id_value}, using fallback."
+                        _log.debug(
+                            f"No valid GT segmented pages for {document_id}, using default empty page."
                         )
                 except Exception as e:
                     _log.error(
-                        f"Error processing GT for {doc_id_value}: {e}, using fallback."
+                        f"Error processing GT for {document_id}: {e}, using default. Trace: {traceback.format_exc()}"
                     )
-                    traceback.print_exc()
 
-            pred_segpages_column_key = BenchMarkColumns.PREDICTED_SEGMENTED_PAGES
-            if (
-                pred_segpages_column_key in data_item_row
-                and data_item_row[pred_segpages_column_key]
-            ):
+            pred_seg_pages_key = BenchMarkColumns.PREDICTED_SEGMENTED_PAGES
+            if pred_seg_pages_key in data_row and data_row[pred_seg_pages_key]:
                 try:
-                    pred_segmented_pages_map_data: Optional[
-                        Dict[int, SegmentedPage]
-                    ] = _parse_segmented_pages_from_raw(
-                        data_item_row[pred_segpages_column_key], doc_id_value
+                    pred_pages_map: Optional[Dict[int, SegmentedPage]] = (
+                        parse_segmented_pages(data_row[pred_seg_pages_key], document_id)
                     )
-                    if pred_segmented_pages_map_data:
-                        page_to_process_idx_pred: int = sorted(
-                            pred_segmented_pages_map_data.keys()
-                        )[0]
-                        pred_segmented_page = pred_segmented_pages_map_data[
-                            page_to_process_idx_pred
-                        ]
+                    if pred_pages_map:
+                        first_page_idx_pred: int = sorted(pred_pages_map.keys())[0]
+                        pred_page_data = pred_pages_map[first_page_idx_pred]
+                        if page_identifier_for_benchmark == document_id:
+                            page_identifier_for_benchmark = (
+                                f"{document_id}_p{first_page_idx_pred}"
+                            )
                     else:
-                        _log.warning(
-                            f"No valid Pred segmented pages for {doc_id_value}, using fallback."
+                        _log.debug(
+                            f"No valid Prediction segmented pages for {document_id}, using default empty page."
                         )
                 except Exception as e:
                     _log.error(
-                        f"Error processing Pred for {doc_id_value}: {e}, using fallback."
+                        f"Error processing Prediction for {document_id}: {e}, using default. Trace: {traceback.format_exc()}"
                     )
-                    traceback.print_exc()
 
-            benchmark_runner.load_res_and_gt_files(
-                gt_page=gt_segmented_page,
-                pred_page=pred_segmented_page,
+            benchmark_tool.process_single_page_pair(
+                ground_truth_page=gt_page_data,
+                prediction_page=pred_page_data,
+                image_identifier=page_identifier_for_benchmark,
             )
-            num_processed_items += 1
+            processed_item_count += 1
 
-        if num_processed_items > 0:
-            _log.info(f"Processed {num_processed_items} documents for benchmark.")
-            benchmark_runner.run_benchmark()
-            final_metrics_results = benchmark_runner.get_metrics_values(
-                float_precision=1
+        overall_evaluation_results = OcrDatasetEvaluationResult()
+        if processed_item_count > 0:
+            _log.info(f"Processed {processed_item_count} documents for OCR benchmark.")
+            formatted_summary: List[Dict[str, Any]] = (
+                benchmark_tool.get_formatted_metrics_summary(float_precision=1)
             )
-            _log.info("\nFinal Metrics:")
-            _log.info(json.dumps(final_metrics_results, indent=2))
+            _log.info("\nAggregated OCR Metrics:")
+            _log.info(json.dumps(formatted_summary, indent=2))
+
+            if (
+                formatted_summary
+                and isinstance(formatted_summary, list)
+                and len(formatted_summary) > 0
+            ):
+                metrics_from_summary: Dict[str, Any] = formatted_summary[0]
+                if isinstance(metrics_from_summary, dict):
+                    overall_evaluation_results = OcrDatasetEvaluationResult(
+                        f1_score=metrics_from_summary.get("F1", 0.0),
+                        recall=metrics_from_summary.get("Recall", 0.0),
+                        precision=metrics_from_summary.get("Precision", 0.0),
+                    )
         else:
-            _log.warning("No documents were processed for the benchmark.")
-            final_metrics_results = []
+            _log.warning("No documents were processed for the OCR benchmark.")
 
-        dataset_evaluation_result = DatasetOcrEvaluation()
-        if (
-            final_metrics_results
-            and isinstance(final_metrics_results, list)
-            and len(final_metrics_results) > 0
-        ):
-            metrics_dict_val: Dict[str, Any] = final_metrics_results[0]
-            if isinstance(metrics_dict_val, dict):
-                dataset_evaluation_result = DatasetOcrEvaluation(
-                    f1_score=metrics_dict_val.get("F1", 0.0),
-                    recall=metrics_dict_val.get("Recall", 0.0),
-                    precision=metrics_dict_val.get("Precision", 0.0),
-                )
+        _log.info(f"Final Dataset F1 Score: {overall_evaluation_results.f1_score:.4f}")
+        _log.info(
+            f"Final Dataset Precision: {overall_evaluation_results.precision:.4f}"
+        )
+        _log.info(f"Final Dataset Recall: {overall_evaluation_results.recall:.4f}")
 
-        _log.info(f"Final F1 Score: {dataset_evaluation_result.f1_score:.4f}")
-        _log.info(f"Final Precision: {dataset_evaluation_result.precision:.4f}")
-        _log.info(f"Final Recall: {dataset_evaluation_result.recall:.4f}")
-
-        return dataset_evaluation_result
+        return overall_evaluation_results
 
 
 class OCRVisualizer:
     def __init__(self) -> None:
-        self._line_width: int = 2
-        self._true_box_color: str = "green"
-        self._pred_box_color: str = "red"
-        self._correct_box_color: str = "blue"
-        self._text_color: str = "black"
-        self._viz_sub_dir: str = "ocr_viz"
+        self._outline_thickness: int = 2
+        self._ground_truth_color: str = "green"
+        self._prediction_color: str = "red"
+        self._correct_match_color: str = "blue"
+        self._text_label_color: str = "black"
+        self._visualization_subdir_name: str = "ocr_visualizations"
 
-        self._font: ImageFont.FreeTypeFont = ImageFont.load_default()
+        self._default_font: ImageFont.ImageFont = ImageFont.load_default()
         try:
-            self._font = ImageFont.truetype("arial.ttf", size=10)
+            self._rendering_font: ImageFont.FreeTypeFont = ImageFont.truetype(
+                "arial.ttf", size=10
+            )
         except IOError:
-            self._font = ImageFont.load_default()
+            self._rendering_font = self._default_font
 
     def __call__(
         self,
-        ds_path: Path,
-        ocr_report_fn: Optional[Path] = None,
-        save_dir: Path = Path("./"),
-        split: str = "test",
+        dataset_path: Path,
+        ocr_evaluation_report_path: Optional[Path] = None,
+        output_directory: Path = Path("./visual_output"),
+        data_split_name: str = "test",
     ) -> List[Path]:
-        save_dir_path: Path = save_dir / self._viz_sub_dir
-        save_dir_path.mkdir(parents=True, exist_ok=True)
+        visualizations_output_path: Path = (
+            output_directory / self._visualization_subdir_name
+        )
+        visualizations_output_path.mkdir(parents=True, exist_ok=True)
 
-        ocr_preds_idx: Dict[str, OcrReportEvaluationEntry] = {}
-        if ocr_report_fn and ocr_report_fn.exists():
-            with open(ocr_report_fn, "r") as fd:
-                ocr_evaluation_dict_file_content: Dict[str, Any] = json.load(fd)
-                for evaluation_item_dict in ocr_evaluation_dict_file_content.get(
-                    "evaluations", []
-                ):
+        document_evaluations_map: Dict[str, DocumentEvaluationEntry] = {}
+        if ocr_evaluation_report_path and ocr_evaluation_report_path.exists():
+            with open(ocr_evaluation_report_path, "r") as report_file:
+                report_content: Dict[str, Any] = json.load(report_file)
+                for eval_item_data in report_content.get("evaluations", []):
                     try:
-                        entry = OcrReportEvaluationEntry.model_validate(
-                            evaluation_item_dict
+                        doc_entry = DocumentEvaluationEntry.model_validate(
+                            eval_item_data
                         )
-                        ocr_preds_idx[entry.doc_id] = entry
-                    except Exception as e:
+                        document_evaluations_map[doc_entry.doc_id] = doc_entry
+                    except Exception as e_parse:
                         _log.warning(
-                            f"Failed to parse evaluation item: {evaluation_item_dict}. Error: {e}"
+                            f"Failed to parse document evaluation item: {eval_item_data}. Error: {e_parse}"
                         )
 
-        parquet_files: str = str(ds_path / split / "*.parquet")
-        ds: Dataset = load_dataset("parquet", data_files={split: parquet_files})
+        path_to_parquet_files: str = str(dataset_path / data_split_name / "*.parquet")
+        hf_dataset: Dataset = load_dataset(
+            "parquet", data_files={data_split_name: path_to_parquet_files}
+        )
 
-        viz_fns: List[Path] = []
-        if ds is not None and split in ds:
-            ds_selection: Dataset = ds[split]
+        generated_visualization_paths: List[Path] = []
+        if hf_dataset and data_split_name in hf_dataset:
+            dataset_for_visualization: Dataset = hf_dataset[data_split_name]
 
-            for i, data_item_row in tqdm(
-                enumerate(ds_selection),
-                desc="OCR visualizations",
+            for i, data_row in tqdm(
+                enumerate(dataset_for_visualization),
+                desc="Generating OCR visualizations",
                 ncols=120,
-                total=len(ds_selection),
+                total=len(dataset_for_visualization),
             ):
-                doc_id: str = data_item_row[BenchMarkColumns.DOC_ID]
-                page_images_raw: Any = data_item_row.get(
+                doc_id_val: str = data_row[BenchMarkColumns.DOC_ID]
+                page_images_data: Any = data_row.get(
                     BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
                 )
 
-                page_images: List[Dict[str, bytes]] = []
-                if isinstance(page_images_raw, list) and page_images_raw:
+                page_image_bytes_list: List[Dict[str, bytes]] = []
+                if isinstance(page_images_data, list) and page_images_data:
                     if (
-                        isinstance(page_images_raw[0], dict)
-                        and "bytes" in page_images_raw[0]
+                        isinstance(page_images_data[0], dict)
+                        and "bytes" in page_images_data[0]
                     ):
-                        page_images = page_images_raw
+                        page_image_bytes_list = page_images_data
 
-                if ocr_report_fn and doc_id not in ocr_preds_idx:
+                if (
+                    ocr_evaluation_report_path
+                    and doc_id_val not in document_evaluations_map
+                ):
                     continue
 
-                true_segpages: Dict[int, SegmentedPage] = {}
-                pred_segpages: Dict[int, SegmentedPage] = {}
+                ground_truth_segmented_pages: Dict[int, SegmentedPage] = {}
+                prediction_segmented_pages: Dict[int, SegmentedPage] = {}
 
-                gt_column: str = BenchMarkColumns.GROUNDTRUTH_SEGMENTED_PAGES
-                if gt_column in data_item_row and data_item_row[gt_column]:
-                    processed_gt: Optional[Dict[int, SegmentedPage]] = (
-                        _parse_segmented_pages_from_raw(
-                            data_item_row[gt_column], doc_id
-                        )
+                gt_col_name: str = BenchMarkColumns.GROUNDTRUTH_SEGMENTED_PAGES
+                if gt_col_name in data_row and data_row[gt_col_name]:
+                    parsed_gt_pages: Optional[Dict[int, SegmentedPage]] = (
+                        parse_segmented_pages(data_row[gt_col_name], doc_id_val)
                     )
-                    if processed_gt:
-                        true_segpages = processed_gt
+                    if parsed_gt_pages:
+                        ground_truth_segmented_pages = parsed_gt_pages
 
-                pred_column: str = BenchMarkColumns.PREDICTED_SEGMENTED_PAGES
-                if pred_column in data_item_row and data_item_row[pred_column]:
-                    processed_pred: Optional[Dict[int, SegmentedPage]] = (
-                        _parse_segmented_pages_from_raw(
-                            data_item_row[pred_column], doc_id
-                        )
+                pred_col_name: str = BenchMarkColumns.PREDICTED_SEGMENTED_PAGES
+                if pred_col_name in data_row and data_row[pred_col_name]:
+                    parsed_pred_pages: Optional[Dict[int, SegmentedPage]] = (
+                        parse_segmented_pages(data_row[pred_col_name], doc_id_val)
                     )
-                    if processed_pred:
-                        pred_segpages = processed_pred
+                    if parsed_pred_pages:
+                        prediction_segmented_pages = parsed_pred_pages
 
-                if not page_images:
+                if not page_image_bytes_list:
                     _log.warning(
-                        f"No page images found for doc {doc_id}. Skipping visualization."
+                        f"No page images found for document {doc_id_val}. Skipping visualization."
                     )
                     continue
 
-                image_bytes: bytes = page_images[0]["bytes"]
-                image: Image.Image = Image.open(BytesIO(image_bytes)).convert("RGB")
-
-                viz_image: Image.Image = self._draw_ocr_comparison(
-                    doc_id, image, true_segpages, pred_segpages
+                image_raw_bytes: bytes = page_image_bytes_list[0]["bytes"]
+                base_image: Image.Image = Image.open(BytesIO(image_raw_bytes)).convert(
+                    "RGB"
                 )
-                viz_fn: Path = save_dir_path / f"{doc_id}_ocr_viz.png"
-                viz_fns.append(viz_fn)
-                viz_image.save(viz_fn)
+
+                comparison_image: Image.Image = self._render_ocr_comparison_on_image(
+                    doc_id_val,
+                    base_image,
+                    ground_truth_segmented_pages,
+                    prediction_segmented_pages,
+                )
+                output_image_path: Path = (
+                    visualizations_output_path / f"{doc_id_val}_ocr_comparison.png"
+                )
+                generated_visualization_paths.append(output_image_path)
+                comparison_image.save(output_image_path)
         else:
             _log.warning(
-                f"Dataset or split '{split}' not found. No visualizations generated."
+                f"Dataset or split '{data_split_name}' not found. No visualizations will be generated."
             )
 
-        return viz_fns
+        return generated_visualization_paths
 
-    def _draw_ocr_comparison(
+    def _render_ocr_comparison_on_image(
         self,
         doc_id: str,
-        page_image: Image.Image,
-        true_segpages: Dict[int, SegmentedPage],
-        pred_segpages: Dict[int, SegmentedPage],
+        source_page_image: Image.Image,
+        ground_truth_pages: Dict[int, SegmentedPage],
+        prediction_pages: Dict[int, SegmentedPage],
     ) -> Image.Image:
-        true_img: Image.Image = copy.deepcopy(page_image)
-        pred_img: Image.Image = copy.deepcopy(page_image)
+        gt_image_canvas: Image.Image = copy.deepcopy(source_page_image)
+        pred_image_canvas: Image.Image = copy.deepcopy(source_page_image)
 
-        true_draw: ImageDraw.ImageDraw = ImageDraw.Draw(true_img)
-        pred_draw: ImageDraw.ImageDraw = ImageDraw.Draw(pred_img)
+        gt_draw_context: ImageDraw.ImageDraw = ImageDraw.Draw(gt_image_canvas)
+        pred_draw_context: ImageDraw.ImageDraw = ImageDraw.Draw(pred_image_canvas)
 
-        if not true_segpages:
-            _log.warning(
-                f"No ground truth segmented pages found for doc {doc_id} to draw."
+        if not ground_truth_pages:
+            _log.debug(
+                f"No ground truth segmented pages provided for doc {doc_id} for drawing."
             )
 
-        true_page_idx_list: List[int] = list(true_segpages.keys())
-        pred_page_idx_list: List[int] = list(pred_segpages.keys())
+        page_index_for_drawing: int = -1
+        if ground_truth_pages:
+            page_index_for_drawing = sorted(list(ground_truth_pages.keys()))[0]
+        elif prediction_pages:
+            page_index_for_drawing = sorted(list(prediction_pages.keys()))[0]
 
-        page_idx_to_draw: int = -1
-        if true_page_idx_list:
-            page_idx_to_draw = true_page_idx_list[0]
-        elif pred_page_idx_list:
-            page_idx_to_draw = pred_page_idx_list[0]
-
-        true_page: Optional[SegmentedPage] = (
-            true_segpages.get(page_idx_to_draw) if page_idx_to_draw != -1 else None
+        gt_page_to_draw: Optional[SegmentedPage] = (
+            ground_truth_pages.get(page_index_for_drawing)
+            if page_index_for_drawing != -1
+            else None
         )
-        pred_page: Optional[SegmentedPage] = (
-            pred_segpages.get(page_idx_to_draw) if page_idx_to_draw != -1 else None
+        pred_page_to_draw: Optional[SegmentedPage] = (
+            prediction_pages.get(page_index_for_drawing)
+            if page_index_for_drawing != -1
+            else None
         )
 
-        page_height: float = 0.0
-        page_width: float = 0.0
+        page_h: float = 0.0
+        page_w: float = 0.0
 
-        if true_page:
-            page_height = true_page.dimension.height
-            page_width = true_page.dimension.width
-        elif pred_page:
-            page_height = pred_page.dimension.height
-            page_width = pred_page.dimension.width
+        if gt_page_to_draw:
+            page_h = gt_page_to_draw.dimension.height
+            page_w = gt_page_to_draw.dimension.width
+        elif pred_page_to_draw:
+            page_h = pred_page_to_draw.dimension.height
+            page_w = pred_page_to_draw.dimension.width
 
-        if page_width == 0 or page_height == 0:
-            page_width = float(page_image.width)
-            page_height = float(page_image.height)
+        if page_w == 0 or page_h == 0:
+            page_w = float(source_page_image.width)
+            page_h = float(source_page_image.height)
 
-        scale_x: float
-        scale_y: float
-        if page_width == 0 or page_height == 0:
-            _log.warning(
-                f"Page dimensions are zero for doc {doc_id}. Cannot scale drawings. Using 1.0."
-            )
-            scale_x, scale_y = 1.0, 1.0
-        else:
-            scale_x = page_image.width / page_width
-            scale_y = page_image.height / page_height
+        scale_factor_x: float = source_page_image.width / page_w if page_w > 0 else 1.0
+        scale_factor_y: float = source_page_image.height / page_h if page_h > 0 else 1.0
 
-        if true_page and true_page.has_words:
-            for cell in true_page.word_cells:
-                bbox = cell.rect.to_bounding_box()
-                if bbox.coord_origin != CoordOrigin.TOPLEFT:
-                    if page_height == 0:
-                        _log.warning(
-                            f"Page height is zero for doc {doc_id} with GT cells needing coordinate conversion. Conversion may be incorrect."
-                        )
-                    bbox = bbox.to_top_left_origin(page_height=page_height)
+        if gt_page_to_draw and gt_page_to_draw.has_words:
+            for cell_item in gt_page_to_draw.word_cells:
+                bbox_obj = cell_item.rect.to_bounding_box()
+                if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                    bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
 
-                l: int = round(bbox.l * scale_x)
-                r: int = round(bbox.r * scale_x)
-                t: int = round(bbox.t * scale_y)
-                b: int = round(bbox.b * scale_y)
-
-                true_draw.rectangle(
-                    [l, t, r, b],
-                    outline=self._true_box_color,
-                    width=self._line_width,
+                l_coord, t_coord = round(bbox_obj.l * scale_factor_x), round(
+                    bbox_obj.t * scale_factor_y
+                )
+                r_coord, b_coord = round(bbox_obj.r * scale_factor_x), round(
+                    bbox_obj.b * scale_factor_y
                 )
 
-                text_pos: Tuple[int, int] = (l, t - 15) if t > 15 else (l, b + 2)
-                true_draw.text(
-                    text_pos,
-                    cell.text,
-                    fill=self._text_color,
-                    font=self._font,
+                gt_draw_context.rectangle(
+                    [l_coord, t_coord, r_coord, b_coord],
+                    outline=self._ground_truth_color,
+                    width=self._outline_thickness,
+                )
+                text_y_pos = t_coord - 15 if t_coord > 15 else b_coord + 2
+                gt_draw_context.text(
+                    (l_coord, text_y_pos),
+                    cell_item.text,
+                    fill=self._text_label_color,
+                    font=self._rendering_font,
                 )
 
-        if pred_page and pred_page.has_words:
-            for cell in pred_page.word_cells:
-                bbox = cell.rect.to_bounding_box()
-                if bbox.coord_origin != CoordOrigin.TOPLEFT:
-                    if page_height == 0:
-                        _log.warning(
-                            f"Page height is zero for doc {doc_id} with Pred cells needing coordinate conversion. Conversion may be incorrect."
-                        )
-                    bbox = bbox.to_top_left_origin(page_height=page_height)
+        if pred_page_to_draw and pred_page_to_draw.has_words:
+            for cell_item in pred_page_to_draw.word_cells:
+                bbox_obj = cell_item.rect.to_bounding_box()
+                if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                    bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
 
-                l: int = round(bbox.l * scale_x)
-                r: int = round(bbox.r * scale_x)
-                t: int = round(bbox.t * scale_y)
-                b: int = round(bbox.b * scale_y)
+                l_coord, t_coord = round(bbox_obj.l * scale_factor_x), round(
+                    bbox_obj.t * scale_factor_y
+                )
+                r_coord, b_coord = round(bbox_obj.r * scale_factor_x), round(
+                    bbox_obj.b * scale_factor_y
+                )
 
-                is_correct: bool = False
-                if true_page and true_page.has_words:
-                    for gt_cell in true_page.word_cells:
-                        if gt_cell.text == cell.text:
-                            gt_bbox = gt_cell.rect.to_bounding_box()
-                            if gt_bbox.coord_origin != CoordOrigin.TOPLEFT:
-                                if page_height == 0:
-                                    _log.warning(
-                                        f"Page height is zero for doc {doc_id} with GT cells (for Pred comparison) needing coord conversion. Conversion may be incorrect."
-                                    )
-                                gt_bbox = gt_bbox.to_top_left_origin(
-                                    page_height=page_height
+                is_match_correct: bool = False
+                if gt_page_to_draw and gt_page_to_draw.has_words:
+                    for gt_cell_item in gt_page_to_draw.word_cells:
+                        if gt_cell_item.text == cell_item.text:
+                            gt_bbox_obj = gt_cell_item.rect.to_bounding_box()
+                            if gt_bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                                gt_bbox_obj = gt_bbox_obj.to_top_left_origin(
+                                    page_height=page_h
                                 )
 
                             if not (
-                                l > round(gt_bbox.r * scale_x)
-                                or r < round(gt_bbox.l * scale_x)
-                                or t > round(gt_bbox.b * scale_y)
-                                or b < round(gt_bbox.t * scale_y)
+                                l_coord > round(gt_bbox_obj.r * scale_factor_x)
+                                or r_coord < round(gt_bbox_obj.l * scale_factor_x)
+                                or t_coord > round(gt_bbox_obj.b * scale_factor_y)
+                                or b_coord < round(gt_bbox_obj.t * scale_factor_y)
                             ):
-                                is_correct = True
+                                is_match_correct = True
                                 break
 
-                box_color: str = (
-                    self._correct_box_color if is_correct else self._pred_box_color
+                box_draw_color: str = (
+                    self._correct_match_color
+                    if is_match_correct
+                    else self._prediction_color
+                )
+                pred_draw_context.rectangle(
+                    [l_coord, t_coord, r_coord, b_coord],
+                    outline=box_draw_color,
+                    width=self._outline_thickness,
+                )
+                text_y_pos = t_coord - 15 if t_coord > 15 else b_coord + 2
+                pred_draw_context.text(
+                    (l_coord, text_y_pos),
+                    cell_item.text,
+                    fill=self._text_label_color,
+                    font=self._rendering_font,
                 )
 
-                pred_draw.rectangle(
-                    [l, t, r, b],
-                    outline=box_color,
-                    width=self._line_width,
-                )
+        img_mode: str = source_page_image.mode
+        img_w, img_h = source_page_image.size
+        stitched_image: Image.Image = Image.new(img_mode, (2 * img_w, img_h), "white")
+        stitched_image.paste(gt_image_canvas, (0, 0))
+        stitched_image.paste(pred_image_canvas, (img_w, 0))
 
-                text_pos: Tuple[int, int] = (l, t - 15) if t > 15 else (l, b + 2)
-                pred_draw.text(
-                    text_pos,
-                    cell.text,
-                    fill=self._text_color,
-                    font=self._font,
-                )
+        stitched_draw_context: ImageDraw.ImageDraw = ImageDraw.Draw(stitched_image)
+        header_font_size: int = max(15, int(img_h * 0.02))
+        sub_header_font_size: int = max(12, int(img_h * 0.015))
 
-        mode: str = page_image.mode
-        w: int
-        h: int
-        w, h = page_image.size
-        combined_img: Image.Image = Image.new(mode, (2 * w, h), "white")
-        combined_img.paste(true_img, (0, 0))
-        combined_img.paste(pred_img, (w, 0))
-
-        combined_draw: ImageDraw.ImageDraw = ImageDraw.Draw(combined_img)
-        title_font_size: int = max(15, int(h * 0.02))
-        legend_font_size: int = max(12, int(h * 0.015))
-        title_font: ImageFont.FreeTypeFont
-        legend_font: ImageFont.FreeTypeFont
         try:
-            title_font = ImageFont.truetype("arial.ttf", size=title_font_size)
-            legend_font = ImageFont.truetype("arial.ttf", size=legend_font_size)
+            title_text_font = ImageFont.truetype("arial.ttf", size=header_font_size)
+            legend_text_font = ImageFont.truetype(
+                "arial.ttf", size=sub_header_font_size
+            )
         except IOError:
-            title_font = self._font
-            legend_font = self._font
+            title_text_font = self._default_font
+            legend_text_font = self._default_font
 
-        combined_draw.text(
-            (10, 10),
-            "Ground Truth OCR",
-            fill="black",
-            font=title_font,
+        stitched_draw_context.text(
+            (10, 10), "Ground Truth OCR", fill="black", font=title_text_font
         )
-        combined_draw.text(
-            (w + 10, 10),
-            "Predicted OCR",
-            fill="black",
-            font=title_font,
+        stitched_draw_context.text(
+            (img_w + 10, 10), "Predicted OCR", fill="black", font=title_text_font
         )
 
-        legend_y_start: int = title_font_size + 20
-        legend_box_size: int = legend_font_size
-        legend_spacing: int = int(legend_font_size * 0.5)
+        legend_start_y: int = header_font_size + 20
+        legend_rect_dim: int = sub_header_font_size
+        legend_item_gap: int = int(sub_header_font_size * 0.5)
 
-        current_legend_y: int = legend_y_start
-        combined_draw.rectangle(
+        stitched_draw_context.rectangle(
             [
                 10,
-                current_legend_y,
-                10 + legend_box_size,
-                current_legend_y + legend_box_size,
+                legend_start_y,
+                10 + legend_rect_dim,
+                legend_start_y + legend_rect_dim,
             ],
-            outline=self._true_box_color,
-            fill=self._true_box_color,
+            outline=self._ground_truth_color,
+            fill=self._ground_truth_color,
         )
-        combined_draw.text(
-            (15 + legend_box_size, current_legend_y),
+        stitched_draw_context.text(
+            (15 + legend_rect_dim, legend_start_y),
             "Ground Truth Word",
             fill="black",
-            font=legend_font,
+            font=legend_text_font,
         )
 
-        current_legend_y_pred: int = legend_y_start
-        combined_draw.rectangle(
+        current_pred_legend_y = legend_start_y
+        stitched_draw_context.rectangle(
             [
-                w + 10,
-                current_legend_y_pred,
-                w + 10 + legend_box_size,
-                current_legend_y_pred + legend_box_size,
+                img_w + 10,
+                current_pred_legend_y,
+                img_w + 10 + legend_rect_dim,
+                current_pred_legend_y + legend_rect_dim,
             ],
-            outline=self._correct_box_color,
-            fill=self._correct_box_color,
+            outline=self._correct_match_color,
+            fill=self._correct_match_color,
         )
-        combined_draw.text(
-            (w + 15 + legend_box_size, current_legend_y_pred),
+        stitched_draw_context.text(
+            (img_w + 15 + legend_rect_dim, current_pred_legend_y),
             "Correct Prediction",
             fill="black",
-            font=legend_font,
+            font=legend_text_font,
         )
 
-        current_legend_y_pred += legend_box_size + legend_spacing
-        combined_draw.rectangle(
+        current_pred_legend_y += legend_rect_dim + legend_item_gap
+        stitched_draw_context.rectangle(
             [
-                w + 10,
-                current_legend_y_pred,
-                w + 10 + legend_box_size,
-                current_legend_y_pred + legend_box_size,
+                img_w + 10,
+                current_pred_legend_y,
+                img_w + 10 + legend_rect_dim,
+                current_pred_legend_y + legend_rect_dim,
             ],
-            outline=self._pred_box_color,
-            fill=self._pred_box_color,
+            outline=self._prediction_color,
+            fill=self._prediction_color,
         )
-        combined_draw.text(
-            (w + 15 + legend_box_size, current_legend_y_pred),
+        stitched_draw_context.text(
+            (img_w + 15 + legend_rect_dim, current_pred_legend_y),
             "Incorrect Prediction",
             fill="black",
-            font=legend_font,
+            font=legend_text_font,
         )
 
-        return combined_img
+        return stitched_image

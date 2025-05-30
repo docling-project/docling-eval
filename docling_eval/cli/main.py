@@ -62,7 +62,10 @@ from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
     MarkdownTextEvaluator,
 )
-from docling_eval.evaluators.ocr_evaluator import DatasetOcrEvaluation, OCREvaluator
+from docling_eval.evaluators.ocr_evaluator import (
+    OcrDatasetEvaluationResult,
+    OCREvaluator,
+)
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -781,7 +784,9 @@ def visualize(
     elif modality == EvaluationModality.OCR:
         try:
             with open(metrics_filename, "r") as fd:
-                ocr_evaluation = DatasetOcrEvaluation.model_validate_json(fd.read())
+                ocr_evaluation = OcrDatasetEvaluationResult.model_validate_json(
+                    fd.read()
+                )
 
             log_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.txt"
             with open(log_filename, "w") as fd:

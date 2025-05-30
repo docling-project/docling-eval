@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from docling_eval.evaluators.ocr.benchmark_constants import Location, Word
+from docling_eval.evaluators.ocr.evaluation_models import Location, Word
 
 
 def create_polygon_from_rect(location: Location) -> List[List[float]]:
@@ -68,62 +68,70 @@ def get_y_axis_union(rect1: Location, rect2: Location) -> float:
     return y_union
 
 
-def info_for_boxes(
+def calculate_box_intersection_info(
     box1: Location, box2: Location
 ) -> Tuple[float, float, float, float, float, float, float]:
-    x_axis_overlap: float = get_x_axis_overlap(box1, box2)
-    if x_axis_overlap == 0:
+    x_axis_overlap_val: float = get_x_axis_overlap(box1, box2)
+    if x_axis_overlap_val == 0:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
-    y_axis_overlap: float = get_y_axis_overlap(box1, box2)
-    if y_axis_overlap == 0:
-        return x_axis_overlap, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    y_axis_overlap_val: float = get_y_axis_overlap(box1, box2)
+    if y_axis_overlap_val == 0:
+        return x_axis_overlap_val, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
-    intersection_area: float = x_axis_overlap * y_axis_overlap
+    intersection_area_val: float = x_axis_overlap_val * y_axis_overlap_val
     box1_area: float = box1.width * box1.height
     box2_area: float = box2.width * box2.height
-    union_area: float = box1_area + box2_area - intersection_area
-    iou: float = intersection_area / union_area if union_area > 0 else 0.0
+    union_area_val: float = box1_area + box2_area - intersection_area_val
+    iou_val: float = (
+        intersection_area_val / union_area_val if union_area_val > 0 else 0.0
+    )
     box1_portion_covered: float = (
-        intersection_area / box1_area if box1_area > 0 else 0.0
+        intersection_area_val / box1_area if box1_area > 0 else 0.0
     )
     box2_portion_covered: float = (
-        intersection_area / box2_area if box2_area > 0 else 0.0
+        intersection_area_val / box2_area if box2_area > 0 else 0.0
     )
     return (
-        x_axis_overlap,
-        y_axis_overlap,
-        intersection_area,
-        union_area,
-        iou,
+        x_axis_overlap_val,
+        y_axis_overlap_val,
+        intersection_area_val,
+        union_area_val,
+        iou_val,
         box1_portion_covered,
         box2_portion_covered,
     )
 
 
-def info_for_boxes_extended(
+def calculate_box_intersection_info_extended(
     box1: Location, box2: Location
 ) -> Tuple[float, float, float, float, float, float, float]:
-    x_axis_overlap: float = get_x_axis_overlap(box1, box2)
-    y_axis_overlap: float = get_y_axis_overlap(box1, box2)
-    intersection_area: float = x_axis_overlap * y_axis_overlap
+    x_axis_overlap_val: float = get_x_axis_overlap(box1, box2)
+    y_axis_overlap_val: float = get_y_axis_overlap(box1, box2)
+    intersection_area_val: float = x_axis_overlap_val * y_axis_overlap_val
     box1_area: float = box1.width * box1.height
     box2_area: float = box2.width * box2.height
-    union_area: float = box1_area + box2_area - intersection_area
-    iou: float = intersection_area / union_area if union_area > 0 else 0.0
+    union_area_val: float = box1_area + box2_area - intersection_area_val
+    iou_val: float = (
+        intersection_area_val / union_area_val if union_area_val > 0 else 0.0
+    )
 
-    x_axis_union: float = get_x_axis_union(box1, box2)
-    y_axis_union: float = get_y_axis_union(box1, box2)
-    x_axis_iou: float = x_axis_overlap / x_axis_union if x_axis_union > 0 else 0.0
-    y_axis_iou: float = y_axis_overlap / y_axis_union if y_axis_union > 0 else 0.0
+    x_axis_union_val: float = get_x_axis_union(box1, box2)
+    y_axis_union_val: float = get_y_axis_union(box1, box2)
+    x_axis_iou_val: float = (
+        x_axis_overlap_val / x_axis_union_val if x_axis_union_val > 0 else 0.0
+    )
+    y_axis_iou_val: float = (
+        y_axis_overlap_val / y_axis_union_val if y_axis_union_val > 0 else 0.0
+    )
     return (
-        x_axis_overlap,
-        y_axis_overlap,
-        intersection_area,
-        union_area,
-        iou,
-        x_axis_iou,
-        y_axis_iou,
+        x_axis_overlap_val,
+        y_axis_overlap_val,
+        intersection_area_val,
+        union_area_val,
+        iou_val,
+        x_axis_iou_val,
+        y_axis_iou_val,
     )
 
 
@@ -137,58 +145,3 @@ def is_horizontal(word: Word) -> bool:
     if h > int(2 * w) and len(word.word) > 1:
         return False
     return True
-
-
-def unify_words(words: List[Word], add_space_between_words: bool = True) -> Word:
-    separator: str = " " if add_space_between_words else ""
-    unified_text: str = ""
-
-    min_left: float = float("inf")
-    min_top: float = float("inf")
-    max_right: float = 0.0
-    max_bottom: float = 0.0
-
-    sorted_words: List[Word] = sorted(words, key=lambda k: k.location.left)
-
-    total_confidence: float = 0.0
-    num_words_with_confidence: int = 0
-
-    for word_item in sorted_words:
-        unified_text = unified_text + separator + word_item.word
-        min_left = min(min_left, word_item.location.left)
-        min_top = min(min_top, word_item.location.top)
-        max_right = max(max_right, word_item.location.right)
-        max_bottom = max(max_bottom, word_item.location.bottom)
-        if word_item.confidence is not None:
-            total_confidence += word_item.confidence
-            num_words_with_confidence += 1
-
-    unified_text = unified_text.lstrip()
-
-    unified_location = Location(
-        top=min_top,
-        left=min_left,
-        width=max_right - min_left,
-        height=max_bottom - min_top,
-        right=max_right,
-        bottom=max_bottom,
-    )
-
-    unified_polygon: List[List[float]] = create_polygon_from_rect(unified_location)
-
-    avg_confidence: float = (
-        (total_confidence / num_words_with_confidence)
-        if num_words_with_confidence > 0
-        else 1.0
-    )
-
-    is_vertical: bool = words[0].vertical if words else False
-
-    return Word(
-        word=unified_text,
-        location=unified_location,
-        polygon=unified_polygon,
-        word_weight=len(sorted_words),
-        confidence=avg_confidence,
-        vertical=is_vertical,
-    )
