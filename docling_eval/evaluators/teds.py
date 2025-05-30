@@ -104,6 +104,8 @@ class TEDScorer:
         Converts HTML tree to the format required by apted
         """
         if node.tag in ["td", "th"]:
+            # Normalize the tag to td, otherwise the comparison in APTED causes mismatch
+            node.tag = "td"
             if convert_cell:
                 self._tokens = []
                 self._tokenize(node)
