@@ -11,7 +11,7 @@ from docling_eval.prediction_providers.azure_prediction_provider import (
     AzureDocIntelligencePredictionProvider,
 )
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 logging.getLogger("azure").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)

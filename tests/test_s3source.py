@@ -10,7 +10,7 @@ from docling_eval.dataset_builders.dataset_builder import (
     S3Source,
 )
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 # Get logger
 _log = logging.getLogger(__name__)
@@ -20,7 +20,6 @@ _log = logging.getLogger(__name__)
     IS_CI, reason="Skipping test in CI if the dataset in cos is very large."
 )
 def test_s3source():
-
     # Define the COS(s3) endpoints and buckets to pull the data from;
     # Make sure there is some data in there.
     endpoint = os.environ.get("S3_ENDPOINT")

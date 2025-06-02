@@ -151,7 +151,6 @@ def save_comparison_html_with_clusters(
     )
 
     for page_no in page_nos:
-
         if page_no in true_page_imgs:
             true_doc_img_b64 = from_pil_to_base64(true_page_imgs[page_no])
         else:

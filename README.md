@@ -8,25 +8,23 @@
 
 
 [![arXiv](https://img.shields.io/badge/arXiv-2408.09869-b31b1b.svg)](https://arxiv.org/abs/2408.09869)
-[![Docs](https://img.shields.io/badge/docs-live-brightgreen)](https://ds4sd.github.io/docling/)
-[![PyPI version](https://img.shields.io/pypi/v/docling)](https://pypi.org/project/docling/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/docling)](https://pypi.org/project/docling/)
-[![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
+[![PyPI version](https://img.shields.io/pypi/v/docling-eval)](https://pypi.org/project/docling-eval/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/docling-eval)](https://pypi.org/project/docling-eval/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![Pydantic v2](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json)](https://pydantic.dev)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![License MIT](https://img.shields.io/github/license/DS4SD/docling)](https://opensource.org/licenses/MIT)
-[![PyPI Downloads](https://static.pepy.tech/badge/docling/month)](https://pepy.tech/projects/docling)
+[![License MIT](https://img.shields.io/github/license/docling-project/docling-eval)](https://opensource.org/licenses/MIT)
 
-Evaluate [Docling](https://github.com/DS4SD/docling) on various datasets.
+Evaluate [Docling](https://github.com/docling-project/docling) on various datasets.
 
 ## Features
 
 Evaluate docling on various datasets. You can use the cli
 
 ```shell
-terminal %> poetry run docling_eval --help
+terminal %> docling-eval --help
                                                                                                                                                                                                                                                 
  Usage: docling_eval [OPTIONS] COMMAND [ARGS]...                                                                                                                                                                                                
                                                                                                                                                                                                                                                 
@@ -69,7 +67,7 @@ On our list for next benchmarks:
   
 ## Contributing
 
-Please read [Contributing to Docling](https://github.com/DS4SD/docling/blob/main/CONTRIBUTING.md) for details.
+Please read [Contributing to Docling](https://github.com/docling-project/docling/blob/main/CONTRIBUTING.md) for details.
 
 
 ## License

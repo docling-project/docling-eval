@@ -1,0 +1,143 @@
+import os
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from typing import List, Tuple
+
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
+
+from .models import CVATAnnotationPath, Element, ImageInfo
+
+
+def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> BoundingBox:
+    """Convert CVAT box coordinates to BoundingBox (TOPLEFT origin)."""
+    return BoundingBox(l=xtl, t=ytl, r=xbr, b=ybr, coord_origin=CoordOrigin.TOPLEFT)
+
+
+def parse_cvat_xml_for_image(
+    xml_path: Path, image_filename: str
+) -> Tuple[List[Element], List[CVATAnnotationPath], ImageInfo]:
+    """Parse a CVAT XML file for a specific image and return elements, paths, and image info."""
+    tree = ET.parse(xml_path)
+    root = tree.getroot()
+
+    # Find the matching image element
+    image_el = None
+    for img in root.findall(".//image"):
+        if img.attrib.get("name") == image_filename:
+            image_el = img
+            break
+
+    if image_el is None:
+        raise ValueError(f"No <image> element for {image_filename} in {xml_path}")
+
+    # Parse image info
+    image_info = ImageInfo(
+        width=float(image_el.attrib["width"]),
+        height=float(image_el.attrib["height"]),
+        name=image_el.attrib["name"],
+    )
+
+    # Parse elements
+    elements: List[Element] = []
+    box_id = 0
+    for box in image_el.findall("box"):
+        try:
+            label = box.attrib["label"]
+            xtl = float(box.attrib["xtl"])
+            ytl = float(box.attrib["ytl"])
+            xbr = float(box.attrib["xbr"])
+            ybr = float(box.attrib["ybr"])
+            bbox = cvat_box_to_bbox(xtl, ytl, xbr, ybr)
+
+            # Parse attributes
+            attributes = {}
+            content_layer = "BODY"  # Default
+            type_ = None
+            level = None
+
+            for attr in box.findall("attribute"):
+                name = attr.attrib["name"]
+                value = attr.text.strip() if attr.text else None
+                attributes[name] = value
+
+                if name == "content_layer":
+                    content_layer = value
+                elif name == "type":
+                    type_ = value
+                elif name == "level":
+                    try:
+                        level = int(value)
+                    except (ValueError, TypeError):
+                        level = None
+
+            elements.append(
+                Element(
+                    id=box_id,
+                    label=label,
+                    bbox=bbox,
+                    content_layer=content_layer,
+                    type=type_,
+                    level=level,
+                    attributes=attributes,
+                )
+            )
+            box_id += 1
+
+        except (ValueError, KeyError) as e:
+            # Skip invalid elements
+            continue
+
+    # Parse paths
+    paths: List[CVATAnnotationPath] = []
+    path_id = 0
+    for poly in image_el.findall("polyline"):
+        label = poly.attrib["label"]
+        points_str = poly.attrib["points"]
+        points = [tuple(map(float, pt.split(","))) for pt in points_str.split(";")]
+
+        attributes = {}
+        level = None
+        for attr in poly.findall("attribute"):
+            name = attr.attrib["name"]
+            value = attr.text.strip() if attr.text else None
+            attributes[name] = value
+            if name == "level":
+                try:
+                    level = int(value)
+                except (ValueError, TypeError):
+                    level = None
+
+        paths.append(
+            CVATAnnotationPath(
+                id=path_id,
+                label=label,
+                points=points,
+                level=level,
+                attributes=attributes,
+            )
+        )
+        path_id += 1
+
+    return elements, paths, image_info
+
+
+def find_samples_in_directory(root_dir: Path) -> List[Tuple[str, Path, str]]:
+    """Find all image files and their corresponding annotations.xml in the root directory."""
+    samples = []
+    for dirpath, _, filenames in os.walk(root_dir):
+        images = [
+            f
+            for f in filenames
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".tif", ".tiff"))
+        ]
+        if not images:
+            continue
+
+        xml_path = Path(dirpath) / "annotations.xml"
+        if not xml_path.exists():
+            continue
+
+        for img in images:
+            samples.append((img, xml_path, img))
+
+    return samples

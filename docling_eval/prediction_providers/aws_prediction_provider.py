@@ -23,7 +23,6 @@ from docling_core.types.doc.page import (
     TextCell,
 )
 from docling_core.types.io import DocumentStream
-from skimage.draw import polygon
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -156,6 +155,10 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
             # Get cell bbox
             cell_bbox = self.extract_bbox_from_geometry(cell.get("Geometry", {}))
 
+            # Check if the cell is a column header
+            entity_types = cell.get("EntityTypes", [])
+            is_column_header = True if "COLUMN_HEADER" in entity_types else False
+
             # Create TableCell object
             table_cell = TableCell(
                 bbox=BoundingBox(
@@ -172,10 +175,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                 start_col_offset_idx=col_index,
                 end_col_offset_idx=col_index + col_span,
                 text=cell_text,
-                # AWS doesn't directly tell us which cells are headers, so we're using heuristics
-                # Setting first row as column header and first column as row header
-                column_header=(row_index == 0),
-                row_header=(col_index == 0),
+                column_header=is_column_header,
+                # AWS does not identify row headers
+                row_header=False,
                 row_section=False,
             )
 
@@ -204,8 +206,8 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         # height = 11 * 72  # Standard US Letter height in points
         im = record.ground_truth_page_images[0]
         width, height = im.size
-
-        for block in analyze_result.get("Blocks", []):
+        blocks = analyze_result.get("Blocks", [])
+        for block in blocks:
             if block["BlockType"] == "PAGE":
                 page_no = int(block.get("Page", 1))
                 processed_pages.add(page_no)
@@ -269,36 +271,37 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     )
 
             elif block["BlockType"] == "LAYOUT_TITLE":
-                text_content = block.get("Text", "")
-                self._add_title(block, doc, height, page_no, text_content, width)
+                self._add_title(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_HEADER":
-                self._add_page_header(block, doc, height, page_no, width)
+                self._add_page_header(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_FOOTER":
-                self._add_page_footer(block, doc, height, page_no, width)
+                self._add_page_footer(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_SECTION_HEADER":
-                self._add_heading(block, doc, height, page_no, width)
+                self._add_heading(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_PAGE_NUMBER":
-                self._add_page_number(block, doc, height, page_no, width)
+                self._add_page_number(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_LIST":
-                self._add_list(block, doc, height, page_no, width)
+                self._add_list(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_FIGURE":
-                self._add_figure(block, doc, height, page_no, width)
+                self._add_figure(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_KEY_VALUE":
-                self._add_key_value(block, doc, height, page_no, width)
+                self._add_key_value(block, doc, height, page_no, width, blocks_map)
 
             # This condition is to add only the layout of the table as predicted, doesn't contain the cell structure
             elif block["BlockType"] == "LAYOUT_TABLE":
-                self._add_table_layout(block, doc, height, page_no, width)
+                # We are skipping adding table layout here since this information is duplicated through BlockType TABLE
+                continue
+                # self._add_table_layout(block, doc, height, page_no, width, blocks_map)
 
             elif block["BlockType"] == "LAYOUT_TEXT":
-                self._add_text(block, doc, height, page_no, width)
+                self._add_text(block, doc, height, page_no, width, blocks_map)
 
             # This condition is to add output from actual tables API which adds detailed table
             elif block["BlockType"] == "TABLE":
@@ -308,9 +311,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
         return doc, segmented_pages
 
-    def _add_text(self, block, doc, height, page_no, width):
+    def _add_text(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS text to Docling text."""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -327,9 +330,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
-    def _add_table_layout(self, block, doc, height, page_no, width):
+    def _add_table_layout(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS table layout to Docling table layout"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -346,9 +349,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_table(data=TableData(), prov=prov)
 
-    def _add_key_value(self, block, doc, height, page_no, width):
+    def _add_key_value(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS Kew-Value pairs to Docling text"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -365,9 +368,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
-    def _add_figure(self, block, doc, height, page_no, width):
+    def _add_figure(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS Figure to Docling picture"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -384,9 +387,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_picture(prov=prov)
 
-    def _add_list(self, block, doc, height, page_no, width):
+    def _add_list(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS List to Docling List"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -403,9 +406,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_list_item(text=text_content, prov=prov)
 
-    def _add_page_number(self, block, doc, height, page_no, width):
+    def _add_page_number(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS page number to Docling text"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -422,9 +425,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
-    def _add_heading(self, block, doc, height, page_no, width):
+    def _add_heading(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS section header to Docling section header"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -441,9 +444,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_heading(text=text_content, prov=prov)
 
-    def _add_page_footer(self, block, doc, height, page_no, width):
+    def _add_page_footer(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS page footer to Docling page footer"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -460,9 +463,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_text(label=DocItemLabel.PAGE_FOOTER, text=text_content, prov=prov)
 
-    def _add_page_header(self, block, doc, height, page_no, width):
+    def _add_page_header(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS page header to Docling page header"""
-        text_content = block.get("Text", "")
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -479,8 +482,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         )
         doc.add_text(label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov)
 
-    def _add_title(self, block, doc, height, page_no, text_content, width):
+    def _add_title(self, block, doc, height, page_no, width, blocks_map):
         """Maps AWS title to Docling title"""
+        text_content = self._get_layout_element_text(block, blocks_map)
         bbox = self.extract_bbox_from_geometry(block.get("Geometry", {}))
         # Scale normalized coordinates to the page dimensions
         bbox_obj = BoundingBox(
@@ -556,3 +560,26 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
             "asset": PredictionProviderType.AWS,
             "version": importlib.metadata.version("boto3"),
         }
+
+    def _get_layout_element_text(self, block, blocks_map) -> str:
+        text_content = ""
+        separator = " "
+        relationships = block.get("Relationships", [])
+        children_ids = []
+        for relationship in relationships:
+            if relationship.get("Type") == "CHILD":
+                # Extend the list, in case there are multiple Ids
+                children_ids.extend(relationship.get("Ids", []))
+
+        for child_id in children_ids:
+            child_block = blocks_map.get(child_id)
+            if child_block["BlockType"] == "LINE":
+                text_content += child_block["Text"] + separator
+            elif child_block["BlockType"] == "LAYOUT_TEXT":
+                text_content += self._get_layout_element_text(child_block, blocks_map)
+            else:
+                _log.warning("Encountered unhandled BlockType!")
+
+            # Remove the trailing separator
+        text_content = text_content[: -len(separator)]
+        return text_content

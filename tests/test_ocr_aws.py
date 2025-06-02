@@ -11,7 +11,7 @@ from docling_eval.prediction_providers.aws_prediction_provider import (
     AWSTextractPredictionProvider,
 )
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 logging.getLogger("botocore").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)

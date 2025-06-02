@@ -31,7 +31,7 @@ from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
 
-IS_CI = os.getenv("RUN_IN_CI") == "1"
+IS_CI = bool(os.getenv("CI"))
 
 
 @pytest.mark.dependency()

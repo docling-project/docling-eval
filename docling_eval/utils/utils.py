@@ -12,9 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 import PIL.Image
 from bs4 import BeautifulSoup  # type: ignore
-from datasets import Dataset, Features
-from datasets import Image as Features_Image
-from datasets import Sequence, Value, load_dataset
+from datasets import Dataset, Features, load_dataset
 from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
@@ -53,27 +51,12 @@ def get_binhash(binary_data: bytes) -> str:
 
 
 def write_datasets_info(
-    name: str, output_dir: Path, num_train_rows: int, num_test_rows: int
+    name: str,
+    output_dir: Path,
+    num_train_rows: int,
+    num_test_rows: int,
+    features: Features,
 ):
-    features = Features(
-        {
-            BenchMarkColumns.CONVERTER_VERSION: Value("string"),
-            BenchMarkColumns.STATUS: Value("string"),
-            BenchMarkColumns.DOC_ID: Value("string"),
-            BenchMarkColumns.DOC_PATH: Value("string"),
-            BenchMarkColumns.DOC_HASH: Value("string"),
-            BenchMarkColumns.GROUNDTRUTH: Value("string"),
-            BenchMarkColumns.GROUNDTRUTH_PICTURES: Sequence(Features_Image()),
-            BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES: Sequence(Features_Image()),
-            BenchMarkColumns.PREDICTION: Value("string"),
-            BenchMarkColumns.PREDICTION_PICTURES: Sequence(Features_Image()),
-            BenchMarkColumns.PREDICTION_PAGE_IMAGES: Sequence(Features_Image()),
-            BenchMarkColumns.ORIGINAL: Value("string"),
-            BenchMarkColumns.MIMETYPE: Value("string"),
-            BenchMarkColumns.MODALITIES: Sequence(Value("string")),
-        }
-    )
-
     schema = features.to_dict()
     # print(json.dumps(schema, indent=2))
 
@@ -105,7 +88,6 @@ def get_input_document(file: Path | BytesIO) -> InputDocument:
 
 
 def from_pil_to_base64uri(img: Image.Image) -> AnyUrl:
-
     image_base64 = from_pil_to_base64(img)
     uri = AnyUrl(f"data:image/png;base64,{image_base64}")
 
@@ -214,7 +196,6 @@ def yield_cells_from_html_table(
 def convert_html_table_into_docling_tabledata(
     table_html: str, text_cells: Optional[List] = None
 ) -> TableData:
-
     num_rows = -1
     num_cols = -1
 
@@ -299,7 +280,6 @@ def to_base64(item: Dict[str, Any]) -> str:
 
 
 def to_pil(uri):
-
     base64_string = str(uri)
     base64_string = base64_string.split(",")[1]
 
@@ -317,7 +297,6 @@ def extract_images(
     pictures_column: str,
     page_images_column: str,
 ):
-
     pictures: list[PIL.Image.Image] = []
     page_images: list[PIL.Image.Image] = []
 
@@ -345,16 +324,13 @@ def insert_images_from_pil(
     pictures: List[PIL.Image.Image],
     page_images: List[PIL.Image.Image],
 ) -> DoclingDocument:
-
     # Inject picture images
     for pic_no, picture in enumerate(document.pictures):
         if picture.image is not None:
-
             uri = str(picture.image.uri)
             if uri.startswith(BenchMarkColumns.GROUNDTRUTH_PICTURES) or uri.startswith(
                 BenchMarkColumns.PREDICTION_PICTURES
             ):
-
                 img_parts = str(picture.image.uri).split("/")
                 img_ind = int(img_parts[-1])
 
@@ -366,7 +342,6 @@ def insert_images_from_pil(
     # Inject page images
     for page_no, page in document.pages.items():
         if page.image is not None:
-
             uri = str(page.image.uri)
             if uri.startswith(
                 BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
@@ -387,7 +362,6 @@ def insert_images(
     pictures: List[Dict[str, Any]],
     page_images: List[Dict[str, Any]],
 ):
-
     # Save page images
     for pic_no, picture in enumerate(document.pictures):
         if picture.image is not None:

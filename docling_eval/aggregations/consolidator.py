@@ -151,8 +151,8 @@ class Consolidator:
         df_data: Dict[EvaluationModality, List[Dict[str, Union[str, float, int]]]] = {}
 
         # Collect the dataframe data
-        for benchmark, prov_mod_eval in multi_evaluation.evaluations.items():
-            for experiment, mod_eval in prov_mod_eval.items():
+        for benchmark, exp_mod_eval in multi_evaluation.evaluations.items():
+            for experiment, mod_eval in exp_mod_eval.items():
                 for modality, single_evaluation in mod_eval.items():
                     evaluation = single_evaluation.evaluation
 

@@ -412,6 +412,7 @@ class BasePredictionProvider:
                 output_dir=target_dataset_dir,
                 num_train_rows=0,
                 num_test_rows=count,
+                features=DatasetRecordWithPrediction.features(),
             )
 
         _log.info(f"Saved {count} records in {chunk_count} chunks to {test_dir}")
