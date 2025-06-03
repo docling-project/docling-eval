@@ -3,13 +3,9 @@ import json
 from pathlib import Path
 from typing import List, Tuple
 
+from .document import DocumentStructure
 from .models import ValidationRunReport
-from .parser import find_samples_in_directory, parse_cvat_xml_for_image
-from .tree import (
-    associate_reading_order_paths_to_containers,
-    build_containment_tree,
-    map_path_points_to_elements,
-)
+from .parser import find_samples_in_directory
 from .validator import Validator
 
 
@@ -20,21 +16,8 @@ def process_samples(samples: List[Tuple[str, Path, str]]) -> ValidationRunReport
 
     for sample_name, xml_path, image_filename in samples:
         try:
-            elements, paths, _ = parse_cvat_xml_for_image(xml_path, image_filename)
-            tree_roots = build_containment_tree(elements)
-            path_to_elements = map_path_points_to_elements(paths, elements)
-            path_to_container = associate_reading_order_paths_to_containers(
-                path_to_elements, tree_roots
-            )
-
-            report = validator.validate_sample(
-                sample_name,
-                elements,
-                paths,
-                tree_roots,
-                path_to_elements,
-                path_to_container,
-            )
+            doc = DocumentStructure.from_cvat_xml(xml_path, image_filename)
+            report = validator.validate_sample(sample_name, doc)
             # Only include reports that have errors
             if report.errors:
                 reports.append(report)
@@ -57,46 +40,45 @@ def process_samples(samples: List[Tuple[str, Path, str]]) -> ValidationRunReport
 
 
 def main():
-    """Main CLI entrypoint."""
-    parser = argparse.ArgumentParser(description="CVAT annotation validation tool")
-    parser.add_argument(
-        "input_path", type=str, help="Path to root directory or annotations.xml file"
+    """Main CLI for CVAT validation: accepts a directory or XML file, and optional image name."""
+    parser = argparse.ArgumentParser(
+        description="Validate CVAT annotations for document images."
     )
     parser.add_argument(
-        "--image-name",
+        "input_path",
         type=str,
-        default=None,
-        help="If input is XML, only process <image> with this name",
+        help="Path to input directory or XML file",
     )
     parser.add_argument(
-        "--output",
+        "--image",
         type=str,
-        default="validation_report.json",
-        help="Path to output JSON file (default: validation_report.json in current directory)",
+        help="Image filename to process (if input is a directory)",
     )
     args = parser.parse_args()
 
     input_path = Path(args.input_path)
-    samples = []
+    if not input_path.exists():
+        print(f"Error: Input path {input_path} does not exist")
+        return
 
     if input_path.is_dir():
+        # Find all samples in directory
         samples = find_samples_in_directory(input_path)
+        # Filter by image name if specified
+        if args.image:
+            samples = [s for s in samples if s[0] == args.image]
+            if not samples:
+                print(f"Error: No matching image '{args.image}' found in {input_path}")
+                return
     else:
-        if args.image_name:
-            # Only process the specified image
-            samples = [(args.image_name, input_path, args.image_name)]
-        else:
-            # Process all images in the XML file
-            samples = [(input_path.name, input_path, input_path.name)]
+        # Single file mode
+        if not args.image:
+            print("Error: --image argument required when processing a single XML file")
+            return
+        samples = [(args.image, input_path, args.image)]
 
     report = process_samples(samples)
-
-    # Write report to JSON file
-    output_path = Path(args.output)
-    with output_path.open("w") as f:
-        json.dump(report.model_dump(), f, indent=2)
-
-    print(f"Validation report written to: {output_path.absolute()}")
+    print(json.dumps(report.model_dump(), indent=2))
 
 
 if __name__ == "__main__":

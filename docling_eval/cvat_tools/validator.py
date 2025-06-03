@@ -2,19 +2,20 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Type
 
-from .models import CVATAnnotationPath, Element, ValidationError, ValidationReport
-from .tree import TreeNode
+from .document import DocumentStructure
+from .models import ValidationError, ValidationReport
+from .path_mappings import (
+    validate_caption_footnote_paths,
+    validate_group_paths,
+    validate_merge_paths,
+)
 
 
 @dataclass
 class ValidationContext:
     """Context object passed to validation rules."""
 
-    elements: List[Element]
-    paths: List[CVATAnnotationPath]
-    tree_roots: List[TreeNode]
-    path_to_elements: Dict[int, List[int]]
-    path_to_container: Dict[int, TreeNode]
+    doc: DocumentStructure
 
 
 class ValidationRule(ABC):
@@ -31,7 +32,7 @@ class ValidLabelsRule(ValidationRule):
 
     def validate(self, context: ValidationContext) -> List[ValidationError]:
         errors = []
-        for el in context.elements:
+        for el in context.doc.elements:
             try:
                 _ = el.label  # This will raise ValueError if invalid
             except ValueError:
@@ -51,7 +52,7 @@ class FirstLevelReadingOrderRule(ValidationRule):
     def validate(self, context: ValidationContext) -> List[ValidationError]:
         found = any(
             p.label.startswith("reading_order") and (p.level == 1 or p.level is None)
-            for p in context.paths
+            for p in context.doc.paths
         )
         if not found:
             return [
@@ -68,9 +69,9 @@ class SecondLevelReadingOrderParentRule(ValidationRule):
 
     def validate(self, context: ValidationContext) -> List[ValidationError]:
         errors = []
-        for p in context.paths:
+        for p in context.doc.paths:
             if p.label.startswith("reading_order") and p.level and p.level > 1:
-                container = context.path_to_container.get(p.id)
+                container = context.doc.path_to_container.get(p.id)
                 if container is None or container.parent is None:
                     errors.append(
                         ValidationError(
@@ -88,22 +89,14 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
     def validate(self, context: ValidationContext) -> List[ValidationError]:
         errors = []
         touched = set()
-        for elist in context.path_to_elements.values():
+        for elist in context.doc.path_mappings.reading_order.values():
             touched.update(elist)
 
-        # Build id->node mapping
-        id_to_node = {}
-        stack = list(context.tree_roots)
-        while stack:
-            node = stack.pop()
-            id_to_node[node.element.id] = node
-            stack.extend(node.children)
-
-        for el in context.elements:
+        for el in context.doc.elements:
             if el.content_layer.upper() == "BACKGROUND":
                 continue
 
-            node = id_to_node.get(el.id)
+            node = context.doc.get_node_by_element_id(el.id)
             if not node:
                 continue
 
@@ -119,6 +112,59 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         return errors
 
 
+class MergePathsRule(ValidationRule):
+    """Validate merge paths."""
+
+    def validate(self, context: ValidationContext) -> List[ValidationError]:
+        errors = []
+        for error_msg in validate_merge_paths(
+            context.doc.elements, context.doc.path_mappings.merge
+        ):
+            errors.append(
+                ValidationError(
+                    error_type="merge_path_error",
+                    message=error_msg,
+                )
+            )
+        return errors
+
+
+class GroupPathsRule(ValidationRule):
+    """Validate group paths."""
+
+    def validate(self, context: ValidationContext) -> List[ValidationError]:
+        errors = []
+        for error_msg in validate_group_paths(
+            context.doc.elements, context.doc.path_mappings.group
+        ):
+            errors.append(
+                ValidationError(
+                    error_type="group_path_error",
+                    message=error_msg,
+                )
+            )
+        return errors
+
+
+class CaptionFootnotePathsRule(ValidationRule):
+    """Validate caption and footnote paths."""
+
+    def validate(self, context: ValidationContext) -> List[ValidationError]:
+        errors = []
+        for error_msg in validate_caption_footnote_paths(
+            context.doc.elements,
+            context.doc.path_mappings.to_caption,
+            context.doc.path_mappings.to_footnote,
+        ):
+            errors.append(
+                ValidationError(
+                    error_type="caption_footnote_path_error",
+                    message=error_msg,
+                )
+            )
+        return errors
+
+
 class Validator:
     """Main validator class that runs all validation rules."""
 
@@ -129,25 +175,18 @@ class Validator:
             FirstLevelReadingOrderRule,
             SecondLevelReadingOrderParentRule,
             ElementTouchedByReadingOrderRule,
+            MergePathsRule,
+            GroupPathsRule,
+            CaptionFootnotePathsRule,
         ]
 
     def validate_sample(
         self,
         sample_name: str,
-        elements: List[Element],
-        paths: List[CVATAnnotationPath],
-        tree_roots: List[TreeNode],
-        path_to_elements: Dict[int, List[int]],
-        path_to_container: Dict[int, TreeNode],
+        doc: DocumentStructure,
     ) -> ValidationReport:
         """Validate a single sample and return a validation report."""
-        context = ValidationContext(
-            elements=elements,
-            paths=paths,
-            tree_roots=tree_roots,
-            path_to_elements=path_to_elements,
-            path_to_container=path_to_container,
-        )
+        context = ValidationContext(doc=doc)
 
         errors = []
         for rule_class in self.rules:

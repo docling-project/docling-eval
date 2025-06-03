@@ -25,16 +25,25 @@ from .models import (
     ValidationRunReport,
 )
 from .parser import find_samples_in_directory, parse_cvat_xml_for_image
+from .path_mappings import (
+    PathMappings,
+    associate_paths_to_containers,
+    map_path_points_to_elements,
+    validate_caption_footnote_paths,
+    validate_group_paths,
+    validate_merge_paths,
+)
 from .tree import (
     TreeNode,
-    associate_reading_order_paths_to_containers,
     build_containment_tree,
     build_global_reading_order,
-    map_path_points_to_elements,
 )
 from .validator import (
+    CaptionFootnotePathsRule,
     ElementTouchedByReadingOrderRule,
     FirstLevelReadingOrderRule,
+    GroupPathsRule,
+    MergePathsRule,
     SecondLevelReadingOrderParentRule,
     ValidationContext,
     ValidationRule,
@@ -57,8 +66,13 @@ __all__ = [
     "TreeNode",
     "build_containment_tree",
     "build_global_reading_order",
+    # Path Mappings
+    "PathMappings",
     "map_path_points_to_elements",
-    "associate_reading_order_paths_to_containers",
+    "associate_paths_to_containers",
+    "validate_merge_paths",
+    "validate_group_paths",
+    "validate_caption_footnote_paths",
     # Validator
     "Validator",
     "ValidationRule",
@@ -67,6 +81,9 @@ __all__ = [
     "FirstLevelReadingOrderRule",
     "SecondLevelReadingOrderParentRule",
     "ElementTouchedByReadingOrderRule",
+    "MergePathsRule",
+    "GroupPathsRule",
+    "CaptionFootnotePathsRule",
     # Analysis
     "print_elements_and_paths",
     "print_containment_tree",
