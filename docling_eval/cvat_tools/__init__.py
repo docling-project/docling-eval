@@ -33,11 +33,7 @@ from .path_mappings import (
     validate_group_paths,
     validate_merge_paths,
 )
-from .tree import (
-    TreeNode,
-    build_containment_tree,
-    build_global_reading_order,
-)
+from .tree import TreeNode, build_containment_tree, build_global_reading_order
 from .validator import (
     CaptionFootnotePathsRule,
     ElementTouchedByReadingOrderRule,

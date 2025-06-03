@@ -1,7 +1,8 @@
 from typing import Any, List, Optional
 
-from docling_core.types.doc.base import BoundingBox, CoordOrigin
+from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.document import ContentLayer
 from pydantic import BaseModel, Field
 
 
@@ -11,7 +12,7 @@ class Element(BaseModel):
     id: int
     label: DocItemLabel
     bbox: BoundingBox
-    content_layer: str
+    content_layer: ContentLayer
     type: Optional[str] = None
     level: Optional[int] = None
     attributes: dict[str, Any] = Field(default_factory=dict)

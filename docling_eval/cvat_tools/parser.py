@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
+from docling_core.types.doc.document import ContentLayer
 
 from .models import CVATAnnotationPath, Element, ImageInfo
 
@@ -61,7 +62,7 @@ def parse_cvat_xml_for_image(
                 attributes[name] = value
 
                 if name == "content_layer":
-                    content_layer = value
+                    content_layer = ContentLayer(value.lower())
                 elif name == "type":
                     type_ = value
                 elif name == "level":
