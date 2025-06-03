@@ -5,11 +5,17 @@ CVAT Annotation Validation Tool
 - Builds containment trees and parses reading-order/group/merge paths
 - Validates annotation structure according to project rules
 - Outputs element tree and validation report per sample
+- Provides analysis tools for visualizing annotations and reading order
 
 Usage:
     python -m docling_eval.cvat_tools.cli <input_root_dir>
 """
 
+from .analysis import (
+    apply_reading_order_to_tree,
+    print_containment_tree,
+    print_elements_and_paths,
+)
 from .models import (
     CVATAnnotationPath,
     Element,
@@ -23,6 +29,7 @@ from .tree import (
     TreeNode,
     associate_reading_order_paths_to_containers,
     build_containment_tree,
+    build_global_reading_order,
     map_path_points_to_elements,
 )
 from .validator import (
@@ -49,6 +56,7 @@ __all__ = [
     # Tree
     "TreeNode",
     "build_containment_tree",
+    "build_global_reading_order",
     "map_path_points_to_elements",
     "associate_reading_order_paths_to_containers",
     # Validator
@@ -59,4 +67,8 @@ __all__ = [
     "FirstLevelReadingOrderRule",
     "SecondLevelReadingOrderParentRule",
     "ElementTouchedByReadingOrderRule",
+    # Analysis
+    "print_elements_and_paths",
+    "print_containment_tree",
+    "apply_reading_order_to_tree",
 ]
