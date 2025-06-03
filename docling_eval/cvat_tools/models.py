@@ -1,8 +1,8 @@
 from typing import Any, List, Optional
 
 from docling_core.types.doc.base import BoundingBox
-from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.doc.document import ContentLayer
+from docling_core.types.doc.labels import DocItemLabel
 from pydantic import BaseModel, Field
 
 
