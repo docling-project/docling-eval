@@ -6,14 +6,14 @@ including printing elements and paths, containment trees, and reading order.
 
 from typing import Dict, List
 
-from .models import CVATAnnotationPath, Element, ImageInfo
+from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
 from .tree import TreeNode, find_node_by_element_id
 
 
 def print_elements_and_paths(
-    elements: List[Element],
+    elements: List[CVATElement],
     paths: List[CVATAnnotationPath],
-    image_info: ImageInfo,
+    image_info: CVATImageInfo,
 ) -> None:
     """Print a simple tree of elements and paths for debugging."""
     print(f"Image: {image_info.name} ({image_info.width}x{image_info.height})\n")
@@ -31,7 +31,7 @@ def print_elements_and_paths(
 
 def print_containment_tree(
     tree_roots: List[TreeNode],
-    image_info: ImageInfo,
+    image_info: CVATImageInfo,
 ) -> None:
     """Print the containment tree indented."""
     print(

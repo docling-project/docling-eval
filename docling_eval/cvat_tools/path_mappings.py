@@ -7,7 +7,7 @@ to elements and validating their relationships.
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
-from .models import CVATAnnotationPath, Element
+from .models import CVATAnnotationPath, CVATElement
 from .tree import TreeNode, closest_common_ancestor, find_node_by_element_id
 
 
@@ -24,7 +24,7 @@ class PathMappings:
 
 def map_path_points_to_elements(
     paths: List[CVATAnnotationPath],
-    elements: List[Element],
+    elements: List[CVATElement],
     proximity_thresh: float = 5.0,
 ) -> PathMappings:
     """Map all path types to their connected elements.
@@ -44,7 +44,7 @@ def map_path_points_to_elements(
     to_footnote: Dict[int, Tuple[int, int]] = {}
 
     for path in paths:
-        touched_elements = []
+        touched_elements: List[int] = []
         for pt in path.points:
             # Find all elements whose bbox contains the point
             candidates = []
@@ -134,7 +134,8 @@ def associate_paths_to_containers(
         else:
             # fallback: parent of first touched element
             node = find_node_by_element_id(tree_roots, el_ids[0])
-            path_to_container[path_id] = node.parent if node else None
+            if node and node.parent:
+                path_to_container[path_id] = node.parent
 
     # Associate merge paths
     for path_id, el_ids in mappings.merge.items():
@@ -163,7 +164,7 @@ def associate_paths_to_containers(
 
 
 def validate_merge_paths(
-    elements: List[Element], merge_mappings: Dict[int, List[int]]
+    elements: List[CVATElement], merge_mappings: Dict[int, List[int]]
 ) -> List[str]:
     """Validate merge paths.
 
@@ -198,7 +199,7 @@ def validate_merge_paths(
 
 
 def validate_group_paths(
-    elements: List[Element], group_mappings: Dict[int, List[int]]
+    elements: List[CVATElement], group_mappings: Dict[int, List[int]]
 ) -> List[str]:
     """Validate group paths.
 
@@ -232,7 +233,7 @@ def validate_group_paths(
 
 
 def validate_caption_footnote_paths(
-    elements: List[Element],
+    elements: List[CVATElement],
     to_caption: Dict[int, Tuple[int, int]],
     to_footnote: Dict[int, Tuple[int, int]],
 ) -> List[str]:
@@ -250,14 +251,14 @@ def validate_caption_footnote_paths(
     id_to_element = {el.id: el for el in elements}
 
     # Helper to check if element is a container
-    def is_container(el: Element) -> bool:
+    def is_container(el: CVATElement) -> bool:
         return el.label in ["table", "picture", "form", "code"]
 
     # Helper to check if element is a caption/footnote
-    def is_caption(el: Element) -> bool:
+    def is_caption(el: CVATElement) -> bool:
         return el.label == "caption"
 
-    def is_footnote(el: Element) -> bool:
+    def is_footnote(el: CVATElement) -> bool:
         return el.label == "footnote"
 
     # Validate to_caption paths

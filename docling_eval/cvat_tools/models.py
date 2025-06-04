@@ -6,7 +6,7 @@ from docling_core.types.doc.labels import DocItemLabel
 from pydantic import BaseModel, Field
 
 
-class Element(BaseModel):
+class CVATElement(BaseModel):
     """A rectangle element (box) in CVAT annotation, using BoundingBox from docling_core."""
 
     id: int
@@ -28,7 +28,7 @@ class CVATAnnotationPath(BaseModel):
     attributes: dict[str, Any] = Field(default_factory=dict)
 
 
-class ValidationError(BaseModel):
+class CVATValidationError(BaseModel):
     """Validation error for reporting issues in annotation."""
 
     error_type: str
@@ -37,20 +37,20 @@ class ValidationError(BaseModel):
     path_id: Optional[int] = None
 
 
-class ValidationReport(BaseModel):
+class CVATValidationReport(BaseModel):
     """Validation report for a single sample."""
 
     sample_name: str
-    errors: List[ValidationError]
+    errors: List[CVATValidationError]
 
 
-class ValidationRunReport(BaseModel):
+class CVATValidationRunReport(BaseModel):
     """Validation report for a run of multiple samples."""
 
-    samples: List[ValidationReport]
+    samples: List[CVATValidationReport]
 
 
-class ImageInfo(BaseModel):
+class CVATImageInfo(BaseModel):
     """Information about an image in CVAT annotation."""
 
     width: float

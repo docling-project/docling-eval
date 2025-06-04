@@ -6,7 +6,7 @@ from typing import List, Tuple
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer
 
-from .models import CVATAnnotationPath, Element, ImageInfo
+from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
 
 
 def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> BoundingBox:
@@ -16,7 +16,7 @@ def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> Bounding
 
 def parse_cvat_xml_for_image(
     xml_path: Path, image_filename: str
-) -> Tuple[List[Element], List[CVATAnnotationPath], ImageInfo]:
+) -> Tuple[List[CVATElement], List[CVATAnnotationPath], CVATImageInfo]:
     """Parse a CVAT XML file for a specific image and return elements, paths, and image info."""
     tree = ET.parse(xml_path)
     root = tree.getroot()
@@ -32,14 +32,14 @@ def parse_cvat_xml_for_image(
         raise ValueError(f"No <image> element for {image_filename} in {xml_path}")
 
     # Parse image info
-    image_info = ImageInfo(
+    image_info = CVATImageInfo(
         width=float(image_el.attrib["width"]),
         height=float(image_el.attrib["height"]),
         name=image_el.attrib["name"],
     )
 
     # Parse elements
-    elements: List[Element] = []
+    elements: List[CVATElement] = []
     box_id = 0
     for box in image_el.findall("box"):
         try:
@@ -61,18 +61,18 @@ def parse_cvat_xml_for_image(
                 value = attr.text.strip() if attr.text else None
                 attributes[name] = value
 
-                if name == "content_layer":
+                if name == "content_layer" and value is not None:
                     content_layer = ContentLayer(value.lower())
                 elif name == "type":
                     type_ = value
-                elif name == "level":
+                elif name == "level" and value is not None:
                     try:
                         level = int(value)
                     except (ValueError, TypeError):
                         level = None
 
             elements.append(
-                Element(
+                CVATElement(
                     id=box_id,
                     label=label,
                     bbox=bbox,
@@ -102,7 +102,7 @@ def parse_cvat_xml_for_image(
             name = attr.attrib["name"]
             value = attr.text.strip() if attr.text else None
             attributes[name] = value
-            if name == "level":
+            if name == "level" and value is not None:
                 try:
                     level = int(value)
                 except (ValueError, TypeError):

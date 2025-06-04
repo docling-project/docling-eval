@@ -13,7 +13,7 @@ from docling_eval.cvat_tools.analysis import (
     print_elements_and_paths,
 )
 from docling_eval.cvat_tools.document import DocumentStructure
-from docling_eval.cvat_tools.models import CVATAnnotationPath, Element
+from docling_eval.cvat_tools.models import CVATAnnotationPath, CVATElement
 from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
 
 

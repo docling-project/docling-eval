@@ -1,14 +1,14 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
-from .models import CVATAnnotationPath, Element
+from .models import CVATAnnotationPath, CVATElement
 
 
 @dataclass
 class TreeNode:
     """Node in the containment tree. Holds an Element, parent, and children."""
 
-    element: Element
+    element: CVATElement
     parent: Optional["TreeNode"] = None
     children: List["TreeNode"] = field(default_factory=list)
 
@@ -25,13 +25,13 @@ class TreeNode:
         return ids
 
 
-def contains(parent: Element, child: Element, iou_thresh: float = 0.99) -> bool:
+def contains(parent: CVATElement, child: CVATElement, iou_thresh: float = 0.99) -> bool:
     """Check if parent element contains child element based on IOU threshold."""
     intersection = parent.bbox.intersection_area_with(child.bbox)
     return intersection / (child.bbox.area() + 1e-6) > iou_thresh
 
 
-def build_containment_tree(elements: List[Element]) -> List[TreeNode]:
+def build_containment_tree(elements: List[CVATElement]) -> List[TreeNode]:
     """Build a containment tree from elements based on spatial containment and content_layer."""
     nodes = [TreeNode(el) for el in elements]
 
@@ -58,7 +58,7 @@ def build_containment_tree(elements: List[Element]) -> List[TreeNode]:
 
 def map_path_points_to_elements(
     paths: List[CVATAnnotationPath],
-    elements: List[Element],
+    elements: List[CVATElement],
     proximity_thresh: float = 5.0,
 ) -> Dict[int, List[int]]:
     """Map path control points to the deepest elements they touch."""
@@ -68,7 +68,7 @@ def map_path_points_to_elements(
         if not path.label.startswith("reading_order"):
             continue
 
-        touched_elements = []
+        touched_elements: List[int] = []
         for pt in path.points:
             # Find all elements whose bbox contains the point
             candidates = []
@@ -147,9 +147,8 @@ def associate_reading_order_paths_to_containers(
             path_to_container[path_id] = ancestor
         else:
             # fallback: parent of first touched element
-            path_to_container[path_id] = (
-                touched_nodes[0].parent if touched_nodes[0] else None
-            )
+            if touched_nodes[0] and touched_nodes[0].parent:
+                path_to_container[path_id] = touched_nodes[0].parent
 
     return path_to_container
 

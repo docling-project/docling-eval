@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import List, Tuple
 
 from .document import DocumentStructure
-from .models import ValidationRunReport
+from .models import CVATValidationRunReport, CVATValidationReport
 from .parser import find_samples_in_directory
 from .validator import Validator
 
 
-def process_samples(samples: List[Tuple[str, Path, str]]) -> ValidationRunReport:
+def process_samples(samples: List[Tuple[str, Path, str]]) -> CVATValidationRunReport:
     """Process a list of samples and return a validation report."""
     validator = Validator()
     reports = []
@@ -25,7 +25,7 @@ def process_samples(samples: List[Tuple[str, Path, str]]) -> ValidationRunReport
         except Exception as e:
             # Create error report for failed samples
             reports.append(
-                ValidationReport(
+                CVATValidationReport(
                     sample_name=sample_name,
                     errors=[
                         {
@@ -36,7 +36,7 @@ def process_samples(samples: List[Tuple[str, Path, str]]) -> ValidationRunReport
                 )
             )
 
-    return ValidationRunReport(samples=reports)
+    return CVATValidationRunReport(samples=reports)
 
 
 def main():

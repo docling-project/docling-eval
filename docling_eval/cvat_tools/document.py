@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .models import CVATAnnotationPath, Element, ImageInfo
+from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
 from .parser import parse_cvat_xml_for_image
 from .path_mappings import (
     PathMappings,
@@ -27,12 +27,12 @@ class DocumentStructure:
     and provides a clean interface for downstream use cases (validation, analysis, etc.).
     """
 
-    elements: List[Element]
+    elements: List[CVATElement]
     paths: List[CVATAnnotationPath]
     tree_roots: List[TreeNode]
     path_mappings: PathMappings
     path_to_container: Dict[int, TreeNode]
-    image_info: Optional[ImageInfo] = None
+    image_info: Optional[CVATImageInfo] = None
 
     @classmethod
     def from_cvat_xml(
@@ -74,7 +74,7 @@ class DocumentStructure:
             image_info=image_info,
         )
 
-    def get_element_by_id(self, element_id: int) -> Optional[Element]:
+    def get_element_by_id(self, element_id: int) -> Optional[CVATElement]:
         """Get an element by its ID."""
         return next((el for el in self.elements if el.id == element_id), None)
 

@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import (
     ContentLayer,
     DocItemLabel,
@@ -23,13 +24,12 @@ from docling_core.types.doc.document import (
     Size,
     TableData,
 )
-from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from ocrmac import ocrmac
 from PIL import Image as PILImage
 
 from docling_eval.cvat_tools.analysis import apply_reading_order_to_tree
 from docling_eval.cvat_tools.document import DocumentStructure
-from docling_eval.cvat_tools.models import Element
+from docling_eval.cvat_tools.models import CVATElement
 from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
 
 _logger = logging.getLogger(__name__)
@@ -330,7 +330,7 @@ class CVATToDoclingConverter:
 
         return False
 
-    def _get_merge_elements(self, element_id: int) -> List[Element]:
+    def _get_merge_elements(self, element_id: int) -> List[CVATElement]:
         """Get all elements that should be merged with the given element."""
         merge_elements = []
 
@@ -347,7 +347,7 @@ class CVATToDoclingConverter:
         return merge_elements
 
     def _create_merged_item(
-        self, elements: List[Element], parent: Optional[NodeItem]
+        self, elements: List[CVATElement], parent: Optional[NodeItem]
     ) -> Optional[NodeItem]:
         """Create a single DocItem from multiple merged elements."""
         if not elements:
@@ -388,7 +388,7 @@ class CVATToDoclingConverter:
         return item
 
     def _create_single_item(
-        self, element: Element, parent: Optional[NodeItem]
+        self, element: CVATElement, parent: Optional[NodeItem]
     ) -> Optional[NodeItem]:
         """Create a DocItem for a single element."""
         # Extract text
@@ -405,7 +405,7 @@ class CVATToDoclingConverter:
         label: str,
         text: str,
         prov: ProvenanceItem,
-        element: Element,
+        element: CVATElement,
         parent: Optional[NodeItem],
     ) -> Optional[NodeItem]:
         """Create appropriate DocItem based on element label."""

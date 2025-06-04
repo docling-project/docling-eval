@@ -18,11 +18,11 @@ from .analysis import (
 )
 from .models import (
     CVATAnnotationPath,
-    Element,
-    ImageInfo,
-    ValidationError,
-    ValidationReport,
-    ValidationRunReport,
+    CVATElement,
+    CVATImageInfo,
+    CVATValidationError,
+    CVATValidationReport,
+    CVATValidationRunReport,
 )
 from .parser import find_samples_in_directory, parse_cvat_xml_for_image
 from .path_mappings import (
@@ -49,12 +49,12 @@ from .validator import (
 
 __all__ = [
     # Models
-    "Element",
+    "CVATElement",
     "CVATAnnotationPath",
-    "ValidationError",
-    "ValidationReport",
-    "ValidationRunReport",
-    "ImageInfo",
+    "CVATValidationError",
+    "CVATValidationReport",
+    "CVATValidationRunReport",
+    "CVATImageInfo",
     # Parser
     "parse_cvat_xml_for_image",
     "find_samples_in_directory",
