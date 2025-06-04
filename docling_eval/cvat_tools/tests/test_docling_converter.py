@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 from docling_core.types.doc.base import ImageRefMode
 from PIL import Image as PILImage
@@ -12,10 +12,7 @@ from docling_eval.cvat_tools.analysis import (
     print_containment_tree,
     print_elements_and_paths,
 )
-from docling_eval.cvat_tools.cvat_to_docling import (
-    CVATToDoclingConverter,
-    convert_cvat_to_docling,
-)
+from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.tree import build_global_reading_order
 
@@ -42,8 +39,8 @@ def test_conversion_with_sample_data(
 
     try:
         # Load image
-        image = PILImage.open(image_path)
-        print(f"✓ Loaded image: {image.size}")
+        # image = PILImage.open(image_path)
+        # print(f"✓ Loaded image: {image.size}")
 
         # Create DocumentStructure
         doc_structure = DocumentStructure.from_cvat_xml(xml_path, image_path.name)
@@ -60,7 +57,9 @@ def test_conversion_with_sample_data(
 
             print("\n--- Original Containment Tree ---")
             if doc_structure.image_info is not None:
-                print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
+                print_containment_tree(
+                    doc_structure.tree_roots, doc_structure.image_info
+                )
 
             global_ro = build_global_reading_order(
                 doc_structure.paths,
@@ -72,15 +71,14 @@ def test_conversion_with_sample_data(
             # Apply reading order to tree before printing
             apply_reading_order_to_tree(doc_structure.tree_roots, global_ro)
             if doc_structure.image_info is not None:
-                print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
+                print_containment_tree(
+                    doc_structure.tree_roots, doc_structure.image_info
+                )
 
         # Create converter
-        converter = CVATToDoclingConverter(
-            doc_structure, image, ocr_framework="vision", image_filename=image_path.name
-        )
 
         # Convert to DoclingDocument
-        doc = converter.convert()
+        doc = convert_cvat_to_docling(xml_path, image_path)
         print(f"\n✓ Converted to DoclingDocument: {doc.name}")
         print(f"  - Pages: {len(doc.pages)}")
         print(f"  - Groups: {len(doc.groups)}")
@@ -206,11 +204,29 @@ def main():
     # Example usage - update these paths for your test data
 
     # Sample paths for testing
-    case_03_dir = Path("tests/data/cvat_pdfs_dataset_e2e/case_03")
-    annotations_xml = case_03_dir.parent / "case_03_annotations.xml"
+    case_03_dir = Path("tests/data/cvat_pdfs_dataset_e2e/case_02")
+    annotations_xml = case_03_dir.parent / "case_02_annotations.xml"
 
     # Find all image files in case_03 directory
-    sample_paths = sorted(case_03_dir.glob("*.png"))
+    sample_paths = []
+    for ext in [
+        "*.pdf",
+        "*.PDF",
+        "*.png",
+        "*.PNG",
+        "*.jpg",
+        "*.JPG",
+        "*.jpeg",
+        "*.JPEG",
+        "*.tif",
+        "*.TIF",
+        "*.tiff",
+        "*.TIFF",
+        "*.bmp",
+        "*.BMP",
+    ]:
+        sample_paths.extend(sorted(case_03_dir.glob(ext)))
+    sample_paths = sorted(sample_paths)
 
     for image_path in sample_paths:
         print(f"\nProcessing {image_path.name}...")

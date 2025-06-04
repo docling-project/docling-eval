@@ -6,7 +6,11 @@ from typing import List, Tuple
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer
 
-from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
+from docling_eval.cvat_tools.models import (
+    CVATAnnotationPath,
+    CVATElement,
+    CVATImageInfo,
+)
 
 
 def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> BoundingBox:
@@ -23,12 +27,20 @@ def parse_cvat_xml_for_image(
 
     # Find the matching image element
     image_el = None
-    for img in root.findall(".//image"):
-        if img.attrib.get("name") == image_filename:
-            image_el = img
-            break
+    image_filename_no_ext = Path(image_filename).stem
 
-    if image_el is None:
+    matching_images = []
+    for img in root.findall(".//image"):
+        if image_filename_no_ext in img.attrib.get("name", ""):
+            matching_images.append(img)
+
+    if len(matching_images) > 1:
+        raise ValueError(
+            f"Multiple matching images found for {image_filename} in {xml_path}"
+        )
+    elif len(matching_images) == 1:
+        image_el = matching_images[0]
+    else:
         raise ValueError(f"No <image> element for {image_filename} in {xml_path}")
 
     # Parse image info
@@ -52,7 +64,7 @@ def parse_cvat_xml_for_image(
 
             # Parse attributes
             attributes = {}
-            content_layer = "BODY"  # Default
+            content_layer = ContentLayer.BODY  # Default
             type_ = None
             level = None
 

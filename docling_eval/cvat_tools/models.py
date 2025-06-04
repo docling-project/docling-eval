@@ -1,9 +1,18 @@
-from typing import Any, List, Optional
+from enum import Enum
+from typing import Any, List, Optional, Tuple
 
 from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.document import ContentLayer
 from docling_core.types.doc.labels import DocItemLabel
 from pydantic import BaseModel, Field
+
+
+class ValidationSeverity(str, Enum):
+    """Severity levels for validation errors."""
+
+    WARNING = "warning"
+    ERROR = "error"
+    FATAL = "fatal"
 
 
 class CVATElement(BaseModel):
@@ -33,8 +42,12 @@ class CVATValidationError(BaseModel):
 
     error_type: str
     message: str
+    severity: ValidationSeverity = ValidationSeverity.ERROR
     element_id: Optional[int] = None
     path_id: Optional[int] = None
+    path_ids: Optional[List[int]] = None
+    point_index: Optional[int] = None
+    point_coords: Optional[Tuple[float, float]] = None
 
 
 class CVATValidationReport(BaseModel):
@@ -42,6 +55,18 @@ class CVATValidationReport(BaseModel):
 
     sample_name: str
     errors: List[CVATValidationError]
+
+    def has_fatal_errors(self) -> bool:
+        """Check if there are any fatal validation errors."""
+        return any(e.severity == ValidationSeverity.FATAL for e in self.errors)
+
+    def has_errors(self) -> bool:
+        """Check if there are any validation errors."""
+        return any(e.severity == ValidationSeverity.ERROR for e in self.errors)
+
+    def has_warnings(self) -> bool:
+        """Check if there are any warning validation errors."""
+        return any(e.severity == ValidationSeverity.WARNING for e in self.errors)
 
 
 class CVATValidationRunReport(BaseModel):

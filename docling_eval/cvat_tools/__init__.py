@@ -30,16 +30,14 @@ from .path_mappings import (
     associate_paths_to_containers,
     map_path_points_to_elements,
     validate_caption_footnote_paths,
-    validate_group_paths,
-    validate_merge_paths,
 )
 from .tree import TreeNode, build_containment_tree, build_global_reading_order
 from .validator import (
     CaptionFootnotePathsRule,
     ElementTouchedByReadingOrderRule,
-    FirstLevelReadingOrderRule,
-    GroupPathsRule,
-    MergePathsRule,
+    GroupConsecutiveReadingOrderRule,
+    MergeGroupPathsRule,
+    ReadingOrderRule,
     SecondLevelReadingOrderParentRule,
     ValidationContext,
     ValidationRule,

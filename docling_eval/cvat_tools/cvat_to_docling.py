@@ -1,13 +1,14 @@
 """Convert CVAT DocumentStructure to DoclingDocument.
 
 This module provides functionality to convert a populated DocumentStructure
-from the CVAT parser into a DoclingDocument, handling text extraction via OCR,
-reading order, containment hierarchy, groups, merges, and caption/footnote relationships.
+from the CVAT parser into a DoclingDocument, handling text extraction via OCR
+or PDF parsing, reading order, containment hierarchy, groups, merges, and 
+caption/footnote relationships.
 """
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import (
@@ -24,7 +25,14 @@ from docling_core.types.doc.document import (
     Size,
     TableData,
 )
-from ocrmac import ocrmac
+from docling_core.types.doc.page import (
+    BoundingRectangle,
+    PageGeometry,
+    SegmentedPage,
+    SegmentedPdfPage,
+    TextCell,
+    TextCellUnit,
+)
 from PIL import Image as PILImage
 
 from docling_eval.cvat_tools.analysis import apply_reading_order_to_tree
@@ -41,25 +49,26 @@ class CVATToDoclingConverter:
     def __init__(
         self,
         doc_structure: DocumentStructure,
-        image: PILImage.Image,
-        ocr_framework: str = "vision",
-        image_filename: Optional[str] = None,
+        segmented_pages: Dict[int, Union[SegmentedPage, SegmentedPdfPage]],
+        page_images: Dict[int, PILImage.Image],
+        document_filename: Optional[str] = None,
     ):
         """Initialize the converter.
 
         Args:
             doc_structure: The populated DocumentStructure from CVAT parser
-            image: The document image
-            ocr_framework: OCR framework to use ("vision" or "livetext")
-            image_filename: Optional filename for the document
+            segmented_pages: Dictionary mapping page numbers to SegmentedPage objects
+            page_images: Dictionary mapping page numbers to PIL images
+            document_filename: Optional filename for the document
         """
         self.doc_structure = doc_structure
-        self.image = image
-        self.ocr_framework = ocr_framework
-        self.image_filename = image_filename or "document"
+        self.segmented_pages = segmented_pages
+        self.page_images = page_images
+        self.document_filename = document_filename or "document"
+        self.num_pages = len(segmented_pages)
 
         # Initialize empty DoclingDocument
-        self.doc = DoclingDocument(name=Path(self.image_filename).stem)
+        self.doc = DoclingDocument(name=Path(self.document_filename).stem)
 
         # Maps for tracking created items
         self.element_to_item: Dict[int, NodeItem] = {}
@@ -68,11 +77,101 @@ class CVATToDoclingConverter:
         # Track which groups have been created
         self.created_groups: Dict[int, NodeItem] = {}  # path_id -> GroupItem
 
-        # Initialize OCR
-        _logger.info(f"Initializing OCR with framework: {ocr_framework}")
-        self.ocr_results = ocrmac.OCR(
-            self.image, framework=self.ocr_framework
-        ).recognize(px=True)
+        # Calculate single scaling factor for all pages
+        self._calculate_scaling_factor()
+
+        # Calculate page widths for multi-page handling (in CVAT pixel coordinates)
+        self.page_widths = {}
+        cumulative_width = 0.0
+
+        # Use CVAT image info dimensions if available, otherwise calculate from pages
+        if self.doc_structure.image_info:
+            # For multi-page documents, CVAT concatenates pages horizontally
+            total_cvat_width = self.doc_structure.image_info.width
+            if self.num_pages > 1:
+                # Distribute width proportionally based on original page widths
+                total_original_width = sum(
+                    p.dimension.width for p in segmented_pages.values()
+                )
+                for page_no in sorted(segmented_pages.keys()):
+                    self.page_widths[page_no] = cumulative_width
+                    page_width_ratio = (
+                        segmented_pages[page_no].dimension.width / total_original_width
+                    )
+                    page_width_pixels = total_cvat_width * page_width_ratio
+                    cumulative_width += page_width_pixels
+            else:
+                # Single page
+                self.page_widths[1] = 0.0
+        else:
+            # Fallback: use page dimensions directly
+            for page_no in sorted(segmented_pages.keys()):
+                self.page_widths[page_no] = cumulative_width
+                cumulative_width += (
+                    segmented_pages[page_no].dimension.width * self.scale_factor
+                )
+
+    def _calculate_scaling_factor(self):
+        """Calculate single scaling factor between PDF points and CVAT pixels."""
+        if not self.doc_structure.image_info or not self.segmented_pages:
+            self.scale_factor = 1.0
+            return
+
+        # Get CVAT image dimensions (in pixels)
+        cvat_height = self.doc_structure.image_info.height
+
+        # For PDFs, calculate scaling based on height comparison
+        first_page = self.segmented_pages[1]
+        if isinstance(first_page, SegmentedPdfPage):
+            pdf_height_points = first_page.dimension.height
+            # Scale factor: pixels per point
+            self.scale_factor = cvat_height / pdf_height_points
+        else:
+            # For images, no scaling needed
+            self.scale_factor = 1.0
+
+    def _process_element_bbox(
+        self, element: CVATElement
+    ) -> Tuple[int, str, ProvenanceItem]:
+        """Process element bbox to extract page, text, and create provenance.
+
+        Returns:
+            Tuple of (page_no, text, provenance_item)
+        """
+        # Get page number from bbox position
+        page_no = self._get_page_number_from_bbox(element.bbox)
+
+        # Extract text
+        text = self._extract_text_from_bbox(element.bbox, page_no)
+
+        # Adjust bbox for multi-page (still in pixels)
+        adjusted_bbox = self._adjust_bbox_for_page(element.bbox, page_no)
+
+        # Convert to page-native units and ensure BOTTOM_LEFT coordinates
+        seg_page = self.segmented_pages[page_no]
+        if isinstance(seg_page, SegmentedPdfPage):
+            # Convert pixels to points and ensure BOTTOM_LEFT
+            prov_bbox = BoundingBox(
+                l=adjusted_bbox.l / self.scale_factor,
+                r=adjusted_bbox.r / self.scale_factor,
+                t=adjusted_bbox.t / self.scale_factor,
+                b=adjusted_bbox.b / self.scale_factor,
+                coord_origin=CoordOrigin.TOPLEFT,
+            )
+            # Convert to BOTTOM_LEFT for consistency
+            page_height = seg_page.dimension.height
+            prov_bbox = prov_bbox.to_bottom_left_origin(page_height)
+        else:
+            # For images, convert pixels to BOTTOM_LEFT for consistency
+            page_height = seg_page.dimension.height
+            prov_bbox = adjusted_bbox.to_bottom_left_origin(page_height)
+
+        # Create provenance
+        provenance = ProvenanceItem(
+            page_no=page_no, bbox=prov_bbox, charspan=(0, len(text))
+        )
+
+        return page_no, text, provenance
 
     def convert(self) -> DoclingDocument:
         """Convert the DocumentStructure to DoclingDocument.
@@ -80,8 +179,8 @@ class CVATToDoclingConverter:
         Returns:
             The converted DoclingDocument
         """
-        # Add page to document
-        self._add_page()
+        # Add pages to document
+        self._add_pages()
 
         # Apply reading order to tree
         self._apply_reading_order()
@@ -97,21 +196,29 @@ class CVATToDoclingConverter:
 
         return self.doc
 
-    def _add_page(self):
+    def _add_pages(self):
         """Add page information to the document."""
-        if self.doc_structure.image_info:
-            page_size = Size(
-                width=self.doc_structure.image_info.width,
-                height=self.doc_structure.image_info.height,
-            )
-        else:
-            page_size = Size(width=self.image.width, height=self.image.height)
+        for page_no, seg_page in self.segmented_pages.items():
+            if isinstance(seg_page, SegmentedPdfPage):
+                # For PDFs, use the page geometry directly
+                page_size = Size(
+                    width=seg_page.dimension.width,
+                    height=seg_page.dimension.height,
+                )
+            else:
+                # For images, dimensions are already in pixels
+                page_size = Size(
+                    width=seg_page.dimension.width,
+                    height=seg_page.dimension.height,
+                )
 
-        # Create image reference
-        image_ref = ImageRef.from_pil(self.image, dpi=72)
+            # Create image reference if available
+            image_ref = None
+            if page_no in self.page_images:
+                image_ref = ImageRef.from_pil(self.page_images[page_no], dpi=72)
 
-        # Add page
-        self.doc.add_page(page_no=1, size=page_size, image=image_ref)
+            # Add page
+            self.doc.add_page(page_no=page_no, size=page_size, image=image_ref)
 
     def _apply_reading_order(self):
         """Apply reading order to the containment tree."""
@@ -356,21 +463,19 @@ class CVATToDoclingConverter:
         # Use first element as primary
         primary_element = elements[0]
 
-        # Extract text from all elements
+        # Extract text and provenance from all elements
         all_texts = []
         all_provs = []
 
         for i, element in enumerate(elements):
-            text = self._extract_text_from_bbox(element.bbox)
+            page_no, text, prov = self._process_element_bbox(element)
             all_texts.append(text)
 
-            # Calculate character span
+            # Update character span for merged text
             start_char = sum(len(t) + 1 for t in all_texts[:-1]) if i > 0 else 0
             end_char = start_char + len(text)
+            prov.charspan = (start_char, end_char)
 
-            prov = ProvenanceItem(
-                page_no=1, bbox=element.bbox, charspan=(start_char, end_char)
-            )
             all_provs.append(prov)
 
         # Concatenate text
@@ -391,14 +496,41 @@ class CVATToDoclingConverter:
         self, element: CVATElement, parent: Optional[NodeItem]
     ) -> Optional[NodeItem]:
         """Create a DocItem for a single element."""
-        # Extract text
-        text = self._extract_text_from_bbox(element.bbox)
-
-        # Create provenance
-        prov = ProvenanceItem(page_no=1, bbox=element.bbox, charspan=(0, len(text)))
+        page_no, text, provenance = self._process_element_bbox(element)
 
         # Create item based on label
-        return self._create_item_by_label(element.label, text, prov, element, parent)
+        return self._create_item_by_label(
+            element.label, text, provenance, element, parent
+        )
+
+    def _get_page_number_from_bbox(self, bbox: BoundingBox) -> int:
+        """Determine which page a bbox belongs to based on its x-coordinate."""
+        x_center = (bbox.l + bbox.r) / 2
+
+        for page_no in sorted(self.page_widths.keys(), reverse=True):
+            if x_center >= self.page_widths[page_no]:
+                return page_no
+
+        return 1  # Default to first page
+
+    def _adjust_bbox_for_page(self, bbox: BoundingBox, page_no: int) -> BoundingBox:
+        """Adjust bbox coordinates to be relative to its page.
+
+        The input bbox is in CVAT pixel coordinates across all pages.
+        This method returns a bbox relative to the specific page, still in pixels.
+        """
+        if page_no == 1:
+            return bbox
+
+        # Subtract the cumulative width of previous pages (in pixels)
+        offset = self.page_widths[page_no]
+        return BoundingBox(
+            l=bbox.l - offset,
+            r=bbox.r - offset,
+            t=bbox.t,
+            b=bbox.b,
+            coord_origin=bbox.coord_origin,
+        )
 
     def _create_item_by_label(
         self,
@@ -536,20 +668,14 @@ class CVATToDoclingConverter:
         if not target_element:
             return
 
-        # Extract text
-        text = self._extract_text_from_bbox(target_element.bbox)
-
-        # Create provenance
-        prov = ProvenanceItem(
-            page_no=1, bbox=target_element.bbox, charspan=(0, len(text))
-        )
+        page_no, text, provenance = self._process_element_bbox(target_element)
 
         # Create caption/footnote item
         label = DocItemLabel.CAPTION if is_caption else DocItemLabel.FOOTNOTE
         item = self.doc.add_text(
             label=label,
             text=text,
-            prov=prov,
+            prov=provenance,
             parent=container_item,
             content_layer=target_element.content_layer,
         )
@@ -564,58 +690,219 @@ class CVATToDoclingConverter:
             self.element_to_item[target_id] = item
             self.processed_elements.add(target_id)
 
-    def _extract_text_from_bbox(self, bbox: BoundingBox) -> str:
-        """Extract text from bounding box using OCR results."""
+    def _extract_text_from_bbox(self, bbox: BoundingBox, page_no: int) -> str:
+        """Extract text from bounding box using SegmentedPage text cells."""
         try:
-            text_parts = []
+            if page_no not in self.segmented_pages:
+                return ""
 
-            for text, confidence, coords in self.ocr_results:
-                # coords are in pixels: (x0, y0, x1, y1)
-                ocr_x0, ocr_y0, ocr_x1, ocr_y1 = coords
+            seg_page = self.segmented_pages[page_no]
 
-                # Create OCR bounding box
-                ocr_bbox = BoundingBox(
-                    l=ocr_x0,
-                    r=ocr_x1,
-                    t=ocr_y0,
-                    b=ocr_y1,
+            # Adjust bbox for multi-page (this gives us page-relative coordinates)
+            adjusted_bbox = self._adjust_bbox_for_page(bbox, page_no)
+
+            # CVAT bboxes are in pixels with TOP_LEFT origin
+            # Convert to the coordinate system of the segmented page
+
+            if isinstance(seg_page, SegmentedPdfPage):
+                # Convert from pixels to points
+                scaled_bbox = BoundingBox(
+                    l=adjusted_bbox.l / self.scale_factor,
+                    r=adjusted_bbox.r / self.scale_factor,
+                    t=adjusted_bbox.t / self.scale_factor,
+                    b=adjusted_bbox.b / self.scale_factor,
                     coord_origin=CoordOrigin.TOPLEFT,
                 )
+                # Convert to BOTTOM_LEFT for PDF comparison
+                page_height_points = seg_page.dimension.height
+                search_bbox = scaled_bbox.to_bottom_left_origin(page_height_points)
 
-                # Check intersection
-                if bbox.intersection_over_union(ocr_bbox) > 0.1:
-                    text_parts.append(text)
+                # Get LINE cells only
+                cells = seg_page.get_cells_in_bbox(
+                    TextCellUnit.LINE, search_bbox, ios=0.1
+                )
+            else:
+                # For OCR/image pages, keep TOP_LEFT and use pixels
+                search_bbox = adjusted_bbox
 
-            return " ".join(text_parts).strip()
+                # Get LINE cells only
+                cells = []
+                for cell in seg_page.iterate_cells(TextCellUnit.LINE):
+                    cell_bbox = cell.rect.to_bounding_box()
+
+                    # Ensure we're comparing in the same coordinate system (TOP_LEFT)
+                    if cell_bbox.coord_origin != search_bbox.coord_origin:
+                        cell_bbox = cell_bbox.to_top_left_origin(
+                            seg_page.dimension.height
+                        )
+
+                    if search_bbox.intersection_over_union(cell_bbox) > 0.1:
+                        cells.append(cell)
+
+            if cells:
+                # Sort cells by their index/position
+                cells.sort(key=lambda c: c.index if c.index >= 0 else float("inf"))
+                text_parts = [cell.text for cell in cells]
+                return " ".join(text_parts).strip()
+
+            return ""
 
         except Exception as e:
             _logger.error(f"Error extracting text: {e}")
             return ""
 
 
+def create_segmented_page_from_ocr(image):
+    """Create a SegmentedPage from OCR results.
+
+    Args:
+        ocr_results: List of (text, confidence, coords) tuples from ocrmac
+        image_width: Width of the image in pixels
+        image_height: Height of the image in pixels
+
+    Returns:
+        SegmentedPage object
+    """
+    from ocrmac import ocrmac
+
+    ocr_results = ocrmac.OCR(image, framework="vision").recognize(px=True)
+
+    # Create page geometry (in pixels, TOP_LEFT origin)
+    page_rect = BoundingRectangle(
+        r_x0=0,
+        r_y0=0,
+        r_x1=image.width,
+        r_y1=0,
+        r_x2=image.width,
+        r_y2=image.height,
+        r_x3=0,
+        r_y3=image.height,
+        coord_origin=CoordOrigin.TOPLEFT,
+    )
+
+    page_geometry = PageGeometry(angle=0.0, rect=page_rect)
+
+    # Convert OCR results to TextCells
+    word_cells = []
+    for idx, (text, confidence, coords) in enumerate(ocr_results):
+        # coords are in pixels with TOP_LEFT origin: (x0, y0, x1, y1)
+        x0, y0, x1, y1 = coords
+
+        # Create BoundingRectangle for the word (TOP_LEFT origin, pixels)
+        rect = BoundingRectangle(
+            r_x0=x0,
+            r_y0=y0,
+            r_x1=x1,
+            r_y1=y0,
+            r_x2=x1,
+            r_y2=y1,
+            r_x3=x0,
+            r_y3=y1,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+
+        # Create TextCell
+        word_cell = TextCell(
+            index=idx,
+            rect=rect,
+            text=text,
+            orig=text,
+            confidence=confidence,
+            from_ocr=True,
+        )
+
+        word_cells.append(word_cell)
+
+    # Create SegmentedPage
+    seg_page = SegmentedPage(
+        dimension=page_geometry, word_cells=word_cells, has_words=True
+    )
+
+    return seg_page
+
+
 def convert_cvat_to_docling(
-    xml_path: Path, image_path: Path, ocr_framework: str = "vision"
+    xml_path: Path,
+    input_path: Path,
 ) -> Optional[DoclingDocument]:
     """Convert a CVAT annotation to DoclingDocument.
 
+    This function handles both image and PDF inputs, with proper coordinate system conversion:
+    - CVAT annotations use pixels with TOP_LEFT origin
+    - PDF SegmentedPages use points with BOTTOM_LEFT origin
+    - Image/OCR SegmentedPages use pixels with TOP_LEFT origin
+
+    The converter automatically calculates scaling factors between PDF points and CVAT pixels
+    by comparing the CVAT image height with the PDF page height.
+
     Args:
         xml_path: Path to CVAT XML file
-        image_path: Path to document image
-        ocr_framework: OCR framework to use ("vision" or "livetext")
+        input_path: Path to document (image or PDF)
+        ocr_framework: OCR framework to use for images ("vision" or "livetext")
 
     Returns:
         DoclingDocument or None if conversion fails
     """
     try:
-        # Load image
-        image = PILImage.open(image_path)
 
         # Create DocumentStructure
-        doc_structure = DocumentStructure.from_cvat_xml(xml_path, image_path.name)
+        doc_structure = DocumentStructure.from_cvat_xml(xml_path, input_path.name)
+
+        is_pdf = input_path.suffix.lower() == ".pdf"
+
+        # Prepare segmented pages and images
+        segmented_pages = {}
+        page_images = {}
+
+        if is_pdf:
+            # Handle PDF input
+            from docling.backend.docling_parse_v4_backend import (
+                DoclingParseV4DocumentBackend,
+            )
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.document import InputDocument
+
+            # Create input document
+            in_doc = InputDocument(
+                path_or_stream=input_path,
+                format=InputFormat.PDF,
+                backend=DoclingParseV4DocumentBackend,
+            )
+            doc_backend: DoclingParseV4DocumentBackend = in_doc._backend  # type: ignore
+
+            # Get number of pages
+            num_pages = doc_backend.page_count()
+
+            # Parse each page
+            for page_no in range(1, num_pages + 1):
+                page = doc_backend.load_page(page_no - 1)
+                seg_page = page.get_segmented_page()
+                page_image = page.get_page_image()
+
+                if seg_page is not None:
+                    segmented_pages[page_no] = seg_page
+                if page_image is not None:
+                    page_images[page_no] = page_image
+
+                page.unload()
+
+            doc_backend.unload()
+
+        else:
+            # Handle image input
+            image = PILImage.open(input_path)
+
+            # Run OCR
+
+            # Create SegmentedPage from OCR results
+            seg_page = create_segmented_page_from_ocr(image)
+
+            segmented_pages[1] = seg_page
+            page_images[1] = image
 
         # Create converter
         converter = CVATToDoclingConverter(
-            doc_structure, image, ocr_framework, image_path.name
+            doc_structure, segmented_pages, page_images, input_path.name
         )
 
         # Convert
@@ -623,4 +910,7 @@ def convert_cvat_to_docling(
 
     except Exception as e:
         _logger.error(f"Failed to convert CVAT to DoclingDocument: {e}")
+        import traceback
+
+        traceback.print_exc()
         return None

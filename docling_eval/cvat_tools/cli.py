@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from .document import DocumentStructure
-from .models import CVATValidationRunReport, CVATValidationReport
+from .models import CVATValidationReport, CVATValidationRunReport
 from .parser import find_samples_in_directory
 from .validator import Validator
 
