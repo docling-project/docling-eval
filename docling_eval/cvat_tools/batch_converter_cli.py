@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from pydantic import BaseModel
 from docling_core.types.doc.base import ImageRefMode
+from pydantic import BaseModel
 
 from .cvat_to_docling import convert_cvat_to_docling
 from .parser import find_samples_in_directory
@@ -12,42 +12,45 @@ from .parser import find_samples_in_directory
 
 class ConversionResult(BaseModel):
     """Result of a single conversion."""
+
     sample_name: str
     output_files: Dict[str, str] = {}
 
 
 class ConversionFailure(BaseModel):
     """Failed conversion result."""
+
     sample_name: str
     error: str
 
 
 class BatchConversionReport(BaseModel):
     """Report for batch conversion results."""
+
     successful_conversions: List[ConversionResult] = []
     failed_conversions: List[ConversionFailure] = []
-    
+
     @property
     def total_processed(self) -> int:
         """Total number of processed samples."""
         return len(self.successful_conversions) + len(self.failed_conversions)
-    
+
     @property
     def successful_count(self) -> int:
         """Number of successful conversions."""
         return len(self.successful_conversions)
-    
+
     @property
     def failed_count(self) -> int:
         """Number of failed conversions."""
         return len(self.failed_conversions)
-        
+
     def add_success(self, sample_name: str, output_files: Dict[str, str]):
         """Add a successful conversion."""
         self.successful_conversions.append(
             ConversionResult(sample_name=sample_name, output_files=output_files)
         )
-        
+
     def add_failure(self, sample_name: str, error_message: str):
         """Add a failed conversion."""
         self.failed_conversions.append(
@@ -56,50 +59,60 @@ class BatchConversionReport(BaseModel):
 
 
 def process_samples_for_conversion(
-    samples: List[Tuple[str, Path, str]], 
+    samples: List[Tuple[str, Path, str]],
     output_dir: Path,
     save_formats: Optional[List[str]] = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> BatchConversionReport:
     """Process a list of samples and convert them to DoclingDocuments.
-    
+
     Args:
         samples: List of (sample_name, xml_path, image_filename) tuples
         output_dir: Directory to save output files
         ocr_framework: OCR framework to use for conversion
         save_formats: List of formats to save (json, html, md, txt)
         verbose: Whether to print detailed information
-        
+
     Returns:
         BatchConversionReport with conversion results
     """
     if save_formats is None:
-        save_formats = ["json", "html", "md", "txt"]
-        
+        save_formats = ["json", "html", "md", "txt", "viz"]
+
     report = BatchConversionReport()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for sample_name, xml_path, image_filename in samples:
         if verbose:
             print(f"Processing {sample_name}...")
-            
+
         try:
             # Find the actual image file path
             image_dir = xml_path.parent
-            image_extensions = [".png", ".jpg", ".jpeg", ".pdf", ".tif", ".tiff", ".bmp"]
+            image_extensions = [
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".pdf",
+                ".tif",
+                ".tiff",
+                ".bmp",
+            ]
             image_path = None
-            
+
             for ext in image_extensions:
                 potential_path = image_dir / f"{Path(image_filename).stem}{ext}"
                 if potential_path.exists():
                     image_path = potential_path
                     break
-                    
+
             if image_path is None:
                 # Try the exact filename
                 image_path = image_dir / image_filename
                 if not image_path.exists():
-                    raise FileNotFoundError(f"Image file not found for {image_filename}")
+                    raise FileNotFoundError(
+                        f"Image file not found for {image_filename}"
+                    )
 
             # Convert to DoclingDocument
             doc = convert_cvat_to_docling(xml_path, image_path)
@@ -108,7 +121,7 @@ def process_samples_for_conversion(
                 # Prepare output files
                 output_files = {}
                 stem = Path(image_filename).stem
-                
+
                 # Save in different formats
                 if "json" in save_formats:
                     json_output = output_dir / f"{stem}.json"
@@ -118,9 +131,9 @@ def process_samples_for_conversion(
                 if "html" in save_formats:
                     html_output = output_dir / f"{stem}.html"
                     doc.save_as_html(
-                        html_output, 
-                        image_mode=ImageRefMode.EMBEDDED, 
-                        split_page_view=True
+                        html_output,
+                        image_mode=ImageRefMode.EMBEDDED,
+                        split_page_view=True,
                     )
                     output_files["html"] = str(html_output)
 
@@ -135,8 +148,14 @@ def process_samples_for_conversion(
                         fp.write(doc.export_to_element_tree())
                     output_files["txt"] = str(txt_output)
 
+                if "viz" in save_formats:
+                    viz_imgs = doc.get_visualization()
+                    for page_no, img in viz_imgs.items():
+                        if page_no is not None:
+                            img.save(output_dir / f"{stem}_docling_p{page_no}.png")
+
                 report.add_success(sample_name, output_files)
-                
+
                 if verbose:
                     print(f"  ✓ Converted successfully")
                     print(f"    - Texts: {len(doc.texts)}")
@@ -186,9 +205,9 @@ def main():
         "--formats",
         type=str,
         nargs="+",
-        default=["json", "html", "md", "txt"],
-        choices=["json", "html", "md", "txt"],
-        help="Output formats to save (default: json html md txt)",
+        default=["json", "html", "md", "txt", "viz"],
+        choices=["json", "html", "md", "txt", "viz"],
+        help="Output formats to save (default: json html md txt viz)",
     )
     parser.add_argument(
         "--verbose",
@@ -202,7 +221,7 @@ def main():
         default=None,
         help="Path to save conversion report as JSON (default: None)",
     )
-    
+
     args = parser.parse_args()
 
     input_path = Path(args.input_path)
@@ -249,7 +268,7 @@ def main():
         samples=samples,
         output_dir=output_dir,
         save_formats=args.formats,
-        verbose=args.verbose
+        verbose=args.verbose,
     )
 
     # Print summary
@@ -272,4 +291,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

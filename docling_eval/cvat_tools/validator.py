@@ -107,6 +107,23 @@ class SecondLevelReadingOrderParentRule(ValidationRule):
 class ElementTouchedByReadingOrderRule(ValidationRule):
     """Validate that every non-background element is touched by a reading order path - ERROR level."""
 
+    def _is_element_inside_table(
+        self, element: CVATElement, doc: DocumentStructure
+    ) -> bool:
+        """Check if an element is inside a table container."""
+        node = doc.get_node_by_element_id(element.id)
+        if not node:
+            return False
+
+        # Walk up the containment tree to check if any ancestor is a table
+        current = node.parent
+        while current:
+            if current.element.label == "table":
+                return True
+            current = current.parent
+
+        return False
+
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         errors = []
         touched = set()
@@ -115,6 +132,10 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
 
         for el in doc.elements:
             if el.content_layer.upper() == "BACKGROUND":
+                continue
+
+            # Skip validation for elements inside table containers
+            if self._is_element_inside_table(el, doc):
                 continue
 
             node = doc.get_node_by_element_id(el.id)

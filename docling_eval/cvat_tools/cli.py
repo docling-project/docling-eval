@@ -83,24 +83,26 @@ def main():
         samples = [(args.image, input_path, args.image)]
 
     report = process_samples(samples)
-    
+
     # Determine output file path
     if args.report_file:
         output_path = Path(args.report_file)
     else:
         output_path = Path("cvat_validation_report.json")
-    
+
     # Save report to JSON file
     try:
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(report.model_dump_json(indent=2, exclude_none=True))
         print(f"Validation report saved to: {output_path.absolute()}")
     except Exception as e:
         print(f"Error saving report to {output_path}: {str(e)}")
         return
-    
+
     # Also print summary to stdout
-    print(f"Processed {len(samples)} samples, found {len(report.samples)} samples with errors")
+    print(
+        f"Processed {len(samples)} samples, found {len(report.samples)} samples with errors"
+    )
 
 
 if __name__ == "__main__":

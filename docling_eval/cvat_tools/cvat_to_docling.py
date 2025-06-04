@@ -858,8 +858,12 @@ def convert_cvat_to_docling(
         validator = Validator()
         validation_report = validator.validate_sample(input_path.name, doc_structure)
 
+        print(validation_report.model_dump_json(indent=2))
+
         if validation_report.has_fatal_errors():
-            _logger.error(f"Validation errors on sample {input_path.name}: {validation_report.errors}")
+            _logger.error(
+                f"Validation errors on sample {input_path.name}: {validation_report.errors}"
+            )
             return None
 
         is_pdf = input_path.suffix.lower() == ".pdf"

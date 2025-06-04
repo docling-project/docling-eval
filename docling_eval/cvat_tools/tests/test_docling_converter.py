@@ -15,43 +15,52 @@ from docling_eval.cvat_tools.analysis import (
 )
 from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
 from docling_eval.cvat_tools.document import DocumentStructure
+from docling_eval.cvat_tools.models import CVATValidationReport, ValidationSeverity
 from docling_eval.cvat_tools.tree import build_global_reading_order
 from docling_eval.cvat_tools.validator import Validator
-from docling_eval.cvat_tools.models import CVATValidationReport, ValidationSeverity
 
 
 def _find_case_directories(root_dir: Path) -> List[Path]:
     """Find all case directories in the root directory.
-    
+
     Args:
         root_dir: Root directory to search for case directories
-        
+
     Returns:
         List of case directory paths
     """
-    return sorted([d for d in root_dir.iterdir() if d.is_dir() and d.name.startswith("case")])
+    return sorted(
+        [d for d in root_dir.iterdir() if d.is_dir() and d.name.startswith("case")]
+    )
 
 
 def _get_sample_paths_for_case(case_dir: Path) -> List[Path]:
     """Get all image file paths for a given case directory.
-    
+
     Args:
         case_dir: Case directory to search for image files
-        
+
     Returns:
         List of image file paths
     """
     sample_paths = []
-    
+
     # Find all image files in case directory
     for ext in [
-        "*.pdf", "*.PDF",
-        "*.png", "*.PNG", 
-        "*.jpg", "*.JPG",
-        "*.jpeg", "*.JPEG",
-        "*.tif", "*.TIF",
-        "*.tiff", "*.TIFF",
-        "*.bmp", "*.BMP",
+        "*.pdf",
+        "*.PDF",
+        "*.png",
+        "*.PNG",
+        "*.jpg",
+        "*.JPG",
+        "*.jpeg",
+        "*.JPEG",
+        "*.tif",
+        "*.TIF",
+        "*.tiff",
+        "*.TIFF",
+        "*.bmp",
+        "*.BMP",
     ]:
         sample_paths.extend(sorted(case_dir.glob(ext)))
 
@@ -64,7 +73,7 @@ def _test_conversion_with_sample_data(
     output_dir: Optional[Path] = None,
     verbose: bool = True,
 ) -> Tuple[CVATValidationReport, Optional[DoclingDocument]]:
-    """Test the conversion with sample data.    
+    """Test the conversion with sample data.
 
     Args:
         xml_path: Path to CVAT XML file
@@ -88,28 +97,36 @@ def _test_conversion_with_sample_data(
     # Validate the document structure before conversion
     validator = Validator()
     validation_report = validator.validate_sample(image_path.name, doc_structure)
-    
+
     print(f"\n--- Validation Report ---")
     print(f"Total validation errors: {len(validation_report.errors)}")
-    
+
     # Count errors by severity
-    fatal_errors = [e for e in validation_report.errors if e.severity == ValidationSeverity.FATAL]
-    error_errors = [e for e in validation_report.errors if e.severity == ValidationSeverity.ERROR]
-    warning_errors = [e for e in validation_report.errors if e.severity == ValidationSeverity.WARNING]
-    
+    fatal_errors = [
+        e for e in validation_report.errors if e.severity == ValidationSeverity.FATAL
+    ]
+    error_errors = [
+        e for e in validation_report.errors if e.severity == ValidationSeverity.ERROR
+    ]
+    warning_errors = [
+        e for e in validation_report.errors if e.severity == ValidationSeverity.WARNING
+    ]
+
     print(f"  - FATAL: {len(fatal_errors)}")
     print(f"  - ERROR: {len(error_errors)}")
     print(f"  - WARNING: {len(warning_errors)}")
-    
+
     # Print validation errors if any
     if validation_report.errors:
         print("\nValidation Issues:")
         for error in validation_report.errors:
             print(f"  {error.severity.value}: {error.message}")
-    
+
     # Check for fatal errors - do not proceed with conversion if found
     if fatal_errors:
-        print(f"\n✗ Cannot proceed with conversion due to {len(fatal_errors)} FATAL validation error(s)")
+        print(
+            f"\n✗ Cannot proceed with conversion due to {len(fatal_errors)} FATAL validation error(s)"
+        )
         return validation_report, None
 
     print(f"\n✓ Validation passed - proceeding with conversion")
@@ -122,9 +139,7 @@ def _test_conversion_with_sample_data(
 
         print("\n--- Original Containment Tree ---")
         if doc_structure.image_info is not None:
-            print_containment_tree(
-                doc_structure.tree_roots, doc_structure.image_info
-            )
+            print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
 
         global_ro = build_global_reading_order(
             doc_structure.paths,
@@ -136,9 +151,7 @@ def _test_conversion_with_sample_data(
         # Apply reading order to tree before printing
         apply_reading_order_to_tree(doc_structure.tree_roots, global_ro)
         if doc_structure.image_info is not None:
-            print_containment_tree(
-                doc_structure.tree_roots, doc_structure.image_info
-            )
+            print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
 
     # Convert to DoclingDocument (only if validation passed)
     doc = convert_cvat_to_docling(xml_path, image_path)
@@ -165,6 +178,11 @@ def _test_conversion_with_sample_data(
     )
     doc.save_as_markdown(md_output, image_mode=ImageRefMode.EMBEDDED)
 
+    viz_imgs = doc.get_visualization()
+    for page_no, img in viz_imgs.items():
+        if page_no is not None:
+            img.save(output_dir / f"{image_path.stem}_docling_p{page_no}.png")
+
     print(f"\n✓ Saved outputs:")
     print(f"  - JSON: {json_output.name}")
     print(f"  - HTML: {html_output.name}")
@@ -173,19 +191,18 @@ def _test_conversion_with_sample_data(
     return validation_report, doc
 
 
-
 def test_cvat_to_docling_conversion():
     """Test CVAT to DoclingDocument conversion for all available cases."""
     # Find all case directories
     root_dir = Path("tests/data/cvat_pdfs_dataset_e2e")
     case_dirs = _find_case_directories(root_dir)
-    
+
     # Process each case directory
     for case_dir in case_dirs:
         # Extract case number and basename from directory name
         case_basename = case_dir.name
         annotations_xml = case_dir.parent / f"{case_basename}_annotations.xml"
-        
+
         # Find all image files in case directory
         sample_paths = _get_sample_paths_for_case(case_dir)
 
@@ -193,7 +210,9 @@ def test_cvat_to_docling_conversion():
             print(f"\nProcessing {image_path.name}...")
 
             if annotations_xml.exists() and image_path.exists():
-                validation_report, result = _test_conversion_with_sample_data(annotations_xml, image_path, verbose=True)
+                validation_report, result = _test_conversion_with_sample_data(
+                    annotations_xml, image_path, verbose=True
+                )
                 if validation_report.has_errors():
                     print(f"✗ Validation errors: {validation_report.errors}")
                 if result is None:

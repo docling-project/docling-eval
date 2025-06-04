@@ -133,10 +133,7 @@ def test_document_structure_creation(tmp_path):
     assert doc.image_info is not None
     assert doc.image_info.width == 1600
     assert doc.image_info.height == 1200
-    assert (
-        doc.image_info.name
-        == "test.png"
-    )
+    assert doc.image_info.name == "test.png"
 
     # Test element properties
     element = doc.get_element_by_id(0)
@@ -204,6 +201,7 @@ def test_analysis_functions(tmp_path):
     )
     apply_reading_order_to_tree(doc.tree_roots, global_ro)
     print_containment_tree(doc.tree_roots, doc.image_info)
+
 
 def test_validation_report(tmp_path):
     """Test validation report generation for DocumentStructure."""
