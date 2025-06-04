@@ -11,6 +11,7 @@ from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.prediction_providers.google_prediction_provider import (
     GoogleDocAIPredictionProvider,
 )
+from docling_eval.utils.utils import validate_evaluation_results
 
 IS_CI = bool(os.getenv("CI"))
 
@@ -90,7 +91,11 @@ def test_run_xfund_builder():
         odir=target_path / "evaluations" / EvaluationModality.OCR.value,
         split="val",
     )
-
+    validate_evaluation_results(
+        target_path=target_path,
+        benchmark=BenchMarkNames.XFUND.value,
+        modality=EvaluationModality.OCR.value,
+    )
     visualize(
         modality=EvaluationModality.OCR,
         benchmark=BenchMarkNames.XFUND,

@@ -3,7 +3,7 @@ import logging
 import platform
 from typing import Dict, List, Optional, Set
 
-from docling.datamodel.base_models import InputFormat
+from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
@@ -108,11 +108,15 @@ class DoclingPredictionProvider(BasePredictionProvider):
             record, res.document, None, res.timings
         )
         pred_record.predicted_segmented_pages = {
-            p.page_no: p.parsed_page for p in res.pages if p.parsed_page is not None
+            p.page_no: self.set_word_cells(p) for p in res.pages if p.parsed_page
         }
         pred_record.status = res.status
 
         return pred_record
+
+    def set_word_cells(self, page: Page):
+        page.parsed_page.word_cells = page.cells
+        return page.parsed_page
 
     def info(self) -> Dict:
         """Get information about the prediction provider."""

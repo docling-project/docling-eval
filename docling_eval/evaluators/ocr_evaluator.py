@@ -56,7 +56,7 @@ class OCREvaluator(BaseEvaluator):
         use_space_for_gt_merge = True
 
         benchmark_tool = _OcrBenchmark(
-            model_identifier="ocr_model_under_test",
+            model_identifier="ocr_model",
             ignore_zone_filter_type=ignore_zone_filter_config,
             add_space_for_merged_prediction_words=use_space_for_prediction_merge,
             add_space_for_merged_gt_words=use_space_for_gt_merge,
