@@ -284,7 +284,7 @@ class MissingAttributesRule(ValidationRule):
 class UnrecognizedAttributesRule(ValidationRule):
     """Validate element attributes are recognized."""
 
-    KNOWN_ATTRIBUTES = {"content_layer", "type", "level"}  # Add more as needed
+    KNOWN_ATTRIBUTES = {"content_layer", "type", "level", "json"}  # Add more as needed
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         errors = []

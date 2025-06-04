@@ -6,9 +6,14 @@ CVAT Annotation Validation Tool
 - Validates annotation structure according to project rules
 - Outputs element tree and validation report per sample
 - Provides analysis tools for visualizing annotations and reading order
+- Converts CVAT annotations to DoclingDocuments in batch
 
 Usage:
+    # Validation CLI
     python -m docling_eval.cvat_tools.cli <input_root_dir>
+    
+    # Batch conversion CLI
+    python -m docling_eval.cvat_tools.batch_converter_cli <input_root_dir>
 """
 
 from .analysis import (

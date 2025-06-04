@@ -1,5 +1,6 @@
 """Tests for CVAT annotation analysis tools."""
 
+import json
 import os
 from pathlib import Path
 from typing import List
@@ -15,13 +16,14 @@ from docling_eval.cvat_tools.analysis import (
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATAnnotationPath, CVATElement
 from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
+from docling_eval.cvat_tools.validator import Validator
 
 
 def create_sample_xml(tmp_path: Path) -> Path:
     """Create a sample CVAT XML file for testing."""
     xml_content = """<?xml version='1.0' encoding='utf-8'?>
 <annotations>
-<image id="1" name="doc_0cafa543ea6217a6b9ae13db22654bae9cdf7e8faa98342a5519a1d165c6d719_page_000001.png" width="1600" height="1200">
+<image id="1" name="test.png" width="1600" height="1200">
     <box label="picture" source="manual" occluded="0" xtl="182.39" ytl="176.05" xbr="470.10" ybr="289.41" z_order="0">
       <attribute name="content_layer">BODY</attribute>
       <attribute name="json" />
@@ -122,7 +124,7 @@ def test_document_structure_creation(tmp_path):
     xml_path = create_sample_xml(tmp_path)
     doc = DocumentStructure.from_cvat_xml(
         xml_path,
-        "doc_0cafa543ea6217a6b9ae13db22654bae9cdf7e8faa98342a5519a1d165c6d719_page_000001.png",
+        "test.png",
     )
 
     # Test basic properties
@@ -133,7 +135,7 @@ def test_document_structure_creation(tmp_path):
     assert doc.image_info.height == 1200
     assert (
         doc.image_info.name
-        == "doc_0cafa543ea6217a6b9ae13db22654bae9cdf7e8faa98342a5519a1d165c6d719_page_000001.png"
+        == "test.png"
     )
 
     # Test element properties
@@ -156,7 +158,7 @@ def test_path_mappings(tmp_path):
     xml_path = create_sample_xml(tmp_path)
     doc = DocumentStructure.from_cvat_xml(
         xml_path,
-        "doc_0cafa543ea6217a6b9ae13db22654bae9cdf7e8faa98342a5519a1d165c6d719_page_000001.png",
+        "test.png",
     )
 
     # Test reading order mappings
@@ -181,7 +183,7 @@ def test_analysis_functions(tmp_path):
     xml_path = create_sample_xml(tmp_path)
     doc = DocumentStructure.from_cvat_xml(
         xml_path,
-        "doc_0cafa543ea6217a6b9ae13db22654bae9cdf7e8faa98342a5519a1d165c6d719_page_000001.png",
+        "test.png",
     )
 
     # Test printing elements and paths
@@ -202,3 +204,15 @@ def test_analysis_functions(tmp_path):
     )
     apply_reading_order_to_tree(doc.tree_roots, global_ro)
     print_containment_tree(doc.tree_roots, doc.image_info)
+
+def test_validation_report(tmp_path):
+    """Test validation report generation for DocumentStructure."""
+    xml_path = create_sample_xml(tmp_path)
+    doc = DocumentStructure.from_cvat_xml(
+        xml_path,
+        "test.png",
+    )
+
+    validator = Validator()
+    validation_report = validator.validate_sample("test.png", doc)
+    print(validation_report.model_dump_json(exclude_none=True, indent=2))

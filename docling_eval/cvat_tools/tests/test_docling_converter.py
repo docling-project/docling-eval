@@ -2,9 +2,10 @@
 
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from docling_core.types.doc.base import ImageRefMode
+from docling_core.types.doc.document import DoclingDocument
 from PIL import Image as PILImage
 
 from docling_eval.cvat_tools.analysis import (
@@ -15,15 +16,55 @@ from docling_eval.cvat_tools.analysis import (
 from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.tree import build_global_reading_order
+from docling_eval.cvat_tools.validator import Validator
+from docling_eval.cvat_tools.models import CVATValidationReport, ValidationSeverity
 
 
-def test_conversion_with_sample_data(
+def _find_case_directories(root_dir: Path) -> List[Path]:
+    """Find all case directories in the root directory.
+    
+    Args:
+        root_dir: Root directory to search for case directories
+        
+    Returns:
+        List of case directory paths
+    """
+    return sorted([d for d in root_dir.iterdir() if d.is_dir() and d.name.startswith("case")])
+
+
+def _get_sample_paths_for_case(case_dir: Path) -> List[Path]:
+    """Get all image file paths for a given case directory.
+    
+    Args:
+        case_dir: Case directory to search for image files
+        
+    Returns:
+        List of image file paths
+    """
+    sample_paths = []
+    
+    # Find all image files in case directory
+    for ext in [
+        "*.pdf", "*.PDF",
+        "*.png", "*.PNG", 
+        "*.jpg", "*.JPG",
+        "*.jpeg", "*.JPEG",
+        "*.tif", "*.TIF",
+        "*.tiff", "*.TIFF",
+        "*.bmp", "*.BMP",
+    ]:
+        sample_paths.extend(sorted(case_dir.glob(ext)))
+
+    return sorted(sample_paths)
+
+
+def _test_conversion_with_sample_data(
     xml_path: Path,
     image_path: Path,
     output_dir: Optional[Path] = None,
     verbose: bool = True,
-):
-    """Test the conversion with sample data.
+) -> Tuple[CVATValidationReport, Optional[DoclingDocument]]:
+    """Test the conversion with sample data.    
 
     Args:
         xml_path: Path to CVAT XML file
@@ -37,219 +78,133 @@ def test_conversion_with_sample_data(
     print(f"Testing conversion for: {image_path.name}")
     print("=" * 60)
 
-    try:
-        # Load image
-        # image = PILImage.open(image_path)
-        # print(f"✓ Loaded image: {image.size}")
+    # Create DocumentStructure first for validation
+    doc_structure = DocumentStructure.from_cvat_xml(xml_path, image_path.name)
+    print(f"✓ Created DocumentStructure:")
+    print(f"  - Elements: {len(doc_structure.elements)}")
+    print(f"  - Paths: {len(doc_structure.paths)}")
+    print(f"  - Tree roots: {len(doc_structure.tree_roots)}")
 
-        # Create DocumentStructure
-        doc_structure = DocumentStructure.from_cvat_xml(xml_path, image_path.name)
-        print(f"✓ Created DocumentStructure:")
-        print(f"  - Elements: {len(doc_structure.elements)}")
-        print(f"  - Paths: {len(doc_structure.paths)}")
-        print(f"  - Tree roots: {len(doc_structure.tree_roots)}")
+    # Validate the document structure before conversion
+    validator = Validator()
+    validation_report = validator.validate_sample(image_path.name, doc_structure)
+    
+    print(f"\n--- Validation Report ---")
+    print(f"Total validation errors: {len(validation_report.errors)}")
+    
+    # Count errors by severity
+    fatal_errors = [e for e in validation_report.errors if e.severity == ValidationSeverity.FATAL]
+    error_errors = [e for e in validation_report.errors if e.severity == ValidationSeverity.ERROR]
+    warning_errors = [e for e in validation_report.errors if e.severity == ValidationSeverity.WARNING]
+    
+    print(f"  - FATAL: {len(fatal_errors)}")
+    print(f"  - ERROR: {len(error_errors)}")
+    print(f"  - WARNING: {len(warning_errors)}")
+    
+    # Print validation errors if any
+    if validation_report.errors:
+        print("\nValidation Issues:")
+        for error in validation_report.errors:
+            print(f"  {error.severity.value}: {error.message}")
+    
+    # Check for fatal errors - do not proceed with conversion if found
+    if fatal_errors:
+        print(f"\n✗ Cannot proceed with conversion due to {len(fatal_errors)} FATAL validation error(s)")
+        return validation_report, None
 
-        if verbose:
-            print("\n--- Elements and Paths ---")
-            print_elements_and_paths(
-                doc_structure.elements, doc_structure.paths, doc_structure.image_info
-            )
+    print(f"\n✓ Validation passed - proceeding with conversion")
 
-            print("\n--- Original Containment Tree ---")
-            if doc_structure.image_info is not None:
-                print_containment_tree(
-                    doc_structure.tree_roots, doc_structure.image_info
-                )
-
-            global_ro = build_global_reading_order(
-                doc_structure.paths,
-                doc_structure.path_mappings.reading_order,
-                doc_structure.path_to_container,
-                doc_structure.tree_roots,
-            )
-            print("\n--- Ordered Containment Tree ---")
-            # Apply reading order to tree before printing
-            apply_reading_order_to_tree(doc_structure.tree_roots, global_ro)
-            if doc_structure.image_info is not None:
-                print_containment_tree(
-                    doc_structure.tree_roots, doc_structure.image_info
-                )
-
-        # Create converter
-
-        # Convert to DoclingDocument
-        doc = convert_cvat_to_docling(xml_path, image_path)
-        print(f"\n✓ Converted to DoclingDocument: {doc.name}")
-        print(f"  - Pages: {len(doc.pages)}")
-        print(f"  - Groups: {len(doc.groups)}")
-        print(f"  - Texts: {len(doc.texts)}")
-        print(f"  - Pictures: {len(doc.pictures)}")
-        print(f"  - Tables: {len(doc.tables)}")
-
-        # Print element tree
-        if verbose:
-            print("\n--- DoclingDocument Element Tree ---")
-            doc.print_element_tree()
-
-        # Save outputs
-        json_output = output_dir / f"{image_path.stem}_docling.json"
-        html_output = output_dir / f"{image_path.stem}_docling.html"
-        md_output = output_dir / f"{image_path.stem}_docling.md"
-
-        doc.save_as_json(json_output)
-        doc.save_as_html(
-            html_output, image_mode=ImageRefMode.EMBEDDED, split_page_view=True
+    if verbose:
+        print("\n--- Elements and Paths ---")
+        print_elements_and_paths(
+            doc_structure.elements, doc_structure.paths, doc_structure.image_info
         )
-        doc.save_as_markdown(md_output, image_mode=ImageRefMode.EMBEDDED)
 
-        print(f"\n✓ Saved outputs:")
-        print(f"  - JSON: {json_output.name}")
-        print(f"  - HTML: {html_output.name}")
-        print(f"  - Markdown: {md_output.name}")
+        print("\n--- Original Containment Tree ---")
+        if doc_structure.image_info is not None:
+            print_containment_tree(
+                doc_structure.tree_roots, doc_structure.image_info
+            )
 
-        return doc
+        global_ro = build_global_reading_order(
+            doc_structure.paths,
+            doc_structure.path_mappings.reading_order,
+            doc_structure.path_to_container,
+            doc_structure.tree_roots,
+        )
+        print("\n--- Ordered Containment Tree ---")
+        # Apply reading order to tree before printing
+        apply_reading_order_to_tree(doc_structure.tree_roots, global_ro)
+        if doc_structure.image_info is not None:
+            print_containment_tree(
+                doc_structure.tree_roots, doc_structure.image_info
+            )
 
-    except Exception as e:
-        print(f"\n✗ Error during conversion: {e}")
-        import traceback
+    # Convert to DoclingDocument (only if validation passed)
+    doc = convert_cvat_to_docling(xml_path, image_path)
+    print(f"\n✓ Converted to DoclingDocument: {image_path.name}")
+    print(f"  - Pages: {len(doc.pages)}")
+    print(f"  - Groups: {len(doc.groups)}")
+    print(f"  - Texts: {len(doc.texts)}")
+    print(f"  - Pictures: {len(doc.pictures)}")
+    print(f"  - Tables: {len(doc.tables)}")
 
-        traceback.print_exc()
-        return None
+    # Print element tree
+    if verbose:
+        print("\n--- DoclingDocument Element Tree ---")
+        doc.print_element_tree()
+
+    # Save outputs
+    json_output = output_dir / f"{image_path.stem}_docling.json"
+    html_output = output_dir / f"{image_path.stem}_docling.html"
+    md_output = output_dir / f"{image_path.stem}_docling.md"
+
+    doc.save_as_json(json_output)
+    doc.save_as_html(
+        html_output, image_mode=ImageRefMode.EMBEDDED, split_page_view=True
+    )
+    doc.save_as_markdown(md_output, image_mode=ImageRefMode.EMBEDDED)
+
+    print(f"\n✓ Saved outputs:")
+    print(f"  - JSON: {json_output.name}")
+    print(f"  - HTML: {html_output.name}")
+    print(f"  - Markdown: {md_output.name}")
+
+    return validation_report, doc
 
 
-def test_batch_conversion(
-    root_dir: Path, output_dir: Optional[Path] = None, verbose: bool = False
-):
-    """Test batch conversion of multiple documents.
 
-    Args:
-        root_dir: Root directory containing images and annotations.xml files
-        output_dir: Optional output directory for results
-        verbose: Whether to print detailed information
-    """
-    if output_dir is None:
-        output_dir = root_dir / "docling_output"
+def test_cvat_to_docling_conversion():
+    """Test CVAT to DoclingDocument conversion for all available cases."""
+    # Find all case directories
+    root_dir = Path("tests/data/cvat_pdfs_dataset_e2e")
+    case_dirs = _find_case_directories(root_dir)
+    
+    # Process each case directory
+    for case_dir in case_dirs:
+        # Extract case number and basename from directory name
+        case_basename = case_dir.name
+        annotations_xml = case_dir.parent / f"{case_basename}_annotations.xml"
+        
+        # Find all image files in case directory
+        sample_paths = _get_sample_paths_for_case(case_dir)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+        for image_path in sample_paths:
+            print(f"\nProcessing {image_path.name}...")
 
-    # Find all image files
-    image_extensions = {".png", ".jpg", ".jpeg"}
-    image_files: List[Path] = []
-    for ext in image_extensions:
-        image_files.extend(root_dir.rglob(f"*{ext}"))
-        image_files.extend(root_dir.rglob(f"*{ext.upper()}"))
-
-    # Remove duplicates and sort
-    image_files = sorted(list(set(image_files)))
-
-    processed_count = 0
-    failed_count = 0
-
-    print(f"Found {len(image_files)} image files in {root_dir}")
-    print("=" * 60)
-
-    for image_path in image_files:
-        # Check if annotations.xml exists in the same directory
-        xml_path = image_path.parent / "annotations.xml"
-
-        if not xml_path.exists():
-            print(f"⚠ No annotations.xml found for {image_path.name}, skipping")
-            continue
-
-        print(f"\nProcessing {image_path.relative_to(root_dir)}...")
-
-        try:
-            doc = convert_cvat_to_docling(xml_path, image_path, ocr_framework="vision")
-
-            if doc:
-                # Save outputs
-                doc_output_dir = output_dir / image_path.parent.relative_to(root_dir)
-                doc_output_dir.mkdir(parents=True, exist_ok=True)
-
-                doc.save_as_json(doc_output_dir / f"{image_path.stem}.json")
-                doc.save_as_html(
-                    doc_output_dir / f"{image_path.stem}.html",
-                    image_mode=ImageRefMode.EMBEDDED,
-                    split_page_view=True,
-                )
-
-                with open(doc_output_dir / f"{image_path.stem}.txt", "w") as fp:
-                    fp.write(doc.export_to_element_tree())
-
-                if verbose:
-                    print(f"  ✓ Converted successfully")
-                    print(f"    - Texts: {len(doc.texts)}")
-                    print(f"    - Pictures: {len(doc.pictures)}")
-                    print(f"    - Tables: {len(doc.tables)}")
+            if annotations_xml.exists() and image_path.exists():
+                validation_report, result = _test_conversion_with_sample_data(annotations_xml, image_path, verbose=True)
+                if validation_report.has_errors():
+                    print(f"✗ Validation errors: {validation_report.errors}")
+                if result is None:
+                    print(f"✗ Conversion failed for {image_path.name}")
                 else:
-                    print(f"  ✓ Converted successfully")
-
-                processed_count += 1
+                    print(f"✓ Conversion successful for {image_path.name}")
             else:
-                print(f"  ✗ Conversion failed")
-                failed_count += 1
-
-        except Exception as e:
-            print(f"  ✗ Error: {e}")
-            failed_count += 1
-
-    print("\n" + "=" * 60)
-    print(f"Batch processing complete:")
-    print(f"  ✓ Successfully processed: {processed_count}")
-    print(f"  ✗ Failed: {failed_count}")
-
-
-def main():
-    """Main test function."""
-    # Example usage - update these paths for your test data
-
-    # Sample paths for testing
-    case_03_dir = Path("tests/data/cvat_pdfs_dataset_e2e/case_02")
-    annotations_xml = case_03_dir.parent / "case_02_annotations.xml"
-
-    # Find all image files in case_03 directory
-    sample_paths = []
-    for ext in [
-        "*.pdf",
-        "*.PDF",
-        "*.png",
-        "*.PNG",
-        "*.jpg",
-        "*.JPG",
-        "*.jpeg",
-        "*.JPEG",
-        "*.tif",
-        "*.TIF",
-        "*.tiff",
-        "*.TIFF",
-        "*.bmp",
-        "*.BMP",
-    ]:
-        sample_paths.extend(sorted(case_03_dir.glob(ext)))
-    sample_paths = sorted(sample_paths)
-
-    for image_path in sample_paths:
-        print(f"\nProcessing {image_path.name}...")
-
-        if annotations_xml.exists() and image_path.exists():
-            test_conversion_with_sample_data(annotations_xml, image_path, verbose=True)
-        else:
-            print(f"⚠ Missing files for {image_path.name}:")
-            if not annotations_xml.exists():
-                print(f"  - Missing annotations.xml at {annotations_xml}")
-            if not image_path.exists():
-                print(f"  - Missing image at {image_path}")
-
-    # Batch test
-    test_batch = False
-    if test_batch:
-        root_dir = Path("tests/data/cvat_pdfs_dataset_e2e/")  # Update this path
-
-        if root_dir.exists():
-            test_batch_conversion(root_dir, verbose=True)
-        else:
-            print(f"Please update the root directory path: {root_dir}")
-
-
-if __name__ == "__main__":
-    main()
+                print(f"⚠ Missing files for {image_path.name}:")
+                if not annotations_xml.exists():
+                    print(f"  - Missing annotations.xml at {annotations_xml}")
+                if not image_path.exists():
+                    print(f"  - Missing image at {image_path}")
+                # Skip this test case if files are missing
+                continue

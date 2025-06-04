@@ -39,6 +39,7 @@ from docling_eval.cvat_tools.analysis import apply_reading_order_to_tree
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATElement
 from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
+from docling_eval.cvat_tools.validator import Validator
 
 _logger = logging.getLogger(__name__)
 
@@ -607,6 +608,9 @@ class CVATToDoclingConverter:
                 prov=prov,
                 parent=parent,
             )
+        elif doc_label == DocItemLabel.KEY_VALUE_REGION:
+            _logger.warning(f"Untreatable label: {doc_label}, ignoring.")
+            return None
         elif doc_label == DocItemLabel.CODE:
             return self.doc.add_code(
                 text=text, prov=prov, parent=parent, content_layer=content_layer
@@ -617,6 +621,9 @@ class CVATToDoclingConverter:
                 text=text, prov=prov, parent=parent, content_layer=content_layer
             )
         elif doc_label == DocItemLabel.GRADING_SCALE:
+            _logger.warning(f"Untreatable label: {doc_label}, ignoring.")
+            return None
+        elif doc_label == DocItemLabel.HANDWRITTEN_TEXT:
             _logger.warning(f"Untreatable label: {doc_label}, ignoring.")
             return None
         else:
@@ -727,7 +734,7 @@ class CVATToDoclingConverter:
 
                 # Get LINE cells only
                 cells = []
-                for cell in seg_page.iterate_cells(TextCellUnit.LINE):
+                for cell in seg_page.iterate_cells(TextCellUnit.WORD):
                     cell_bbox = cell.rect.to_bounding_box()
 
                     # Ensure we're comparing in the same coordinate system (TOP_LEFT)
@@ -847,6 +854,13 @@ def convert_cvat_to_docling(
 
         # Create DocumentStructure
         doc_structure = DocumentStructure.from_cvat_xml(xml_path, input_path.name)
+
+        validator = Validator()
+        validation_report = validator.validate_sample(input_path.name, doc_structure)
+
+        if validation_report.has_fatal_errors():
+            _logger.error(f"Validation errors on sample {input_path.name}: {validation_report.errors}")
+            return None
 
         is_pdf = input_path.suffix.lower() == ".pdf"
 
