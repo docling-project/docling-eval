@@ -108,7 +108,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
             record, res.document, None, res.timings
         )
         pred_record.predicted_segmented_pages = {
-            p.page_no: self.set_word_cells(p) for p in res.pages if p.parsed_page
+            p.page_no: self._set_word_cells(p) for p in res.pages if p.parsed_page
         }
         pred_record.status = res.status
 
