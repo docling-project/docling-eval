@@ -114,7 +114,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
 
         return pred_record
 
-    def set_word_cells(self, page: Page):
+    def _set_word_cells(self, page: Page):
         if page.parsed_page is None:
             _log.warning(
                 f"Page {page.page_no} has no parsed_page, cannot set word_cells."
