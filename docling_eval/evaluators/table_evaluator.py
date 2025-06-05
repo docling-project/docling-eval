@@ -43,7 +43,7 @@ class TableEvaluation(UnitEvaluation):
 
 class DatasetTableEvaluation(DatasetEvaluation):
     evaluations: List[TableEvaluation]
-    structure_only_evaluations: Optional[List[TableEvaluation]] = None
+    table_structure_evaluations: List[TableEvaluation]
 
     TEDS: DatasetStatistics
     TEDS_struct: DatasetStatistics
@@ -230,7 +230,7 @@ class TableEvaluator(BaseEvaluator):
             evaluated_samples=len(table_evaluations),
             rejected_samples=rejected_samples,
             evaluations=table_evaluations,
-            structure_only_evaluations=table_struct_evaluations,
+            table_structure_evaluations=table_struct_evaluations,
             TEDS=compute_stats(teds_all),
             TEDS_struct=compute_stats(teds_struct),
             TEDS_simple=compute_stats(teds_simple),
