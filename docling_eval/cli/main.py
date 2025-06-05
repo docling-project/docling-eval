@@ -80,8 +80,17 @@ from docling_eval.evaluators.timings_evaluator import (
     DatasetTimingsEvaluation,
     TimingsEvaluator,
 )
+from docling_eval.prediction_providers.aws_prediction_provider import (
+    AWSTextractPredictionProvider,
+)
+from docling_eval.prediction_providers.azure_prediction_provider import (
+    AzureDocIntelligencePredictionProvider,
+)
 from docling_eval.prediction_providers.docling_provider import DoclingPredictionProvider
 from docling_eval.prediction_providers.file_provider import FilePredictionProvider
+from docling_eval.prediction_providers.google_prediction_provider import (
+    GoogleDocAIPredictionProvider,
+)
 from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
@@ -395,6 +404,21 @@ def get_prediction_provider(
 
     elif provider_type == PredictionProviderType.TABLEFORMER:
         return TableFormerPredictionProvider(
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+    elif provider_type == PredictionProviderType.GOOGLE:
+        return GoogleDocAIPredictionProvider(
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+    elif provider_type == PredictionProviderType.AWS:
+        return AWSTextractPredictionProvider(
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+    elif provider_type == PredictionProviderType.AZURE:
+        return AzureDocIntelligencePredictionProvider(
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
         )
