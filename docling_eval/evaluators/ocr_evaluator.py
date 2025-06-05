@@ -234,7 +234,7 @@ class OCRVisualizer:
                 "arial.ttf", size=10
             )
         except IOError:
-            self._rendering_font = self._default_font
+            self._rendering_font = self._default_font  # type: ignore
 
     def __call__(
         self,

@@ -409,6 +409,8 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
 
                 # Load the evaluations for each modality
                 evaluations_path = experiment_path / MultiEvaluator.EVALUATIONS_DIR
+                if not evaluations_path.is_dir():
+                    continue
                 for modality_path in evaluations_path.iterdir():
                     try:
                         modality = EvaluationModality(modality_path.name)
@@ -424,6 +426,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                         evaluations[benchmark] = {}
                     if experiment not in evaluations[benchmark]:
                         evaluations[benchmark][experiment] = {}
+
                     evaluations[benchmark][experiment][modality] = SingleEvaluation(
                         evaluation=evaluation,
                         experiment=experiment,
