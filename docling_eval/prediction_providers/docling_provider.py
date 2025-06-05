@@ -115,12 +115,20 @@ class DoclingPredictionProvider(BasePredictionProvider):
         return pred_record
 
     def _set_word_cells(self, page: Page):
+        # NOTE: Conditionally populates parsed_page.word_cells as a temporary solution.
+        # This method checks if `word_cells` is already populated (likely from a
+        # programmatic PDF). If so, it preserves the existing cells. If not
+        # (likely an OCR-only document), it populates `word_cells` from `page.cells`
+        # to unblock downstream evaluation tasks.
         if page.parsed_page is None:
             _log.warning(
                 f"Page {page.page_no} has no parsed_page, cannot set word_cells."
             )
             return page.parsed_page
-        page.parsed_page.word_cells = page.cells
+
+        if not page.parsed_page.word_cells:
+            page.parsed_page.word_cells = page.cells
+
         return page.parsed_page
 
     def info(self) -> Dict:
