@@ -15,6 +15,7 @@ from docling_core.types.doc.document import (
     ContentLayer,
     DocItemLabel,
     DoclingDocument,
+    FloatingItem,
     GraphData,
     GroupLabel,
     ImageRef,
@@ -658,13 +659,11 @@ class CVATToDoclingConverter:
         # Get container item
         container_item = self.element_to_item.get(container_id)
         if not container_item:
-            _logger.warning(
-                f"Container {container_id} not found for {'caption' if is_caption else 'footnote'}"
-            )
+            _logger.warning(f"Container {container_id} not found.")
             return
 
         # Check if container supports captions/footnotes
-        if not hasattr(container_item, "captions" if is_caption else "footnotes"):
+        if not isinstance(container_item, FloatingItem):
             _logger.warning(
                 f"Container {container_id} does not support {'captions' if is_caption else 'footnotes'}"
             )

@@ -277,7 +277,7 @@ class MissingAttributesRule(ValidationRule):
 
         for el in doc.elements:
             # Check content_layer
-            if not hasattr(el, "content_layer") or el.content_layer is None:
+            if el.content_layer is None:
                 errors.append(
                     CVATValidationError(
                         error_type="missing_content_layer",
@@ -289,7 +289,7 @@ class MissingAttributesRule(ValidationRule):
 
             # Check level for specific labels
             if el.label in ["section_header", "list_item"]:
-                if not hasattr(el, "level") or el.level is None:
+                if el.level is None:
                     errors.append(
                         CVATValidationError(
                             error_type="missing_level",
