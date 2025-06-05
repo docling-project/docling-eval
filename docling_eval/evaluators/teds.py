@@ -105,6 +105,7 @@ class TEDScorer:
         """
         if node.tag in ["td", "th"]:
             # Normalize the tag to td, otherwise the comparison in APTED causes mismatch
+            # TODO: Make this normalization configurable.
             node.tag = "td"
             if convert_cell:
                 self._tokens = []
