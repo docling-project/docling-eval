@@ -136,8 +136,11 @@ def associate_reading_order_paths_to_containers(
     path_to_container: Dict[int, TreeNode] = {}
 
     for path_id, el_ids in path_to_elements.items():
-        touched_nodes = [find_node_by_element_id(tree_roots, eid) for eid in el_ids]
-        touched_nodes = [n for n in touched_nodes if n is not None]
+        touched_nodes: List[TreeNode] = [
+            n
+            for n in [find_node_by_element_id(tree_roots, eid) for eid in el_ids]
+            if n is not None
+        ]
 
         if not touched_nodes:
             continue

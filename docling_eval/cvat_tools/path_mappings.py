@@ -112,10 +112,11 @@ def associate_paths_to_containers(
 
     # Helper function to find common ancestor
     def find_common_ancestor(element_ids: List[int]) -> Optional[TreeNode]:
-        touched_nodes = [
-            find_node_by_element_id(tree_roots, eid) for eid in element_ids
+        touched_nodes: List[TreeNode] = [
+            n
+            for n in [find_node_by_element_id(tree_roots, eid) for eid in element_ids]
+            if n is not None
         ]
-        touched_nodes = [n for n in touched_nodes if n is not None]
         if not touched_nodes:
             return None
         return closest_common_ancestor(touched_nodes)

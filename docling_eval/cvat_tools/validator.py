@@ -329,7 +329,7 @@ class GroupConsecutiveReadingOrderRule(ValidationRule):
     """Validate that group paths connect consecutive elements in reading order."""
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
-        errors = []
+        errors: List[CVATValidationError] = []
 
         # Build global reading order - this needs proper implementation
         # For now, skipping this validation

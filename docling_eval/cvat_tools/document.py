@@ -32,7 +32,7 @@ class DocumentStructure:
     tree_roots: List[TreeNode]
     path_mappings: PathMappings
     path_to_container: Dict[int, TreeNode]
-    image_info: Optional[CVATImageInfo] = None
+    image_info: CVATImageInfo
 
     @classmethod
     def from_cvat_xml(

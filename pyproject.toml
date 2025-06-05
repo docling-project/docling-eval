@@ -134,6 +134,7 @@ module = [
     "PIL.*",
     "evaluate.*",
     "tqdm.*",
+    "ocrmac.*",
 ]
 ignore_missing_imports = true
 

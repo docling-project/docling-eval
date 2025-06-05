@@ -155,6 +155,12 @@ def _test_conversion_with_sample_data(
 
     # Convert to DoclingDocument (only if validation passed)
     doc = convert_cvat_to_docling(xml_path, image_path)
+
+    # Only proceed with document processing if conversion was successful
+    if doc is None:
+        print(f"\n✗ Conversion failed for {image_path.name}")
+        return validation_report, None
+
     print(f"\n✓ Converted to DoclingDocument: {image_path.name}")
     print(f"  - Pages: {len(doc.pages)}")
     print(f"  - Groups: {len(doc.groups)}")

@@ -67,7 +67,7 @@ class DocStructureEvaluator(BaseEvaluator):
         if ds is not None:
             ds_selection = ds[split]
 
-        evaluations: list[PageMarkdownEvaluation] = []
+        evaluations: list[DocStructureEvaluation] = []
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
