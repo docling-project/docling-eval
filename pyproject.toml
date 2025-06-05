@@ -134,6 +134,8 @@ module = [
     "PIL.*",
     "evaluate.*",
     "tqdm.*",
+    "azure.*",
+    "google.*",
 ]
 ignore_missing_imports = true
 
