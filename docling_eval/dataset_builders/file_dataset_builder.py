@@ -50,6 +50,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
             "png",
             "bmp",
             "gif",
+            "json",
         ],
     ):
         """
@@ -129,6 +130,13 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
 
                 # _log.debug(f"add_pages_to_true_doc: {filename}")
                 true_doc.pages[1] = page_item
+            elif mime_type == "application/json":
+                # .. support DoclingDocument json files
+                try:
+                    true_doc = DoclingDocument.load_from_json(filename)
+                except Exception as e:
+                    _log.warning(f"Failed to load {filename} as DoclingDocument: {e}")
+                    continue
             else:
                 raise ValueError(
                     f"{filename} was not recognized as a supported type, aborting."
