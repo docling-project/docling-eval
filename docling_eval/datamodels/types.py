@@ -40,6 +40,9 @@ class EvaluationModality(str, Enum):
     END2END = "end-to-end"
     LAYOUT = "layout"  # To compute maP on page-segmentation
     TABLE_STRUCTURE = "table_structure"  # to compute TEDS for tables
+    DOCUMENT_STRUCTURE = (
+        "document_structure"  # to compute edit distance between document structures
+    )
     CODE_TRANSCRIPTION = "code_transcription"  # to compute BLEU between code sections
     MATH_TRANSCRIPTION = "math_transcription"  # to compute BLEU between latex formulas
     READING_ORDER = "reading_order"  # to compute the order
