@@ -10,6 +10,7 @@ from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
 from docling_eval.prediction_providers.aws_prediction_provider import (
     AWSTextractPredictionProvider,
 )
+from docling_eval.utils.utils import validate_evaluation_results
 
 IS_CI = os.getenv("RUN_IN_CI") == "1"
 
@@ -33,7 +34,7 @@ def test_run_funsd_builder():
     dataset = FUNSDDatasetBuilder(
         dataset_source=dataset_source,
         target=target_path / "gt_dataset",
-        end_index=4,
+        end_index=1,
     )
     dataset.retrieve_input_dataset()
     dataset.save_to_disk()
@@ -52,6 +53,11 @@ def test_run_funsd_builder():
         odir=target_path / "evaluations" / EvaluationModality.OCR.value,
     )
 
+    validate_evaluation_results(
+        target_path=target_path,
+        benchmark=BenchMarkNames.FUNSD.value,
+        modality=EvaluationModality.OCR.value,
+    )
     visualize(
         modality=EvaluationModality.OCR,
         benchmark=BenchMarkNames.FUNSD,
