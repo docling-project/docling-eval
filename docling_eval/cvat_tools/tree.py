@@ -1,3 +1,10 @@
+"""Tree data structures and algorithms for CVAT annotations.
+
+This module provides the TreeNode class for representing containment hierarchies
+and various functions for building and manipulating these trees, including
+reading order processing and ancestor searching.
+"""
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
@@ -56,44 +63,6 @@ def build_containment_tree(elements: List[CVATElement]) -> List[TreeNode]:
     return [node for node in nodes if node.parent is None]
 
 
-def map_path_points_to_elements(
-    paths: List[CVATAnnotationPath],
-    elements: List[CVATElement],
-    proximity_thresh: float = 5.0,
-) -> Dict[int, List[int]]:
-    """Map path control points to the deepest elements they touch."""
-    path_to_elements: Dict[int, List[int]] = {}
-
-    for path in paths:
-        if not path.label.startswith("reading_order"):
-            continue
-
-        touched_elements: List[int] = []
-        for pt in path.points:
-            # Find all elements whose bbox contains the point
-            candidates = []
-            for el in elements:
-                bbox = el.bbox
-                if (
-                    bbox.l - proximity_thresh <= pt[0] <= bbox.r + proximity_thresh
-                    and bbox.t - proximity_thresh <= pt[1] <= bbox.b + proximity_thresh
-                ):
-                    candidates.append(el)
-
-            if candidates:
-                # Pick the deepest (smallest area) element
-                deepest = min(candidates, key=lambda e: e.bbox.area())
-                eid = deepest.id
-                # Only add if not a duplicate in sequence
-                if not touched_elements or touched_elements[-1] != eid:
-                    touched_elements.append(eid)
-
-        if touched_elements:
-            path_to_elements[path.id] = touched_elements
-
-    return path_to_elements
-
-
 def find_node_by_element_id(
     tree_roots: List[TreeNode], element_id: int
 ) -> Optional[TreeNode]:
@@ -127,33 +96,6 @@ def closest_common_ancestor(nodes: List[TreeNode]) -> Optional[TreeNode]:
         if all(candidate in lst for lst in ancestor_lists[1:]):
             return candidate
     return None
-
-
-def associate_reading_order_paths_to_containers(
-    path_to_elements: Dict[int, List[int]], tree_roots: List[TreeNode]
-) -> Dict[int, TreeNode]:
-    """Associate reading-order paths to their closest parent containers."""
-    path_to_container: Dict[int, TreeNode] = {}
-
-    for path_id, el_ids in path_to_elements.items():
-        touched_nodes: List[TreeNode] = [
-            n
-            for n in [find_node_by_element_id(tree_roots, eid) for eid in el_ids]
-            if n is not None
-        ]
-
-        if not touched_nodes:
-            continue
-
-        ancestor = closest_common_ancestor(touched_nodes)
-        if ancestor is not None:
-            path_to_container[path_id] = ancestor
-        else:
-            # fallback: parent of first touched element
-            if touched_nodes[0] and touched_nodes[0].parent:
-                path_to_container[path_id] = touched_nodes[0].parent
-
-    return path_to_container
 
 
 def build_global_reading_order(

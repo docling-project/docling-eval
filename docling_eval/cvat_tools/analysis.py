@@ -7,7 +7,7 @@ including printing elements and paths, containment trees, and reading order.
 from typing import Dict, List
 
 from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
-from .tree import TreeNode, find_node_by_element_id
+from .tree import TreeNode
 
 
 def print_elements_and_paths(

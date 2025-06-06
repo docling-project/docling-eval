@@ -12,13 +12,6 @@ from .models import (
 from .path_mappings import validate_caption_footnote_paths
 
 
-@dataclass
-class ValidationContext:
-    """Context object passed to validation rules."""
-
-    doc: DocumentStructure
-
-
 class ValidationRule(ABC):
     """Base class for validation rules."""
 

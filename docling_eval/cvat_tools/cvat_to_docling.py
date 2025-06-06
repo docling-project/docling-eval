@@ -8,7 +8,7 @@ caption/footnote relationships.
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple
 
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import (
@@ -41,7 +41,11 @@ from PIL import Image as PILImage
 from docling_eval.cvat_tools.analysis import apply_reading_order_to_tree
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATElement
-from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
+from docling_eval.cvat_tools.tree import (
+    TreeNode,
+    build_global_reading_order,
+    find_node_by_element_id,
+)
 from docling_eval.cvat_tools.validator import Validator
 
 _logger = logging.getLogger(__name__)
@@ -314,27 +318,9 @@ class CVATToDoclingConverter:
                 continue
 
             # Find the node containing this element
-            node = self._find_node_by_element_id(element_id)
+            node = find_node_by_element_id(self.doc_structure.tree_roots, element_id)
             if node:
                 self._process_node(node, parent_item=None, global_order=global_order)
-
-    def _find_node_by_element_id(self, element_id: int) -> Optional[TreeNode]:
-        """Find a tree node by its element ID."""
-
-        def search_node(node: TreeNode) -> Optional[TreeNode]:
-            if node.element.id == element_id:
-                return node
-            for child in node.children:
-                result = search_node(child)
-                if result:
-                    return result
-            return None
-
-        for root in self.doc_structure.tree_roots:
-            result = search_node(root)
-            if result:
-                return result
-        return None
 
     def _find_parent_node(self, node: TreeNode) -> Optional[TreeNode]:
         """Find the parent node of a given node in the tree."""

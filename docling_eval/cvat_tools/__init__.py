@@ -9,11 +9,14 @@ CVAT Annotation Validation Tool
 - Converts CVAT annotations to DoclingDocuments in batch
 
 Usage:
-    # Validation CLI
-    python -m docling_eval.cvat_tools.cli <input_root_dir>
+    from docling_eval.cvat_tools import Validator, DocumentStructure
     
-    # Batch conversion CLI
-    python -m docling_eval.cvat_tools.batch_converter_cli <input_root_dir>
+    # Create document structure from CVAT XML
+    doc = DocumentStructure.from_cvat_xml(xml_path, image_filename)
+    
+    # Validate the structure
+    validator = Validator()
+    report = validator.validate_sample("sample_name", doc)
 """
 
 from .analysis import (
@@ -21,6 +24,7 @@ from .analysis import (
     print_containment_tree,
     print_elements_and_paths,
 )
+from .document import DocumentStructure
 from .models import (
     CVATAnnotationPath,
     CVATElement,
@@ -28,6 +32,7 @@ from .models import (
     CVATValidationError,
     CVATValidationReport,
     CVATValidationRunReport,
+    ValidationSeverity,
 )
 from .parser import find_samples_in_directory, parse_cvat_xml_for_image
 from .path_mappings import (
@@ -39,18 +44,22 @@ from .path_mappings import (
 from .tree import TreeNode, build_containment_tree, build_global_reading_order
 from .validator import (
     CaptionFootnotePathsRule,
+    ControlPointsHitElementsRule,
     ElementTouchedByReadingOrderRule,
     GroupConsecutiveReadingOrderRule,
     MergeGroupPathsRule,
+    MissingAttributesRule,
     ReadingOrderRule,
     SecondLevelReadingOrderParentRule,
-    ValidationContext,
+    UnrecognizedAttributesRule,
     ValidationRule,
     Validator,
     ValidLabelsRule,
 )
 
 __all__ = [
+    # Document structure
+    "DocumentStructure",
     # Models
     "CVATElement",
     "CVATAnnotationPath",
@@ -58,6 +67,7 @@ __all__ = [
     "CVATValidationReport",
     "CVATValidationRunReport",
     "CVATImageInfo",
+    "ValidationSeverity",
     # Parser
     "parse_cvat_xml_for_image",
     "find_samples_in_directory",
@@ -69,20 +79,20 @@ __all__ = [
     "PathMappings",
     "map_path_points_to_elements",
     "associate_paths_to_containers",
-    "validate_merge_paths",
-    "validate_group_paths",
     "validate_caption_footnote_paths",
     # Validator
     "Validator",
     "ValidationRule",
-    "ValidationContext",
     "ValidLabelsRule",
-    "FirstLevelReadingOrderRule",
+    "ReadingOrderRule",
     "SecondLevelReadingOrderParentRule",
     "ElementTouchedByReadingOrderRule",
-    "MergePathsRule",
-    "GroupPathsRule",
+    "MergeGroupPathsRule",
     "CaptionFootnotePathsRule",
+    "ControlPointsHitElementsRule",
+    "MissingAttributesRule",
+    "UnrecognizedAttributesRule",
+    "GroupConsecutiveReadingOrderRule",
     # Analysis
     "print_elements_and_paths",
     "print_containment_tree",
