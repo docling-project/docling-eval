@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from typing import List, Tuple
 
-from .document import DocumentStructure
-from .models import CVATValidationReport, CVATValidationRunReport
-from .parser import find_samples_in_directory
-from .validator import Validator
+from ..cvat_tools.document import DocumentStructure
+from ..cvat_tools.models import CVATValidationReport, CVATValidationRunReport
+from ..cvat_tools.parser import find_samples_in_directory
+from ..cvat_tools.validator import Validator
 
 
 def process_samples(samples: List[Tuple[str, Path, str]]) -> CVATValidationRunReport:

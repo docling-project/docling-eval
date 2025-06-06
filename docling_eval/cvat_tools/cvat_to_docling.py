@@ -13,10 +13,12 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import (
     ContentLayer,
+    DocItem,
     DocItemLabel,
     DoclingDocument,
     FloatingItem,
     GraphData,
+    GroupItem,
     GroupLabel,
     ImageRef,
     NodeItem,
@@ -51,7 +53,7 @@ class CVATToDoclingConverter:
     def __init__(
         self,
         doc_structure: DocumentStructure,
-        segmented_pages: Dict[int, Union[SegmentedPage, SegmentedPdfPage]],
+        segmented_pages: Dict[int, SegmentedPage],
         page_images: Dict[int, PILImage.Image],
         document_filename: Optional[str] = None,
     ):
@@ -73,11 +75,11 @@ class CVATToDoclingConverter:
         self.doc = DoclingDocument(name=Path(self.document_filename).stem)
 
         # Maps for tracking created items
-        self.element_to_item: Dict[int, NodeItem] = {}
+        self.element_to_item: Dict[int, Optional[NodeItem]] = {}
         self.processed_elements: Set[int] = set()
 
         # Track which groups have been created
-        self.created_groups: Dict[int, NodeItem] = {}  # path_id -> GroupItem
+        self.created_groups: Dict[int, GroupItem] = {}  # path_id -> GroupItem
 
         # Calculate single scaling factor for all pages
         self._calculate_scaling_factor()
@@ -377,6 +379,7 @@ class CVATToDoclingConverter:
         # Check if this element is part of a group
         group_info = self._get_group_for_element(element.id)
 
+        item_parent: Optional[NodeItem] = None
         if group_info:
             path_id, element_ids = group_info
             # Create group on demand if not already created
@@ -397,12 +400,12 @@ class CVATToDoclingConverter:
             for el in merge_elements:
                 self.processed_elements.add(el.id)
                 if el.id not in self.element_to_item:
-                    self.element_to_item[el.id] = item
+                    self.element_to_item[el.id] = item  # type: ignore
         else:
             # Process as single item
             item = self._create_single_item(element, item_parent)
             self.processed_elements.add(element.id)
-            self.element_to_item[element.id] = item
+            self.element_to_item[element.id] = item  # type: ignore
 
         # Process children in order
         if node.children:
@@ -541,7 +544,7 @@ class CVATToDoclingConverter:
         prov: ProvenanceItem,
         element: CVATElement,
         parent: Optional[NodeItem],
-    ) -> Optional[NodeItem]:
+    ) -> Optional[DocItem]:
         """Create appropriate DocItem based on element label."""
         content_layer = ContentLayer(element.content_layer.lower())
 
@@ -861,7 +864,7 @@ def convert_cvat_to_docling(
 
         if validation_report.has_fatal_errors():
             _logger.error(
-                f"Validation errors on sample {input_path.name}: {validation_report.errors}"
+                f"Fatal validation errors on sample {input_path.name}. Skipping conversion."
             )
             return None
 
@@ -919,7 +922,7 @@ def convert_cvat_to_docling(
 
         # Create converter
         converter = CVATToDoclingConverter(
-            doc_structure, segmented_pages, page_images, input_path.name
+            doc_structure, segmented_pages, page_images, input_path.name  # type: ignore
         )
 
         # Convert

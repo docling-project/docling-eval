@@ -157,7 +157,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             # Create dataset record
             record = DatasetRecord(
-                doc_id=str(filename.name),
+                doc_id=str(filename.stem),
                 doc_hash=get_binhash(source_bytes),
                 ground_truth_doc=true_doc,
                 ground_truth_pictures=true_pictures,

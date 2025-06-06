@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import List
 
+from dotenv import load_dotenv
 import pytest
 from docling_core.types.doc.document import ContentLayer
 
@@ -17,6 +18,9 @@ from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATAnnotationPath, CVATElement
 from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
 from docling_eval.cvat_tools.validator import Validator
+
+IS_CI = bool(os.getenv("CI"))
+load_dotenv()
 
 
 def create_sample_xml(tmp_path: Path) -> Path:
@@ -130,7 +134,6 @@ def test_document_structure_creation(tmp_path):
     # Test basic properties
     assert len(doc.elements) == 20  # Total number of boxes
     assert len(doc.paths) == 2  # Two reading order paths
-    assert doc.image_info is not None
     assert doc.image_info.width == 1600
     assert doc.image_info.height == 1200
     assert doc.image_info.name == "test.png"
@@ -201,7 +204,6 @@ def test_analysis_functions(tmp_path):
     )
     apply_reading_order_to_tree(doc.tree_roots, global_ro)
     print_containment_tree(doc.tree_roots, doc.image_info)
-
 
 def test_validation_report(tmp_path):
     """Test validation report generation for DocumentStructure."""

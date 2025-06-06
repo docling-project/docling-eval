@@ -138,8 +138,7 @@ def _test_conversion_with_sample_data(
         )
 
         print("\n--- Original Containment Tree ---")
-        if doc_structure.image_info is not None:
-            print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
+        print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
 
         global_ro = build_global_reading_order(
             doc_structure.paths,
@@ -150,8 +149,7 @@ def _test_conversion_with_sample_data(
         print("\n--- Ordered Containment Tree ---")
         # Apply reading order to tree before printing
         apply_reading_order_to_tree(doc_structure.tree_roots, global_ro)
-        if doc_structure.image_info is not None:
-            print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
+        print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
 
     # Convert to DoclingDocument (only if validation passed)
     doc = convert_cvat_to_docling(xml_path, image_path)
@@ -197,11 +195,16 @@ def _test_conversion_with_sample_data(
     return validation_report, doc
 
 
+@pytest.mark.skipif(
+    IS_CI, reason="Skipping test in CI because the test is too heavy."
+)
 def test_cvat_to_docling_conversion():
     """Test CVAT to DoclingDocument conversion for all available cases."""
     # Find all case directories
     root_dir = Path("tests/data/cvat_pdfs_dataset_e2e")
     case_dirs = _find_case_directories(root_dir)
+    output_dir = Path("scratch/cvat_to_docling_converter")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Process each case directory
     for case_dir in case_dirs:
@@ -217,7 +220,7 @@ def test_cvat_to_docling_conversion():
 
             if annotations_xml.exists() and image_path.exists():
                 validation_report, result = _test_conversion_with_sample_data(
-                    annotations_xml, image_path, verbose=True
+                    annotations_xml, image_path, output_dir=output_dir, verbose=True
                 )
                 if validation_report.has_errors():
                     print(f"✗ Validation errors: {validation_report.errors}")

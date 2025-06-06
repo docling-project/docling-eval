@@ -6,8 +6,8 @@ from typing import Dict, List, Optional, Tuple
 from docling_core.types.doc.base import ImageRefMode
 from pydantic import BaseModel
 
-from .cvat_to_docling import convert_cvat_to_docling
-from .parser import find_samples_in_directory
+from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
+from docling_eval.cvat_tools.parser import find_samples_in_directory
 
 
 class ConversionResult(BaseModel):

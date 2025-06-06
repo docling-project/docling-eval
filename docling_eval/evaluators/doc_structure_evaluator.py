@@ -133,7 +133,51 @@ class DocStructureEvaluator(BaseEvaluator):
         dict with keys: ["edit_distance"]
         """
 
+        class LabeledTreeWrapper:
+            def __init__(self, node, source: str):
+                self.node = node  # your actual node
+                self.source = source  # "source" or "target"
+
+            @property
+            def label(self):
+                return self.node.label
+
+            @property
+            def children(self):
+                return [
+                    LabeledTreeWrapper(child, self.source)
+                    for child in self.node.children
+                ]
+
         class StructConfig(PerEditOperationConfig):
+
+            def __init__(
+                self,
+                del_cost: float,
+                ins_cost: float,
+                ren_cost: float,
+                source_doc: DoclingDocument,
+                target_doc: DoclingDocument,
+            ):
+                super().__init__(del_cost, ins_cost, ren_cost)
+                self.source_doc = source_doc
+                self.target_doc = target_doc
+
+            def children(self, node):
+                if node.source == "source":
+                    return [
+                        LabeledTreeWrapper(
+                            child.node.resolve(self.source_doc), "source"
+                        )
+                        for child in node.children
+                    ]
+                else:
+                    return [
+                        LabeledTreeWrapper(
+                            child.node.resolve(self.target_doc), "target"
+                        )
+                        for child in node.children
+                    ]
 
             def rename(self, n1, n2):
                 """
@@ -143,9 +187,15 @@ class DocStructureEvaluator(BaseEvaluator):
                 return 0 if n1.label == n2.label else 1
 
         apted = APTED(
-            true_doc.body,
-            pred_doc.body,
-            StructConfig(del_cost=1.0, ins_cost=1.0, ren_cost=1.0),
+            LabeledTreeWrapper(true_doc.body, "source"),
+            LabeledTreeWrapper(pred_doc.body, "target"),
+            StructConfig(
+                del_cost=1.0,
+                ins_cost=1.0,
+                ren_cost=1.0,
+                source_doc=true_doc,
+                target_doc=pred_doc,
+            ),
         )
         edit_dist = apted.compute_edit_distance()
 
