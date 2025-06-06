@@ -5,9 +5,9 @@ import os
 from pathlib import Path
 from typing import List
 
-from dotenv import load_dotenv
 import pytest
 from docling_core.types.doc.document import ContentLayer
+from dotenv import load_dotenv
 
 from docling_eval.cvat_tools.analysis import (
     apply_reading_order_to_tree,
@@ -204,6 +204,7 @@ def test_analysis_functions(tmp_path):
     )
     apply_reading_order_to_tree(doc.tree_roots, global_ro)
     print_containment_tree(doc.tree_roots, doc.image_info)
+
 
 def test_validation_report(tmp_path):
     """Test validation report generation for DocumentStructure."""

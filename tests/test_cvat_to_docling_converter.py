@@ -4,8 +4,10 @@ import os
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import pytest
 from docling_core.types.doc.base import ImageRefMode
 from docling_core.types.doc.document import DoclingDocument
+from dotenv import load_dotenv
 from PIL import Image as PILImage
 
 from docling_eval.cvat_tools.analysis import (
@@ -18,6 +20,9 @@ from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATValidationReport, ValidationSeverity
 from docling_eval.cvat_tools.tree import build_global_reading_order
 from docling_eval.cvat_tools.validator import Validator
+
+IS_CI = bool(os.getenv("CI"))
+load_dotenv()
 
 
 def _find_case_directories(root_dir: Path) -> List[Path]:
@@ -195,9 +200,7 @@ def _test_conversion_with_sample_data(
     return validation_report, doc
 
 
-@pytest.mark.skipif(
-    IS_CI, reason="Skipping test in CI because the test is too heavy."
-)
+@pytest.mark.skipif(IS_CI, reason="Skipping test in CI because the test is too heavy.")
 def test_cvat_to_docling_conversion():
     """Test CVAT to DoclingDocument conversion for all available cases."""
     # Find all case directories
