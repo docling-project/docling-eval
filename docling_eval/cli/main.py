@@ -65,6 +65,7 @@ from docling_eval.evaluators.markdown_text_evaluator import (
 from docling_eval.evaluators.ocr_evaluator import (
     OcrDatasetEvaluationResult,
     OCREvaluator,
+    OCRVisualizer,
 )
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
@@ -820,8 +821,18 @@ def visualize(
                 fd.write(f"F1 Score: {ocr_evaluation.f1_score:.2f}\n")
                 fd.write(f"Recall: {ocr_evaluation.recall:.2f}\n")
                 fd.write(f"Precision: {ocr_evaluation.precision:.2f}\n")
+
+            _log.info(f"OCR evaluation stats saved to {log_filename}")
+
+            ocr_visualizer = OCRVisualizer()
+            ocr_visualizer(
+                dataset_path=idir,
+                ocr_evaluation_report_path=metrics_filename,
+                output_directory=odir,
+                data_split_name=split,
+            )
         except Exception as e:
-            _log.error(f"Error processing markdown text evaluation: {str(e)}")
+            _log.error(f"Error processing OCR evaluation: {str(e)}")
 
     else:
         _log.error(f"Unsupported modality for visualization: {modality}")

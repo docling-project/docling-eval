@@ -248,21 +248,6 @@ class OCRVisualizer:
         )
         visualizations_output_path.mkdir(parents=True, exist_ok=True)
 
-        document_evaluations_map: Dict[str, DocumentEvaluationEntry] = {}
-        if ocr_evaluation_report_path and ocr_evaluation_report_path.exists():
-            with open(ocr_evaluation_report_path, "r") as report_file:
-                report_content: Dict[str, Any] = json.load(report_file)
-                for eval_item_data in report_content.get("evaluations", []):
-                    try:
-                        doc_entry = DocumentEvaluationEntry.model_validate(
-                            eval_item_data
-                        )
-                        document_evaluations_map[doc_entry.doc_id] = doc_entry
-                    except Exception as e_parse:
-                        _log.warning(
-                            f"Failed to parse document evaluation item: {eval_item_data}. Error: {e_parse}"
-                        )
-
         path_to_parquet_files: str = str(dataset_path / data_split_name / "*.parquet")
         hf_dataset: Dataset = load_dataset(
             "parquet", data_files={data_split_name: path_to_parquet_files}
@@ -283,20 +268,6 @@ class OCRVisualizer:
                     BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
                 )
 
-                page_image_bytes_list: List[Dict[str, bytes]] = []
-                if isinstance(page_images_data, list) and page_images_data:
-                    if (
-                        isinstance(page_images_data[0], dict)
-                        and "bytes" in page_images_data[0]
-                    ):
-                        page_image_bytes_list = page_images_data
-
-                if (
-                    ocr_evaluation_report_path
-                    and doc_id_val not in document_evaluations_map
-                ):
-                    continue
-
                 ground_truth_segmented_pages: Dict[int, SegmentedPage] = {}
                 prediction_segmented_pages: Dict[int, SegmentedPage] = {}
 
@@ -316,16 +287,9 @@ class OCRVisualizer:
                     if parsed_pred_pages:
                         prediction_segmented_pages = parsed_pred_pages
 
-                if not page_image_bytes_list:
-                    _log.warning(
-                        f"No page images found for document {doc_id_val}. Skipping visualization."
-                    )
-                    continue
-
-                image_raw_bytes: bytes = page_image_bytes_list[0]["bytes"]
-                base_image: Image.Image = Image.open(BytesIO(image_raw_bytes)).convert(
-                    "RGB"
-                )
+                base_image: Image.Image = page_images_data[0]
+                if base_image.mode != "RGB":
+                    base_image = base_image.convert("RGB")
 
                 comparison_image: Image.Image = self._render_ocr_comparison_on_image(
                     doc_id_val,
