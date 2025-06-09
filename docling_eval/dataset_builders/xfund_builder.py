@@ -51,6 +51,7 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         split: str = "val",  # XFUND uses "val" instead of "test"
         begin_index: int = 0,
         end_index: int = -1,
+        lang: Optional[str] = None,
     ):
         """
         Initialize the XFUND dataset builder.
@@ -61,6 +62,8 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
             split: Dataset split to use ("val" for XFUND)
             begin_index: Start index for processing (inclusive)
             end_index: End index for processing (exclusive), -1 means process all
+            lang: Specific language to download/process (e.g., "de", "fr").
+                  If None, all languages will be processed.
         """
         super().__init__(
             name="XFUND",
@@ -70,7 +73,7 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
             begin_index=begin_index,
             end_index=end_index,
         )
-        self._langs = [
+        self._supported_langs = [
             "zh",
             "de",
             "es",
@@ -80,11 +83,19 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
             "pt",
         ]  # Fixed supported languages
 
+        if lang and lang not in self._supported_langs:
+            raise ValueError(
+                f"Language '{lang}' is not supported for XFUND. "
+                f"Supported languages are: {self._supported_langs}"
+            )
+        self._lang = lang
         self.must_retrieve = True
 
     def retrieve_input_dataset(self) -> Path:
         """
-        Download and extract the XFUND dataset if needed.
+        Download and extract the XFUND dataset if needed. If a specific
+        language was provided during initialization, only that language's
+        data will be downloaded.
 
         Returns:
             Path to the retrieved dataset
@@ -92,45 +103,51 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         assert isinstance(self.dataset_source, Path)
         dataset_path = self.dataset_source
 
-        # Check if the dataset already exists
-        if not dataset_path.exists() or not (dataset_path / self.split).exists():
-            _log.info(f"Downloading XFUND dataset to {dataset_path}")
+        langs_to_process = [self._lang] if self._lang else self._supported_langs
 
-            # Ensure the dataset path exists
-            dataset_path.mkdir(parents=True, exist_ok=True)
+        # Ensure the dataset path exists
+        dataset_path.mkdir(parents=True, exist_ok=True)
+        split_dir = dataset_path / self.split
+        split_dir.mkdir(exist_ok=True)
 
-            # Create split directory
-            split_dir = dataset_path / self.split
-            split_dir.mkdir(exist_ok=True)
+        # Base URL for XFUND dataset
+        _URL = "https://github.com/doc-analysis/XFUND/releases/download/v1.0/"
 
-            # Base URL for XFUND dataset
-            _URL = "https://github.com/doc-analysis/XFUND/releases/download/v1.0/"
+        # Download manager
+        dl_manager = DownloadManager()
 
-            # Download manager
-            dl_manager = DownloadManager()
+        # Download and process each language
+        for lang in langs_to_process:
+            if (split_dir / f"{lang}.{self.split}.json").exists():
+                _log.info(
+                    f"Dataset for language '{lang}' already found in {split_dir}. Skipping download."
+                )
+                continue
 
-            # Download and process each language
-            for lang in self._langs:
-                try:
-                    # Download JSON annotations
-                    json_url = f"{_URL}{lang}.{self.split}.json"
-                    json_path = dl_manager.download(json_url)
+            _log.info(f"Downloading XFUND dataset for language '{lang}' to {split_dir}")
+            try:
+                # Download JSON annotations
+                json_url = f"{_URL}{lang}.{self.split}.json"
+                json_path = dl_manager.download(json_url)
 
-                    # Copy JSON to the split directory
-                    shutil.copy(json_path, split_dir / f"{lang}.{self.split}.json")
+                # Copy JSON to the split directory
+                shutil.copy(json_path, split_dir / f"{lang}.{self.split}.json")
 
-                    # Download and extract ZIP with images
-                    zip_url = f"{_URL}{lang}.{self.split}.zip"
-                    zip_path = dl_manager.download(zip_url)
+                # Download and extract ZIP with images
+                zip_url = f"{_URL}{lang}.{self.split}.zip"
+                zip_path = dl_manager.download(zip_url)
 
-                    # Extract ZIP contents to split directory
-                    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                        zip_ref.extractall(split_dir)
+                # Extract ZIP contents to split directory
+                with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                    zip_ref.extractall(split_dir)
+                _log.info(
+                    f"Successfully downloaded and extracted data for language '{lang}'."
+                )
 
-                except Exception as e:
-                    _log.error(f"Error downloading {lang} data: {str(e)}")
+            except Exception as e:
+                _log.error(f"Error downloading {lang} data: {str(e)}")
 
-            _log.info(f"XFUND dataset downloaded to {dataset_path}")
+        _log.info(f"XFUND dataset downloaded to {dataset_path}")
 
         self.retrieved = True
         return dataset_path
@@ -345,8 +362,12 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         # Get split directory
         split_dir = self.dataset_source / self.split
 
-        # Load all JSON files in the split directory
-        json_files = list(split_dir.glob("*.json"))
+        # Determine which json files to load based on the lang parameter
+        if self._lang:
+            json_files = list(split_dir.glob(f"{self._lang}.{self.split}.json"))
+        else:
+            json_files = list(split_dir.glob("*.json"))
+
         all_documents = []
 
         for json_file in json_files:
