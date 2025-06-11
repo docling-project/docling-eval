@@ -51,7 +51,7 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         split: str = "val",  # XFUND uses "val" instead of "test"
         begin_index: int = 0,
         end_index: int = -1,
-        lang: Optional[str] = None,
+        lang: Optional[List[str]] = None,
     ):
         """
         Initialize the XFUND dataset builder.
@@ -62,8 +62,8 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
             split: Dataset split to use ("val" for XFUND)
             begin_index: Start index for processing (inclusive)
             end_index: End index for processing (exclusive), -1 means process all
-            lang: Specific language to download/process (e.g., "de", "fr").
-                  If None, all languages will be processed.
+            lang: A list of specific languages to download/process (e.g., ["de", "fr"]).
+                  If None, all supported languages will be processed.
         """
         super().__init__(
             name="XFUND",
@@ -83,19 +83,21 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
             "pt",
         ]  # Fixed supported languages
 
-        if lang and lang not in self._supported_langs:
-            raise ValueError(
-                f"Language '{lang}' is not supported for XFUND. "
-                f"Supported languages are: {self._supported_langs}"
-            )
-        self._lang = lang
+        if lang:
+            unsupported_langs = set(lang) - set(self._supported_langs)
+            if unsupported_langs:
+                raise ValueError(
+                    f"Language(s) '{', '.join(unsupported_langs)}' are not supported for XFUND. "
+                    f"Supported languages are: {self._supported_langs}"
+                )
+        self._langs = lang
         self.must_retrieve = True
 
     def retrieve_input_dataset(self) -> Path:
         """
-        Download and extract the XFUND dataset if needed. If a specific
-        language was provided during initialization, only that language's
-        data will be downloaded.
+        Download and extract the XFUND dataset if needed. If specific
+        language(s) were provided during initialization, only that data
+        will be downloaded.
 
         Returns:
             Path to the retrieved dataset
@@ -103,7 +105,10 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         assert isinstance(self.dataset_source, Path)
         dataset_path = self.dataset_source
 
-        langs_to_process = [self._lang] if self._lang else self._supported_langs
+        # If specific languages are requested, process them; otherwise, process all.
+        langs_to_process = (
+            self._langs if self._langs is not None else self._supported_langs
+        )
 
         # Ensure the dataset path exists
         dataset_path.mkdir(parents=True, exist_ok=True)
@@ -363,9 +368,14 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
         split_dir = self.dataset_source / self.split
 
         # Determine which json files to load based on the lang parameter
-        if self._lang:
-            json_files = list(split_dir.glob(f"{self._lang}.{self.split}.json"))
+        json_files = []
+        if self._langs:
+            for lang_code in self._langs:
+                json_files.extend(
+                    list(split_dir.glob(f"{lang_code}.{self.split}.json"))
+                )
         else:
+            # if no languages are specified, load all
             json_files = list(split_dir.glob("*.json"))
 
         all_documents = []
