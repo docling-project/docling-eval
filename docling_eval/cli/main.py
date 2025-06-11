@@ -66,6 +66,7 @@ from docling_eval.evaluators.markdown_text_evaluator import (
 from docling_eval.evaluators.ocr_evaluator import (
     OcrDatasetEvaluationResult,
     OCREvaluator,
+    OCRVisualizer,
 )
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
@@ -81,8 +82,17 @@ from docling_eval.evaluators.timings_evaluator import (
     DatasetTimingsEvaluation,
     TimingsEvaluator,
 )
+from docling_eval.prediction_providers.aws_prediction_provider import (
+    AWSTextractPredictionProvider,
+)
+from docling_eval.prediction_providers.azure_prediction_provider import (
+    AzureDocIntelligencePredictionProvider,
+)
 from docling_eval.prediction_providers.docling_provider import DoclingPredictionProvider
 from docling_eval.prediction_providers.file_provider import FilePredictionProvider
+from docling_eval.prediction_providers.google_prediction_provider import (
+    GoogleDocAIPredictionProvider,
+)
 from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
@@ -396,6 +406,21 @@ def get_prediction_provider(
 
     elif provider_type == PredictionProviderType.TABLEFORMER:
         return TableFormerPredictionProvider(
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+    elif provider_type == PredictionProviderType.GOOGLE:
+        return GoogleDocAIPredictionProvider(
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+    elif provider_type == PredictionProviderType.AWS:
+        return AWSTextractPredictionProvider(
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
+    elif provider_type == PredictionProviderType.AZURE:
+        return AzureDocIntelligencePredictionProvider(
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
         )
@@ -807,8 +832,18 @@ def visualize(
                 fd.write(f"F1 Score: {ocr_evaluation.f1_score:.2f}\n")
                 fd.write(f"Recall: {ocr_evaluation.recall:.2f}\n")
                 fd.write(f"Precision: {ocr_evaluation.precision:.2f}\n")
+
+            _log.info(f"OCR evaluation stats saved to {log_filename}")
+
+            ocr_visualizer = OCRVisualizer()
+            ocr_visualizer(
+                dataset_path=idir,
+                ocr_evaluation_report_path=metrics_filename,
+                output_directory=odir,
+                data_split_name=split,
+            )
         except Exception as e:
-            _log.error(f"Error processing markdown text evaluation: {str(e)}")
+            _log.error(f"Error processing OCR evaluation: {str(e)}")
 
     else:
         _log.error(f"Unsupported modality for visualization: {modality}")

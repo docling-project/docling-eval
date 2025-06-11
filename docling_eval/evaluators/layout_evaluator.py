@@ -37,7 +37,7 @@ class ClassLayoutEvaluation(BaseModel):
 
     name: str
     label: str
-    value: float  # mAP[0.5:0.05:0.95]
+    value: float  # AP[0.5:0.05:0.95]
 
 
 class ImageLayoutEvaluation(UnitEvaluation):
@@ -48,8 +48,8 @@ class ImageLayoutEvaluation(UnitEvaluation):
     name: str
     value: float  # Area weighted average IoU for label-matched GT/pred bboxes for IoU thres = 0.5
 
-    map_val: float  # mAP[0.5:0.05:0.95]
-    map_50: float  # AP at IoU thres=0.5
+    map_val: float  # AP at IoU thres=0.50
+    map_50: float  # AP at IoU thres=0.50
     map_75: float  # AP at IoU thres=0.75
 
     # Weighted average IoU for the page bboxes with matching labels (between GT and pred)
@@ -261,7 +261,7 @@ class LayoutEvaluator(BaseEvaluator):
                 label = intersection_labels[label_idx].value
                 evaluations_per_class.append(
                     ClassLayoutEvaluation(
-                        name="Class mAP[0.5:0.95]",
+                        name="Class AP[0.5:0.95]",
                         label=label,
                         value=class_map,
                     )
@@ -451,6 +451,7 @@ class LayoutEvaluator(BaseEvaluator):
             weights.append(weight)
             weights_sum += weight
 
+            # Match the pred_box with the first gt_box that has the same label and IoU > thres
             for i, (gt_box, gt_label) in enumerate(zip(gt_boxes, gt_labels)):
                 if i not in matched_gt and pred_label == gt_label:
                     iou = self._compute_iou(pred_box, gt_box)
@@ -568,7 +569,7 @@ class LayoutEvaluator(BaseEvaluator):
         true_doc: DoclingDocument,
         pred_doc: DoclingDocument,
         filter_labels: List[DocItemLabel],
-    ) -> tuple[list[dict[str, torch.Tensor]], list[dict[str, torch.Tensor]]]:
+    ) -> Tuple[List[Dict[str, torch.Tensor]], List[Dict[str, torch.Tensor]]]:
         r"""
         Filter to keep only bboxes from the given labels
         Convert each bbox to top-left-origin, normalize to page size and scale 100
@@ -586,6 +587,7 @@ class LayoutEvaluator(BaseEvaluator):
         true_pages_to_objects: Dict[int, List[DocItem]] = {}
         pred_pages_to_objects: Dict[int, List[DocItem]] = {}
 
+        # For all pages, collect those DocItem items that have labels from the filtered labels
         for item, level in true_doc.iterate_items():
             if (
                 isinstance(item, DocItem)
@@ -608,8 +610,11 @@ class LayoutEvaluator(BaseEvaluator):
                     else:
                         pred_pages_to_objects[prov.page_no].append(item)
 
-        ground_truths = []
-        predictions = []
+        # {"boxes": tensor, "labels": tensor} per page
+        ground_truths: List[Dict[str, torch.Tensor]] = []
+
+        # {"boxes": tensor, "labels": tensor, "scores": tensor} per page
+        predictions: List[Dict[str, torch.Tensor]] = []
 
         # DEBUG
         # true_tl_bboxes = []
