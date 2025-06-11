@@ -98,6 +98,62 @@ def closest_common_ancestor(nodes: List[TreeNode]) -> Optional[TreeNode]:
     return None
 
 
+def apply_reading_order_to_tree(
+    tree_roots: List[TreeNode],
+    global_order: List[int],
+) -> List[TreeNode]:
+    """Reorder the children of each container node in the tree to match the global reading order.
+
+    This returns a new reordered copy of tree_roots and modifies the children lists in-place.
+
+    Args:
+        tree_roots: List of root nodes to reorder
+        global_order: List of element IDs in reading order
+
+    Returns:
+        New list of reordered tree roots
+    """
+    if not tree_roots or not global_order:
+        return tree_roots[:]
+
+    def collect_all_nodes(roots: List[TreeNode]) -> List[TreeNode]:
+        stack = list(roots)
+        all_nodes = []
+        while stack:
+            node = stack.pop()
+            all_nodes.append(node)
+            stack.extend(node.children)
+        return all_nodes
+
+    id_to_node = {node.element.id: node for node in collect_all_nodes(tree_roots)}
+
+    # First, reorder the tree roots themselves
+    ordered_roots = [
+        id_to_node[root_id]
+        for root_id in global_order
+        if any(root.element.id == root_id for root in tree_roots)
+    ]
+    remaining_roots = [root for root in tree_roots if root not in ordered_roots]
+    new_tree_roots = ordered_roots + remaining_roots
+
+    # Then reorder children of each node
+    for node in id_to_node.values():
+        if node.children:
+            # Only keep children that are in global_order, in the right order
+            ordered_children = [
+                id_to_node[child_id]
+                for child_id in global_order
+                if any(child.element.id == child_id for child in node.children)
+            ]
+            # Optionally, append any children not in global_order
+            remaining = [
+                child for child in node.children if child not in ordered_children
+            ]
+            node.children = ordered_children + remaining
+
+    return new_tree_roots
+
+
 def build_global_reading_order(
     paths: List[CVATAnnotationPath],
     path_to_elements: Dict[int, List[int]],

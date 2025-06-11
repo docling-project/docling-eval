@@ -38,11 +38,11 @@ from docling_core.types.doc.page import (
 )
 from PIL import Image as PILImage
 
-from docling_eval.cvat_tools.analysis import apply_reading_order_to_tree
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATElement
 from docling_eval.cvat_tools.tree import (
     TreeNode,
+    apply_reading_order_to_tree,
     build_global_reading_order,
     find_node_by_element_id,
 )

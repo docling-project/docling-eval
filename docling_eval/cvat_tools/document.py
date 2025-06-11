@@ -15,7 +15,8 @@ from .path_mappings import (
     associate_paths_to_containers,
     map_path_points_to_elements,
 )
-from .tree import TreeNode, build_containment_tree
+from .tree import TreeNode, build_containment_tree, find_node_by_element_id
+from .utils import DEFAULT_PROXIMITY_THRESHOLD
 
 
 @dataclass
@@ -39,7 +40,7 @@ class DocumentStructure:
         cls,
         xml_path: Path,
         image_filename: str,
-        proximity_thresh: float = 5.0,
+        proximity_thresh: float = DEFAULT_PROXIMITY_THRESHOLD,
     ) -> "DocumentStructure":
         """Construct a DocumentStructure from a CVAT XML file.
 
@@ -84,13 +85,4 @@ class DocumentStructure:
 
     def get_node_by_element_id(self, element_id: int) -> Optional[TreeNode]:
         """Get a tree node by its element ID."""
-
-        def find_node(nodes: List[TreeNode]) -> Optional[TreeNode]:
-            for node in nodes:
-                if node.element.id == element_id:
-                    return node
-                if found := find_node(node.children):
-                    return found
-            return None
-
-        return find_node(self.tree_roots)
+        return find_node_by_element_id(self.tree_roots, element_id)

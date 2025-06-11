@@ -9,6 +9,13 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from .models import CVATAnnotationPath, CVATElement
 from .tree import TreeNode, closest_common_ancestor, find_node_by_element_id
+from .utils import (
+    DEFAULT_PROXIMITY_THRESHOLD,
+    get_deepest_element_at_point,
+    is_caption_element,
+    is_container_element,
+    is_footnote_element,
+)
 
 
 @dataclass
@@ -25,7 +32,7 @@ class PathMappings:
 def map_path_points_to_elements(
     paths: List[CVATAnnotationPath],
     elements: List[CVATElement],
-    proximity_thresh: float = 5.0,
+    proximity_thresh: float = DEFAULT_PROXIMITY_THRESHOLD,
 ) -> PathMappings:
     """Map all path types to their connected elements.
 
@@ -46,19 +53,8 @@ def map_path_points_to_elements(
     for path in paths:
         touched_elements: List[int] = []
         for pt in path.points:
-            # Find all elements whose bbox contains the point
-            candidates = []
-            for el in elements:
-                bbox = el.bbox
-                if (
-                    bbox.l - proximity_thresh <= pt[0] <= bbox.r + proximity_thresh
-                    and bbox.t - proximity_thresh <= pt[1] <= bbox.b + proximity_thresh
-                ):
-                    candidates.append(el)
-
-            if candidates:
-                # Pick the deepest (smallest area) element
-                deepest = min(candidates, key=lambda e: e.bbox.area())
+            deepest = get_deepest_element_at_point(pt, elements, proximity_thresh)
+            if deepest:
                 eid = deepest.id
                 # Only add if not a duplicate in sequence
                 if not touched_elements or touched_elements[-1] != eid:
@@ -93,7 +89,7 @@ def map_path_points_to_elements(
 def associate_paths_to_containers(
     mappings: PathMappings,
     tree_roots: List[TreeNode],
-    paths: List[CVATAnnotationPath],  # Add paths parameter
+    paths: List[CVATAnnotationPath],
 ) -> Tuple[PathMappings, Dict[int, TreeNode]]:
     """Associate paths to their closest parent containers.
 
@@ -182,27 +178,16 @@ def validate_caption_footnote_paths(
     errors = []
     id_to_element = {el.id: el for el in elements}
 
-    # Helper to check if element is a container
-    def is_container(el: CVATElement) -> bool:
-        return el.label in ["table", "picture", "form", "code"]
-
-    # Helper to check if element is a caption/footnote
-    def is_caption(el: CVATElement) -> bool:
-        return el.label == "caption"
-
-    def is_footnote(el: CVATElement) -> bool:
-        return el.label == "footnote"
-
     # Validate to_caption paths
     for path_id, (container_id, caption_id) in to_caption.items():
         container = id_to_element.get(container_id)
         caption = id_to_element.get(caption_id)
 
-        if not container or not is_container(container):
+        if not container or not is_container_element(container):
             errors.append(
                 f"Caption path {path_id}: Starting point is not a container element"
             )
-        if not caption or not is_caption(caption):
+        if not caption or not is_caption_element(caption):
             errors.append(f"Caption path {path_id}: End point is not a caption element")
 
     # Validate to_footnote paths
@@ -210,11 +195,11 @@ def validate_caption_footnote_paths(
         container = id_to_element.get(container_id)
         footnote = id_to_element.get(footnote_id)
 
-        if not container or not is_container(container):
+        if not container or not is_container_element(container):
             errors.append(
                 f"Footnote path {path_id}: Starting point is not a container element"
             )
-        if not footnote or not is_footnote(footnote):
+        if not footnote or not is_footnote_element(footnote):
             errors.append(
                 f"Footnote path {path_id}: End point is not a footnote element"
             )

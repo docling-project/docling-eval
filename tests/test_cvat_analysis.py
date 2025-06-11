@@ -10,13 +10,16 @@ from docling_core.types.doc.document import ContentLayer
 from dotenv import load_dotenv
 
 from docling_eval.cvat_tools.analysis import (
-    apply_reading_order_to_tree,
     print_containment_tree,
     print_elements_and_paths,
 )
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATAnnotationPath, CVATElement
-from docling_eval.cvat_tools.tree import TreeNode, build_global_reading_order
+from docling_eval.cvat_tools.tree import (
+    TreeNode,
+    apply_reading_order_to_tree,
+    build_global_reading_order,
+)
 from docling_eval.cvat_tools.validator import Validator
 
 IS_CI = bool(os.getenv("CI"))

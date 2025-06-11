@@ -10,6 +10,7 @@ from .models import (
     ValidationSeverity,
 )
 from .path_mappings import validate_caption_footnote_paths
+from .utils import DEFAULT_PROXIMITY_THRESHOLD, find_elements_containing_point
 
 
 class ValidationRule(ABC):
@@ -173,6 +174,9 @@ class MergeGroupPathsRule(ValidationRule):
         path_type: str,
     ) -> List[CVATValidationError]:
         """Validate that elements in path mappings have same label and content_layer."""
+        if not elements or not path_mappings:
+            return []
+
         errors = []
         id_to_element = {el.id: el for el in elements}
 
@@ -180,10 +184,32 @@ class MergeGroupPathsRule(ValidationRule):
             if len(el_ids) < 2:
                 continue
 
+            # Check that all elements exist
+            first_el = id_to_element.get(el_ids[0])
+            if not first_el:
+                errors.append(
+                    CVATValidationError(
+                        error_type=f"{path_type}_path_missing_element",
+                        message=f"{path_type.capitalize()} path {path_id}: Element {el_ids[0]} not found",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path_id,
+                    )
+                )
+                continue
+
             # Check same label and content_layer
-            first_el = id_to_element[el_ids[0]]
             for el_id in el_ids[1:]:
-                el = id_to_element[el_id]
+                el = id_to_element.get(el_id)
+                if not el:
+                    errors.append(
+                        CVATValidationError(
+                            error_type=f"{path_type}_path_missing_element",
+                            message=f"{path_type.capitalize()} path {path_id}: Element {el_id} not found",
+                            severity=ValidationSeverity.ERROR,
+                            path_id=path_id,
+                        )
+                    )
+                    continue
                 if el.label != first_el.label:
                     errors.append(
                         CVATValidationError(
@@ -231,21 +257,12 @@ class ControlPointsHitElementsRule(ValidationRule):
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         errors = []
-        proximity_thresh = 5.0  # Should match the threshold used in mapping
 
         for path in doc.paths:
             for i, pt in enumerate(path.points):
-                # Find all elements whose bbox contains the point
-                candidates = []
-                for el in doc.elements:
-                    bbox = el.bbox
-                    if (
-                        bbox.l - proximity_thresh <= pt[0] <= bbox.r + proximity_thresh
-                        and bbox.t - proximity_thresh
-                        <= pt[1]
-                        <= bbox.b + proximity_thresh
-                    ):
-                        candidates.append(el)
+                candidates = find_elements_containing_point(
+                    pt, doc.elements, DEFAULT_PROXIMITY_THRESHOLD
+                )
 
                 if not candidates:
                     errors.append(

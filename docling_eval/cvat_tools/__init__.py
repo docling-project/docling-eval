@@ -19,11 +19,7 @@ Usage:
     report = validator.validate_sample("sample_name", doc)
 """
 
-from .analysis import (
-    apply_reading_order_to_tree,
-    print_containment_tree,
-    print_elements_and_paths,
-)
+from .analysis import print_containment_tree, print_elements_and_paths
 from .document import DocumentStructure
 from .models import (
     CVATAnnotationPath,
@@ -41,7 +37,21 @@ from .path_mappings import (
     map_path_points_to_elements,
     validate_caption_footnote_paths,
 )
-from .tree import TreeNode, build_containment_tree, build_global_reading_order
+from .tree import (
+    TreeNode,
+    apply_reading_order_to_tree,
+    build_containment_tree,
+    build_global_reading_order,
+)
+from .utils import (
+    DEFAULT_PROXIMITY_THRESHOLD,
+    find_elements_containing_point,
+    get_deepest_element_at_point,
+    is_caption_element,
+    is_container_element,
+    is_footnote_element,
+    validate_element_types,
+)
 from .validator import (
     CaptionFootnotePathsRule,
     ControlPointsHitElementsRule,
@@ -75,6 +85,7 @@ __all__ = [
     "TreeNode",
     "build_containment_tree",
     "build_global_reading_order",
+    "apply_reading_order_to_tree",
     # Path Mappings
     "PathMappings",
     "map_path_points_to_elements",
@@ -96,5 +107,12 @@ __all__ = [
     # Analysis
     "print_elements_and_paths",
     "print_containment_tree",
-    "apply_reading_order_to_tree",
+    # Utils
+    "DEFAULT_PROXIMITY_THRESHOLD",
+    "find_elements_containing_point",
+    "get_deepest_element_at_point",
+    "is_caption_element",
+    "is_container_element",
+    "is_footnote_element",
+    "validate_element_types",
 ]

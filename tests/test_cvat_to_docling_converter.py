@@ -11,14 +11,16 @@ from dotenv import load_dotenv
 from PIL import Image as PILImage
 
 from docling_eval.cvat_tools.analysis import (
-    apply_reading_order_to_tree,
     print_containment_tree,
     print_elements_and_paths,
 )
 from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATValidationReport, ValidationSeverity
-from docling_eval.cvat_tools.tree import build_global_reading_order
+from docling_eval.cvat_tools.tree import (
+    apply_reading_order_to_tree,
+    build_global_reading_order,
+)
 from docling_eval.cvat_tools.validator import Validator
 
 IS_CI = bool(os.getenv("CI"))
