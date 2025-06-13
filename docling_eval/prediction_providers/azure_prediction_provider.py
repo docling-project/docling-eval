@@ -40,7 +40,10 @@ from docling_eval.datamodels.types import (
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import from_pil_to_base64uri
+from docling_eval.utils.utils import (
+    does_intersection_area_exceed_threshold,
+    from_pil_to_base64uri,
+)
 
 # from docling_core.types.doc.labels import DocItemLabel
 
@@ -225,6 +228,14 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 b=bbox["b"],
                 coord_origin=CoordOrigin.TOPLEFT,
             )
+
+            if any(
+                does_intersection_area_exceed_threshold(
+                    bbox_obj, table.prov[0].bbox, 0.6
+                )
+                for table in doc.tables
+            ):
+                continue
 
             prov = ProvenanceItem(
                 page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))

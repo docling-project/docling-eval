@@ -35,7 +35,10 @@ from docling_eval.datamodels.types import PredictionFormats, PredictionProviderT
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import from_pil_to_base64uri
+from docling_eval.utils.utils import (
+    does_intersection_area_exceed_threshold,
+    from_pil_to_base64uri,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -585,78 +588,6 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 )
                 segmented_pages[page_no] = seg_page
 
-            for paragraph in page.get("paragraphs", []):
-                text_content = ""
-                if "layout" in paragraph and "textAnchor" in paragraph["layout"]:
-                    for text_segment in paragraph["layout"]["textAnchor"].get(
-                        "textSegments", []
-                    ):
-                        if "endIndex" in text_segment:
-                            start_index = int(text_segment.get("startIndex", 0))
-                            end_index = int(text_segment.get("endIndex", 0))
-                            if document.get("text") and start_index < len(
-                                document["text"]
-                            ):
-                                text_content += document["text"][start_index:end_index]
-
-                para_bbox = self.extract_bbox_from_vertices(
-                    paragraph.get("layout", {})
-                    .get("boundingPoly", {})
-                    .get("vertices", [])
-                )
-
-                bbox_obj = BoundingBox(
-                    l=para_bbox["l"],
-                    t=para_bbox["t"],
-                    r=para_bbox["r"],
-                    b=para_bbox["b"],
-                    coord_origin=CoordOrigin.TOPLEFT,
-                )
-
-                prov = ProvenanceItem(
-                    page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
-                )
-
-                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
-
-            for token in page.get("tokens", []):
-                text_content = ""
-                if "layout" in token and "textAnchor" in token["layout"]:
-                    for text_segment in token["layout"]["textAnchor"].get(
-                        "textSegments", []
-                    ):
-                        if "endIndex" in text_segment:
-                            start_index = int(text_segment.get("startIndex", 0))
-                            end_index = int(text_segment.get("endIndex", 0))
-                            if document.get("text") and start_index < len(
-                                document["text"]
-                            ):
-                                text_content += document["text"][start_index:end_index]
-
-                vertices = (
-                    token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
-                )
-                token_bbox = (
-                    None if not vertices else self.extract_bbox_from_vertices(vertices)
-                )
-
-                if text_content and token_bbox is not None:
-                    bbox_obj = BoundingBox(
-                        l=token_bbox["l"],
-                        t=token_bbox["t"],
-                        r=token_bbox["r"],
-                        b=token_bbox["b"],
-                        coord_origin=CoordOrigin.TOPLEFT,
-                    )
-                    segmented_pages[page_no].word_cells.append(
-                        TextCell(
-                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
-                            text=text_content,
-                            orig=text_content,
-                            from_ocr=False,
-                        )
-                    )
-
             for table in page.get("tables", []):
                 table_bbox = self.extract_bbox_from_vertices(
                     table.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
@@ -704,6 +635,86 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     )
 
                 doc.add_table(data=table_data, prov=table_prov)
+
+            for paragraph in page.get("paragraphs", []):
+                text_content = ""
+                if "layout" in paragraph and "textAnchor" in paragraph["layout"]:
+                    for text_segment in paragraph["layout"]["textAnchor"].get(
+                        "textSegments", []
+                    ):
+                        if "endIndex" in text_segment:
+                            start_index = int(text_segment.get("startIndex", 0))
+                            end_index = int(text_segment.get("endIndex", 0))
+                            if document.get("text") and start_index < len(
+                                document["text"]
+                            ):
+                                text_content += document["text"][start_index:end_index]
+
+                para_bbox = self.extract_bbox_from_vertices(
+                    paragraph.get("layout", {})
+                    .get("boundingPoly", {})
+                    .get("vertices", [])
+                )
+
+                bbox_obj = BoundingBox(
+                    l=para_bbox["l"],
+                    t=para_bbox["t"],
+                    r=para_bbox["r"],
+                    b=para_bbox["b"],
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                if any(
+                    does_intersection_area_exceed_threshold(
+                        bbox_obj, table.prov[0].bbox, 0.8
+                    )
+                    for table in doc.tables
+                ):
+                    continue
+
+                prov = ProvenanceItem(
+                    page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
+                )
+
+                doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+
+            for token in page.get("tokens", []):
+                text_content = ""
+                if "layout" in token and "textAnchor" in token["layout"]:
+                    for text_segment in token["layout"]["textAnchor"].get(
+                        "textSegments", []
+                    ):
+                        if "endIndex" in text_segment:
+                            start_index = int(text_segment.get("startIndex", 0))
+                            end_index = int(text_segment.get("endIndex", 0))
+                            if document.get("text") and start_index < len(
+                                document["text"]
+                            ):
+                                text_content += document["text"][start_index:end_index]
+
+                vertices = (
+                    token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
+                )
+                token_bbox = (
+                    None if not vertices else self.extract_bbox_from_vertices(vertices)
+                )
+
+                if text_content and token_bbox is not None:
+                    bbox_obj = BoundingBox(
+                        l=token_bbox["l"],
+                        t=token_bbox["t"],
+                        r=token_bbox["r"],
+                        b=token_bbox["b"],
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+                    segmented_pages[page_no].word_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            from_ocr=False,
+                        )
+                    )
 
             segmented_pages[page_no] = self._word_merger.apply_word_merging_to_page(
                 segmented_pages[page_no]
