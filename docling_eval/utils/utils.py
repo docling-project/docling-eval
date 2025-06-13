@@ -633,3 +633,19 @@ def modalities_of_prediction_type(
         return None
 
     return prediction_provider_class.prediction_modalities
+
+
+def does_intersection_area_exceed_threshold(
+    first_bbox: BoundingBox, second_bbox: BoundingBox, intersection_threshold: float
+) -> bool:
+    r"""
+    Checks if the ratio of intersection area over area of the first bbox exceeds the specified threshold
+    """
+    first_bbox_area = (first_bbox.r - first_bbox.l) * (first_bbox.b - first_bbox.t)
+    intersection_area = first_bbox.intersection_area_with(second_bbox)
+
+    return (
+        intersection_area / first_bbox_area > intersection_threshold
+        if first_bbox_area > 0
+        else False
+    )
