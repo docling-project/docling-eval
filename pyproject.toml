@@ -136,6 +136,7 @@ module = [
     "tqdm.*",
     "azure.*",
     "google.*",
+    "pycocotools.*",
 ]
 ignore_missing_imports = true
 
