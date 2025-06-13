@@ -16,6 +16,7 @@ from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 _log = logging.getLogger(__name__)
 
 
+# If the original COCO dataset does not call all categories (e.g. DLNv1), the mapping is ignored
 DOCLING_LABELS_TO_COCO_CATEGORIES: Dict[DocItemLabel, str] = {
     DocItemLabel.CAPTION: "Caption",
     DocItemLabel.FOOTNOTE: "Footnote",
@@ -144,6 +145,7 @@ class DoclingEvalCOCOExporter:
         labels_to_category_ids: Dict[DocItemLabel, int] = {
             label: category_to_id[category]
             for label, category in labels_to_categories.items()
+            if category in category_to_id
         }
 
         # Load the HF dataset
@@ -218,13 +220,13 @@ class DoclingEvalCOCOExporter:
             if not isinstance(item, DocItem):
                 continue
             label = item.label
-            category_id = labels_to_category_ids.get(label)
+            category_id = labels_to_category_ids.get(label, -1)
 
             # Skip label without mapping into a COCO categories
-            if not category_id:
+            if category_id == -1:
                 _log.error(
-                    "Skip prediction that does not map to COCO categories: '%s'",
-                    label.value,
+                    "Skip prediction with label that does not map to COCO categories: '%s'",
+                    label,
                 )
                 continue
 
