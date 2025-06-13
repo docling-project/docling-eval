@@ -644,4 +644,8 @@ def does_intersection_area_exceed_threshold(
     first_bbox_area = (first_bbox.r - first_bbox.l) * (first_bbox.b - first_bbox.t)
     intersection_area = first_bbox.intersection_area_with(second_bbox)
 
-    return intersection_area / first_bbox_area > intersection_threshold
+    return (
+        intersection_area / first_bbox_area > intersection_threshold
+        if first_bbox_area > 0
+        else False
+    )
