@@ -508,7 +508,26 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
             }
         return {"l": 0, "t": 0, "r": 0, "b": 0}
 
-    def process_table_row(self, row, row_index, document, table_data, is_header=False):
+    def extract_bbox_from_normalized_vertices(self, normalized_vertices, width, height):
+        if len(normalized_vertices) >= 4:
+            return {
+                "l": normalized_vertices[0].get("x", 0) * width,
+                "t": normalized_vertices[0].get("y", 0) * height,
+                "r": normalized_vertices[2].get("x", 0) * width,
+                "b": normalized_vertices[2].get("y", 0) * height,
+            }
+        return {"l": 0, "t": 0, "r": 0, "b": 0}
+
+    def process_table_row(
+        self,
+        row,
+        row_index,
+        document,
+        table_data,
+        page_width,
+        page_height,
+        is_header=False,
+    ):
         for cell_index, cell in enumerate(row.get("cells", [])):
             cell_text_content = ""
             if "layout" in cell and "textAnchor" in cell["layout"]:
@@ -520,9 +539,22 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     if document.get("text") and start_index < len(document["text"]):
                         cell_text_content += document["text"][start_index:end_index]
 
-            cell_bbox = self.extract_bbox_from_vertices(
+            vertices = (
                 cell.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
             )
+            normalized_vertices = (
+                cell.get("layout", {})
+                .get("boundingPoly", {})
+                .get("normalizedVertices", [])
+            )
+
+            if vertices:
+                cell_bbox = self.extract_bbox_from_vertices(vertices)
+            else:
+                cell_bbox = self.extract_bbox_from_normalized_vertices(
+                    normalized_vertices, page_width, page_height
+                )
+
             row_span = cell.get("rowSpan", 1)
             col_span = cell.get("colSpan", 1)
 
@@ -589,9 +621,22 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                 segmented_pages[page_no] = seg_page
 
             for table in page.get("tables", []):
-                table_bbox = self.extract_bbox_from_vertices(
+
+                vertices = (
                     table.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
                 )
+                normalized_vertices = (
+                    table.get("layout", {})
+                    .get("boundingPoly", {})
+                    .get("normalizedVertices", [])
+                )
+
+                if vertices:
+                    table_bbox = self.extract_bbox_from_vertices(vertices)
+                else:
+                    table_bbox = self.extract_bbox_from_normalized_vertices(
+                        normalized_vertices, page_width, page_height
+                    )
 
                 num_rows = len(table.get("headerRows", [])) + len(
                     table.get("bodyRows", [])
@@ -621,7 +666,13 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     table_data.num_cols = num_cols
 
                     self.process_table_row(
-                        row, row_index, document, table_data, is_header=True
+                        row,
+                        row_index,
+                        document,
+                        table_data,
+                        page_width,
+                        page_height,
+                        is_header=True,
                     )
 
                 header_row_count = len(table.get("headerRows", []))
@@ -631,7 +682,13 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     table_data.num_cols = num_cols
 
                     self.process_table_row(
-                        row, actual_row_index, document, table_data, is_header=False
+                        row,
+                        actual_row_index,
+                        document,
+                        table_data,
+                        page_width,
+                        page_height,
+                        is_header=False,
                     )
 
                 doc.add_table(data=table_data, prov=table_prov)
@@ -650,11 +707,23 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                             ):
                                 text_content += document["text"][start_index:end_index]
 
-                para_bbox = self.extract_bbox_from_vertices(
+                vertices = (
                     paragraph.get("layout", {})
                     .get("boundingPoly", {})
                     .get("vertices", [])
                 )
+                normalized_vertices = (
+                    paragraph.get("layout", {})
+                    .get("boundingPoly", {})
+                    .get("normalizedVertices", [])
+                )
+
+                if vertices:
+                    para_bbox = self.extract_bbox_from_vertices(vertices)
+                else:
+                    para_bbox = self.extract_bbox_from_normalized_vertices(
+                        normalized_vertices, page_width, page_height
+                    )
 
                 bbox_obj = BoundingBox(
                     l=para_bbox["l"],
@@ -692,14 +761,26 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                             ):
                                 text_content += document["text"][start_index:end_index]
 
-                vertices = (
-                    token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
-                )
                 token_bbox = (
                     None if not vertices else self.extract_bbox_from_vertices(vertices)
                 )
+                vertices = (
+                    token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
+                )
+                normalized_vertices = (
+                    token.get("layout", {})
+                    .get("boundingPoly", {})
+                    .get("normalizedVertices", [])
+                )
 
-                if text_content and token_bbox is not None:
+                if vertices:
+                    token_bbox = self.extract_bbox_from_vertices(vertices)
+                else:
+                    token_bbox = self.extract_bbox_from_normalized_vertices(
+                        normalized_vertices, page_width, page_height
+                    )
+
+                if text_content and token_bbox:
                     bbox_obj = BoundingBox(
                         l=token_bbox["l"],
                         t=token_bbox["t"],
