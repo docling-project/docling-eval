@@ -3,7 +3,7 @@ import logging
 import platform
 from typing import Dict, List, Optional, Set
 
-from docling.datamodel.base_models import InputFormat
+from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
@@ -108,11 +108,28 @@ class DoclingPredictionProvider(BasePredictionProvider):
             record, res.document, None, res.timings
         )
         pred_record.predicted_segmented_pages = {
-            p.page_no: p.parsed_page for p in res.pages if p.parsed_page is not None
+            p.page_no: self._set_word_cells(p) for p in res.pages if p.parsed_page
         }
         pred_record.status = res.status
 
         return pred_record
+
+    def _set_word_cells(self, page: Page):
+        # NOTE: Conditionally populates parsed_page.word_cells as a temporary solution.
+        # This method checks if `word_cells` is already populated (likely from a
+        # programmatic PDF). If so, it preserves the existing cells. If not
+        # (likely an OCR-only document), it populates `word_cells` from `page.cells`
+        # to unblock downstream evaluation tasks.
+        if page.parsed_page is None:
+            _log.warning(
+                f"Page {page.page_no} has no parsed_page, cannot set word_cells."
+            )
+            return page.parsed_page
+
+        if not page.parsed_page.word_cells:
+            page.parsed_page.word_cells = page.cells
+
+        return page.parsed_page
 
     def info(self) -> Dict:
         """Get information about the prediction provider."""
