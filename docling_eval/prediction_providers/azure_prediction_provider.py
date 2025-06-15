@@ -8,6 +8,7 @@ from typing import Dict, Optional, Set, Tuple
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeOutputOption
 from docling.datamodel.base_models import ConversionStatus
+
 # from docling_core.types import DoclingDocument
 from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
