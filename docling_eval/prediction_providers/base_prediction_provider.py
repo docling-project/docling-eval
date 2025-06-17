@@ -165,8 +165,8 @@ class BasePredictionProvider:
                 / f"{prediction_record.doc_id}.html",
                 true_doc=gt_doc,
                 pred_doc=pred_doc,
-                true_labels=self.true_labels,
-                pred_labels=self.pred_labels,
+                # true_labels=self.true_labels,
+                # pred_labels=self.pred_labels,
                 draw_reading_order=True,
             )
 
