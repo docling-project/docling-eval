@@ -12,7 +12,10 @@ from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
 from pydantic import BaseModel
 
-from docling_eval.datamodels.dataset_record import DatasetRecord
+from docling_eval.datamodels.dataset_record import (
+    DatasetRecord,
+    DatasetRecordWithPrediction,
+)
 from docling_eval.prediction_providers.base_prediction_provider import (
     TRUE_HTML_EXPORT_LABELS,
 )
@@ -327,7 +330,10 @@ class BaseEvaluationDatasetBuilder:
                     """
 
             save_shard_to_disk(
-                items=record_list, dataset_path=test_dir, shard_id=chunk_count
+                items=record_list,
+                dataset_path=test_dir,
+                shard_id=chunk_count,
+                features=DatasetRecord.features(),
             )
             count += len(record_list)
             chunk_count += 1

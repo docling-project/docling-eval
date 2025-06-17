@@ -288,7 +288,11 @@ class DocLayNetV1DatasetBuilder(BaseEvaluationDatasetBuilder):
         if self.dataset_local_path is not None:
             path = str(self.dataset_local_path)
         # Load dataset from the retrieved path
-        ds = load_dataset(path, split=self.split)
+        ds = load_dataset(
+            path,
+            data_files={self.split: f"data/{self.split}-*.parquet"},
+            split=self.split,
+        )
 
         # Apply HuggingFace's select method for index ranges
         total_ds_len = len(ds)

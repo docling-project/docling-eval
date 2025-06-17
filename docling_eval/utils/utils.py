@@ -431,26 +431,25 @@ def save_shard_to_disk(
     shard_id: int = 0,
     features: Optional[Features] = None,
     shard_format: str = "parquet",
-):
-    """Save shard of to disk."""
+) -> None:
+    """Save shard to disk."""
+    if not items:
+        return
 
-    batch = Dataset.from_list(items)  # , features=features)
+    # Use features if provided to avoid schema inference
+    batch = Dataset.from_list(items, features=features)
 
     output_file = dataset_path / f"shard_{thread_id:06}_{shard_id:06}.{shard_format}"
     if shard_format == "json":
         batch.to_json(output_file)
-
     elif shard_format == "parquet":
         batch.to_parquet(output_file)
-
     else:
         raise ValueError(f"Unsupported shard_format: {shard_format}")
 
     logging.info(f"Saved shard {shard_id} to {output_file} with {len(items)} documents")
 
     shard_id += 1
-
-    return shard_id, [], 0
 
 
 def dataset_exists(

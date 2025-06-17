@@ -395,7 +395,10 @@ class BasePredictionProvider:
             record_chunk = [r.as_record_dict() for r in record_chunk]
 
             save_shard_to_disk(
-                items=record_chunk, dataset_path=test_dir, shard_id=chunk_count
+                items=record_chunk,
+                dataset_path=test_dir,
+                shard_id=chunk_count,
+                features=DatasetRecordWithPrediction.features(),
             )
             count += len(record_chunk)
             chunk_count += 1
