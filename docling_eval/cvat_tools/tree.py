@@ -128,28 +128,39 @@ def apply_reading_order_to_tree(
     id_to_node = {node.element.id: node for node in collect_all_nodes(tree_roots)}
 
     # First, reorder the tree roots themselves
-    ordered_roots = [
-        id_to_node[root_id]
-        for root_id in global_order
-        if any(root.element.id == root_id for root in tree_roots)
-    ]
+    ordered_roots = []
+    remaining_roots = []
+
+    # Process elements in global order
+    for element_id in global_order:
+        # Find the node for this element
+        node = id_to_node.get(element_id)
+        if not node:
+            continue
+
+        # If this is a root node, add it to ordered_roots
+        if node in tree_roots:
+            if node not in ordered_roots:
+                ordered_roots.append(node)
+        # If this is a child node, reorder its parent's children
+        elif node.parent:
+            parent = node.parent
+            if parent.children:
+                # Only keep children that are in global_order, in the right order
+                ordered_children = [
+                    id_to_node[child_id]
+                    for child_id in global_order
+                    if any(child.element.id == child_id for child in parent.children)
+                ]
+                # Append any children not in global_order
+                remaining = [
+                    child for child in parent.children if child not in ordered_children
+                ]
+                parent.children = ordered_children + remaining
+
+    # Add any remaining root nodes that weren't in global_order
     remaining_roots = [root for root in tree_roots if root not in ordered_roots]
     new_tree_roots = ordered_roots + remaining_roots
-
-    # Then reorder children of each node
-    for node in id_to_node.values():
-        if node.children:
-            # Only keep children that are in global_order, in the right order
-            ordered_children = [
-                id_to_node[child_id]
-                for child_id in global_order
-                if any(child.element.id == child_id for child in node.children)
-            ]
-            # Optionally, append any children not in global_order
-            remaining = [
-                child for child in node.children if child not in ordered_children
-            ]
-            node.children = ordered_children + remaining
 
     return new_tree_roots
 

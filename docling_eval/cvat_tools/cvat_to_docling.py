@@ -21,12 +21,15 @@ from docling_core.types.doc.document import (
     GroupItem,
     GroupLabel,
     ImageRef,
+    ListItem,
     NodeItem,
+    OrderedList,
     PictureClassificationClass,
     PictureClassificationData,
     ProvenanceItem,
     Size,
     TableData,
+    UnorderedList,
 )
 from docling_core.types.doc.page import (
     BoundingRectangle,
@@ -49,6 +52,132 @@ from docling_eval.cvat_tools.tree import (
 from docling_eval.cvat_tools.validator import Validator
 
 _logger = logging.getLogger(__name__)
+
+
+class ListHierarchyManager:
+    """Manages list hierarchy creation and tracking.
+
+    Consolidates the responsibility of managing list containers, sublists,
+    and level tracking that was previously scattered across multiple data structures.
+    """
+
+    def __init__(self, doc: DoclingDocument):
+        self.doc = doc
+
+        # Single source of truth for all group containers
+        self.group_containers: Dict[int, NodeItem] = {}  # path_id -> container
+
+        # Track level hierarchy for nested lists
+        self.level_stack: Dict[int, ListItem] = {}  # level -> most recent list item
+
+        # Track sublist containers for parent items
+        self.sublist_containers: Dict[str, NodeItem] = (
+            {}
+        )  # parent_ref -> sublist_container
+
+    def clear(self):
+        """Reset all list hierarchy state."""
+        self.group_containers.clear()
+        self.level_stack.clear()
+        self.sublist_containers.clear()
+
+    def get_or_create_list_container(
+        self,
+        group_id: Optional[int],
+        element: CVATElement,
+        group_parent_finder,
+        existing_groups: Optional[Dict[int, GroupItem]] = None,
+    ) -> NodeItem:
+        """Get or create a list container for top-level list items."""
+        if group_id is not None:
+            if group_id not in self.group_containers:
+                # Check if group already exists in existing_groups (for mixed content groups)
+                if existing_groups and group_id in existing_groups:
+                    self.group_containers[group_id] = existing_groups[group_id]
+                else:
+                    group_parent = group_parent_finder(element)
+                    self.group_containers[group_id] = self.doc.add_group(
+                        label=GroupLabel.LIST,
+                        name=f"group_{group_id}",
+                        parent=group_parent,
+                    )
+                    # Sync back to existing_groups if provided
+                    if existing_groups:
+                        # GroupItem is a subclass of NodeItem, so this is safe
+                        existing_groups[group_id] = self.group_containers[group_id]  # type: ignore
+            return self.group_containers[group_id]
+        else:
+            # Create standalone list container
+            group_parent = group_parent_finder(element)
+            return self.doc.add_group(
+                label=GroupLabel.LIST,
+                name=f"list_standalone_{element.id}",
+                parent=group_parent,
+            )
+
+    def get_or_create_sublist_container(
+        self, level: int, element: CVATElement, group_parent_finder, doc_structure=None
+    ) -> Optional[NodeItem]:
+        """Get or create a sublist container for nested list items."""
+        if (level - 1) not in self.level_stack:
+            # Orphaned item - log warning and create fallback
+            _logger.warning(
+                f"Orphaned list item {element.id} at level {level} "
+                f"has no parent at level {level-1}. Creating fallback structure."
+            )
+            # Try to find group_id for fallback
+            group_id = (
+                self._find_group_id_for_element(element, doc_structure)
+                if doc_structure
+                else None
+            )
+            return self.get_or_create_list_container(
+                group_id, element, group_parent_finder, None
+            )
+
+        parent_list_item = self.level_stack[level - 1]
+        parent_ref = parent_list_item.self_ref
+
+        if parent_ref not in self.sublist_containers:
+            # Find the container that holds the parent list item
+            try:
+                parent_container = (
+                    parent_list_item.parent.resolve(self.doc)
+                    if parent_list_item.parent
+                    else None
+                )
+            except Exception as e:
+                _logger.warning(
+                    f"Failed to resolve parent for list item {element.id}: {e}"
+                )
+                parent_container = None
+
+            # Create sublist group at the same level as the parent list item
+            self.sublist_containers[parent_ref] = self.doc.add_group(
+                label=GroupLabel.LIST,
+                name=f"sublist_level_{level}_of_{parent_ref.split('/')[-1]}",
+                parent=parent_container,
+            )
+
+        return self.sublist_containers[parent_ref]
+
+    def update_level_stack(self, level: int, list_item: ListItem):
+        """Update the level stack and clear higher levels."""
+        self.level_stack[level] = list_item
+
+        # Clear higher levels from stack since they're now out of scope
+        levels_to_remove = [l for l in self.level_stack if l > level]
+        for l in levels_to_remove:
+            self.level_stack.pop(l, None)
+
+    def _find_group_id_for_element(
+        self, element: CVATElement, doc_structure
+    ) -> Optional[int]:
+        """Helper to find group ID for an element (for fallback scenarios)."""
+        for path_id, group_element_ids in doc_structure.path_mappings.group.items():
+            if element.id in group_element_ids:
+                return path_id
+        return None
 
 
 class CVATToDoclingConverter:
@@ -84,6 +213,9 @@ class CVATToDoclingConverter:
 
         # Track which groups have been created
         self.created_groups: Dict[int, GroupItem] = {}  # path_id -> GroupItem
+
+        # Centralized list hierarchy management
+        self.list_manager = ListHierarchyManager(self.doc)
 
         # Calculate single scaling factor for all pages
         self._calculate_scaling_factor()
@@ -187,6 +319,9 @@ class CVATToDoclingConverter:
         Returns:
             The converted DoclingDocument
         """
+        # Reset list processing state to ensure clean conversion
+        self._reset_list_state()
+
         # Add pages to document
         self._add_pages()
 
@@ -196,13 +331,17 @@ class CVATToDoclingConverter:
         # Build global reading order
         global_order = self._build_global_reading_order()
 
-        # Process elements in reading order (groups will be created on-demand)
+        # Process elements in reading order, building list hierarchy on-demand
         self._process_elements_in_order(global_order)
 
         # Process captions and footnotes
         self._process_captions_and_footnotes()
 
         return self.doc
+
+    def _reset_list_state(self):
+        """Reset list processing state for clean conversion."""
+        self.list_manager.clear()
 
     def _add_pages(self):
         """Add page information to the document."""
@@ -309,6 +448,63 @@ class CVATToDoclingConverter:
         else:
             return GroupLabel.UNSPECIFIED
 
+    def _find_group_parent(self, element: CVATElement) -> Optional[NodeItem]:
+        """Find the parent for a list group based on containment tree."""
+        node = find_node_by_element_id(self.doc_structure.tree_roots, element.id)
+        if node:
+            parent_node = self._find_parent_node(node)
+            if parent_node and parent_node.element.id in self.element_to_item:
+                return self.element_to_item[parent_node.element.id]
+        return None
+
+    def _process_list_item_with_hierarchy(
+        self, element: CVATElement, parent_item: Optional[NodeItem]
+    ) -> Optional[ListItem]:
+        """Process a list item with proper hierarchy based on level."""
+        level = element.level or 1
+
+        # Find which group this element belongs to
+        group_id = self._find_group_id_for_element(element)
+
+        actual_parent: Optional[NodeItem] = None
+        # Determine the appropriate parent for this list item
+        if level == 1:
+            # Top-level item - needs a list container (group)
+            actual_parent = self.list_manager.get_or_create_list_container(
+                group_id, element, self._find_group_parent, self.created_groups
+            )
+        else:
+            # Nested item - create sublist group
+            actual_parent = self.list_manager.get_or_create_sublist_container(
+                level, element, self._find_group_parent, self.doc_structure
+            )
+            if actual_parent is None:
+                return None
+
+        # Create the list item
+        page_no, text, provenance = self._process_element_bbox(element)
+        list_item = self.doc.add_list_item(
+            text=text,
+            prov=provenance,
+            parent=actual_parent,
+            content_layer=element.content_layer,
+        )
+
+        # Update level stack
+        self.list_manager.update_level_stack(level, list_item)
+
+        return list_item
+
+    def _find_group_id_for_element(self, element: CVATElement) -> Optional[int]:
+        """Find which group this element belongs to."""
+        for (
+            path_id,
+            group_element_ids,
+        ) in self.doc_structure.path_mappings.group.items():
+            if element.id in group_element_ids:
+                return path_id
+        return None
+
     def _process_elements_in_order(self, global_order: List[int]):
         """Process elements in reading order."""
         # Process elements in global reading order
@@ -356,6 +552,14 @@ class CVATToDoclingConverter:
         if self._is_caption_or_footnote_target(element.id):
             return
 
+        # Handle list items with hierarchy
+        if element.label == DocItemLabel.LIST_ITEM:
+            list_item = self._process_list_item_with_hierarchy(element, parent_item)
+            if list_item:
+                self.element_to_item[element.id] = list_item
+                self.processed_elements.add(element.id)
+            return
+
         # Determine the actual parent based on containment tree
         if parent_item is None:
             parent_node = self._find_parent_node(node)
@@ -379,6 +583,7 @@ class CVATToDoclingConverter:
         # Check if this element is part of a merge
         merge_elements = self._get_merge_elements(element.id)
 
+        item: Optional[NodeItem] = None
         if merge_elements:
             # Process as merged item
             item = self._create_merged_item(merge_elements, item_parent)
@@ -386,12 +591,12 @@ class CVATToDoclingConverter:
             for el in merge_elements:
                 self.processed_elements.add(el.id)
                 if el.id not in self.element_to_item:
-                    self.element_to_item[el.id] = item  # type: ignore
+                    self.element_to_item[el.id] = item
         else:
             # Process as single item
             item = self._create_single_item(element, item_parent)
             self.processed_elements.add(element.id)
-            self.element_to_item[element.id] = item  # type: ignore
+            self.element_to_item[element.id] = item
 
         # Process children in order
         if node.children:

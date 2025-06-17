@@ -241,3 +241,44 @@ def test_cvat_to_docling_conversion():
                     print(f"  - Missing image at {image_path}")
                 # Skip this test case if files are missing
                 continue
+
+
+@pytest.mark.skipif(IS_CI, reason="Skipping test in CI because the test is too heavy.")
+def test_case_02_specific_sample():
+    """Test CVAT to DoclingDocument conversion for a specific sample in case_02."""
+    # Define paths
+    root_dir = Path("tests/data/cvat_pdfs_dataset_e2e")
+    pdf_path = (
+        root_dir
+        / "case_02"
+        / "6b18af59b633f89b96a64aa435e0f7616eb1813d884c4c3da5e4cea9a8f9316b.pdf"
+    )
+    xml_path = root_dir / "case_02_annotations.xml"
+    output_dir = Path("scratch/cvat_to_docling_converter/case_02")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Verify files exist
+    assert pdf_path.exists(), f"PDF file not found: {pdf_path}"
+    assert xml_path.exists(), f"XML file not found: {xml_path}"
+
+    # Run conversion test
+    validation_report, result = _test_conversion_with_sample_data(
+        xml_path=xml_path, image_path=pdf_path, output_dir=output_dir, verbose=True
+    )
+
+    # Assertions
+    assert (
+        not validation_report.has_errors()
+    ), f"Validation errors found: {validation_report.errors}"
+    assert result is not None, "Conversion failed - result is None"
+    assert len(result.pages) > 0, "No pages found in converted document"
+    assert len(result.texts) > 0, "No text elements found in converted document"
+
+    # Verify output files were created
+    expected_files = [
+        output_dir / f"{pdf_path.stem}_docling.json",
+        output_dir / f"{pdf_path.stem}_docling.html",
+        output_dir / f"{pdf_path.stem}_docling.md",
+    ]
+    for file_path in expected_files:
+        assert file_path.exists(), f"Expected output file not found: {file_path}"
