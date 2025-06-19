@@ -173,17 +173,16 @@ class Consolidator:
                         continue
 
                     # Gather the dataframe data
-                    provider = (
-                        single_evaluation.prediction_provider_type.value
-                        if single_evaluation.prediction_provider_type is not None
-                        else "Unkown"
-                    )
                     data: Dict[str, Union[str, float]] = {
                         "Benchmark": benchmark.value,
-                        "Provider": provider,
                         "Experiment": experiment,
                         "evaluated_samples": evaluation.evaluated_samples,
                     }
+                    if single_evaluation.prediction_provider_type is not None:
+                        data["Provider"] = (
+                            single_evaluation.prediction_provider_type.value
+                        )
+
                     for rej_type in EvaluationRejectionType:
                         if rej_type not in evaluation.rejected_samples:
                             data[rej_type.value] = 0
@@ -199,7 +198,7 @@ class Consolidator:
         dfs: Dict[EvaluationModality, DataFrame] = {}
         for modality, m_data in df_data.items():
             df = DataFrame(m_data)
-            df = df.sort_values(by=["Benchmark", "Provider"], ascending=[True, True])
+            df = df.sort_values(by=["Benchmark"], ascending=[True])
             dfs[modality] = df
 
         return dfs
@@ -214,6 +213,11 @@ class Consolidator:
             "weighted_mAP_75": export_value(evaluation.weighted_map_75_stats),
             "weighted_mAP_90": export_value(evaluation.weighted_map_90_stats),
             "weighted_mAP_95": export_value(evaluation.weighted_map_95_stats),
+            "segmentation_precision": export_value(
+                evaluation.segmentation_precision_stats
+            ),
+            "segmentation_recall": export_value(evaluation.segmentation_recall_stats),
+            "segmentation_f1": export_value(evaluation.segmentation_f1_stats),
         }
         for class_evaluation in evaluation.evaluations_per_class:
             key = f"class_{class_evaluation.label}"

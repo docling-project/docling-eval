@@ -1,3 +1,17 @@
+## [v0.5.0](https://github.com/docling-project/docling-eval/releases/tag/v0.5.0) - 2025-06-11
+
+### Feature
+
+* Integrate OCR visualization ([#121](https://github.com/docling-project/docling-eval/issues/121)) ([`b39f2e7`](https://github.com/docling-project/docling-eval/commit/b39f2e7932b4ed9b9a08ba0dda2be6af9d59daff))
+* Add the segmentation layout evaluations in the consolidated excel report. Update mypy overrides. ([#120](https://github.com/docling-project/docling-eval/issues/120)) ([`c4e7de0`](https://github.com/docling-project/docling-eval/commit/c4e7de0c1777f86e68b7a3b6db6b2f56ab3ba127))
+* Update OCREvaluator with additional metrics ([#78](https://github.com/docling-project/docling-eval/issues/78)) ([`17e9fde`](https://github.com/docling-project/docling-eval/commit/17e9fde84f4b01564d4a838443d876890948312c))
+
+### Fix
+
+* Add the bbox to TableData from annotations ([#123](https://github.com/docling-project/docling-eval/issues/123)) ([`c4fe51f`](https://github.com/docling-project/docling-eval/commit/c4fe51f46161305076269dda4291636690b78a60))
+* Treat th and td as equal for TEDS calculation ([#114](https://github.com/docling-project/docling-eval/issues/114)) ([`dbf9db7`](https://github.com/docling-project/docling-eval/commit/dbf9db77349aa845b9cd5d7f337e91e53515cbaa))
+* Add support for Google, AWS, and Azure prediction providers in cli ([#115](https://github.com/docling-project/docling-eval/issues/115)) ([`e8e7421`](https://github.com/docling-project/docling-eval/commit/e8e7421a9a830bbd15774ee9d26e98296f9dbd2c))
+
 ## [v0.4.0](https://github.com/docling-project/docling-eval/releases/tag/v0.4.0) - 2025-05-28
 
 ### Feature

@@ -109,12 +109,14 @@ class DatasetRecord(
             self.get_field_alias("ground_truth_pictures"): self.ground_truth_pictures,
             self.get_field_alias("ground_truth_segmented_pages"): seg_adapter.dump_json(
                 self.ground_truth_segmented_pages
-            ),
+            ).decode("utf-8"),
             self.get_field_alias(
                 "ground_truth_page_images"
             ): self.ground_truth_page_images,
             self.get_field_alias("mime_type"): self.mime_type,
-            self.get_field_alias("modalities"): list(self.modalities),
+            self.get_field_alias("modalities"): list(
+                [m.value for m in self.modalities]
+            ),
         }
         if isinstance(self.original, Path):
             with self.original.open("rb") as f:
@@ -152,7 +154,7 @@ class DatasetRecord(
             data[gt_doc_alias] = json.loads(data[gt_doc_alias])
 
         gt_seg_pages_alias = cls.get_field_alias("ground_truth_segmented_pages")
-        if gt_seg_pages_alias in data and isinstance(data[gt_seg_pages_alias], bytes):
+        if gt_seg_pages_alias in data and isinstance(data[gt_seg_pages_alias], str):
             data[gt_seg_pages_alias] = seg_adapter.validate_json(
                 data[gt_seg_pages_alias]
             )
@@ -231,6 +233,7 @@ class DatasetRecordWithPrediction(DatasetRecord):
                 ),
                 cls.get_field_alias("prediction_format"): Value("string"),
                 cls.get_field_alias("prediction_timings"): Value("string"),
+                cls.get_field_alias("original_prediction"): Value("string"),
             }
         )
 
@@ -239,9 +242,13 @@ class DatasetRecordWithPrediction(DatasetRecord):
         record.update(
             {
                 self.get_field_alias("prediction_format"): self.prediction_format.value,
-                self.get_field_alias("prediction_timings"): self.prediction_timings,
-                self.get_field_alias("predictor_info"): self.predictor_info,
-                self.get_field_alias("status"): (self.status),
+                self.get_field_alias("prediction_timings"): (
+                    json.dumps(self.prediction_timings)
+                    if self.prediction_timings is not None
+                    else None
+                ),
+                self.get_field_alias("predictor_info"): json.dumps(self.predictor_info),
+                self.get_field_alias("status"): self.status.value,
             }
         )
 
@@ -253,7 +260,9 @@ class DatasetRecordWithPrediction(DatasetRecord):
                     ),
                     self.get_field_alias(
                         "predicted_segmented_pages"
-                    ): seg_adapter.dump_json(self.predicted_segmented_pages),
+                    ): seg_adapter.dump_json(self.predicted_segmented_pages).decode(
+                        "utf-8"
+                    ),
                     self.get_field_alias("predicted_pictures"): self.predicted_pictures,
                     self.get_field_alias(
                         "predicted_page_images"
@@ -290,14 +299,19 @@ class DatasetRecordWithPrediction(DatasetRecord):
         if info_alias in data and isinstance(data[info_alias], str):
             data[info_alias] = json.loads(data[info_alias])
 
+        timings_alias = cls.get_field_alias("prediction_timings")
+        if timings_alias in data and isinstance(data[timings_alias], str):
+            # try:
+            data[timings_alias] = json.loads(data[timings_alias])
+            # except json.JSONDecodeError:
+            #    data[timings_alias] = None
+
         pred_doc_alias = cls.get_field_alias("predicted_doc")
         if pred_doc_alias in data and isinstance(data[pred_doc_alias], str):
             data[pred_doc_alias] = json.loads(data[pred_doc_alias])
 
         pred_seg_pages_alias = cls.get_field_alias("predicted_segmented_pages")
-        if pred_seg_pages_alias in data and isinstance(
-            data[pred_seg_pages_alias], bytes
-        ):
+        if pred_seg_pages_alias in data and isinstance(data[pred_seg_pages_alias], str):
             data[pred_seg_pages_alias] = seg_adapter.validate_json(
                 data[pred_seg_pages_alias]
             )

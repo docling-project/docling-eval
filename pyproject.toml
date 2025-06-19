@@ -1,6 +1,6 @@
 [project]
 name = "docling-eval"
-version = "0.4.0" # DO NOT EDIT, updated automatically
+version = "0.5.0" # DO NOT EDIT, updated automatically
 description = "Evaluation of Docling"
 license = "MIT"
 keywords= ["docling", "evaluation", "convert", "document", "pdf", "docx", "html", "markdown", "layout model", "segmentation", "table structure", "table former"]
@@ -26,7 +26,7 @@ classifiers = [
 requires-python = '>=3.10,<4.0'
 dependencies = [
     'docling[vlm] (>=2.31.0,<3.0.0)',
-    'docling-core (>=2.33.0,<3.0.0)',
+    'docling-core (>=2.36.0,<3.0.0)',
     'pydantic (>=2.0.0,<3.0.0)',
     'lxml (>=5.3.0,<6.0.0)',
     'datasets (>=3.2.0,<4.0.0)',
@@ -134,6 +134,9 @@ module = [
     "PIL.*",
     "evaluate.*",
     "tqdm.*",
+    "azure.*",
+    "google.*",
+    "ocrmac.*",
 ]
 ignore_missing_imports = true
 

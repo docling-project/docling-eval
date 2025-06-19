@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Iterable, List, Optional, Set
 
 import PIL.Image
-from datasets import load_dataset
+from datasets import VerificationMode, load_dataset
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -288,7 +288,12 @@ class DocLayNetV1DatasetBuilder(BaseEvaluationDatasetBuilder):
         if self.dataset_local_path is not None:
             path = str(self.dataset_local_path)
         # Load dataset from the retrieved path
-        ds = load_dataset(path, split=self.split)
+        ds = load_dataset(
+            path,
+            data_files={self.split: f"data/{self.split}-*.parquet"},
+            split=self.split,
+            verification_mode=VerificationMode.NO_CHECKS,
+        )
 
         # Apply HuggingFace's select method for index ranges
         total_ds_len = len(ds)

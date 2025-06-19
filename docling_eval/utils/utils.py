@@ -17,7 +17,7 @@ from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
-from docling_core.types.doc.base import BoundingBox, Size
+from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
     GraphData,
@@ -178,6 +178,20 @@ def yield_cells_from_html_table(
                 text_cell = text_cells[text_cell_id]
                 text = "".join(text_cell["tokens"])
 
+            bbox = None
+            if (
+                text_cells is not None
+                and text_cell_id < len(text_cells)
+                and "bbox" in text_cells[text_cell_id]
+            ):
+                bbox = BoundingBox(
+                    l=text_cells[text_cell_id]["bbox"][0],
+                    b=text_cells[text_cell_id]["bbox"][1],
+                    r=text_cells[text_cell_id]["bbox"][2],
+                    t=text_cells[text_cell_id]["bbox"][3],
+                    coord_origin=CoordOrigin.BOTTOMLEFT,
+                )
+
             rowspan = int(cell.get("rowspan", 1))
             colspan = int(cell.get("colspan", 1))
 
@@ -187,7 +201,7 @@ def yield_cells_from_html_table(
                     grid[row_idx + r][col_idx + c] = text
 
             # print(f"Row: {row_idx + 1}, Col: {col_idx + 1}, Text: {text}")
-            yield row_idx, col_idx, rowspan, colspan, text
+            yield row_idx, col_idx, rowspan, colspan, text, bbox
 
             col_idx += colspan  # Move to next column after colspan
 
@@ -203,9 +217,14 @@ def convert_html_table_into_docling_tabledata(
     cells = []
 
     try:
-        for row_idx, col_idx, rowspan, colspan, text in yield_cells_from_html_table(
-            table_html=table_html, text_cells=text_cells
-        ):
+        for (
+            row_idx,
+            col_idx,
+            rowspan,
+            colspan,
+            text,
+            bbox,
+        ) in yield_cells_from_html_table(table_html=table_html, text_cells=text_cells):
             cell = TableCell(
                 row_span=rowspan,
                 col_span=colspan,
@@ -214,6 +233,7 @@ def convert_html_table_into_docling_tabledata(
                 start_col_offset_idx=col_idx,
                 end_col_offset_idx=col_idx + colspan,
                 text=text,
+                bbox=bbox,
             )
             cells.append(cell)
 
@@ -412,26 +432,25 @@ def save_shard_to_disk(
     shard_id: int = 0,
     features: Optional[Features] = None,
     shard_format: str = "parquet",
-):
-    """Save shard of to disk."""
+) -> None:
+    """Save shard to disk."""
+    if not items:
+        return
 
-    batch = Dataset.from_list(items)  # , features=features)
+    # Use features if provided to avoid schema inference
+    batch = Dataset.from_list(items, features=features)
 
     output_file = dataset_path / f"shard_{thread_id:06}_{shard_id:06}.{shard_format}"
     if shard_format == "json":
         batch.to_json(output_file)
-
     elif shard_format == "parquet":
         batch.to_parquet(output_file)
-
     else:
         raise ValueError(f"Unsupported shard_format: {shard_format}")
 
     logging.info(f"Saved shard {shard_id} to {output_file} with {len(items)} documents")
 
     shard_id += 1
-
-    return shard_id, [], 0
 
 
 def dataset_exists(
@@ -646,3 +665,19 @@ def validate_evaluation_results(
     ), f"Recall score ({metrics.recall}) must be greater than 0."
 
     return metrics
+
+
+def does_intersection_area_exceed_threshold(
+    first_bbox: BoundingBox, second_bbox: BoundingBox, intersection_threshold: float
+) -> bool:
+    r"""
+    Checks if the ratio of intersection area over area of the first bbox exceeds the specified threshold
+    """
+    first_bbox_area = (first_bbox.r - first_bbox.l) * (first_bbox.b - first_bbox.t)
+    intersection_area = first_bbox.intersection_area_with(second_bbox)
+
+    return (
+        intersection_area / first_bbox_area > intersection_threshold
+        if first_bbox_area > 0
+        else False
+    )
