@@ -261,16 +261,15 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
                     bbox = self.extract_bbox_from_geometry(geometry)
                     # Scale normalized coordinates to the page dimensions
-                    line_bbox_dict = {
-                        "l": bbox["l"] * width,
-                        "t": bbox["t"] * height,
-                        "r": bbox["r"] * width,
-                        "b": bbox["b"] * height,
-                    }
-
-                    input_data = LineTextInput(
-                        line_text=line_text, line_bbox=BoundingBox(**line_bbox_dict)
+                    line_bbox = BoundingBox(
+                        l=bbox["l"] * width,
+                        t=bbox["t"] * height,
+                        r=bbox["r"] * width,
+                        b=bbox["b"] * height,
+                        coord_origin=CoordOrigin.TOPLEFT,
                     )
+
+                    input_data = LineTextInput(line_text=line_text, line_bbox=line_bbox)
                     words_result = smart_weighted_character_distribution(input_data)
 
                     for word_bbox_data in words_result.segmented_words:

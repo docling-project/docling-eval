@@ -2,7 +2,7 @@ from typing import Any, List, Optional
 
 from docling_core.types.doc import BoundingBox
 from docling_core.types.doc.page import TextCell
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class _CalculationConstants:

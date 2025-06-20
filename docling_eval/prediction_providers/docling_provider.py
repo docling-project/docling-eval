@@ -135,16 +135,14 @@ class DoclingPredictionProvider(BasePredictionProvider):
                     continue
 
                 cell_bbox = cell.to_bounding_box()
-                line_bbox_dict = {
-                    "l": cell_bbox.l,
-                    "t": cell_bbox.t,
-                    "r": cell_bbox.r,
-                    "b": cell_bbox.b,
-                }
-
-                input_data = LineTextInput(
-                    line_text=cell.text, line_bbox=BoundingBox(**line_bbox_dict)
+                line_bbox = BoundingBox(
+                    l=cell_bbox.l,
+                    t=cell_bbox.t,
+                    r=cell_bbox.r,
+                    b=cell_bbox.b,
+                    coord_origin=CoordOrigin.TOPLEFT,
                 )
+                input_data = LineTextInput(line_text=cell.text, line_bbox=line_bbox)
                 words_result = smart_weighted_character_distribution(input_data)
 
                 for word_bbox_data in words_result.segmented_words:
