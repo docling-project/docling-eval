@@ -38,7 +38,6 @@ from docling_eval.datamodels.types import (
     PredictionProviderType,
 )
 from docling_eval.evaluators.ocr.evaluation_models import (
-    BoundingBoxDict,
     LineTextInput,
     OcrDatasetEvaluationResult,
     WordBoundingBox,
@@ -808,7 +807,7 @@ def smart_weighted_character_distribution(
 
         word_bbox = WordBoundingBox(
             word=word,
-            bbox=BoundingBoxDict(
+            bbox=BoundingBox(
                 l=word_left,
                 t=line_bbox.t,
                 r=word_right,

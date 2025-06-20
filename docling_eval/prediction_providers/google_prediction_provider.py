@@ -32,7 +32,7 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecordWithPrediction,
 )
 from docling_eval.datamodels.types import PredictionFormats, PredictionProviderType
-from docling_eval.evaluators.ocr.evaluation_models import BoundingBoxDict, LineTextInput
+from docling_eval.evaluators.ocr.evaluation_models import LineTextInput
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
@@ -787,7 +787,7 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                     continue
 
                 input_data = LineTextInput(
-                    line_text=line_text, line_bbox=BoundingBoxDict(**line_bbox_dict)
+                    line_text=line_text, line_bbox=BoundingBox(**line_bbox_dict)
                 )
 
                 words_result = smart_weighted_character_distribution(input_data)

@@ -268,7 +268,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                         "b": bbox["b"] * height,
                     }
 
-                    input_data = LineTextInput.from_existing_bbox(
+                    input_data = LineTextInput(
                         line_text=line_text, line_bbox=BoundingBox(**line_bbox_dict)
                     )
                     words_result = smart_weighted_character_distribution(input_data)

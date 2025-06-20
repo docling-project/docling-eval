@@ -169,15 +169,9 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 if line_content is not None and line_polygon is not None:
                     line_bbox = self.extract_bbox_from_polygon(line_polygon)
 
-                    input_data = LineTextInput.from_existing_bbox(
+                    input_data = LineTextInput(
                         line_text=line_content,
-                        line_bbox=BoundingBox(
-                            l=line_bbox["l"],
-                            t=line_bbox["t"],
-                            r=line_bbox["r"],
-                            b=line_bbox["b"],
-                            coord_origin=CoordOrigin.TOPLEFT,
-                        ),
+                        line_bbox=BoundingBox(**line_bbox),
                     )
 
                     words_result = smart_weighted_character_distribution(input_data)

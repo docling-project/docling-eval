@@ -74,54 +74,18 @@ class OcrDatasetEvaluationResult(BaseModel):
     precision: float = 0.0
 
 
-class BoundingBoxDict(BaseModel):
-    """Bounding box represented as a dictionary with left, top, right, bottom coordinates."""
-
-    l: float = Field(..., description="Left coordinate")
-    t: float = Field(..., description="Top coordinate")
-    r: float = Field(..., description="Right coordinate")
-    b: float = Field(..., description="Bottom coordinate")
-
-    def to_bounding_box(self) -> "BoundingBox":
-        """Convert to your existing BoundingBox class."""
-        return BoundingBox(l=self.l, t=self.t, r=self.r, b=self.b)
-
-
 class WordBoundingBox(BaseModel):
     """Word with its bounding box coordinates."""
 
-    word: str = Field(..., min_length=1, description="The extracted word text")
-    bbox: BoundingBoxDict = Field(
-        ..., description="Bounding box coordinates of the word"
-    )
+    word: str
+    bbox: BoundingBox
 
 
 class LineTextInput(BaseModel):
     """Input parameters for smart weighted character distribution."""
 
-    line_text: str = Field(..., description="The text line to process")
-    line_bbox: BoundingBoxDict = Field(
-        ..., description="Bounding box of the entire line"
-    )
-
-    @field_validator("line_text")
-    @classmethod
-    def text_not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Line text cannot be empty or whitespace only")
-        return v
-
-    @classmethod
-    def from_existing_bbox(
-        cls, line_text: str, line_bbox: "BoundingBox"
-    ) -> "LineTextInput":
-        """Create LineTextInput from your existing BoundingBox class."""
-        return cls(
-            line_text=line_text,
-            line_bbox=BoundingBoxDict(
-                l=line_bbox.l, t=line_bbox.t, r=line_bbox.r, b=line_bbox.b
-            ),
-        )
+    line_text: str
+    line_bbox: BoundingBox
 
 
 class WordSegmentationResult(BaseModel):
