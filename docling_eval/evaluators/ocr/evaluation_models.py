@@ -82,20 +82,6 @@ class BoundingBoxDict(BaseModel):
     r: float = Field(..., description="Right coordinate")
     b: float = Field(..., description="Bottom coordinate")
 
-    @field_validator("r")
-    @classmethod
-    def right_greater_than_left(cls, v: float, info) -> float:
-        if info.data and "l" in info.data and v <= info.data["l"]:
-            raise ValueError("Right coordinate must be greater than left coordinate")
-        return v
-
-    @field_validator("b")
-    @classmethod
-    def bottom_greater_than_top(cls, v: float, info) -> float:
-        if info.data and "t" in info.data and v <= info.data["t"]:
-            raise ValueError("Bottom coordinate must be greater than top coordinate")
-        return v
-
     def to_bounding_box(self) -> "BoundingBox":
         """Convert to your existing BoundingBox class."""
         return BoundingBox(l=self.l, t=self.t, r=self.r, b=self.b)
