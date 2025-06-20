@@ -7,6 +7,8 @@ from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
+from docling_core.types.doc.page import BoundingRectangle, TextCell
 from pydantic import TypeAdapter
 
 from docling_eval.datamodels.dataset_record import (
@@ -18,10 +20,15 @@ from docling_eval.datamodels.types import (
     PredictionFormats,
     PredictionProviderType,
 )
+from docling_eval.evaluators.ocr.evaluation_models import LineTextInput
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import docling_version, get_package_version
+from docling_eval.utils.utils import (
+    docling_version,
+    get_package_version,
+    smart_weighted_character_distribution,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -115,11 +122,6 @@ class DoclingPredictionProvider(BasePredictionProvider):
         return pred_record
 
     def _set_word_cells(self, page: Page):
-        # NOTE: Conditionally populates parsed_page.word_cells as a temporary solution.
-        # This method checks if `word_cells` is already populated (likely from a
-        # programmatic PDF). If so, it preserves the existing cells. If not
-        # (likely an OCR-only document), it populates `word_cells` from `page.cells`
-        # to unblock downstream evaluation tasks.
         if page.parsed_page is None:
             _log.warning(
                 f"Page {page.page_no} has no parsed_page, cannot set word_cells."
@@ -127,7 +129,44 @@ class DoclingPredictionProvider(BasePredictionProvider):
             return page.parsed_page
 
         if not page.parsed_page.word_cells:
-            page.parsed_page.word_cells = page.cells
+            word_cells = []
+            for cell in page.cells:
+                if not cell.text.strip():
+                    continue
+
+                cell_bbox = cell.to_bounding_box()
+                line_bbox_dict = {
+                    "l": cell_bbox.l,
+                    "t": cell_bbox.t,
+                    "r": cell_bbox.r,
+                    "b": cell_bbox.b,
+                }
+
+                input_data = LineTextInput.from_existing_bbox(
+                    line_text=cell.text, line_bbox=BoundingBox(**line_bbox_dict)
+                )
+                words_result = smart_weighted_character_distribution(input_data)
+
+                for word_bbox_data in words_result.segmented_words:
+                    word_bbox = BoundingBox(
+                        l=word_bbox_data.bbox.l,
+                        t=word_bbox_data.bbox.t,
+                        r=word_bbox_data.bbox.r,
+                        b=word_bbox_data.bbox.b,
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    word_cell = TextCell(
+                        rect=BoundingRectangle.from_bounding_box(word_bbox),
+                        text=word_bbox_data.word,
+                        orig=word_bbox_data.word,
+                        text_direction=cell.text_direction,
+                        confidence=cell.confidence,
+                        from_ocr=cell.from_ocr,
+                    )
+                    word_cells.append(word_cell)
+
+            page.parsed_page.word_cells = word_cells
 
         return page.parsed_page
 

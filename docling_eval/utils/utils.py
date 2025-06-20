@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import logging
+import re
 from collections import defaultdict
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
@@ -36,7 +37,13 @@ from docling_eval.datamodels.types import (
     EvaluationModality,
     PredictionProviderType,
 )
-from docling_eval.evaluators.ocr.evaluation_models import OcrDatasetEvaluationResult
+from docling_eval.evaluators.ocr.evaluation_models import (
+    BoundingBoxDict,
+    LineTextInput,
+    OcrDatasetEvaluationResult,
+    WordBoundingBox,
+    WordSegmentationResult,
+)
 
 
 def get_binhash(binary_data: bytes) -> str:
@@ -665,6 +672,152 @@ def validate_evaluation_results(
     ), f"Recall score ({metrics.recall}) must be greater than 0."
 
     return metrics
+
+
+def smart_weighted_character_distribution(
+    input_data: LineTextInput,
+) -> WordSegmentationResult:
+    """
+    Smart Weighted character distribution with font size adaptation
+    Accounts for different character widths and adjusts based on line height (font size)
+
+    Args:
+        input_data: LineTextInput containing line_text and line_bbox
+
+    Returns:
+        WordSegmentationResult containing words with their bounding boxes
+    """
+    line_text = input_data.line_text
+    line_bbox = input_data.line_bbox
+
+    words_with_bboxes = []
+    default_char_width = 0.7
+
+    # Base character width weights
+    char_weights = {
+        "i": 0.3,
+        "l": 0.3,
+        "j": 0.3,
+        "t": 0.4,
+        "f": 0.4,
+        "r": 0.5,
+        "c": 0.6,
+        "n": 0.6,
+        "o": 0.7,
+        "u": 0.7,
+        "a": 0.7,
+        "e": 0.7,
+        "s": 0.6,
+        "h": 0.7,
+        "v": 0.7,
+        "k": 0.7,
+        "x": 0.7,
+        "y": 0.7,
+        "z": 0.6,
+        "b": 0.7,
+        "d": 0.7,
+        "g": 0.7,
+        "p": 0.7,
+        "q": 0.7,
+        "m": 1.2,
+        "w": 1.1,
+        "W": 1.3,
+        "M": 1.3,
+        " ": 0.3,
+        ".": 0.3,
+        ",": 0.3,
+        ":": 0.3,
+        ";": 0.3,
+        "A": 0.9,
+        "B": 0.8,
+        "C": 0.9,
+        "D": 0.9,
+        "E": 0.7,
+        "F": 0.7,
+        "G": 0.9,
+        "H": 0.9,
+        "I": 0.3,
+        "J": 0.5,
+        "K": 0.8,
+        "L": 0.7,
+        "N": 0.9,
+        "O": 1.0,
+        "P": 0.7,
+        "Q": 1.0,
+        "R": 0.8,
+        "S": 0.7,
+        "T": 0.7,
+        "U": 0.9,
+        "V": 0.8,
+        "X": 0.8,
+        "Y": 0.8,
+        "Z": 0.7,
+    }
+
+    # simple font size scaling based on line height
+    line_height = line_bbox.b - line_bbox.t
+
+    if line_height > 24:  # for large headings (18pt+ text)
+        font_scale = 1.15
+    elif line_height > 18:  # for medium headings (14-18pt text)
+        font_scale = 1.08
+    elif line_height > 14:  # for normal text (10-14pt)
+        font_scale = 1.0
+    elif line_height > 10:  # for small text (8-10pt)
+        font_scale = 0.92
+    else:  # very small text (<8pt)
+        font_scale = 0.85
+
+    # apply font scale to all base character weights
+    if font_scale != 1.0:
+        char_weights = {
+            char: weight * font_scale for char, weight in char_weights.items()
+        }
+
+    # Calculate total weighted width
+    total_weight = sum(
+        char_weights.get(char, default_char_width * font_scale) for char in line_text
+    )
+    line_width = line_bbox.r - line_bbox.l
+
+    if total_weight == 0:
+        return WordSegmentationResult()
+
+    unit_width = line_width / total_weight
+
+    for match in re.finditer(r"\S+", line_text):
+        word = match.group(0)
+        start_char = match.start()
+
+        chars_before = line_text[:start_char]
+        width_before = (
+            sum(
+                char_weights.get(char, default_char_width * font_scale)
+                for char in chars_before
+            )
+            * unit_width
+        )
+
+        word_weight = sum(
+            char_weights.get(char, default_char_width * font_scale) for char in word
+        )
+        word_width = word_weight * unit_width
+
+        word_left = line_bbox.l + width_before
+        word_right = word_left + word_width
+
+        word_bbox = WordBoundingBox(
+            word=word,
+            bbox=BoundingBoxDict(
+                l=word_left,
+                t=line_bbox.t,
+                r=word_right,
+                b=line_bbox.b,
+            ),
+        )
+        words_with_bboxes.append(word_bbox)
+
+    return WordSegmentationResult(segmented_words=words_with_bboxes)
 
 
 def does_intersection_area_exceed_threshold(

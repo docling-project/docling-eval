@@ -32,12 +32,14 @@ from docling_eval.datamodels.dataset_record import (
     DatasetRecordWithPrediction,
 )
 from docling_eval.datamodels.types import PredictionFormats, PredictionProviderType
+from docling_eval.evaluators.ocr.evaluation_models import BoundingBoxDict, LineTextInput
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
 from docling_eval.utils.utils import (
     does_intersection_area_exceed_threshold,
     from_pil_to_base64uri,
+    smart_weighted_character_distribution,
 )
 
 _log = logging.getLogger(__name__)
@@ -747,10 +749,10 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
                 doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
 
-            for token in page.get("tokens", []):
-                text_content = ""
-                if "layout" in token and "textAnchor" in token["layout"]:
-                    for text_segment in token["layout"]["textAnchor"].get(
+            for line in page.get("lines", []):
+                line_text = ""
+                if "layout" in line and "textAnchor" in line["layout"]:
+                    for text_segment in line["layout"]["textAnchor"].get(
                         "textSegments", []
                     ):
                         if "endIndex" in text_segment:
@@ -759,40 +761,52 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                             if document.get("text") and start_index < len(
                                 document["text"]
                             ):
-                                text_content += document["text"][start_index:end_index]
+                                line_text += document["text"][start_index:end_index]
 
-                token_bbox = (
-                    None if not vertices else self.extract_bbox_from_vertices(vertices)
-                )
+                line_text = line_text.strip()
+                if not line_text:
+                    continue
+
                 vertices = (
-                    token.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
+                    line.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
                 )
                 normalized_vertices = (
-                    token.get("layout", {})
+                    line.get("layout", {})
                     .get("boundingPoly", {})
                     .get("normalizedVertices", [])
                 )
 
+                line_bbox_dict = {}
                 if vertices:
-                    token_bbox = self.extract_bbox_from_vertices(vertices)
-                else:
-                    token_bbox = self.extract_bbox_from_normalized_vertices(
+                    line_bbox_dict = self.extract_bbox_from_vertices(vertices)
+                elif normalized_vertices:
+                    line_bbox_dict = self.extract_bbox_from_normalized_vertices(
                         normalized_vertices, page_width, page_height
                     )
+                else:
+                    continue
 
-                if text_content and token_bbox:
-                    bbox_obj = BoundingBox(
-                        l=token_bbox["l"],
-                        t=token_bbox["t"],
-                        r=token_bbox["r"],
-                        b=token_bbox["b"],
+                input_data = LineTextInput(
+                    line_text=line_text, line_bbox=BoundingBoxDict(**line_bbox_dict)
+                )
+
+                words_result = smart_weighted_character_distribution(input_data)
+
+                # Add word cells to segmented page
+                for word_bbox_data in words_result.segmented_words:
+                    word_bbox = BoundingBox(
+                        l=word_bbox_data.bbox.l,
+                        t=word_bbox_data.bbox.t,
+                        r=word_bbox_data.bbox.r,
+                        b=word_bbox_data.bbox.b,
                         coord_origin=CoordOrigin.TOPLEFT,
                     )
+
                     segmented_pages[page_no].word_cells.append(
                         TextCell(
-                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
-                            text=text_content,
-                            orig=text_content,
+                            rect=BoundingRectangle.from_bounding_box(word_bbox),
+                            text=word_bbox_data.word,
+                            orig=word_bbox_data.word,
                             from_ocr=False,
                         )
                     )

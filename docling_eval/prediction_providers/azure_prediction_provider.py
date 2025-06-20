@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from io import BytesIO
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeOutputOption
@@ -37,12 +37,14 @@ from docling_eval.datamodels.types import (
     PredictionFormats,
     PredictionProviderType,
 )
+from docling_eval.evaluators.ocr.evaluation_models import LineTextInput
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
 from docling_eval.utils.utils import (
     does_intersection_area_exceed_threshold,
     from_pil_to_base64uri,
+    smart_weighted_character_distribution,
 )
 
 # from docling_core.types.doc.labels import DocItemLabel
@@ -159,29 +161,45 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 )
                 segmented_pages[page_no] = seg_page
 
-            for word in page.get("words", []):
-                polygon = word.get("polygon", None)
-                text_content = word.get("content", None)
+            # Process lines and convert them to words
+            for line in page.get("lines", []):
+                line_polygon = line.get("polygon", None)
+                line_content = line.get("content", None)
 
-                if text_content is not None and polygon is not None:
-                    bbox = self.extract_bbox_from_polygon(polygon)
-                    bbox_obj = BoundingBox(
-                        l=bbox["l"],
-                        t=bbox["t"],
-                        r=bbox["r"],
-                        b=bbox["b"],
-                        coord_origin=CoordOrigin.TOPLEFT,
+                if line_content is not None and line_polygon is not None:
+                    line_bbox = self.extract_bbox_from_polygon(line_polygon)
+
+                    input_data = LineTextInput.from_existing_bbox(
+                        line_text=line_content,
+                        line_bbox=BoundingBox(
+                            l=line_bbox["l"],
+                            t=line_bbox["t"],
+                            r=line_bbox["r"],
+                            b=line_bbox["b"],
+                            coord_origin=CoordOrigin.TOPLEFT,
+                        ),
                     )
 
-                    segmented_pages[page_no].word_cells.append(
-                        TextCell(
-                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
-                            text=text_content,
-                            orig=text_content,
-                            # Keeping from_ocr flag False since Azure output doesn't indicate whether the given word is programmatic or OCR
-                            from_ocr=False,
+                    words_result = smart_weighted_character_distribution(input_data)
+
+                    for word_bbox_data in words_result.segmented_words:
+                        bbox_obj = BoundingBox(
+                            l=word_bbox_data.bbox.l,
+                            t=word_bbox_data.bbox.t,
+                            r=word_bbox_data.bbox.r,
+                            b=word_bbox_data.bbox.b,
+                            coord_origin=CoordOrigin.TOPLEFT,
                         )
-                    )
+
+                        segmented_pages[page_no].word_cells.append(
+                            TextCell(
+                                rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                                text=word_bbox_data.word,
+                                orig=word_bbox_data.word,
+                                # Keeping from_ocr flag False since Azure output doesn't indicate whether the given word is programmatic or OCR
+                                from_ocr=False,
+                            )
+                        )
 
         # Iterate over tables in the response and add to DoclingDocument
         self._add_tables(analyze_result, doc)
@@ -405,12 +423,13 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
 
-            elif record.mime_type == "image/png":
+            elif record.mime_type in ["image/png", "image/jpeg", "image/jpg"]:
                 # Call the Azure API by passing in the image for prediction
                 buf = BytesIO()
 
                 # TODO do this in a loop for all page images in the doc, not just the first.
-                record.ground_truth_page_images[0].save(buf, format="PNG")
+                save_format = "PNG" if record.mime_type == "image/png" else "JPEG"
+                record.ground_truth_page_images[0].save(buf, format=save_format)
 
                 poller = self.doc_intelligence_client.begin_analyze_document(
                     "prebuilt-layout",
@@ -425,7 +444,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 )
             else:
                 raise RuntimeError(
-                    f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf' and 'image/png'"
+                    f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf', 'image/png', 'image/jpeg', and 'image/jpg'"
                 )
             # Convert the prediction to doclingDocument
             pred_doc, pred_segmented_pages = self.convert_azure_output_to_docling(
