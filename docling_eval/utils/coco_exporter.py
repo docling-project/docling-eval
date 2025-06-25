@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from datasets import Dataset, load_dataset
+from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.document import DocItem, DoclingDocument
 from docling_core.types.doc.labels import DocItemLabel
 from pycocotools.coco import COCO
@@ -214,7 +215,7 @@ class DoclingEvalCOCOExporter:
         """
         category_ids: List[int] = []
         scores: List[float] = []
-        bboxes: List[List[float]] = []
+        bboxes: List[List[float]] = []  # [x,y,w,h] COCO format
 
         for item, _ in pred_doc.iterate_items():
             if not isinstance(item, DocItem):
@@ -237,8 +238,11 @@ class DoclingEvalCOCOExporter:
                     continue
 
                 page_w, page_h = pred_doc.pages[page_no].size.as_tuple()
-                bbox = prov.bbox.to_top_left_origin(page_height=page_h)
-                bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
+
+                # Save bbox in COCO format
+                bbox: BoundingBox = prov.bbox.to_top_left_origin(page_height=page_h)
+                bboxes.append([bbox.l, bbox.t, bbox.width, bbox.height])
+
                 scores.append(1.0)
                 category_ids.append(category_id)
         return category_ids, scores, bboxes
