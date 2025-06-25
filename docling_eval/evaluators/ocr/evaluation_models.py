@@ -72,26 +72,3 @@ class OcrDatasetEvaluationResult(BaseModel):
     f1_score: float = 0.0
     recall: float = 0.0
     precision: float = 0.0
-
-
-class WordBoundingBox(BaseModel):
-    """Word with its bounding box coordinates."""
-
-    word: str
-    bbox: BoundingBox
-
-
-class LineTextInput(BaseModel):
-    """Input parameters for smart weighted character distribution."""
-
-    line_text: str
-    line_bbox: BoundingBox
-
-
-class WordSegmentationResult(BaseModel):
-    """Result of segmenting a text line into individual words with precise positioning."""
-
-    segmented_words: List[WordBoundingBox] = Field(
-        default_factory=list,
-        description="Words extracted from the line with their calculated bounding boxes",
-    )

@@ -33,14 +33,10 @@ from docling_eval.datamodels.types import (
     PredictionFormats,
     PredictionProviderType,
 )
-from docling_eval.evaluators.ocr.evaluation_models import LineTextInput
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import (
-    from_pil_to_base64uri,
-    smart_weighted_character_distribution,
-)
+from docling_eval.utils.utils import from_pil_to_base64uri
 
 _log = logging.getLogger(__name__)
 
@@ -250,18 +246,14 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                     )
                     segmented_pages[page_no] = seg_page
 
-            elif block["BlockType"] == "LINE" and block.get("Page", 1) == page_no:
-                line_text = block.get("Text", None)
+            elif block["BlockType"] == "WORD" and block.get("Page", 1) == page_no:
+                text_content = block.get("Text", None)
                 geometry = block.get("Geometry", None)
 
-                if line_text is not None and geometry is not None:
-                    line_text = line_text.strip()
-                    if not line_text:
-                        continue
-
+                if text_content is not None and geometry is not None:
                     bbox = self.extract_bbox_from_geometry(geometry)
                     # Scale normalized coordinates to the page dimensions
-                    line_bbox = BoundingBox(
+                    bbox_obj = BoundingBox(
                         l=bbox["l"] * width,
                         t=bbox["t"] * height,
                         r=bbox["r"] * width,
@@ -269,26 +261,15 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                         coord_origin=CoordOrigin.TOPLEFT,
                     )
 
-                    input_data = LineTextInput(line_text=line_text, line_bbox=line_bbox)
-                    words_result = smart_weighted_character_distribution(input_data)
-
-                    for word_bbox_data in words_result.segmented_words:
-                        word_bbox = BoundingBox(
-                            l=word_bbox_data.bbox.l,
-                            t=word_bbox_data.bbox.t,
-                            r=word_bbox_data.bbox.r,
-                            b=word_bbox_data.bbox.b,
-                            coord_origin=CoordOrigin.TOPLEFT,
+                    segmented_pages[page_no].word_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            # Keeping from_ocr flag False since AWS output doesn't indicate whether the given word is programmatic or OCR
+                            from_ocr=False,
                         )
-
-                        segmented_pages[page_no].word_cells.append(
-                            TextCell(
-                                rect=BoundingRectangle.from_bounding_box(word_bbox),
-                                text=word_bbox_data.word,
-                                orig=word_bbox_data.word,
-                                from_ocr=False,
-                            )
-                        )
+                    )
 
             elif block["BlockType"] == "LAYOUT_TITLE":
                 self._add_title(block, doc, height, page_no, width, blocks_map)

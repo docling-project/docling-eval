@@ -3,12 +3,10 @@ import logging
 import platform
 from typing import Dict, List, Optional, Set
 
-from docling.datamodel.base_models import InputFormat, Page
+from docling.datamodel.base_models import InputFormat
 from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
 from docling_core.types.doc import DocItemLabel
-from docling_core.types.doc.base import BoundingBox, CoordOrigin
-from docling_core.types.doc.page import BoundingRectangle, TextCell
 from pydantic import TypeAdapter
 
 from docling_eval.datamodels.dataset_record import (
@@ -20,15 +18,10 @@ from docling_eval.datamodels.types import (
     PredictionFormats,
     PredictionProviderType,
 )
-from docling_eval.evaluators.ocr.evaluation_models import LineTextInput
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import (
-    docling_version,
-    get_package_version,
-    smart_weighted_character_distribution,
-)
+from docling_eval.utils.utils import docling_version, get_package_version
 
 _log = logging.getLogger(__name__)
 
@@ -115,58 +108,11 @@ class DoclingPredictionProvider(BasePredictionProvider):
             record, res.document, None, res.timings
         )
         pred_record.predicted_segmented_pages = {
-            p.page_no: self._set_word_cells(p) for p in res.pages if p.parsed_page
+            p.page_no: p.parsed_page for p in res.pages if p.parsed_page is not None
         }
         pred_record.status = res.status
 
         return pred_record
-
-    def _set_word_cells(self, page: Page):
-        if page.parsed_page is None:
-            _log.warning(
-                f"Page {page.page_no} has no parsed_page, cannot set word_cells."
-            )
-            return page.parsed_page
-
-        if not page.parsed_page.word_cells:
-            word_cells = []
-            for cell in page.cells:
-                if not cell.text.strip():
-                    continue
-
-                cell_bbox = cell.to_bounding_box()
-                line_bbox = BoundingBox(
-                    l=cell_bbox.l,
-                    t=cell_bbox.t,
-                    r=cell_bbox.r,
-                    b=cell_bbox.b,
-                    coord_origin=CoordOrigin.TOPLEFT,
-                )
-                input_data = LineTextInput(line_text=cell.text, line_bbox=line_bbox)
-                words_result = smart_weighted_character_distribution(input_data)
-
-                for word_bbox_data in words_result.segmented_words:
-                    word_bbox = BoundingBox(
-                        l=word_bbox_data.bbox.l,
-                        t=word_bbox_data.bbox.t,
-                        r=word_bbox_data.bbox.r,
-                        b=word_bbox_data.bbox.b,
-                        coord_origin=CoordOrigin.TOPLEFT,
-                    )
-
-                    word_cell = TextCell(
-                        rect=BoundingRectangle.from_bounding_box(word_bbox),
-                        text=word_bbox_data.word,
-                        orig=word_bbox_data.word,
-                        text_direction=cell.text_direction,
-                        confidence=cell.confidence,
-                        from_ocr=cell.from_ocr,
-                    )
-                    word_cells.append(word_cell)
-
-            page.parsed_page.word_cells = word_cells
-
-        return page.parsed_page
 
     def info(self) -> Dict:
         """Get information about the prediction provider."""
