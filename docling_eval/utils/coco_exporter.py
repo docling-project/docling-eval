@@ -130,6 +130,9 @@ class DoclingEvalCOCOExporter:
         Generate a Dict in pycocotools format using the "image_id", "category_id" from the original
         COCO dataset. Dump it as a json file.
         """
+        # Ensure save_dir
+        save_dir.mkdir(parents=True, exist_ok=True)
+
         # Load the COCO dataset
         _log.info("Loading COCO dataset")
         coco = load_coco(split, original_coco_dir)
