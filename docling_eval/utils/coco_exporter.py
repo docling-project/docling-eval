@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from datasets import Dataset, load_dataset
-from docling_core.types.doc.base import BoundingBox
+from docling_core.types.doc.base import BoundingBox, Size
 from docling_core.types.doc.document import DocItem, DoclingDocument
 from docling_core.types.doc.labels import DocItemLabel
+from PIL import Image
 from pycocotools.coco import COCO
 from tqdm import tqdm  # type: ignore
 
@@ -59,7 +60,24 @@ def detect_coco_annotation_files(
     return split_files
 
 
-def load_coco(split: str, coco_dir: Path) -> COCO:
+def detect_coco_images_split_dirs(
+    coco_root: Path,
+    split_options: List[str] = ["train", "val", "test"],
+) -> Dict[str, Path]:
+    r"""
+    Scan the coco_root path and detect the directory that has the images for the given split
+    """
+    images_split_dirs: Dict[str, Path] = {}
+    for images_dir in coco_root.iterdir():
+        if not images_dir.is_dir():
+            continue
+        for split_name in split_options:
+            if split_name in images_dir.stem:
+                images_split_dirs[split_name] = images_dir
+    return images_split_dirs
+
+
+def load_coco_annotations(split: str, coco_dir: Path) -> COCO:
     r"""Load the COCO dataset"""
     coco_ann_dir = coco_dir / "annotations"
     if not coco_ann_dir.is_dir():
@@ -69,8 +87,10 @@ def load_coco(split: str, coco_dir: Path) -> COCO:
     if split not in coco_ann_fns:
         raise Exception(f"Split '{split}' does not exist in COCO dataset")
 
-    coco = COCO(coco_ann_fns[split])
-    return coco
+    ann_fn = coco_ann_fns[split]
+    with open(ann_fn, "r") as fd:
+        ann_data = json.load(fd)
+    return ann_data
 
 
 class DoclingEvalCOCOExporter:
@@ -135,8 +155,9 @@ class DoclingEvalCOCOExporter:
 
         # Load the COCO dataset
         _log.info("Loading COCO dataset")
-        coco = load_coco(split, original_coco_dir)
-        coco_dataset = coco.dataset
+        coco_dataset = load_coco_annotations(split, original_coco_dir)
+        coco_image_dirs = detect_coco_images_split_dirs(original_coco_dir)
+        coco_image_dir = coco_image_dirs[split]
 
         # Build indices for COCO images/categories
         img_name_to_id_idx: Dict[str, int] = {
@@ -179,9 +200,24 @@ class DoclingEvalCOCOExporter:
                 continue
             img_id = img_name_to_id_idx[doc_id]
 
+            # Load the COCO image to get the original image dimensions
+            coco_image_fn = coco_image_dir / f"{doc_id}.png"
+            if not coco_image_fn.is_file():
+                _log.error(
+                    "Skipping document because COCO image is missing: %s", doc_id
+                )
+                continue
+            with Image.open(coco_image_fn) as im:
+                coco_img_width = im.width
+                coco_img_height = im.height
+
             # Extract labels, bboxes, scores
             category_ids, scores, bboxes = self._extract_layout_data(
-                pred_doc, labels_to_category_ids
+                doc_id,
+                pred_doc,
+                coco_img_width,
+                coco_img_height,
+                labels_to_category_ids,
             )
             for (
                 category_id,
@@ -206,7 +242,10 @@ class DoclingEvalCOCOExporter:
 
     def _extract_layout_data(
         self,
+        doc_id: str,
         pred_doc: DoclingDocument,
+        coco_img_width: int,
+        coco_img_height: int,
         labels_to_category_ids: Dict[DocItemLabel, int],
     ) -> Tuple[List[int], List[float], List[List[float]]]:
         r"""
@@ -219,6 +258,7 @@ class DoclingEvalCOCOExporter:
         category_ids: List[int] = []
         scores: List[float] = []
         bboxes: List[List[float]] = []  # [x,y,w,h] COCO format
+        new_size = Size(width=coco_img_width, height=coco_img_height)
 
         for item, _ in pred_doc.iterate_items():
             if not isinstance(item, DocItem):
@@ -239,11 +279,14 @@ class DoclingEvalCOCOExporter:
                 if page_no != 1:
                     _log.error("Skip pages after the first one")
                     continue
+                old_size = pred_doc.pages[page_no].size
 
-                page_w, page_h = pred_doc.pages[page_no].size.as_tuple()
-
-                # Save bbox in COCO format
-                bbox: BoundingBox = prov.bbox.to_top_left_origin(page_height=page_h)
+                # Scale bbox to the original COCO image dimensions and save in COCO format
+                bbox: BoundingBox = prov.bbox.to_top_left_origin(
+                    page_height=old_size.height
+                )
+                if old_size != new_size:
+                    bbox = bbox.scale_to_size(old_size, new_size)
                 bboxes.append([bbox.l, bbox.t, bbox.width, bbox.height])
 
                 scores.append(1.0)
