@@ -40,7 +40,10 @@ from docling_eval.datamodels.types import (
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
 )
-from docling_eval.utils.utils import from_pil_to_base64uri
+from docling_eval.utils.utils import (
+    does_intersection_area_exceed_threshold,
+    from_pil_to_base64uri,
+)
 
 # from docling_core.types.doc.labels import DocItemLabel
 
@@ -183,11 +186,11 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         # Iterate over tables in the response and add to DoclingDocument
         self._add_tables(analyze_result, doc)
 
-        # Iterate over paragraphs in the response and add populate fields like section headings, header-footer based on "role" field
-        self._handle_paragraphs_based_on_roles(analyze_result, doc)
-
         # Iterate over figures and add them as pictures in DoclingDocument
         self._add_figures(analyze_result, doc)
+
+        # Iterate over paragraphs in the response and add populate fields like section headings, header-footer based on "role" field
+        self._handle_paragraphs_based_on_roles(analyze_result, doc)
 
         return doc, segmented_pages
 
@@ -209,6 +212,29 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
             prov = ProvenanceItem(page_no=page_no, bbox=bbox_obj, charspan=(0, 0))
             doc.add_picture(prov=prov)
 
+            # Figures can also have footnotes in azure output
+            footnotes = figure.get("footnotes", [])
+            for footnote in footnotes:
+                bounding_regions = footnote["boundingRegions"][0]
+                page_no = bounding_regions["pageNumber"]
+                polygon = bounding_regions.get("polygon", [])
+                bbox = self.extract_bbox_from_polygon(polygon)
+
+                text_content = footnote.get("content", "")
+
+                bbox_obj = BoundingBox(
+                    l=bbox["l"],
+                    t=bbox["t"],
+                    r=bbox["r"],
+                    b=bbox["b"],
+                    coord_origin=CoordOrigin.TOPLEFT,
+                )
+
+                prov = ProvenanceItem(
+                    page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
+                )
+                doc.add_text(label=DocItemLabel.FOOTNOTE, text=text_content, prov=prov)
+
     def _handle_paragraphs_based_on_roles(self, analyze_result, doc):
         for paragraph in analyze_result.get("paragraphs", []):
             bounding_regions = paragraph["boundingRegions"][0]
@@ -226,6 +252,24 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 coord_origin=CoordOrigin.TOPLEFT,
             )
 
+            # Filter any text that overlaps with tables so the content is not duplicated
+            if any(
+                does_intersection_area_exceed_threshold(
+                    bbox_obj, table.prov[0].bbox, 0.6
+                )
+                for table in doc.tables
+            ):
+                continue
+
+            # Filter any text that overlaps with figures so the content is not duplicated
+            if any(
+                does_intersection_area_exceed_threshold(
+                    bbox_obj, picture.prov[0].bbox, 0.6
+                )
+                for picture in doc.pictures
+            ):
+                continue
+
             prov = ProvenanceItem(
                 page_no=page_no, bbox=bbox_obj, charspan=(0, len(text_content))
             )
@@ -237,7 +281,9 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 elif role == "title":
                     doc.add_title(text=text_content, prov=prov)
                 elif role == "footnote":
-                    doc.add_text(label=DocItemLabel.TEXT, text=text_content, prov=prov)
+                    doc.add_text(
+                        label=DocItemLabel.FOOTNOTE, text=text_content, prov=prov
+                    )
                 elif role == "pageHeader":
                     doc.add_text(
                         label=DocItemLabel.PAGE_HEADER, text=text_content, prov=prov

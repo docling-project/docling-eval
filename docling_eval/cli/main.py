@@ -54,6 +54,7 @@ from docling_eval.dataset_builders.otsl_table_dataset_builder import (
 from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
+from docling_eval.evaluators.doc_structure_evaluator import DocStructureEvaluator
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LayoutEvaluator,
@@ -499,6 +500,16 @@ def evaluate(
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
         evaluation = table_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
+
+        with open(save_fn, "w") as fd:
+            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+
+    elif modality == EvaluationModality.DOCUMENT_STRUCTURE:
+        doc_struct_evaluator = DocStructureEvaluator()
+        evaluation = doc_struct_evaluator(  # type: ignore
             idir,
             split=split,
         )

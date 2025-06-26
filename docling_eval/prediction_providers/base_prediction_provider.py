@@ -165,8 +165,8 @@ class BasePredictionProvider:
                 / f"{prediction_record.doc_id}.html",
                 true_doc=gt_doc,
                 pred_doc=pred_doc,
-                true_labels=self.true_labels,
-                pred_labels=self.pred_labels,
+                # true_labels=self.true_labels,
+                # pred_labels=self.pred_labels,
                 draw_reading_order=True,
             )
 
@@ -395,7 +395,10 @@ class BasePredictionProvider:
             record_chunk = [r.as_record_dict() for r in record_chunk]
 
             save_shard_to_disk(
-                items=record_chunk, dataset_path=test_dir, shard_id=chunk_count
+                items=record_chunk,
+                dataset_path=test_dir,
+                shard_id=chunk_count,
+                features=DatasetRecordWithPrediction.features(),
             )
             count += len(record_chunk)
             chunk_count += 1

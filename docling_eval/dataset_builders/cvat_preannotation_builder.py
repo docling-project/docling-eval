@@ -799,7 +799,7 @@ class CvatPreannotationBuilder:
         _log.info(f"Preparing dataset from {self.source_dir} for CVAT annotation")
         self._create_project_properties()
         self.overview = self._export_from_dataset()
-        self._create_preannotation_files()
+        self._create_preannotation_files(sliding_window=1)
         _log.info(f"CVAT annotation preparation complete in {self.target_dir}")
 
 

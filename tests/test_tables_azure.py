@@ -115,7 +115,7 @@ def test_run_dpbench_builder():
 
     dataset = DPBenchDatasetBuilder(
         target=target_path / "gt_dataset",
-        begin_index=186,
+        begin_index=185,
         end_index=201,
     )
 

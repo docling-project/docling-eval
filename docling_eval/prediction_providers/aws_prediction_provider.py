@@ -109,16 +109,17 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                             text += child["Text"] + " "
         return text.strip()
 
-    def process_table(self, table, blocks_map, page_no):
+    def process_table(self, table, blocks_map, page_no, width, height):
         """Process a single table from AWS Textract output."""
         table_cells = []
 
         table_bbox = self.extract_bbox_from_geometry(table.get("Geometry", {}))
+        # Scale normalized coordinates to the page dimensions
         table_bbox_obj = BoundingBox(
-            l=table_bbox["l"],
-            t=table_bbox["t"],
-            r=table_bbox["r"],
-            b=table_bbox["b"],
+            l=table_bbox["l"] * width,
+            t=table_bbox["t"] * height,
+            r=table_bbox["r"] * width,
+            b=table_bbox["b"] * height,
             coord_origin=CoordOrigin.TOPLEFT,
         )
 
@@ -159,13 +160,13 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
             entity_types = cell.get("EntityTypes", [])
             is_column_header = True if "COLUMN_HEADER" in entity_types else False
 
-            # Create TableCell object
+            # Create TableCell object by scaling normalized coordinates to the page dimensions
             table_cell = TableCell(
                 bbox=BoundingBox(
-                    l=cell_bbox["l"],
-                    t=cell_bbox["t"],
-                    r=cell_bbox["r"],
-                    b=cell_bbox["b"],
+                    l=cell_bbox["l"] * width,
+                    t=cell_bbox["t"] * height,
+                    r=cell_bbox["r"] * width,
+                    b=cell_bbox["b"] * height,
                     coord_origin=CoordOrigin.TOPLEFT,
                 ),
                 row_span=row_span,
@@ -306,7 +307,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
             # This condition is to add output from actual tables API which adds detailed table
             elif block["BlockType"] == "TABLE":
                 page_no = int(block.get("Page", 1))
-                table_prov, table_data = self.process_table(block, blocks_map, page_no)
+                table_prov, table_data = self.process_table(
+                    block, blocks_map, page_no, width, height
+                )
                 doc.add_table(prov=table_prov, data=table_data, caption=None)
 
         return doc, segmented_pages

@@ -6,16 +6,16 @@ Create OmniDocBench evaluation datasets:
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark OmniDocBench --output-dir ./benchmarks/OmniDocBench-gt/ 
+docling-eval create-gt --benchmark OmniDocBench --output-dir ./benchmarks/OmniDocBench-gt/ 
 
 # Make predictions for different modalities.
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark OmniDocBench \
   --gt-dir ./benchmarks/OmniDocBench-gt/ \
   --output-dir ./benchmarks/OmniDocBench-e2e/ \
   --prediction-provider docling # use full-document predictions from docling
   
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark DPBench \
   --gt-dir ./benchmarks/OmniDocBench-gt/ \
   --output-dir ./benchmarks/OmniDocBench-tables/ \
@@ -27,7 +27,7 @@ docling_eval create-eval \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality layout \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-e2e/ 
@@ -39,7 +39,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality layout \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-e2e/ 
@@ -55,7 +55,7 @@ docling_eval visualize \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality table_structure \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-tables/ 
@@ -67,7 +67,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality table_structure \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-tables/ 
@@ -89,7 +89,7 @@ docling_eval visualize \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality reading_order \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-e2e/ 
@@ -101,7 +101,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality reading_order \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-e2e/ 
@@ -121,7 +121,7 @@ docling_eval visualize \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality markdown_text \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-e2e/ 
@@ -133,7 +133,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality markdown_text \
   --benchmark OmniDocBench \
   --output-dir ./benchmarks/OmniDocBench-e2e/ 

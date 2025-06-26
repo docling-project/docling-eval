@@ -361,8 +361,7 @@ class ReadingOrderVisualizer:
             pred_order = ro_preds_idx[doc_id]
 
             # Draw and save the visualization
-            image_bytes = page_images[0]["bytes"]
-            image = Image.open(BytesIO(image_bytes))
+            image = page_images[0]  # page_images[0] is already a PIL Image
 
             clusters = []
             for idx, (elem, _) in enumerate(true_doc.iterate_items()):

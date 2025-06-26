@@ -619,7 +619,7 @@
     <box label="text" source="file" occluded="0" xtl="106.00" ytl="319.70" xbr="583.98" ybr="502.12" z_order="1">
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="252.65" xbr="1813.70" ybr="435.06" z_order="1">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="text" source="file" occluded="0" xtl="106.00" ytl="524.69" xbr="579.59" ybr="923.10" z_order="2">
     </box>
@@ -633,7 +633,7 @@
       <attribute name="level">1</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="589.63" xbr="1732.70" ybr="637.05" z_order="4">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="text" source="file" occluded="0" xtl="630.00" ytl="319.68" xbr="1071.90" ybr="367.24" z_order="4">
     </box>
@@ -641,45 +641,45 @@
       <attribute name="level">1</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="651.63" xbr="1571.85" ybr="672.05" z_order="5">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="630.00" ytl="451.69" xbr="1083.66" ybr="580.11" z_order="6">
       <attribute name="level">1</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="686.62" xbr="1620.22" ybr="707.05" z_order="6">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="630.00" ytl="594.69" xbr="1086.23" ybr="615.11" z_order="7">
       <attribute name="level">1</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="721.62" xbr="1496.57" ybr="742.05" z_order="7">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="630.00" ytl="629.69" xbr="1063.18" ybr="704.11" z_order="8">
       <attribute name="level">1</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="756.62" xbr="1500.81" ybr="777.04" z_order="8">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="666.01" ytl="726.68" xbr="1090.05" ybr="774.10" z_order="9">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="1366.01" ytl="791.62" xbr="1609.60" ybr="812.04" z_order="9">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="666.01" ytl="788.68" xbr="1123.26" ybr="890.10" z_order="10">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="section_header" source="file" occluded="0" xtl="1854.00" ytl="184.47" xbr="2201.40" ybr="210.24" z_order="10">
       <attribute name="level">1</attribute>
     </box>
     <box label="list_item" source="file" occluded="0" xtl="666.01" ytl="904.67" xbr="1101.35" ybr="1060.09" z_order="11">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="text" source="file" occluded="0" xtl="1854.00" ytl="222.90" xbr="2336.51" ybr="513.31" z_order="11">
     </box>
     <box label="list_item" source="file" occluded="0" xtl="666.01" ytl="1074.67" xbr="1114.46" ybr="1203.08" z_order="12">
-      <attribute name="level">1</attribute>
+      <attribute name="level">2</attribute>
     </box>
     <box label="text" source="file" occluded="0" xtl="1854.00" ytl="535.89" xbr="2346.80" ybr="799.30" z_order="12">
     </box>
