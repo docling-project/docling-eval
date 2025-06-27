@@ -222,6 +222,7 @@ class LayoutEvaluator(BaseEvaluator):
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
+            EvaluationRejectionType.MISMATHCED_DOCUMENT: 0,
         }
 
         for i, data in tqdm(
@@ -251,6 +252,37 @@ class LayoutEvaluator(BaseEvaluator):
                 pred_doc=pred_doc,
                 filter_labels=filter_labels,
             )
+
+            # Track mismatched documents when using PENALIZE strategy and there are missing pages
+            true_pages = set()
+            for item, level in true_doc.iterate_items(
+                included_content_layers={c for c in ContentLayer},
+                traverse_pictures=True,
+            ):
+                if (
+                    isinstance(item, DocItem)
+                    and self.label_mapping[item.label] in filter_labels
+                ):
+                    for prov in item.prov:
+                        true_pages.add(prov.page_no)
+
+            pred_pages = set()
+            for item, level in pred_doc.iterate_items(
+                included_content_layers={c for c in ContentLayer},
+                traverse_pictures=True,
+            ):
+                if (
+                    isinstance(item, DocItem)
+                    and self.label_mapping[item.label] in filter_labels
+                ):
+                    for prov in item.prov:
+                        pred_pages.add(prov.page_no)
+
+            if (
+                self.missing_prediction_strategy == MissingPredictionStrategy.PENALIZE
+                and len(true_pages - pred_pages) > 0
+            ):
+                rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] += 1
 
             # logging.info(f"gts: {gts}")
             # logging.info(f"preds: {preds}")
@@ -672,7 +704,6 @@ class LayoutEvaluator(BaseEvaluator):
         # Process pages in sorted order to ensure consistent alignment
         ground_truths: List[Tuple[int, Dict[str, torch.Tensor]]] = []
         predictions: List[Tuple[int, Dict[str, torch.Tensor]]] = []
-        skipped_pages = []
 
         for page_no in sorted(gt_pages):
             # Always process GT for this page
@@ -710,7 +741,6 @@ class LayoutEvaluator(BaseEvaluator):
                     self.missing_prediction_strategy == MissingPredictionStrategy.IGNORE
                 ):
                     # Skip this page entirely
-                    skipped_pages.append(page_no)
                     continue
                 else:
                     raise ValueError(
@@ -734,10 +764,6 @@ class LayoutEvaluator(BaseEvaluator):
                 gt_page == pred_page
             ), f"Page number mismatch at index {i}: GT page {gt_page} vs Pred page {pred_page}"
 
-        if skipped_pages:
-            _log.info(
-                f"Skipped {len(skipped_pages)} pages due to missing predictions: {skipped_pages}"
-            )
         _log.debug(f"Processed {len(ground_truths)} page pairs successfully")
 
         return ground_truths, predictions
