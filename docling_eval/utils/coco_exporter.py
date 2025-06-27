@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple
 
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.base import BoundingBox, Size
-from docling_core.types.doc.document import DocItem, DoclingDocument
+from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
 from docling_core.types.doc.labels import DocItemLabel
 from PIL import Image
 from pycocotools.coco import COCO
@@ -259,8 +259,10 @@ class DoclingEvalCOCOExporter:
         scores: List[float] = []
         bboxes: List[List[float]] = []  # [x,y,w,h] COCO format
         new_size = Size(width=coco_img_width, height=coco_img_height)
-
-        for item, _ in pred_doc.iterate_items():
+        included_content_layers = {c for c in ContentLayer}
+        for item, _ in pred_doc.iterate_items(
+            included_content_layers=included_content_layers
+        ):
             if not isinstance(item, DocItem):
                 continue
             label = item.label
