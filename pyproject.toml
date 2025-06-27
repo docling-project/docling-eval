@@ -69,6 +69,10 @@ hyperscalers = [
     'boto3 (>=1.37.8,<2.0.0)',
     'google-cloud-documentai (>=3.2.0,<4.0.0)',
 ]
+cvat_tools = [
+    "cvat-sdk>=2.40.0",
+    "ocrmac>=1.0.0",
+]
 
 [dependency-groups]
 dev = [

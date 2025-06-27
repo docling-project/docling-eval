@@ -555,6 +555,7 @@ def test_run_docvqa_builder():
         name=dataset_layout.name,
         gt_dataset_dir=target_path / "gt_dataset",
         target_dataset_dir=target_path / "eval_dataset_e2e",
+        split="validation",
     )
 
 

@@ -57,7 +57,9 @@ from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.doc_structure_evaluator import DocStructureEvaluator
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
+    LabelFilteringStrategy,
     LayoutEvaluator,
+    MissingPredictionStrategy,
 )
 from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
@@ -488,7 +490,10 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.LAYOUT:
-        layout_evaluator = LayoutEvaluator()
+        layout_evaluator = LayoutEvaluator(
+            # missing_prediction_strategy=MissingPredictionStrategy.PENALIZE,
+            # label_filtering_strategy=LabelFilteringStrategy.INTERSECTION,
+        )
         evaluation = layout_evaluator(  # type: ignore
             idir,
             split=split,
