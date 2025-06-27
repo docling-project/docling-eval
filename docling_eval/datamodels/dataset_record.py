@@ -175,10 +175,17 @@ class DatasetRecord(
                     data[gt_pic_img_alias][ix] = Features_Image().decode_example(item)
 
         gt_binary = cls.get_field_alias("original")
-        if gt_binary in data and isinstance(data[gt_binary], bytes):
-            data[gt_binary] = DocumentStream(
-                name="file", stream=BytesIO(data[gt_binary])
-            )
+        if gt_binary in data:
+            if isinstance(data[gt_binary], bytes):
+                data[gt_binary] = DocumentStream(
+                    name="file", stream=BytesIO(data[gt_binary])
+                )
+            elif isinstance(data[gt_binary], PIL.Image.Image):
+                # Handle PIL Images by converting to bytes
+                img_buffer = BytesIO()
+                data[gt_binary].save(img_buffer, format="PNG")
+                img_buffer.seek(0)
+                data[gt_binary] = DocumentStream(name="image.png", stream=img_buffer)
 
         return data
 
@@ -196,7 +203,9 @@ class DatasetRecordWithPrediction(DatasetRecord):
     )
 
     original_prediction: Optional[str] = None
-    prediction_format: PredictionFormats  # some enum type
+    prediction_format: PredictionFormats = (
+        PredictionFormats.DOCLING_DOCUMENT
+    )  # default for old files
     prediction_timings: Optional[Dict] = Field(alias="prediction_timings", default=None)
 
     predicted_page_images: List[PIL.Image.Image] = Field(
