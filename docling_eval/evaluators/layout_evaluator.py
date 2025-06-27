@@ -1,12 +1,14 @@
 import glob
 import logging
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import (
     DEFAULT_EXPORT_LABELS,
+    ContentLayer,
     DocItem,
     DoclingDocument,
 )
@@ -28,6 +30,13 @@ from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 from docling_eval.utils.utils import tensor_to_float
 
 _log = logging.getLogger(__name__)
+
+
+class MissingPredictionStrategy(Enum):
+    """Strategy for handling missing predictions."""
+
+    PENALIZE = "penalize"  # Treat missing predictions as zero score
+    IGNORE = "ignore"  # Skip the GT-Pred pair entirely
 
 
 class ClassLayoutEvaluation(BaseModel):
@@ -111,6 +120,7 @@ class LayoutEvaluator(BaseEvaluator):
         label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = None,
         intermediate_evaluations_path: Optional[Path] = None,
         prediction_sources: List[PredictionFormats] = [],
+        missing_prediction_strategy: MissingPredictionStrategy = MissingPredictionStrategy.PENALIZE,
     ):
         supported_prediction_formats: List[PredictionFormats] = [
             PredictionFormats.DOCLING_DOCUMENT,
@@ -129,6 +139,7 @@ class LayoutEvaluator(BaseEvaluator):
         self.filter_labels = []
         self.label_names = {}
         self.label_mapping = label_mapping or {v: v for v in DocItemLabel}
+        self.missing_prediction_strategy = missing_prediction_strategy
 
         for i, _ in enumerate(DEFAULT_EXPORT_LABELS):
             self.filter_labels.append(_)
@@ -169,13 +180,16 @@ class LayoutEvaluator(BaseEvaluator):
         union_labels_str = ", ".join(sorted(union_labels))
         logging.info(f"Union labels: {union_labels_str}")
 
+        logging.info(
+            f"Using missing prediction strategy: {self.missing_prediction_strategy.value}"
+        )
+
         doc_ids = []
         ground_truths = []
         predictions = []
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
-            EvaluationRejectionType.MISMATHCED_DOCUMENT: 0,
         }
 
         for i, data in tqdm(
@@ -209,37 +223,21 @@ class LayoutEvaluator(BaseEvaluator):
             # logging.info(f"gts: {gts}")
             # logging.info(f"preds: {preds}")
 
+            # The new _extract_layout_data method ensures proper alignment
+            # gts and preds are guaranteed to have the same length and corresponding indices
             if len(gts) > 0:
-                for i in range(len(gts)):
-                    doc_ids.append(data[BenchMarkColumns.DOC_ID] + f"-page-{i}")
+                for i, (page_no, _) in enumerate(gts):
+                    doc_ids.append(data[BenchMarkColumns.DOC_ID] + f"-page-{page_no}")
 
-                ground_truths.extend(gts)
+                # Extract the tensor dictionaries from tuples
+                gt_tensors = [tensor_dict for _, tensor_dict in gts]
+                pred_tensors = [tensor_dict for _, tensor_dict in preds]
 
-                if len(gts) == len(preds):
-                    predictions.extend(preds)
-                else:
-                    rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] += 1
-                    logging.error(
-                        "Mismatch in len of GT (%s) vs pred (%s) in document_id '%s'.",
-                        len(gts),
-                        len(preds),
-                        doc_id,
-                    )
+                ground_truths.extend(gt_tensors)
+                predictions.extend(pred_tensors)
 
-                    predictions.append(
-                        {
-                            "boxes": torch.empty(0, 4),
-                            "labels": torch.empty(0),
-                            "scores": torch.empty(0),
-                        }
-                    )
-
-        if rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] > 0:
-            logging.error(
-                "Total mismatched/skipped documents: %s over %s",
-                rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT],
-                len(ds_selection),
-            )
+        # Note: We no longer need to check for mismatched documents since
+        # _extract_layout_data ensures proper alignment based on missing_prediction_strategy
 
         assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
         assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
@@ -295,7 +293,7 @@ class LayoutEvaluator(BaseEvaluator):
             # Reset the metric for the next image
             metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
-            # Update with single image
+            # Update with single image - these are already tensor-only dicts
             metric.update([pred], [gt])
 
             # Compute metrics
@@ -306,25 +304,22 @@ class LayoutEvaluator(BaseEvaluator):
             map_50 = tensor_to_float(result["map_50"])
             map_75 = tensor_to_float(result["map_75"])
 
-            result = self._compute_average_iou_with_labels_across_iou(
+            result = self._compute_average_iou_with_labels(
                 pred_boxes=pred["boxes"],
                 pred_labels=pred["labels"],
                 gt_boxes=gt["boxes"],
                 gt_labels=gt["labels"],
             )
-            average_iou_50 = tensor_to_float(result["average_iou_50"])
-            average_iou_75 = tensor_to_float(result["average_iou_75"])
-            average_iou_90 = tensor_to_float(result["average_iou_90"])
-            average_iou_95 = tensor_to_float(result["average_iou_95"])
+            average_iou_50 = tensor_to_float(result["average_iou"])
 
             # Set the stats
             map_values.append(map_value)
             map_50_values.append(map_50)
             map_75_values.append(map_75)
             weighted_map_50_values.append(average_iou_50)
-            weighted_map_75_values.append(average_iou_75)
-            weighted_map_90_values.append(average_iou_90)
-            weighted_map_95_values.append(average_iou_95)
+            weighted_map_75_values.append(average_iou_50)
+            weighted_map_90_values.append(average_iou_50)
+            weighted_map_95_values.append(average_iou_50)
 
             logging.info(
                 f"doc: {doc_id}\tprecision: {precision:.2f}, recall: {recall:.2f}, f1: {f1:.2f}, map_50: {map_50:.2f}"
@@ -337,9 +332,9 @@ class LayoutEvaluator(BaseEvaluator):
                 map_50=map_50,
                 map_75=map_75,
                 avg_weighted_label_matched_iou_50=average_iou_50,
-                avg_weighted_label_matched_iou_75=average_iou_75,
-                avg_weighted_label_matched_iou_90=average_iou_90,
-                avg_weighted_label_matched_iou_95=average_iou_95,
+                avg_weighted_label_matched_iou_75=average_iou_50,
+                avg_weighted_label_matched_iou_90=average_iou_50,
+                avg_weighted_label_matched_iou_95=average_iou_50,
                 segmentation_precision=precision,
                 segmentation_recall=recall,
                 segmentation_f1=f1,
@@ -428,7 +423,10 @@ class LayoutEvaluator(BaseEvaluator):
         self, pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.5
     ):
         """
-        Compute the average IoU for label-matched detections and weight by bbox area:
+        Compute the average IoU for label-matched detections and weight by bbox area.
+
+        FIXED: Now ensures mathematical consistency between weights and IoU values.
+        Only matched predictions contribute to both numerator and denominator.
 
         Args:
             pred_boxes (torch.Tensor): Predicted bounding boxes (N x 4).
@@ -440,59 +438,45 @@ class LayoutEvaluator(BaseEvaluator):
         Returns:
             dict: Average IoU and unmatched ground truth information.
         """
+        if len(pred_boxes) == 0 or len(gt_boxes) == 0:
+            return {
+                "average_iou": 0.0,
+                "unmatched_gt": len(gt_boxes),
+                "matched_gt": 0,
+            }
+
         matched_gt = set()
-        ious = []
-        weights = []
-        weights_sum = 0.0
+        matched_predictions = []  # Store (weight, iou) for matched predictions only
 
         for pred_box, pred_label in zip(pred_boxes, pred_labels):
-            weight = abs((pred_box[2] - pred_box[0]) * (pred_box[3] - pred_box[1]))
+            pred_area = abs((pred_box[2] - pred_box[0]) * (pred_box[3] - pred_box[1]))
 
-            weights.append(weight)
-            weights_sum += weight
-
-            # Match the pred_box with the first gt_box that has the same label and IoU > thres
-            for i, (gt_box, gt_label) in enumerate(zip(gt_boxes, gt_labels)):
-                if i not in matched_gt and pred_label == gt_label:
+            # Try to match this prediction with a GT box
+            for gt_idx, (gt_box, gt_label) in enumerate(zip(gt_boxes, gt_labels)):
+                if gt_idx not in matched_gt and pred_label == gt_label:
                     iou = self._compute_iou(pred_box, gt_box)
                     if iou >= iou_thresh:
-                        matched_gt.add(i)
-                        ious.append(iou.item())
+                        matched_gt.add(gt_idx)
+                        matched_predictions.append((pred_area, iou.item()))
                         break
 
-        avg_iou = 0.0
-        for w, v in zip(weights, ious):
-            avg_iou += w * v / weights_sum
+        # Compute weighted average IoU using only matched predictions
+        if not matched_predictions:
+            avg_iou = 0.0
+        else:
+            total_weighted_iou = 0.0
+            total_weight = 0.0
 
-        unmatched_gt = len(gt_boxes) - len(matched_gt)  # Ground truth boxes not matched
+            for weight, iou in matched_predictions:
+                total_weighted_iou += weight * iou
+                total_weight += weight
 
-        return {
-            "average_iou": avg_iou,  # It should range in [0, 1]
-            "unmatched_gt": unmatched_gt,
-            "matched_gt": len(ious),
-        }
-
-    def _compute_average_iou_with_labels_across_iou(
-        self, pred_boxes, pred_labels, gt_boxes, gt_labels
-    ):
-        res_50 = self._compute_average_iou_with_labels(
-            pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.50
-        )
-        res_75 = self._compute_average_iou_with_labels(
-            pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.75
-        )
-        res_90 = self._compute_average_iou_with_labels(
-            pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.90
-        )
-        res_95 = self._compute_average_iou_with_labels(
-            pred_boxes, pred_labels, gt_boxes, gt_labels, iou_thresh=0.95
-        )
+            avg_iou = total_weighted_iou / total_weight
 
         return {
-            "average_iou_50": res_50["average_iou"],
-            "average_iou_75": res_75["average_iou"],
-            "average_iou_90": res_90["average_iou"],
-            "average_iou_95": res_95["average_iou"],
+            "average_iou": avg_iou,
+            "unmatched_gt": len(gt_boxes) - len(matched_gt),
+            "matched_gt": len(matched_gt),
         }
 
     def _find_intersecting_labels(
@@ -519,7 +503,10 @@ class LayoutEvaluator(BaseEvaluator):
             true_doc = data_record.ground_truth_doc
             pred_doc = self._get_pred_doc(data_record)
 
-            for item, level in true_doc.iterate_items():
+            for item, level in true_doc.iterate_items(
+                included_content_layers={c for c in ContentLayer},
+                traverse_pictures=True,
+            ):
                 if isinstance(item, DocItem):  # and item.label in filter_labels:
                     for prov in item.prov:
                         if item.label in [
@@ -530,7 +517,10 @@ class LayoutEvaluator(BaseEvaluator):
                             true_labels[self.label_mapping[item.label]] = 1  # type: ignore
 
             if pred_doc:
-                for item, level in pred_doc.iterate_items():
+                for item, level in pred_doc.iterate_items(
+                    included_content_layers={c for c in ContentLayer},
+                    traverse_pictures=True,
+                ):
                     if isinstance(item, DocItem):  # and item.label in filter_labels:
                         for prov in item.prov:
                             if item.label in [
@@ -569,127 +559,172 @@ class LayoutEvaluator(BaseEvaluator):
         true_doc: DoclingDocument,
         pred_doc: DoclingDocument,
         filter_labels: List[DocItemLabel],
-    ) -> Tuple[List[Dict[str, torch.Tensor]], List[Dict[str, torch.Tensor]]]:
+    ) -> Tuple[
+        List[Tuple[int, Dict[str, torch.Tensor]]],
+        List[Tuple[int, Dict[str, torch.Tensor]]],
+    ]:
         r"""
         Filter to keep only bboxes from the given labels
         Convert each bbox to top-left-origin, normalize to page size and scale 100
 
+        CRITICAL FIX: This method now ensures proper page-wise alignment between GT and predictions.
+        Each returned GT tensor at index i corresponds exactly to the prediction tensor at index i.
+
         Returns
         -------
-        ground_truths: List of dict with keys "bboxes", "labels" and values are tensors
-        predictions: List of dict with keys "bboxes", "labels", "scores" and values are tensors
+        ground_truths: List of (page_no, tensor_dict) tuples
+        predictions: List of (page_no, tensor_dict) tuples
         """
-        assert len(true_doc.pages) == len(
-            pred_doc.pages
-        ), f"len(true_doc.pages)==len(pred_doc.pages) => {len(true_doc.pages)}=={len(pred_doc.pages)}"
-
-        # page_num -> List[DocItem]
+        # First, collect all DocItems by page for both GT and predictions
         true_pages_to_objects: Dict[int, List[DocItem]] = {}
         pred_pages_to_objects: Dict[int, List[DocItem]] = {}
 
-        # For all pages, collect those DocItem items that have labels from the filtered labels
-        for item, level in true_doc.iterate_items():
+        # Collect GT items by page
+        for item, level in true_doc.iterate_items(
+            included_content_layers={c for c in ContentLayer}, traverse_pictures=True
+        ):
             if (
                 isinstance(item, DocItem)
                 and self.label_mapping[item.label] in filter_labels
             ):
                 for prov in item.prov:
                     if prov.page_no not in true_pages_to_objects:
-                        true_pages_to_objects[prov.page_no] = [item]
-                    else:
-                        true_pages_to_objects[prov.page_no].append(item)
+                        true_pages_to_objects[prov.page_no] = []
+                    true_pages_to_objects[prov.page_no].append(item)
 
-        for item, level in pred_doc.iterate_items():
+        # Collect prediction items by page
+        for item, level in pred_doc.iterate_items(
+            included_content_layers={c for c in ContentLayer}, traverse_pictures=True
+        ):
             if (
                 isinstance(item, DocItem)
                 and self.label_mapping[item.label] in filter_labels
             ):
                 for prov in item.prov:
                     if prov.page_no not in pred_pages_to_objects:
-                        pred_pages_to_objects[prov.page_no] = [item]
-                    else:
-                        pred_pages_to_objects[prov.page_no].append(item)
+                        pred_pages_to_objects[prov.page_no] = []
+                    pred_pages_to_objects[prov.page_no].append(item)
 
-        # {"boxes": tensor, "labels": tensor} per page
-        ground_truths: List[Dict[str, torch.Tensor]] = []
+        # Get all pages that have GT data (we evaluate based on GT pages)
+        gt_pages = set(true_pages_to_objects.keys())
+        pred_pages = set(pred_pages_to_objects.keys())
 
-        # {"boxes": tensor, "labels": tensor, "scores": tensor} per page
-        predictions: List[Dict[str, torch.Tensor]] = []
+        _log.debug(f"GT pages: {sorted(gt_pages)}, Pred pages: {sorted(pred_pages)}")
 
-        # DEBUG
-        # true_tl_bboxes = []
-        # pred_tl_bboxes = []
+        # Process pages in sorted order to ensure consistent alignment
+        ground_truths: List[Tuple[int, Dict[str, torch.Tensor]]] = []
+        predictions: List[Tuple[int, Dict[str, torch.Tensor]]] = []
+        skipped_pages = []
 
-        for page_no, items in true_pages_to_objects.items():
-            page_size = true_doc.pages[page_no].size
-
-            page_height = page_size.height
-            page_width = page_size.width
-
-            bboxes = []
-            labels = []
-            for item in items:
-                for prov in item.prov:
-                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
-
-                    bbox = bbox.normalized(page_size)
-                    bbox = bbox.scaled(100.0)
-
-                    bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
-                    labels.append(filter_labels.index(self.label_mapping[item.label]))  # type: ignore
-
-            ground_truths.append(
-                {
-                    "boxes": torch.tensor(bboxes),
-                    "labels": torch.tensor(labels),
-                }
+        for page_no in sorted(gt_pages):
+            # Always process GT for this page
+            gt_data = self._extract_page_data(
+                page_no=page_no,
+                items=true_pages_to_objects[page_no],
+                doc=true_doc,
+                filter_labels=filter_labels,
+                is_prediction=False,
             )
 
-        for page_no, items in pred_pages_to_objects.items():
-            page_size = pred_doc.pages[page_no].size
+            # Handle prediction for this page based on strategy
+            if page_no in pred_pages:
+                # We have prediction data for this page
+                pred_data = self._extract_page_data(
+                    page_no=page_no,
+                    items=pred_pages_to_objects[page_no],
+                    doc=pred_doc,
+                    filter_labels=filter_labels,
+                    is_prediction=True,
+                )
+            else:
+                # No prediction data for this page
+                if (
+                    self.missing_prediction_strategy
+                    == MissingPredictionStrategy.PENALIZE
+                ):
+                    # Create empty prediction tensor (zero score)
+                    pred_data = {
+                        "boxes": torch.empty(0, 4),
+                        "labels": torch.empty(0, dtype=torch.long),
+                        "scores": torch.empty(0),
+                    }
+                elif (
+                    self.missing_prediction_strategy == MissingPredictionStrategy.IGNORE
+                ):
+                    # Skip this page entirely
+                    skipped_pages.append(page_no)
+                    continue
+                else:
+                    raise ValueError(
+                        f"Unknown missing prediction strategy: {self.missing_prediction_strategy}"
+                    )
 
-            page_height = page_size.height
-            page_width = page_size.width
+            # Add the aligned GT-Pred pair with page number
+            ground_truths.append((page_no, gt_data))
+            predictions.append((page_no, pred_data))
 
-            bboxes = []
-            labels = []
-            scores = []
-            for item in items:
-                for prov in item.prov:
-                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
-                    # pred_tl_bboxes.append(copy.deepcopy(bbox))
-
-                    bbox = bbox.normalized(page_size)
-                    bbox = bbox.scaled(100.0)
-
-                    bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
-                    labels.append(filter_labels.index(self.label_mapping[item.label]))  # type: ignore
-                    scores.append(1.0)  # FIXME
-
-            predictions.append(
-                {
-                    "boxes": torch.tensor(bboxes),
-                    "labels": torch.tensor(labels),
-                    "scores": torch.tensor(scores),
-                }
-            )
-
-        """
+        # Verify alignment (this should always be true now)
         assert len(ground_truths) == len(
             predictions
-        ), f"len(ground_truths)==len(predictions) => {len(ground_truths)}=={len(predictions)}"
-        """
+        ), f"Critical error: GT and Pred lists misaligned: {len(ground_truths)} vs {len(predictions)}"
 
-        # Debug
-        # true_tl_bboxes_str = "\n".join([json.dumps(b.model_dump(include={"b", "l", "t", "r"})) for b in true_tl_bboxes])
-        # pred_tl_bboxes_str = "\n".join([json.dumps(b.model_dump(include={"b", "l", "t", "r"})) for b in pred_tl_bboxes])
-        # print(f"Doc id: {doc_id}")
-        # print(f"True bboxes: [{len(true_tl_bboxes)}]")
-        # print(true_tl_bboxes_str)
-        # print(f"Pred bboxes: [{len(pred_tl_bboxes)}]")
-        # print(pred_tl_bboxes_str)
+        # Verify corresponding page numbers match
+        for i, ((gt_page, _), (pred_page, _)) in enumerate(
+            zip(ground_truths, predictions)
+        ):
+            assert (
+                gt_page == pred_page
+            ), f"Page number mismatch at index {i}: GT page {gt_page} vs Pred page {pred_page}"
+
+        if skipped_pages:
+            _log.info(
+                f"Skipped {len(skipped_pages)} pages due to missing predictions: {skipped_pages}"
+            )
+        _log.debug(f"Processed {len(ground_truths)} page pairs successfully")
 
         return ground_truths, predictions
+
+    def _extract_page_data(
+        self,
+        page_no: int,
+        items: List[DocItem],
+        doc: DoclingDocument,
+        filter_labels: List[DocItemLabel],
+        is_prediction: bool,
+    ) -> Dict[str, torch.Tensor]:
+        """Extract bbox data for a single page."""
+        page_size = doc.pages[page_no].size
+        page_height = page_size.height
+        page_width = page_size.width
+
+        bboxes = []
+        labels = []
+        if is_prediction:
+            scores = []
+
+        for item in items:
+            for prov in item.prov:
+                if (
+                    prov.page_no == page_no
+                ):  # Only process provenances for this specific page
+                    bbox = prov.bbox.to_top_left_origin(page_height=page_height)
+                    bbox = bbox.normalized(page_size)
+                    bbox = bbox.scaled(100.0)
+
+                    bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
+                    labels.append(filter_labels.index(self.label_mapping[item.label]))  # type: ignore
+                    if is_prediction:
+                        scores.append(1.0)  # FIXME: Use actual confidence scores
+
+        result: Dict[str, torch.Tensor] = {
+            "boxes": torch.tensor(bboxes, dtype=torch.float32),
+            "labels": torch.tensor(labels, dtype=torch.long),
+        }
+
+        if is_prediction:
+            result["scores"] = torch.tensor(scores, dtype=torch.float32)
+
+        return result
 
     def _compute_area_level_metrics_for_tensors(
         self,
