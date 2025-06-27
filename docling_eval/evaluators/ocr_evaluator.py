@@ -3,9 +3,8 @@ import glob
 import json
 import logging
 import traceback
-from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Union
 
 from datasets import Dataset, load_dataset
 from docling_core.types.doc import CoordOrigin
@@ -17,10 +16,7 @@ from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator
 from docling_eval.evaluators.ocr.benchmark_runner import _OcrBenchmark
-from docling_eval.evaluators.ocr.evaluation_models import (
-    DocumentEvaluationEntry,
-    OcrDatasetEvaluationResult,
-)
+from docling_eval.evaluators.ocr.evaluation_models import OcrDatasetEvaluationResult
 from docling_eval.evaluators.ocr.processing_utils import parse_segmented_pages
 
 logging.basicConfig(
@@ -56,7 +52,7 @@ class OCREvaluator(BaseEvaluator):
         use_space_for_gt_merge = True
 
         benchmark_tool = _OcrBenchmark(
-            model_identifier="ocr_model_under_test",
+            model_identifier="ocr_model",
             ignore_zone_filter_type=ignore_zone_filter_config,
             add_space_for_merged_prediction_words=use_space_for_prediction_merge,
             add_space_for_merged_gt_words=use_space_for_gt_merge,
@@ -287,7 +283,11 @@ class OCRVisualizer:
                     if parsed_pred_pages:
                         prediction_segmented_pages = parsed_pred_pages
 
-                base_image: Image.Image = page_images_data[0]
+                image_item: Union[dict, Image.Image] = page_images_data[0]
+                if isinstance(image_item, dict):
+                    base_image: Image.Image = image_item["image"]
+                else:
+                    base_image = image_item
                 if base_image.mode != "RGB":
                     base_image = base_image.convert("RGB")
 

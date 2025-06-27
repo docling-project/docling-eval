@@ -405,12 +405,13 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     f"Successfully processed [{record.doc_id}] using Azure API..!!"
                 )
 
-            elif record.mime_type == "image/png":
+            elif record.mime_type in ["image/png", "image/jpeg", "image/jpg"]:
                 # Call the Azure API by passing in the image for prediction
                 buf = BytesIO()
 
                 # TODO do this in a loop for all page images in the doc, not just the first.
-                record.ground_truth_page_images[0].save(buf, format="PNG")
+                save_format = "PNG" if record.mime_type == "image/png" else "JPEG"
+                record.ground_truth_page_images[0].save(buf, format=save_format)
 
                 poller = self.doc_intelligence_client.begin_analyze_document(
                     "prebuilt-layout",
@@ -425,7 +426,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                 )
             else:
                 raise RuntimeError(
-                    f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf' and 'image/png'"
+                    f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf', 'image/png', 'image/jpeg', and 'image/jpg'"
                 )
             # Convert the prediction to doclingDocument
             pred_doc, pred_segmented_pages = self.convert_azure_output_to_docling(

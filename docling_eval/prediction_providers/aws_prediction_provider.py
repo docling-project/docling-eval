@@ -521,7 +521,12 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
             )
 
         try:
-            if record.mime_type in ["application/pdf", "image/png"]:
+            if record.mime_type in [
+                "application/pdf",
+                "image/png",
+                "image/jpg",
+                "image/jpeg",
+            ]:
                 # Call the AWS Textract API by passing in the image for prediction
 
                 file_bytes = record.original.stream.read()
@@ -540,7 +545,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                 )
             else:
                 raise RuntimeError(
-                    f"Unsupported mime type: {record.mime_type}. AzureDocIntelligencePredictionProvider supports 'application/pdf' and 'image/png'"
+                    f"Unsupported mime type: {record.mime_type}. AWSTextractPredictionProvider supports 'application/pdf' 'image/png', 'image/jpeg', and 'image/jpg'"
                 )
         except Exception as e:
             _log.error(f"Error in AWS Textract prediction: {str(e)}")
