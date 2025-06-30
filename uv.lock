@@ -920,7 +920,7 @@ vlm = [
 
 [[package]]
 name = "docling-core"
-version = "2.36.0"
+version = "2.39.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonref" },
@@ -935,9 +935,9 @@ dependencies = [
     { name = "typer", version = "0.16.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9f/f8/53826c965af50891c0c46cf9853796fd9246095e984d3a5987006fe4b7cc/docling_core-2.36.0.tar.gz", hash = "sha256:31d8538dc4cc113a07f2fd173440e2147759579b3a5cf232eecb76a42cb7790a", size = 143481, upload-time = "2025-06-11T17:29:16.479Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/8b/5613467523bed58d9f2b94220947783914b6d9910a8d20908cf148805427/docling_core-2.39.0.tar.gz", hash = "sha256:77530156c79c9000fe3104894935437d3e2d46dc0f567b5a500974d7c1a8b38b", size = 148005, upload-time = "2025-06-27T12:59:56.694Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/86/e78d7edb08557627786a1c435f3e938e55d5964aaa178768beb20594f49e/docling_core-2.36.0-py3-none-any.whl", hash = "sha256:a66b3ec605290369a4b3f029585e17201978b03dbded3cca604ec21c74c85466", size = 148637, upload-time = "2025-06-11T17:29:14.925Z" },
+    { url = "https://files.pythonhosted.org/packages/70/85/3d59ac46a47f62a0ed79e187c4163cecd2693d05006f771038db4781f9ff/docling_core-2.39.0-py3-none-any.whl", hash = "sha256:b7ce5142ab95bd8d5cfe5d7df167a96a6eb41d884f00ea42bb3dd8f40ade92ea", size = 152890, upload-time = "2025-06-27T12:59:55.327Z" },
 ]
 
 [package.optional-dependencies]
@@ -1028,7 +1028,7 @@ requires-dist = [
     { name = "datasets", specifier = ">=3.2.0,<4.0.0" },
     { name = "distance", specifier = ">=0.1.3,<0.2.0" },
     { name = "docling", extras = ["vlm"], specifier = ">=2.31.0,<3.0.0" },
-    { name = "docling-core", specifier = ">=2.36.0,<3.0.0" },
+    { name = "docling-core", specifier = ">=2.39.0" },
     { name = "edit-distance", specifier = ">=1.0.6,<2.0.0" },
     { name = "evaluate", specifier = ">=0.4.3,<0.5.0" },
     { name = "google-cloud-documentai", marker = "extra == 'hyperscalers'", specifier = ">=3.2.0,<4.0.0" },
