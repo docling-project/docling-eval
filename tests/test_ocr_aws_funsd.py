@@ -10,7 +10,7 @@ from docling_eval.dataset_builders.funsd_builder import FUNSDDatasetBuilder
 from docling_eval.prediction_providers.aws_prediction_provider import (
     AWSTextractPredictionProvider,
 )
-from docling_eval.utils.utils import validate_evaluation_results
+from tests.test_utils import validate_evaluation_results
 
 IS_CI = os.getenv("RUN_IN_CI") == "1"
 

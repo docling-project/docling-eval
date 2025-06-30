@@ -11,7 +11,7 @@ from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.prediction_providers.google_prediction_provider import (
     GoogleDocAIPredictionProvider,
 )
-from docling_eval.utils.utils import validate_evaluation_results
+from tests.test_utils import validate_evaluation_results
 
 IS_CI = bool(os.getenv("CI"))
 
