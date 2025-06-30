@@ -81,6 +81,11 @@ class ImageLayoutEvaluation(UnitEvaluation):
     segmentation_recall: float
     segmentation_f1: float
 
+    # Area-level metrics excluding PICTURE labels
+    segmentation_precision_no_pictures: Optional[float] = None
+    segmentation_recall_no_pictures: Optional[float] = None
+    segmentation_f1_no_pictures: Optional[float] = None
+
 
 class DatasetLayoutEvaluation(DatasetEvaluation):
     true_labels: Dict[str, int]
@@ -103,6 +108,11 @@ class DatasetLayoutEvaluation(DatasetEvaluation):
     segmentation_precision_stats: DatasetStatistics
     segmentation_recall_stats: DatasetStatistics
     segmentation_f1_stats: DatasetStatistics
+
+    # Statistics for metrics excluding PICTURE labels
+    segmentation_precision_no_pictures_stats: Optional[DatasetStatistics] = None
+    segmentation_recall_no_pictures_stats: Optional[DatasetStatistics] = None
+    segmentation_f1_no_pictures_stats: Optional[DatasetStatistics] = None
 
     def to_table(self) -> Tuple[List[List[str]], List[str]]:
         headers = ["label", "Class mAP[0.5:0.95]"]
@@ -354,6 +364,21 @@ class LayoutEvaluator(BaseEvaluator):
                 mask_height=512,
             )
 
+            # Compute metrics excluding PICTURE labels
+            precision_no_pics, recall_no_pics, f1_no_pics = (
+                self._compute_area_level_metrics_excluding_pictures(
+                    gt_boxes=gt["boxes"],
+                    gt_labels=gt["labels"],
+                    pred_boxes=pred["boxes"],
+                    pred_labels=pred["labels"],
+                    filter_labels=filter_labels,
+                    page_width=100,
+                    page_height=100,
+                    mask_width=512,
+                    mask_height=512,
+                )
+            )
+
             # Reset the metric for the next image
             metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
 
@@ -389,7 +414,8 @@ class LayoutEvaluator(BaseEvaluator):
             weighted_map_95_values.append(average_iou_95)
 
             logging.info(
-                f"doc: {doc_id}\tprecision: {precision:.2f}, recall: {recall:.2f}, f1: {f1:.2f}, map_50: {map_50:.2f}"
+                f"doc: {doc_id}\tprecision: {precision:.2f}, recall: {recall:.2f}, f1: {f1:.2f}, map_50: {map_50:.2f}, "
+                f"precision_no_pics: {precision_no_pics:.2f}, recall_no_pics: {recall_no_pics:.2f}, f1_no_pics: {f1_no_pics:.2f}"
             )
 
             image_evaluation = ImageLayoutEvaluation(
@@ -405,6 +431,9 @@ class LayoutEvaluator(BaseEvaluator):
                 segmentation_precision=precision,
                 segmentation_recall=recall,
                 segmentation_f1=f1,
+                segmentation_precision_no_pictures=precision_no_pics,
+                segmentation_recall_no_pictures=recall_no_pics,
+                segmentation_f1_no_pictures=f1_no_pics,
             )
             evaluations_per_image.append(image_evaluation)
             if self._intermediate_evaluations_path:
@@ -436,6 +465,27 @@ class LayoutEvaluator(BaseEvaluator):
             ),
             segmentation_f1_stats=compute_stats(
                 [_.segmentation_f1 for _ in evaluations_per_image]
+            ),
+            segmentation_precision_no_pictures_stats=compute_stats(
+                [
+                    _.segmentation_precision_no_pictures
+                    for _ in evaluations_per_image
+                    if _.segmentation_precision_no_pictures is not None
+                ]
+            ),
+            segmentation_recall_no_pictures_stats=compute_stats(
+                [
+                    _.segmentation_recall_no_pictures
+                    for _ in evaluations_per_image
+                    if _.segmentation_recall_no_pictures is not None
+                ]
+            ),
+            segmentation_f1_no_pictures_stats=compute_stats(
+                [
+                    _.segmentation_f1_no_pictures
+                    for _ in evaluations_per_image
+                    if _.segmentation_f1_no_pictures is not None
+                ]
             ),
             true_labels=true_labels,
             pred_labels=pred_labels,
@@ -900,3 +950,65 @@ class LayoutEvaluator(BaseEvaluator):
             f1 = 2 * (precision * recall) / (precision + recall)
 
         return precision, recall, f1
+
+    def _compute_area_level_metrics_excluding_pictures(
+        self,
+        gt_boxes: torch.Tensor,
+        gt_labels: torch.Tensor,
+        pred_boxes: torch.Tensor,
+        pred_labels: torch.Tensor,
+        filter_labels: List[DocItemLabel],
+        page_width: int,
+        page_height: int,
+        mask_width: int = 512,
+        mask_height: int = 512,
+    ) -> Tuple[float, float, float]:
+        """
+        Compute area-level precision, recall, and F1 score excluding PICTURE labels.
+        Handles overlapping boxes by using binary masks at the specified resolution.
+
+        Args:
+            gt_boxes: Ground truth boxes as tensor of shape (N, 4) with [x1, y1, x2, y2] format
+            gt_labels: Ground truth labels as tensor of shape (N,)
+            pred_boxes: Predicted boxes as tensor of shape (M, 4) with [x1, y1, x2, y2] format
+            pred_labels: Predicted labels as tensor of shape (M,)
+            filter_labels: List of DocItemLabel used for label indexing
+            page_width: Width of the original page
+            page_height: Height of the original page
+            mask_width: Width of the mask to use for computation (default: 512)
+            mask_height: Height of the mask to use for computation (default: 512)
+
+        Returns:
+            Tuple containing precision, recall, and F1 scores (excluding PICTURE labels)
+        """
+        # Find the index of PICTURE label if it exists in filter_labels
+        picture_label_idx = None
+        try:
+            picture_label_idx = filter_labels.index(DocItemLabel.PICTURE)
+        except ValueError:
+            # PICTURE label not in filter_labels, no filtering needed
+            pass
+
+        # Filter out PICTURE labels from ground truth
+        if picture_label_idx is not None and len(gt_labels) > 0:
+            non_picture_mask = gt_labels != picture_label_idx
+            filtered_gt_boxes = gt_boxes[non_picture_mask]
+        else:
+            filtered_gt_boxes = gt_boxes
+
+        # Filter out PICTURE labels from predictions
+        if picture_label_idx is not None and len(pred_labels) > 0:
+            non_picture_mask = pred_labels != picture_label_idx
+            filtered_pred_boxes = pred_boxes[non_picture_mask]
+        else:
+            filtered_pred_boxes = pred_boxes
+
+        # Use the existing method with filtered boxes
+        return self._compute_area_level_metrics_for_tensors(
+            gt_boxes=filtered_gt_boxes,
+            pred_boxes=filtered_pred_boxes,
+            page_width=page_width,
+            page_height=page_height,
+            mask_width=mask_width,
+            mask_height=mask_height,
+        )
