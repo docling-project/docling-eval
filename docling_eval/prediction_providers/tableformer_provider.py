@@ -249,7 +249,7 @@ class TableFormerUpdater:
 
         # Add null checks to avoid mypy errors
         if page._backend is not None and page._backend.is_valid():
-            page.cells = list(page._backend.get_text_cells())
+            page.parsed_page = page._backend.get_segmented_page()
             page.size = page._backend.get_size()
 
             # Create cluster for table
