@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
+import PIL.Image
 from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
 from docling.utils.profiling import ProfilingItem
@@ -199,8 +200,8 @@ class BasePredictionProvider:
         Returns:
             Dataset record with prediction
         """
-        pred_page_images = []
-        pred_pictures = []
+        pred_page_images: List[PIL.Image.Image] = []
+        pred_pictures: List[PIL.Image.Image] = []
 
         if predicted_doc is not None:
             # Extract images from the ground truth document

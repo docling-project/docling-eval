@@ -707,7 +707,7 @@ class LayoutEvaluator(BaseEvaluator):
         Filter to keep only bboxes from the given labels
         Convert each bbox to top-left-origin, normalize to page size and scale 100
 
-        CRITICAL FIX: This method now ensures proper page-wise alignment between GT and predictions.
+        This method ensures proper page-wise alignment between GT and predictions.
         Each returned GT tensor at index i corresponds exactly to the prediction tensor at index i.
 
         Returns

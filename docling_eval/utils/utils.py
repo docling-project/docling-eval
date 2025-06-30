@@ -316,27 +316,80 @@ def extract_images(
     document: DoclingDocument,
     pictures_column: str,
     page_images_column: str,
-):
-    pictures: list[PIL.Image.Image] = []
-    page_images: list[PIL.Image.Image] = []
+) -> Tuple[DoclingDocument, List[PIL.Image.Image], List[PIL.Image.Image]]:
+    """
+    Extract images from document using array indices for URIs.
 
-    # Save page images
+    Uses array indices in URIs since they reference parquet list columns.
+    Page images are ordered by page number to maintain semantic consistency.
+
+    Args:
+        document: The DoclingDocument to extract images from
+        pictures_column: Column/prefix name for picture images
+        page_images_column: Column/prefix name for page images
+
+    Returns:
+        Tuple of (document, pictures, page_images)
+    """
+    pictures: List[PIL.Image.Image] = []
+    page_images: List[PIL.Image.Image] = []
+
+    # Extract picture images (using sequential numbering for pictures)
     for img_no, picture in enumerate(document.pictures):
         if picture.image is not None and picture.image.pil_image is not None:
-            img_ind = len(pictures)
-
             pictures.append(picture.image.pil_image)
-            picture.image.uri = Path(f"{pictures_column}/{img_ind}")
+            picture.image.uri = Path(f"{pictures_column}/{img_no}")
 
-    # Save page images
-    for page_no, page in document.pages.items():
+    # Extract page images - build list in page order, but use array indices in URIs
+    # Sort pages by page number to ensure consistent ordering
+    sorted_pages = sorted(document.pages.items(), key=lambda x: x[0])
+
+    for array_index, (page_no, page) in enumerate(sorted_pages):
         if page.image is not None and page.image.pil_image is not None:
-            img_ind = len(page_images)
-
             page_images.append(page.image.pil_image)
-            page.image.uri = Path(f"{page_images_column}/{img_ind}")
+            # Use array index in URI since it references the parquet list index
+            page.image.uri = Path(f"{page_images_column}/{array_index}")
 
     return document, pictures, page_images
+
+
+def _detect_page_indexing_scheme(document: DoclingDocument) -> bool:
+    """
+    Detect whether page image URIs use legacy page numbers (1-based) or correct array indices (0-based).
+
+    Returns:
+        True if URIs use legacy page numbers (1, 2, 3, ...),
+        False if they use correct array indices (0, 1, 2, ...)
+    """
+    uri_indices = []
+    page_numbers = []
+
+    for page_no, page in document.pages.items():
+        if page.image is not None:
+            uri = str(page.image.uri)
+            if uri.startswith(
+                BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
+            ) or uri.startswith(BenchMarkColumns.PREDICTION_PAGE_IMAGES):
+                img_parts = uri.split("/")
+                uri_index = int(img_parts[-1])
+                uri_indices.append(uri_index)
+                page_numbers.append(page_no)
+
+    if not uri_indices:
+        # No page images found, default to correct array indices
+        return False
+
+    # Check if indices start from 0 (correct array indices) or 1 (legacy page numbers)
+    min_uri_index = min(uri_indices)
+    min_page_number = min(page_numbers)
+
+    if min_uri_index == 0:
+        return False  # Correct array indices (0-based)
+    elif min_uri_index == min_page_number and min_page_number >= 1:
+        return True  # Legacy page numbers (1-based)
+    else:
+        # Fallback: if indices match page numbers, assume legacy
+        return sorted(uri_indices) == sorted(page_numbers)
 
 
 def insert_images_from_pil(
@@ -360,6 +413,9 @@ def insert_images_from_pil(
                 picture.image.uri = from_pil_to_base64uri(pictures[img_ind])
 
     # Inject page images
+    # First, detect the indexing scheme used in URIs
+    uses_legacy_page_numbers = _detect_page_indexing_scheme(document)
+
     for page_no, page in document.pages.items():
         if page.image is not None:
             uri = str(page.image.uri)
@@ -367,9 +423,18 @@ def insert_images_from_pil(
                 BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
             ) or uri.startswith(BenchMarkColumns.PREDICTION_PAGE_IMAGES):
                 img_parts = str(page.image.uri).split("/")
-                img_ind = int(img_parts[-1])
+                uri_index = int(img_parts[-1])
 
-                assert img_ind < len(page_images)
+                if uses_legacy_page_numbers:
+                    # Legacy: URI contains page numbers, convert to 0-based array index
+                    img_ind = page_no - 1
+                else:
+                    # Correct: URI contains 0-based array indices, use directly
+                    img_ind = uri_index
+
+                assert img_ind < len(
+                    page_images
+                ), f"Page image index {img_ind} out of bounds for {len(page_images)} images"
 
                 page.image._pil = page_images[img_ind]
                 page.image.uri = from_pil_to_base64uri(page_images[img_ind])
