@@ -25,7 +25,7 @@ classifiers = [
 ]
 requires-python = '>=3.10,<4.0'
 dependencies = [
-    'docling[vlm] (>=2.31.0,<3.0.0)',
+    'docling[vlm] (>=2.37.0,<3.0.0)',
     "docling-core>=2.39.0",
     'pydantic (>=2.0.0,<3.0.0)',
     'lxml (>=5.3.0,<6.0.0)',
@@ -50,6 +50,7 @@ dependencies = [
     'pypdf2 (>=3.0.1,<4.0.0)',
     "xmltodict (>=0.14.2,<0.15.0)",
     'edit-distance (>=1.0.6,<2.0.0)',
+    "mlx-vlm<0.2",
 ]
 
 [project.urls]
@@ -71,7 +72,7 @@ hyperscalers = [
 ]
 cvat_tools = [
     "cvat-sdk>=2.40.0",
-    "ocrmac>=1.0.0",
+    'ocrmac>=1.0.0; sys_platform == "darwin" and platform_machine == "arm64"',
 ]
 
 [dependency-groups]
