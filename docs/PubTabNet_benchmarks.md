@@ -4,15 +4,15 @@ Create PubTabNet evaluation datasets. This downloads from Huggingface the [PubTa
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark PubTabNet --split val --output-dir ./benchmarks/PubTabNet/ 
+docling-eval create-gt --benchmark PubTabNet --split val --output-dir ./benchmarks/PubTabNet/ 
 
 # Make predictions for tables.
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark PubTabNet \
   --split val \
   --output-dir ./benchmarks/PubTabNet/ \
   --end-index 1000 \
-  --prediction-provider tableformer # use tableformer predictions only
+  --prediction-provider TableFormer # use tableformer predictions only
 ```
 
 ## Tableformer Evaluation
@@ -20,7 +20,7 @@ docling_eval create-eval \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality table_structure \
   --benchmark PubTabNet \
   --split val \
@@ -32,7 +32,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality table_structure \
   --benchmark PubTabNet \
   --split val \

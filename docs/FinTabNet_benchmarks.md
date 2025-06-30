@@ -4,14 +4,14 @@ Create FinTabNet evaluation datasets. This downloads from Huggingface the [FinTa
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark FinTabNet --output-dir ./benchmarks/FinTabNet/ 
+docling-eval create-gt --benchmark FinTabNet --output-dir ./benchmarks/FinTabNet/ 
 
 # Make predictions for tables.
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark FinTabNet \
   --output-dir ./benchmarks/FinTabNet/ \
   --end-index 1000 \
-  --prediction-provider tableformer # use tableformer predictions only
+  --prediction-provider TableFormer # use tableformer predictions only
 ```
 
 ## Tableformer Evaluation
@@ -19,7 +19,7 @@ docling_eval create-eval \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality table_structure \
   --benchmark FinTabNet \
   --output-dir ./benchmarks/FinTabNet/ 
@@ -30,7 +30,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality table_structure \
   --benchmark FinTabNet \
   --output-dir ./benchmarks/FinTabNet/ 

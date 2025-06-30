@@ -7,30 +7,30 @@ The most straightforward way is to use an existing dataset (e.g. DPBench), which
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark DPBench --output-dir ./benchmarks/DPBench-GT/ 
+docling-eval create-gt --benchmark DPBench --output-dir ./benchmarks/DPBench-GT/ 
 ```
 
 Alternatively, you can first create a plain dataset from a folder of PDF or image files to start from (without any annotations). 
 
 ```shell
 # Make the ground-truth
-docling_eval create-gt --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/
+docling-eval create-gt --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/
 ```
 
 If you want to pre-annotate the dataset (eg with Docling), then use
 
 ```shell
-docling_eval create --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/ --prediction-provider Docling
+docling-eval create --benchmark PlainFiles --dataset-source ./tests/data/files --output-dir ./benchmarks/my_dataset/ --prediction-provider Docling
 ```
 
 ## Pre-annotation with Docling
 
-Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `create-cvat` function of the `docling_eval` CLI.
+Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/). These files will be created using the `create-cvat` function of the `docling-eval` CLI.
 
 ```sh
-❯ docling_eval create-cvat --help
-                                                                                                                                                                    
- Usage: docling_eval create-cvat [OPTIONS]                                                                                                                          
+❯ docling-eval create-cvat --help
+
+Usage: docling-eval create-cvat [OPTIONS]                                                                                                                          
                                                                                                                                                                     
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
 │ *  --output-dir         PATH                     Output directory [default: None] [required]     │
@@ -43,7 +43,7 @@ Now you can create the files you need to upload to [CVAT](https://www.cvat.ai/).
 
 For example, try:
 ```sh
-docling_eval create-cvat \ 
+docling-eval create-cvat \ 
    --gt-dir ./benchmarks/DPBench-GT/gt_dataset/test/ \
    --output-dir ./benchmarks/DPBench-CVAT/ \
    --no-use-predictions
@@ -135,7 +135,7 @@ After you have annotated all images, you can export the annotations,
 
 You move the zip file into `cvat_annotations/zips` and then run the `create-gt` CLI function. For example:
 ```shell
-docling_eval create-gt \
+docling-eval create-gt \
   --benchmark CVAT \
   --output-dir ./benchmarks/DPBench-CVAT-GT/ \
   --dataset-source ./benchmarks/DPBench-CVAT/

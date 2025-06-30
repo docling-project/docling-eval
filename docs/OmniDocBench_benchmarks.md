@@ -13,13 +13,13 @@ docling-eval create-eval \
   --benchmark OmniDocBench \
   --gt-dir ./benchmarks/OmniDocBench-gt/ \
   --output-dir ./benchmarks/OmniDocBench-e2e/ \
-  --prediction-provider docling # use full-document predictions from docling
+  --prediction-provider Docling # use full-document predictions from docling
   
 docling-eval create-eval \
   --benchmark DPBench \
   --gt-dir ./benchmarks/OmniDocBench-gt/ \
   --output-dir ./benchmarks/OmniDocBench-tables/ \
-  --prediction-provider tableformer # use tableformer predictions only
+  --prediction-provider TableFormer # use tableformer predictions only
 ```
 
 ## Layout Evaluation

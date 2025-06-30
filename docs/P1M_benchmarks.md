@@ -4,14 +4,14 @@ Create Pub1M evaluation datasets. This downloads from Huggingface the [Pub1M_OTS
 
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark Pub1M --output-dir ./benchmarks/Pub1M/ 
+docling-eval create-gt --benchmark Pub1M --output-dir ./benchmarks/Pub1M/ 
 
 # Make predictions for tables.
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark DPBench \
   --output-dir ./benchmarks/Pub1M/ \
   --end-index 1000 \
-  --prediction-provider tableformer # use tableformer predictions only
+  --prediction-provider TableFormer # use tableformer predictions only
 ```
 
 ## Tableformer Evaluation
@@ -19,7 +19,7 @@ docling_eval create-eval \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality table_structure \
   --benchmark Pub1M \
   --output-dir ./benchmarks/Pub1M/ 
@@ -30,7 +30,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality table_structure \
   --benchmark Pub1M \
   --output-dir ./benchmarks/Pub1M/ 

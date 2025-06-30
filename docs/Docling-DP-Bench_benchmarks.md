@@ -9,17 +9,17 @@ Create Docling-DPBench evaluation datasets:
 # Download the GT straight from HuggingFace
 huggingface-cli download --repo-type dataset --local-dir ./benchmarks/Docling-DPBench-gt/gt_dataset ds4sd/docling-dpbench
 # Make predictions for different modalities.
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark DPBench \
   --gt-dir ./benchmarks/Docling-DPBench-gt/gt_dataset/ \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ \
-  --prediction-provider docling # use full-document predictions from docling
+  --prediction-provider Docling # use full-document predictions from docling
   
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark DPBench \
   --gt-dir ./benchmarks/Docling-DPBench-gt/gt_dataset/ \
   --output-dir ./benchmarks/Docling-DPBench-tables/ \
-  --prediction-provider tableformer # use tableformer predictions only
+  --prediction-provider TableFormer # use tableformer predictions only
 ```
 
 ## Layout Evaluation
@@ -27,7 +27,7 @@ docling_eval create-eval \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality layout \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ 
@@ -39,7 +39,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality layout \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ 
@@ -55,7 +55,7 @@ docling_eval visualize \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality table_structure \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-tables/ 
@@ -69,7 +69,7 @@ Visualize the report:
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality table_structure \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-tables/ 
@@ -91,7 +91,7 @@ docling_eval visualize \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality reading_order \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ 
@@ -102,7 +102,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality reading_order \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ 
@@ -122,7 +122,7 @@ docling_eval visualize \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality markdown_text \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ 
@@ -134,7 +134,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality markdown_text \
   --benchmark DPBench \
   --output-dir ./benchmarks/Docling-DPBench-e2e/ 

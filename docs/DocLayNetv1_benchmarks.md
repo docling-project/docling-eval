@@ -5,18 +5,18 @@ Create and evaluate DocLayNetv1.2 datasets using the following commands. This do
 Create evaluation datasets
 ```sh
 # Make the ground-truth
-docling_eval create-gt --benchmark DocLayNetV1 --output-dir ./benchmarks/DocLayNetV1/ 
+docling-eval create-gt --benchmark DocLayNetV1 --output-dir ./benchmarks/DocLayNetV1/ 
 
 # Make predictions for different modalities.
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark DocLayNetV1 \
   --output-dir ./benchmarks/DocLayNetV1/ \
-  --prediction-provider docling # use full-document predictions from docling
+  --prediction-provider Docling # use full-document predictions from docling
   
-docling_eval create-eval \
+docling-eval create-eval \
   --benchmark DPBench \
   --output-dir ./benchmarks/DocLayNetV1/ \
-  --prediction-provider tableformer # use tableformer predictions only
+  --prediction-provider TableFormer # use tableformer predictions only
 ```
 
 
@@ -26,7 +26,7 @@ docling_eval create-eval \
 Create the evaluation report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality layout \
   --benchmark DocLayNetV1 \
   --output-dir ./benchmarks/DocLayNetV1/ 
@@ -38,7 +38,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality layout \
   --benchmark DocLayNetV1 \
   --output-dir ./benchmarks/DocLayNetV1/ 
@@ -54,7 +54,7 @@ docling_eval visualize \
 Create the report:
 
 ```sh
-docling_eval evaluate \
+docling-eval evaluate \
   --modality markdown_text \
   --benchmark DocLayNetV1 \
   --output-dir ./benchmarks/DocLayNetV1/ 
@@ -66,7 +66,7 @@ docling_eval evaluate \
 Visualize the report:
 
 ```sh
-docling_eval visualize \
+docling-eval visualize \
   --modality markdown_text \
   --benchmark DocLayNetV1 \
   --output-dir ./benchmarks/DocLayNetV1/ 
