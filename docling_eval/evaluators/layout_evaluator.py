@@ -1,5 +1,6 @@
 import glob
 import logging
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -694,6 +695,37 @@ class LayoutEvaluator(BaseEvaluator):
 
         return true_labels, pred_labels, intersection_labels, union_labels
 
+    def _collect_items_by_page(
+        self,
+        doc: DoclingDocument,
+        filter_labels: List[DocItemLabel],
+    ) -> Dict[int, List[DocItem]]:
+        """
+        Collect DocItems by page number for the given document and filter labels.
+
+        Args:
+            doc: The DoclingDocument to process
+            filter_labels: List of labels to include in the collection
+
+        Returns:
+            Dictionary mapping page numbers to lists of DocItems
+        """
+        pages_to_objects: Dict[int, List[DocItem]] = defaultdict(list)
+
+        for item, level in doc.iterate_items(
+            included_content_layers={c for c in ContentLayer},
+            traverse_pictures=True,
+            with_groups=True,
+        ):
+            if (
+                isinstance(item, DocItem)
+                and self.label_mapping[item.label] in filter_labels
+            ):
+                for prov in item.prov:
+                    pages_to_objects[prov.page_no].append(item)
+
+        return pages_to_objects
+
     def _extract_layout_data(
         self,
         true_doc: DoclingDocument,
@@ -715,35 +747,9 @@ class LayoutEvaluator(BaseEvaluator):
         ground_truths: List of (page_no, tensor_dict) tuples
         predictions: List of (page_no, tensor_dict) tuples
         """
-        # First, collect all DocItems by page for both GT and predictions
-        true_pages_to_objects: Dict[int, List[DocItem]] = {}
-        pred_pages_to_objects: Dict[int, List[DocItem]] = {}
-
-        # Collect GT items by page
-        for item, level in true_doc.iterate_items(
-            included_content_layers={c for c in ContentLayer}, traverse_pictures=True
-        ):
-            if (
-                isinstance(item, DocItem)
-                and self.label_mapping[item.label] in filter_labels
-            ):
-                for prov in item.prov:
-                    if prov.page_no not in true_pages_to_objects:
-                        true_pages_to_objects[prov.page_no] = []
-                    true_pages_to_objects[prov.page_no].append(item)
-
-        # Collect prediction items by page
-        for item, level in pred_doc.iterate_items(
-            included_content_layers={c for c in ContentLayer}, traverse_pictures=True
-        ):
-            if (
-                isinstance(item, DocItem)
-                and self.label_mapping[item.label] in filter_labels
-            ):
-                for prov in item.prov:
-                    if prov.page_no not in pred_pages_to_objects:
-                        pred_pages_to_objects[prov.page_no] = []
-                    pred_pages_to_objects[prov.page_no].append(item)
+        # Collect all DocItems by page for both GT and predictions
+        true_pages_to_objects = self._collect_items_by_page(true_doc, filter_labels)
+        pred_pages_to_objects = self._collect_items_by_page(pred_doc, filter_labels)
 
         # Get all pages that have GT data (we evaluate based on GT pages)
         gt_pages = set(true_pages_to_objects.keys())
