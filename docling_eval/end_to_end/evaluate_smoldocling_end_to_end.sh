@@ -14,7 +14,7 @@ table_dataset_path=""
 equation_dataset_path=""
 code_dataset_path=""
 
-output_dir="./output_eval"
+output_dir="./output_eval_no_rl"
 num_workers=16
 
 # ------------------------------
@@ -292,4 +292,4 @@ for task in code equation; do
     fi
 done
 
-# bsub -q normal -n 1 -R "span[hosts=1]" -M 200G -gpu "num=1:mode=exclusive_process" -oo ~/.lsbatch/evaluate.stdout -eo ~/.lsbatch/evaluate.stderr docling_eval/end_to_end/evaluate_smoldocling_end_to_end.sh --model_path /gpfs/ZuFS1/proj/deep-search/mao/repos/docling-eval/checkpoints/19062025_last_model --layout_dataset_path /gpfs/ZuFS1/proj/deep-search/datasets/doclaynet-v2-docling-GT/gt_dataset --ocr_dataset_path /gpfs/ZuFS1/proj/deep-search/datasets/doclaynet-v2-docling-GT/gt_dataset --code_dataset_path /gpfs/ZuFS1/proj/deep-search/mao/datasets/synth_code_net_test_set_5k --equation_dataset_path /gpfs/ZuFS1/proj/deep-search/mao/datasets/im2latex230k_ood_test_set/test_hf_format --table_dataset_path /gpfs/ZuFS1/proj/deep-search/mao/datasets/FinTabNet_OTSL_v1.2_doclingdocuments/gt_dataset
+# bsub -q normal -n 1 -R "span[hosts=1]" -M 200G -gpu "num=1:mode=exclusive_process" -oo ~/.lsbatch/evaluate_2.stdout -eo ~/.lsbatch/evaluate_2stderr docling_eval/end_to_end/evaluate_smoldocling_end_to_end.sh --model_path /gpfs/ZuFS1/proj/deep-search/mao/repos/sql-reinforce/checkpoints/smoldocling/sft/SmolDocling_250M_DT_aug  --layout_dataset_path /gpfs/ZuFS1/proj/deep-search/datasets/doclaynet-v2-docling-GT/gt_dataset --ocr_dataset_path /gpfs/ZuFS1/proj/deep-search/datasets/doclaynet-v2-docling-GT/gt_dataset --code_dataset_path /gpfs/ZuFS1/proj/deep-search/mao/datasets/synth_code_net_test_set_5k --equation_dataset_path /gpfs/ZuFS1/proj/deep-search/mao/datasets/im2latex230k_ood_test_set/test_hf_format --table_dataset_path /gpfs/ZuFS1/proj/deep-search/mao/datasets/FinTabNet_OTSL_v1.2_doclingdocuments/gt_dataset
