@@ -32,7 +32,6 @@ from PIL import Image
 from pydantic import AnyUrl
 from torch import Tensor
 
-from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import (
     BenchMarkColumns,
     EvaluationModality,
@@ -531,6 +530,9 @@ def _save_to_parquet_direct(
     """Save directly to parquet using pyarrow to avoid Dataset.from_list() overhead."""
     import pyarrow as pa
     import pyarrow.parquet as pq
+
+    # Import here to avoid circular import
+    from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 
     # Convert data to pyarrow table format
     records = []
