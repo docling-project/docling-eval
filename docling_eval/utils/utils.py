@@ -32,6 +32,7 @@ from PIL import Image
 from pydantic import AnyUrl
 from torch import Tensor
 
+from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import (
     BenchMarkColumns,
     EvaluationModality,
@@ -538,10 +539,10 @@ def _save_to_parquet_direct(
 
         # Convert PIL images to bytes for direct Arrow storage
         for field_name in [
-            "GroundTruthPictures",
-            "GroundTruthPageImages",
-            "PredictionPictures",
-            "PredictionPageImages",
+            DatasetRecordWithPrediction.get_field_alias("ground_truth_pictures"),
+            DatasetRecordWithPrediction.get_field_alias("ground_truth_page_images"),
+            DatasetRecordWithPrediction.get_field_alias("predicted_pictures"),
+            DatasetRecordWithPrediction.get_field_alias("predicted_page_images"),
         ]:
             if field_name in record:
                 images = record[field_name]
