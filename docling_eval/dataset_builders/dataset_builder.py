@@ -305,8 +305,8 @@ class BaseEvaluationDatasetBuilder:
             save_shard_to_disk(
                 items=record_list,
                 dataset_path=test_dir,
+                schema=DatasetRecord.pyarrow_schema(),
                 shard_id=chunk_count,
-                features=DatasetRecord.features(),
             )
             count += len(record_list)
             chunk_count += 1

@@ -910,6 +910,12 @@ def create_cvat(
     gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
     bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
     use_predictions: Annotated[bool, typer.Option(help="use predictions")] = False,
+    sliding_window: Annotated[
+        int,
+        typer.Option(
+            help="Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)"
+        ),
+    ] = 2,
 ):
     """Create dataset ready to upload to CVAT starting from (ground-truth) dataset."""
     builder = CvatPreannotationBuilder(
@@ -917,6 +923,7 @@ def create_cvat(
         target=output_dir,
         bucket_size=bucket_size,
         use_predictions=use_predictions,
+        sliding_window=sliding_window,
     )
     builder.prepare_for_annotation()
 

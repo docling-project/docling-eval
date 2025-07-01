@@ -142,6 +142,7 @@ module = [
     "azure.*",
     "google.*",
     "pycocotools.*",
+    "pyarrow.*",
     "ocrmac.*",
 ]
 ignore_missing_imports = true
