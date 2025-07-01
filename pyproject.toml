@@ -51,6 +51,7 @@ dependencies = [
     "xmltodict (>=0.14.2,<0.15.0)",
     'edit-distance (>=1.0.6,<2.0.0)',
     "mlx-vlm<0.2",
+    "pyarrow>=20.0.0",
 ]
 
 [project.urls]
