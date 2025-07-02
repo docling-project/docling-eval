@@ -999,7 +999,6 @@ dependencies = [
     { name = "docling-core" },
     { name = "edit-distance" },
     { name = "evaluate" },
-    { name = "ibm-cos-sdk" },
     { name = "jiwer" },
     { name = "lxml" },
     { name = "matplotlib" },
@@ -1031,6 +1030,7 @@ hyperscalers = [
     { name = "azure-core" },
     { name = "boto3" },
     { name = "google-cloud-documentai" },
+    { name = "ibm-cos-sdk" },
 ]
 
 [package.dev-dependencies]
@@ -1073,7 +1073,7 @@ requires-dist = [
     { name = "edit-distance", specifier = ">=1.0.6,<2.0.0" },
     { name = "evaluate", specifier = ">=0.4.3,<0.5.0" },
     { name = "google-cloud-documentai", marker = "extra == 'hyperscalers'", specifier = ">=3.2.0,<4.0.0" },
-    { name = "ibm-cos-sdk", specifier = ">=2.1.40,<3.0.0" },
+    { name = "ibm-cos-sdk", marker = "extra == 'hyperscalers'", specifier = ">=2.1.40,<3.0.0" },
     { name = "jiwer", specifier = ">=3.1.0,<4.0.0" },
     { name = "lxml", specifier = ">=5.3.0,<6.0.0" },
     { name = "matplotlib", specifier = ">=3.10.0,<4.0.0" },
@@ -1082,7 +1082,7 @@ requires-dist = [
     { name = "ocrmac", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'cvat-tools'", specifier = ">=1.0.0" },
     { name = "openpyxl", specifier = ">=3.1.5,<4.0.0" },
     { name = "pandas", specifier = ">=2.2.3,<3.0.0" },
-    { name = "pillow", specifier = ">=10.3.0,<11.0.0" },
+    { name = "pillow", specifier = ">=10.3.0,<12.0.0" },
     { name = "pycocotools", specifier = ">=2.0.8,<3.0.0" },
     { name = "pydantic", specifier = ">=2.0.0,<3.0.0" },
     { name = "pypdf2", specifier = ">=3.0.1,<4.0.0" },
