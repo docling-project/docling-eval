@@ -7,7 +7,7 @@ from collections import defaultdict
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import pandas as pd
 import PIL.Image
@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup  # type: ignore
 from datasets import Dataset, Features, load_dataset
 from datasets.iterable_dataset import IterableDataset
 from docling.backend.docling_parse_v4_backend import DoclingParseV4DocumentBackend
+from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 from docling.datamodel.base_models import InputFormat, Page
 from docling.datamodel.document import InputDocument
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
@@ -78,12 +79,14 @@ def write_datasets_info(
         json.dump(dataset_infos, fw, indent=2)
 
 
-def get_input_document(file: Path | BytesIO) -> InputDocument:
+def get_input_document(
+    file: Path | BytesIO, backend_t: Type[Any] = DoclingParseV4DocumentBackend
+) -> InputDocument:
     return InputDocument(
         path_or_stream=file,
         format=InputFormat.PDF,  # type: ignore[arg-type]
         filename=file.name if isinstance(file, Path) else "foo",
-        backend=DoclingParseV4DocumentBackend,
+        backend=backend_t,
     )
 
 
@@ -97,7 +100,7 @@ def from_pil_to_base64uri(img: Image.Image) -> AnyUrl:
 def add_pages_to_true_doc(
     pdf_path: Path | BytesIO, true_doc: DoclingDocument, image_scale: float = 1.0
 ):
-    in_doc = get_input_document(pdf_path)
+    in_doc = get_input_document(pdf_path, backend_t=PyPdfiumDocumentBackend)
     assert in_doc.valid, "Input doc must be valid."
     # assert in_doc.page_count == 1, "doc must have one page."
 
@@ -106,7 +109,11 @@ def add_pages_to_true_doc(
 
     for page_no in range(0, in_doc.page_count):
         page = Page(page_no=page_no)
-        page._backend = in_doc._backend.load_page(page.page_no)  # type: ignore[attr-defined]
+        try:
+            page._backend = in_doc._backend.load_page(page.page_no)  # type: ignore[attr-defined]
+        except RuntimeError as e:
+            logging.warning(f"Failed to load page {page.page_no}: {e}")
+            page._backend = None
 
         if page._backend is not None and page._backend.is_valid():
             page.size = page._backend.get_size()
@@ -489,32 +496,76 @@ def insert_images(
     return document
 
 
+def _pil_to_bytes(img: PIL.Image.Image) -> bytes:
+    """Convert PIL image to PNG bytes efficiently."""
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    return buffered.getvalue()
+
+
 def save_shard_to_disk(
     items: List[Any],
     dataset_path: Path,
+    schema: Any,
     thread_id: int = 0,
     shard_id: int = 0,
-    features: Optional[Features] = None,
-    shard_format: str = "parquet",
 ) -> None:
-    """Save shard to disk."""
+    """Save shard to disk as parquet."""
     if not items:
         return
 
-    # Use features if provided to avoid schema inference
-    batch = Dataset.from_list(items, features=features)
+    # Write directly to parquet using pyarrow to avoid Dataset.from_list() overhead
+    _save_to_parquet_direct(items, dataset_path, thread_id, shard_id, schema)
 
-    output_file = dataset_path / f"shard_{thread_id:06}_{shard_id:06}.{shard_format}"
-    if shard_format == "json":
-        batch.to_json(output_file)
-    elif shard_format == "parquet":
-        batch.to_parquet(output_file)
-    else:
-        raise ValueError(f"Unsupported shard_format: {shard_format}")
-
-    logging.info(f"Saved shard {shard_id} to {output_file} with {len(items)} documents")
+    logging.info(
+        f"Saved shard {shard_id} to {dataset_path / f'shard_{thread_id:06}_{shard_id:06}.parquet'} with {len(items)} documents"
+    )
 
     shard_id += 1
+
+
+def _save_to_parquet_direct(
+    items: List[Any], dataset_path: Path, thread_id: int, shard_id: int, schema: Any
+) -> None:
+    """Save directly to parquet using pyarrow to avoid Dataset.from_list() overhead."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    # Import here to avoid circular import
+    from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
+
+    # Convert data to pyarrow table format
+    records = []
+    for item in items:
+        record = dict(item)
+
+        # Convert PIL images to bytes for direct Arrow storage
+        for field_name in [
+            DatasetRecordWithPrediction.get_field_alias("ground_truth_pictures"),
+            DatasetRecordWithPrediction.get_field_alias("ground_truth_page_images"),
+            DatasetRecordWithPrediction.get_field_alias("predicted_pictures"),
+            DatasetRecordWithPrediction.get_field_alias("predicted_page_images"),
+        ]:
+            if field_name in record:
+                images = record[field_name]
+                if (
+                    images
+                    and len(images) > 0
+                    and isinstance(images[0], PIL.Image.Image)
+                ):
+                    # Convert to the same format as HuggingFace datasets expects
+                    record[field_name] = [
+                        {"bytes": _pil_to_bytes(img), "path": None} for img in images
+                    ]
+
+        records.append(record)
+
+    # Create pyarrow table with mandatory explicit schema
+    table = pa.Table.from_pylist(records, schema=schema)
+
+    # Write to parquet
+    output_file = dataset_path / f"shard_{thread_id:06}_{shard_id:06}.parquet"
+    pq.write_table(table, output_file)
 
 
 def dataset_exists(

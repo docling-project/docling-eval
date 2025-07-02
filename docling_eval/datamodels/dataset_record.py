@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -17,6 +18,61 @@ from docling_eval.datamodels.types import EvaluationModality, PredictionFormats
 from docling_eval.utils.utils import extract_images
 
 seg_adapter = TypeAdapter(Dict[int, SegmentedPage])
+
+
+class FieldType(Enum):
+    STRING = "string"
+    BINARY = "binary"
+    IMAGE_LIST = "image_list"
+    STRING_LIST = "string_list"
+
+
+class SchemaGenerator:
+    """Generates both HuggingFace Features and PyArrow schemas from a field definition."""
+
+    @staticmethod
+    def _get_features_type(field_type: FieldType):
+        mapping = {
+            FieldType.STRING: Value("string"),
+            FieldType.BINARY: Value("binary"),
+            FieldType.IMAGE_LIST: Sequence(Features_Image()),
+            FieldType.STRING_LIST: Sequence(Value("string")),
+        }
+        return mapping[field_type]
+
+    @staticmethod
+    def _get_pyarrow_type(field_type: FieldType):
+        import pyarrow as pa
+
+        image_type = pa.struct([("bytes", pa.binary()), ("path", pa.string())])
+
+        mapping = {
+            FieldType.STRING: pa.string(),
+            FieldType.BINARY: pa.binary(),
+            FieldType.IMAGE_LIST: pa.list_(image_type),
+            FieldType.STRING_LIST: pa.list_(pa.string()),
+        }
+        return mapping[field_type]
+
+    @classmethod
+    def generate_features(cls, field_definitions: Dict[str, FieldType]) -> Features:
+        return Features(
+            {
+                field_name: cls._get_features_type(field_type)
+                for field_name, field_type in field_definitions.items()
+            }
+        )
+
+    @classmethod
+    def generate_pyarrow_schema(cls, field_definitions: Dict[str, FieldType]):
+        import pyarrow as pa
+
+        return pa.schema(
+            [
+                (field_name, cls._get_pyarrow_type(field_type))
+                for field_name, field_type in field_definitions.items()
+            ]
+        )
 
 
 class DatasetRecord(
@@ -52,25 +108,29 @@ class DatasetRecord(
         return cls.model_fields[field_name].alias or field_name
 
     @classmethod
+    def _get_field_definitions(cls) -> Dict[str, FieldType]:
+        """Define the schema for this class. Override in subclasses to extend."""
+        return {
+            cls.get_field_alias("doc_id"): FieldType.STRING,
+            cls.get_field_alias("doc_path"): FieldType.STRING,
+            cls.get_field_alias("doc_hash"): FieldType.STRING,
+            cls.get_field_alias("ground_truth_doc"): FieldType.STRING,
+            cls.get_field_alias("ground_truth_segmented_pages"): FieldType.STRING,
+            cls.get_field_alias("ground_truth_pictures"): FieldType.IMAGE_LIST,
+            cls.get_field_alias("ground_truth_page_images"): FieldType.IMAGE_LIST,
+            cls.get_field_alias("original"): FieldType.BINARY,
+            cls.get_field_alias("mime_type"): FieldType.STRING,
+            cls.get_field_alias("modalities"): FieldType.STRING_LIST,
+        }
+
+    @classmethod
     def features(cls):
-        return Features(
-            {
-                cls.get_field_alias("doc_id"): Value("string"),
-                cls.get_field_alias("doc_path"): Value("string"),
-                cls.get_field_alias("doc_hash"): Value("string"),
-                cls.get_field_alias("ground_truth_doc"): Value("string"),
-                cls.get_field_alias("ground_truth_segmented_pages"): Value("string"),
-                cls.get_field_alias("ground_truth_pictures"): Sequence(
-                    Features_Image()
-                ),
-                cls.get_field_alias("ground_truth_page_images"): Sequence(
-                    Features_Image()
-                ),
-                cls.get_field_alias("original"): Value("binary"),
-                cls.get_field_alias("mime_type"): Value("string"),
-                cls.get_field_alias("modalities"): Sequence(Value("string")),
-            }
-        )
+        return SchemaGenerator.generate_features(cls._get_field_definitions())
+
+    @classmethod
+    def pyarrow_schema(cls):
+        """Generate PyArrow schema that matches the HuggingFace datasets image format."""
+        return SchemaGenerator.generate_pyarrow_schema(cls._get_field_definitions())
 
     def _extract_images(
         self,
@@ -208,36 +268,30 @@ class DatasetRecordWithPrediction(DatasetRecord):
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
     @classmethod
+    def _get_field_definitions(cls) -> Dict[str, FieldType]:
+        """Extend the parent schema with prediction-specific fields."""
+        base_definitions = super()._get_field_definitions()
+        prediction_definitions = {
+            cls.get_field_alias("predictor_info"): FieldType.STRING,
+            cls.get_field_alias("status"): FieldType.STRING,
+            cls.get_field_alias("predicted_doc"): FieldType.STRING,
+            cls.get_field_alias("predicted_segmented_pages"): FieldType.STRING,
+            cls.get_field_alias("predicted_pictures"): FieldType.IMAGE_LIST,
+            cls.get_field_alias("predicted_page_images"): FieldType.IMAGE_LIST,
+            cls.get_field_alias("prediction_format"): FieldType.STRING,
+            cls.get_field_alias("prediction_timings"): FieldType.STRING,
+            cls.get_field_alias("original_prediction"): FieldType.STRING,
+        }
+        return {**base_definitions, **prediction_definitions}
+
+    @classmethod
     def features(cls):
-        return Features(
-            {
-                cls.get_field_alias("doc_id"): Value("string"),
-                cls.get_field_alias("doc_path"): Value("string"),
-                cls.get_field_alias("doc_hash"): Value("string"),
-                cls.get_field_alias("ground_truth_doc"): Value("string"),
-                cls.get_field_alias("ground_truth_segmented_pages"): Value("string"),
-                cls.get_field_alias("ground_truth_pictures"): Sequence(
-                    Features_Image()
-                ),
-                cls.get_field_alias("ground_truth_page_images"): Sequence(
-                    Features_Image()
-                ),
-                cls.get_field_alias("original"): Value("binary"),
-                cls.get_field_alias("mime_type"): Value("string"),
-                cls.get_field_alias("modalities"): Sequence(Value("string")),
-                cls.get_field_alias("predictor_info"): Value("string"),
-                cls.get_field_alias("status"): Value("string"),
-                cls.get_field_alias("predicted_doc"): Value("string"),
-                cls.get_field_alias("predicted_segmented_pages"): Value("string"),
-                cls.get_field_alias("predicted_pictures"): Sequence(Features_Image()),
-                cls.get_field_alias("predicted_page_images"): Sequence(
-                    Features_Image()
-                ),
-                cls.get_field_alias("prediction_format"): Value("string"),
-                cls.get_field_alias("prediction_timings"): Value("string"),
-                cls.get_field_alias("original_prediction"): Value("string"),
-            }
-        )
+        return SchemaGenerator.generate_features(cls._get_field_definitions())
+
+    @classmethod
+    def pyarrow_schema(cls):
+        """Generate PyArrow schema that matches the HuggingFace datasets image format."""
+        return SchemaGenerator.generate_pyarrow_schema(cls._get_field_definitions())
 
     def as_record_dict(self):
         record = super().as_record_dict()

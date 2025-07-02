@@ -398,8 +398,8 @@ class BasePredictionProvider:
             save_shard_to_disk(
                 items=record_chunk,
                 dataset_path=test_dir,
+                schema=DatasetRecordWithPrediction.pyarrow_schema(),
                 shard_id=chunk_count,
-                features=DatasetRecordWithPrediction.features(),
             )
             count += len(record_chunk)
             chunk_count += 1
