@@ -5,18 +5,33 @@ import multiprocessing
 import os
 import sys
 from pathlib import Path
-from typing import Annotated, Dict, Optional, Tuple
+
+# --- DoclingLayoutOptionsManager definition moved here ---
+from typing import Annotated, Dict, List, Optional, Tuple
 
 import typer
+from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.layout_model_specs import (
+    DOCLING_LAYOUT_EGRET_LARGE,
+    DOCLING_LAYOUT_EGRET_MEDIUM,
+    DOCLING_LAYOUT_EGRET_XLARGE,
+    DOCLING_LAYOUT_HERON,
+    DOCLING_LAYOUT_HERON_101,
+    DOCLING_LAYOUT_V2,
+    LayoutModelConfig,
+)
 from docling.datamodel.pipeline_options import (
-    AcceleratorDevice,
-    AcceleratorOptions,
+    LayoutOptions,
     PaginatedPipelineOptions,
     PdfPipelineOptions,
     VlmPipelineOptions,
-    smoldocling_vlm_conversion_options,
-    smoldocling_vlm_mlx_conversion_options,
+)
+from docling.datamodel.vlm_model_specs import (
+    SMOLDOCLING_MLX as smoldocling_vlm_mlx_conversion_options,
+)
+from docling.datamodel.vlm_model_specs import (
+    SMOLDOCLING_TRANSFORMERS as smoldocling_vlm_conversion_options,
 )
 from docling.document_converter import FormatOption, PdfFormatOption
 from docling.models.factories import get_ocr_factory
@@ -98,6 +113,26 @@ from docling_eval.prediction_providers.google_prediction_provider import (
 from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
+
+
+class DoclingLayoutOptionsManager:
+    layout_model_configs = {
+        "docling_layout_v2": DOCLING_LAYOUT_V2,
+        "docling_layout_heron": DOCLING_LAYOUT_HERON,
+        "docling_layout_heron_101": DOCLING_LAYOUT_HERON_101,
+        "docling_layout_egret_medium": DOCLING_LAYOUT_EGRET_MEDIUM,
+        "docling_layout_egret_large": DOCLING_LAYOUT_EGRET_LARGE,
+        "docling_layout_egret_xlarge": DOCLING_LAYOUT_EGRET_XLARGE,
+    }
+
+    @staticmethod
+    def get_layout_model_config(model_spec: str) -> LayoutModelConfig:
+        return DoclingLayoutOptionsManager.layout_model_configs[model_spec]
+
+    @staticmethod
+    def get_layout_model_config_names() -> List[str]:
+        return list(DoclingLayoutOptionsManager.layout_model_configs.keys())
+
 
 # Configure logging
 logging_level = logging.WARNING
@@ -255,6 +290,8 @@ def get_prediction_provider(
     do_table_structure: bool = True,
     artifacts_path: Optional[Path] = None,
     image_scale_factor: Optional[float] = None,
+    docling_layout_model_spec: Optional[LayoutModelConfig] = None,
+    docling_layout_create_orphan_clusters: Optional[bool] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -284,6 +321,15 @@ def get_prediction_provider(
         pipeline_options.generate_picture_images = True
         pipeline_options.generate_parsed_pages = True
         pipeline_options.accelerator_options = accelerator_options
+
+        layout_options: LayoutOptions = LayoutOptions()
+        if docling_layout_model_spec is not None:
+            layout_options.model = docling_layout_model_spec
+        if docling_layout_create_orphan_clusters is not None:
+            layout_options.create_orphan_clusters = (
+                docling_layout_create_orphan_clusters
+            )
+        pipeline_options.layout_options = layout_options
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
@@ -1017,6 +1063,20 @@ def create_eval(
             help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
+    docling_layout_model_spec: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Layout model spec for Docling. Supported values: {}".format(
+                DoclingLayoutOptionsManager.get_layout_model_config_names()
+            )
+        ),
+    ] = "docling_layout_heron",
+    docling_layout_create_orphan_clusters: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Enable orphan clusters creation in Docling layout post-processing"
+        ),
+    ] = True,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
@@ -1049,6 +1109,14 @@ def create_eval(
         )
 
         # Create the appropriate prediction provider
+        docling_layout_model_spec_obj = (
+            DoclingLayoutOptionsManager.get_layout_model_config(
+                docling_layout_model_spec
+            )
+            if docling_layout_model_spec
+            else None
+        )
+
         provider = get_prediction_provider(
             provider_type=prediction_provider,
             file_source_path=file_source_path,
@@ -1059,6 +1127,8 @@ def create_eval(
             do_visualization=do_visualization,
             image_scale_factor=image_scale_factor,
             do_table_structure=do_table_structure,
+            docling_layout_model_spec=docling_layout_model_spec_obj,
+            docling_layout_create_orphan_clusters=docling_layout_create_orphan_clusters,
         )
 
         # Get the dataset name from the benchmark

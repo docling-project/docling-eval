@@ -104,6 +104,10 @@ dev = [
 [tool.uv]
 package = true
 
+[tool.uv.sources]
+docling = { git = "https://github.com/docling-project/docling", rev = "cau/layout-model-spec" }
+
+
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]
 
