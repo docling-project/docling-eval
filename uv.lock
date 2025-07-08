@@ -793,7 +793,7 @@ wheels = [
 [[package]]
 name = "docling"
 version = "2.40.0"
-source = { git = "https://github.com/docling-project/docling?rev=cau%2Flayout-model-spec#af0461e5b1be41675f329618b2504ebcbf73e9a4" }
+source = { git = "https://github.com/docling-project/docling?rev=cau%2Flayout-model-spec#517230b9c45e60e900fb334922617578726eab14" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "certifi" },
