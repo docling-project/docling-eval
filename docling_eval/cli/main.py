@@ -324,7 +324,7 @@ def get_prediction_provider(
 
         layout_options: LayoutOptions = LayoutOptions()
         if docling_layout_model_spec is not None:
-            layout_options.model = docling_layout_model_spec
+            layout_options.model_spec = docling_layout_model_spec
         if docling_layout_create_orphan_clusters is not None:
             layout_options.create_orphan_clusters = (
                 docling_layout_create_orphan_clusters
@@ -1222,13 +1222,39 @@ def create(
 @app.command(name="evaluate")
 def evaluate_cmd(
     modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
-    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
-    output_dir: Annotated[Path, typer.Option(help="Base output directory")],
+    benchmark: Annotated[
+        BenchMarkNames,
+        typer.Option(
+            help="Benchmark name. It is used only to set the filename of the evaluation json file."
+        ),
+    ],
+    input_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory with evaluation dataset. If not provided, the input directory will be derived from the output directory."
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Base output directory. If not provided, the output directory will be derived from the input directory."
+        ),
+    ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
 ):
     """Evaluate predictions against ground truth."""
-    # Derive input and output paths based on the directory structure in test_dataset_builder.py
-    input_dir = output_dir / "eval_dataset"
+    if not input_dir and not output_dir:
+        raise ValueError("Either input_dir or output_dir must be provided")
+
+    if not input_dir and output_dir:
+        # Derive input and output paths based on the directory structure in test_dataset_builder.py
+        input_dir = output_dir / "eval_dataset" / benchmark.value / modality.value
+
+    if not output_dir and input_dir:
+        output_dir = input_dir.parent
+
+    assert input_dir is not None
+    assert output_dir is not None
     eval_output_dir = output_dir / "evaluations" / modality.value
 
     # Create output directory
