@@ -793,7 +793,7 @@ wheels = [
 [[package]]
 name = "docling"
 version = "2.40.0"
-source = { git = "https://github.com/docling-project/docling?rev=cau%2Flayout-model-spec#517230b9c45e60e900fb334922617578726eab14" }
+source = { git = "https://github.com/docling-project/docling?rev=cau%2Flayout-model-spec#43cae7be7c98cb1adec919b4cf802242c1727a57" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "certifi" },
@@ -833,7 +833,7 @@ vlm = [
 
 [[package]]
 name = "docling-core"
-version = "2.39.0"
+version = "2.42.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonref" },
@@ -848,9 +848,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/8b/5613467523bed58d9f2b94220947783914b6d9910a8d20908cf148805427/docling_core-2.39.0.tar.gz", hash = "sha256:77530156c79c9000fe3104894935437d3e2d46dc0f567b5a500974d7c1a8b38b", size = 148005, upload-time = "2025-06-27T12:59:56.694Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/c9/f5555f8efbbbecce858e78791fbe0b9465c3c91ea917a3a3acdb1c3c9887/docling_core-2.42.0.tar.gz", hash = "sha256:cf2bb9e889920bac1d94412bd89c10e647419b6d5f7fe5e6f71ed732eb8f24f6", size = 154657, upload-time = "2025-07-09T12:27:34.858Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/85/3d59ac46a47f62a0ed79e187c4163cecd2693d05006f771038db4781f9ff/docling_core-2.39.0-py3-none-any.whl", hash = "sha256:b7ce5142ab95bd8d5cfe5d7df167a96a6eb41d884f00ea42bb3dd8f40ade92ea", size = 152890, upload-time = "2025-06-27T12:59:55.327Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/e4/685bb1b38ca120fdffc1c24f1ce54229ff996e5cad50a9c9dd39b671cb83/docling_core-2.42.0-py3-none-any.whl", hash = "sha256:0774391f335217a5aec8357977e66b63b6e8c9d821c56103de54c526eab92ed6", size = 158101, upload-time = "2025-07-09T12:27:33.147Z" },
 ]
 
 [package.optional-dependencies]
@@ -999,7 +999,7 @@ dev = [
 [[package]]
 name = "docling-ibm-models"
 version = "3.7.0"
-source = { git = "https://github.com/docling-project/docling-ibm-models?rev=nli%2Fauto_layout_predictor#6860b6f68ef004f9a01cee2b146fc17798c39332" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docling-core" },
     { name = "huggingface-hub" },
@@ -1016,6 +1016,10 @@ dependencies = [
     { name = "torchvision" },
     { name = "tqdm" },
     { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/69/016c9116f8730983350f3c83160089f07d1b9e355bd413d640756b41520f/docling_ibm_models-3.7.0.tar.gz", hash = "sha256:cba4700246942a22be5ed5844fa8b1c4ee7e68fc7c9bac218197e4bcffcfffd4", size = 85757, upload-time = "2025-07-04T14:43:33.363Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/73/fd559e16ce196dfaf68365445b38d6a23a66049e3bb3261dd8417dd69902/docling_ibm_models-3.7.0-py3-none-any.whl", hash = "sha256:24324ebc76b0b30bd3ebd3bf73890e1d2586a5e092e645de83cc9f5dbf1bd2bb", size = 85445, upload-time = "2025-07-04T14:43:31.882Z" },
 ]
 
 [[package]]
