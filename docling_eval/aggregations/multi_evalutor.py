@@ -408,11 +408,6 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                 if not evaluation:
                     continue
 
-                if benchmark not in evaluations:
-                    evaluations[benchmark] = {}
-                if experiment not in evaluations[benchmark]:
-                    evaluations[benchmark][experiment] = {}
-
                 modalities_evaluations[modality] = SingleEvaluation(
                     evaluation=evaluation,
                     experiment=experiment,
@@ -449,6 +444,8 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                         continue
 
                     subexp_candidate = exp_child_path.name
+                    if subexp_candidate == MultiEvaluator.PRED_LEAF_DIR:
+                        continue
 
                     modalities_evaluations: Dict[EvaluationModality, SingleEvaluation]
                     if subexp_candidate == MultiEvaluator.EVALUATIONS_DIR:
