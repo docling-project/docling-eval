@@ -206,9 +206,10 @@ class Consolidator:
     def _layout_metrics(self, evaluation: DatasetLayoutEvaluation) -> Dict[str, str]:
         r"""Get the metrics for the LayoutEvaluation"""
         metrics = {
-            "mAP": export_value(evaluation.map_stats),
-            "mAP_50": export_value(evaluation.map_50_stats),
-            "mAP_75": export_value(evaluation.map_75_stats),
+            "mAP": export_value(evaluation.mAP),
+            "stat_mAP": export_value(evaluation.map_stats),
+            "stat_mAP_50": export_value(evaluation.map_50_stats),
+            "stat_mAP_75": export_value(evaluation.map_75_stats),
             "weighted_mAP_50": export_value(evaluation.weighted_map_50_stats),
             "weighted_mAP_75": export_value(evaluation.weighted_map_75_stats),
             "weighted_mAP_90": export_value(evaluation.weighted_map_90_stats),
