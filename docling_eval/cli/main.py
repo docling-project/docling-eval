@@ -292,6 +292,7 @@ def get_prediction_provider(
     image_scale_factor: Optional[float] = None,
     docling_layout_model_spec: Optional[LayoutModelConfig] = None,
     docling_layout_create_orphan_clusters: Optional[bool] = None,
+    docling_layout_keep_empty_clusters: Optional[bool] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -329,6 +330,8 @@ def get_prediction_provider(
             layout_options.create_orphan_clusters = (
                 docling_layout_create_orphan_clusters
             )
+        if docling_layout_keep_empty_clusters is not None:
+            layout_options.keep_empty_clusters = docling_layout_keep_empty_clusters
         pipeline_options.layout_options = layout_options
 
         if artifacts_path is not None:
@@ -1077,6 +1080,10 @@ def create_eval(
             help="Enable orphan clusters creation in Docling layout post-processing"
         ),
     ] = True,
+    docling_layout_keep_empty_clusters: Annotated[
+        Optional[bool],
+        typer.Option(help="Keep the empty clusters in Docling layout post-processing"),
+    ] = True,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
@@ -1129,6 +1136,7 @@ def create_eval(
             do_table_structure=do_table_structure,
             docling_layout_model_spec=docling_layout_model_spec_obj,
             docling_layout_create_orphan_clusters=docling_layout_create_orphan_clusters,
+            docling_layout_keep_empty_clusters=docling_layout_keep_empty_clusters,
         )
 
         # Get the dataset name from the benchmark
