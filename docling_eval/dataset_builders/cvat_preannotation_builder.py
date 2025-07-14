@@ -47,7 +47,6 @@ class CvatPreannotationBuilder:
         target: Path,
         bucket_size: int = 200,
         use_predictions: bool = False,
-        sliding_window: int = 2,
     ):
         """
         Initialize the CvatPreannotationBuilder.
@@ -56,13 +55,10 @@ class CvatPreannotationBuilder:
             dataset_source: Directory containing the source dataset
             target: Directory where CVAT preannotations will be saved
             bucket_size: Number of documents per bucket for CVAT tasks
-            use_predictions: Whether to use predictions instead of ground truth
-            sliding_window: Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)
         """
         self.source_dir = dataset_source
         self.target_dir = target
         self.bucket_size = bucket_size
-        self.sliding_window = sliding_window
         self.benchmark_dirs = BenchMarkDirs()
         self.benchmark_dirs.set_up_directory_structure(
             source=dataset_source, target=target
@@ -803,7 +799,7 @@ class CvatPreannotationBuilder:
         _log.info(f"Preparing dataset from {self.source_dir} for CVAT annotation")
         self._create_project_properties()
         self.overview = self._export_from_dataset()
-        self._create_preannotation_files(sliding_window=self.sliding_window)
+        self._create_preannotation_files(sliding_window=1)
         _log.info(f"CVAT annotation preparation complete in {self.target_dir}")
 
 
