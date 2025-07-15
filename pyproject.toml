@@ -105,7 +105,7 @@ dev = [
 package = true
 
 [tool.uv.sources]
-docling = { git = "https://github.com/docling-project/docling", rev = "cau/layout-allow-empty-clusters" }
+docling = { git = "https://github.com/docling-project/docling"}
 
 
 [tool.setuptools.packages.find]
