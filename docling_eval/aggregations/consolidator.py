@@ -198,7 +198,7 @@ class Consolidator:
         dfs: Dict[EvaluationModality, DataFrame] = {}
         for modality, m_data in df_data.items():
             df = DataFrame(m_data)
-            df = df.sort_values(by=["Benchmark"], ascending=[True])
+            df = df.sort_values(by=["Benchmark", "Experiment"], ascending=[True, True])
             dfs[modality] = df
 
         return dfs
