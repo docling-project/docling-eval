@@ -1083,7 +1083,7 @@ def create_eval(
     docling_layout_keep_empty_clusters: Annotated[
         Optional[bool],
         typer.Option(help="Keep the empty clusters in Docling layout post-processing"),
-    ] = True,
+    ] = False,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
