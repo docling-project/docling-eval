@@ -30,7 +30,7 @@ from .models import (
     CVATValidationRunReport,
     ValidationSeverity,
 )
-from .parser import find_samples_in_directory, parse_cvat_xml_for_image
+from .parser import find_samples_in_directory
 from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
@@ -79,7 +79,6 @@ __all__ = [
     "CVATImageInfo",
     "ValidationSeverity",
     # Parser
-    "parse_cvat_xml_for_image",
     "find_samples_in_directory",
     # Tree
     "TreeNode",
