@@ -55,6 +55,10 @@ from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.doc_structure_evaluator import DocStructureEvaluator
+from docling_eval.evaluators.keyvalue_evaluator import (
+    DatasetKeyValueEvaluation,
+    KeyValueEvaluator,
+)
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LabelFilteringStrategy,
@@ -83,10 +87,6 @@ from docling_eval.evaluators.table_evaluator import (
 from docling_eval.evaluators.timings_evaluator import (
     DatasetTimingsEvaluation,
     TimingsEvaluator,
-)
-from docling_eval.evaluators.keyvalue_evaluator import (
-    DatasetKeyValueEvaluation,
-    KeyValueEvaluator,
 )
 from docling_eval.prediction_providers.aws_prediction_provider import (
     AWSTextractPredictionProvider,
