@@ -231,6 +231,21 @@ def evaluate_relation_extraction_with_bbox(
     return tp, fp, fn, prec, rec, f1
 
 
+# ---------- count helpers ----------
+def count_entities(doc: DoclingDocument) -> int:
+    """Count the number of entities (keys and values) in the document."""
+    if doc.key_value_items is None or len(doc.key_value_items) == 0:
+        return 0
+    return len(doc.key_value_items[0].graph.cells)
+
+
+def count_links(doc: DoclingDocument) -> int:
+    """Count the number of links in the document."""
+    if doc.key_value_items is None or len(doc.key_value_items) == 0:
+        return 0
+    return len(doc.key_value_items[0].graph.links)
+
+
 # --------------------------------------------------------------------------- #
 # Per-document evaluation record
 # --------------------------------------------------------------------------- #
@@ -269,6 +284,12 @@ class KeyValueEvaluation(UnitEvaluation):
     relation_recall_bbox: float
     relation_f1_bbox: float
 
+    # -------- count differences ----------
+    num_entity_diff: int
+    num_link_diff: int
+    num_entity_diff_normalized: float
+    num_link_diff_normalized: float
+
 
 # --------------------------------------------------------------------------- #
 # Dataset-level evaluation
@@ -292,6 +313,12 @@ class DatasetKeyValueEvaluation(DatasetEvaluation):
     relation_precision_bbox_stats: DatasetStatistics
     relation_recall_bbox_stats: DatasetStatistics
     relation_f1_bbox_stats: DatasetStatistics
+
+    # --- count difference statistics ---
+    num_entity_diff_stats: DatasetStatistics
+    num_link_diff_stats: DatasetStatistics
+    num_entity_diff_normalized_stats: DatasetStatistics
+    num_link_diff_normalized_stats: DatasetStatistics
 
 
 # --------------------------------------------------------------------------- #
@@ -356,6 +383,10 @@ class KeyValueEvaluator(BaseEvaluator):
                 "relation_precision_bbox",
                 "relation_recall_bbox",
                 "relation_f1_bbox",
+                "num_entity_diff",
+                "num_link_diff",
+                "num_entity_diff_normalized",
+                "num_link_diff_normalized",
             ]
         }
 
@@ -412,6 +443,23 @@ class KeyValueEvaluator(BaseEvaluator):
                 gt_doc, pred_doc, is_strict=self._strict
             )
 
+            # ----- compute count differences -------------------------------------
+            gt_entity_count = count_entities(gt_doc)
+            pred_entity_count = count_entities(pred_doc)
+            entity_diff = abs(gt_entity_count - pred_entity_count)
+            max_entity_count = max(gt_entity_count, pred_entity_count)
+            entity_diff_normalized = (
+                (entity_diff / max_entity_count) if max_entity_count > 0 else 0.0
+            )
+
+            gt_link_count = count_links(gt_doc)
+            pred_link_count = count_links(pred_doc)
+            link_diff = abs(gt_link_count - pred_link_count)
+            max_link_count = max(gt_link_count, pred_link_count)
+            link_diff_normalized = (
+                (link_diff / max_link_count) if max_link_count > 0 else 0.0
+            )
+
             # ----- accumulate dataset metrics ------------------------------------
             for key, val in [
                 ("entity_precision", ent_prec),
@@ -426,6 +474,10 @@ class KeyValueEvaluator(BaseEvaluator):
                 ("relation_precision_bbox", rel_prec_b),
                 ("relation_recall_bbox", rel_rec_b),
                 ("relation_f1_bbox", rel_f1_b),
+                ("num_entity_diff", entity_diff),
+                ("num_link_diff", link_diff),
+                ("num_entity_diff_normalized", entity_diff_normalized),
+                ("num_link_diff_normalized", link_diff_normalized),
             ]:
                 ds_metrics[key].append(float(val))
 
@@ -458,6 +510,11 @@ class KeyValueEvaluator(BaseEvaluator):
                 relation_precision_bbox=rel_prec_b,
                 relation_recall_bbox=rel_rec_b,
                 relation_f1_bbox=rel_f1_b,
+                # count differences
+                num_entity_diff=entity_diff,
+                num_link_diff=link_diff,
+                num_entity_diff_normalized=entity_diff_normalized,
+                num_link_diff_normalized=link_diff_normalized,
             )
             all_evals.append(evaluation)
 
@@ -492,6 +549,15 @@ class KeyValueEvaluator(BaseEvaluator):
                 ds_metrics["relation_recall_bbox"]
             ),
             relation_f1_bbox_stats=compute_stats(ds_metrics["relation_f1_bbox"]),
+            # ---------- count differences --
+            num_entity_diff_stats=compute_stats(ds_metrics["num_entity_diff"]),
+            num_link_diff_stats=compute_stats(ds_metrics["num_link_diff"]),
+            num_entity_diff_normalized_stats=compute_stats(
+                ds_metrics["num_entity_diff_normalized"]
+            ),
+            num_link_diff_normalized_stats=compute_stats(
+                ds_metrics["num_link_diff_normalized"]
+            ),
         )
         return dataset_eval
 
