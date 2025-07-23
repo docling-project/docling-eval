@@ -146,7 +146,14 @@ def _get_document_visualization_data(
         logging.error(f"{page_no} not in page_imgs, get default image.")
         doc_img_b64 = from_pil_to_base64(get_missing_pageimg())
 
-    doc_page = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED, page_no=page_no)
+    try:
+        doc_page = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED, page_no=page_no)
+    except ValueError as e:
+        logging.error(
+            f"Could not export page {page_no} to HTML due to a ValueError: {e}"
+        )
+        doc_page_body = f"<p>ERROR: Could not render page HTML due to invalid coordinates. Details: {e}</p>"
+        return doc_img_b64, doc_page_body
 
     # Search for the pattern in the HTML string
     mtch = pattern.search(doc_page)
