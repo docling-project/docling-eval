@@ -27,6 +27,7 @@ class PathMappings:
     group: Dict[int, List[int]]  # path_id -> [element_id, ...]
     to_caption: Dict[int, Tuple[int, int]]  # path_id -> (container_id, caption_id)
     to_footnote: Dict[int, Tuple[int, int]]  # path_id -> (container_id, footnote_id)
+    to_value: Dict[int, Tuple[int, int]]  # path_id -> (key_id, value_id)
 
 
 def map_path_points_to_elements(
@@ -49,6 +50,7 @@ def map_path_points_to_elements(
     group: Dict[int, List[int]] = {}
     to_caption: Dict[int, Tuple[int, int]] = {}
     to_footnote: Dict[int, Tuple[int, int]] = {}
+    to_value: Dict[int, Tuple[int, int]] = {}
 
     for path in paths:
         touched_elements: List[int] = []
@@ -76,6 +78,9 @@ def map_path_points_to_elements(
         elif path.label == "to_footnote" and len(touched_elements) == 2:
             # First element should be container, second should be footnote
             to_footnote[path.id] = (touched_elements[0], touched_elements[1])
+        elif path.label == "to_value" and len(touched_elements) == 2:
+            # First element should be key, second should be value
+            to_value[path.id] = (touched_elements[0], touched_elements[1])
 
     return PathMappings(
         reading_order=reading_order,
@@ -83,6 +88,7 @@ def map_path_points_to_elements(
         group=group,
         to_caption=to_caption,
         to_footnote=to_footnote,
+        to_value=to_value,
     )
 
 
@@ -154,6 +160,12 @@ def associate_paths_to_containers(
 
     for path_id, (container_id, _) in mappings.to_footnote.items():
         node = find_node_by_element_id(tree_roots, container_id)
+        if node:
+            path_to_container[path_id] = node
+
+    # Associate to_value paths
+    for path_id, (key_id, _) in mappings.to_value.items():
+        node = find_node_by_element_id(tree_roots, key_id)
         if node:
             path_to_container[path_id] = node
 

@@ -337,6 +337,9 @@ class CVATToDoclingConverter:
         # Process captions and footnotes
         self._process_captions_and_footnotes()
 
+        # Process to_value relationships
+        self._process_to_value_relationships()
+
         return self.doc
 
     def _reset_list_state(self):
@@ -677,10 +680,15 @@ class CVATToDoclingConverter:
         # Concatenate text
         merged_text = " ".join(all_texts)
 
-        # Create item based on label
-        item = self._create_item_by_label(
-            primary_element.label, merged_text, all_provs[0], primary_element, parent
-        )
+        if isinstance(primary_element.label, DocItemLabel):
+            # Create item based on label
+            item = self._create_item_by_label(
+                primary_element.label,
+                merged_text,
+                all_provs[0],
+                primary_element,
+                parent,
+            )
 
         # Add additional provenances
         if item and len(all_provs) > 1:
@@ -694,10 +702,13 @@ class CVATToDoclingConverter:
         """Create a DocItem for a single element."""
         page_no, text, provenance = self._process_element_bbox(element)
 
-        # Create item based on label
-        return self._create_item_by_label(
-            element.label, text, provenance, element, parent
-        )
+        if isinstance(element.label, DocItemLabel):
+            # Create item based on label
+            return self._create_item_by_label(
+                element.label, text, provenance, element, parent
+            )
+        else:
+            return None
 
     def _get_page_number_from_bbox(self, bbox: BoundingBox) -> int:
         """Determine which page a bbox belongs to based on its x-coordinate."""
@@ -839,6 +850,14 @@ class CVATToDoclingConverter:
             footnote_id,
         ) in self.doc_structure.path_mappings.to_footnote.items():
             self._add_caption_or_footnote(container_id, footnote_id, is_caption=False)
+
+    def _process_to_value_relationships(self):
+        """Process to_value relationships (key-value links)."""
+        for path_id, (
+            key_id,
+            value_id,
+        ) in self.doc_structure.path_mappings.to_value.items():
+            pass  # TODO: implement this properly.
 
     def _add_caption_or_footnote(
         self, container_id: int, target_id: int, is_caption: bool

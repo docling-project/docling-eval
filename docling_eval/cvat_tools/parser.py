@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer
-from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.labels import DocItemLabel, GraphCellLabel
 
 from docling_eval.cvat_tools.models import (
     CVATAnnotationPath,
@@ -90,8 +90,11 @@ def _parse_image_element(
         try:
             label = DocItemLabel(label_str)
         except ValueError:
-            # Skip invalid labels
-            continue
+            try:
+                label = GraphCellLabel(label_str)  # type: ignore
+            except ValueError:
+                # Skip invalid labels
+                continue
         xtl = float(box.attrib["xtl"])
         ytl = float(box.attrib["ytl"])
         xbr = float(box.attrib["xbr"])
