@@ -84,6 +84,10 @@ from docling_eval.evaluators.timings_evaluator import (
     DatasetTimingsEvaluation,
     TimingsEvaluator,
 )
+from docling_eval.evaluators.keyvalue_evaluator import (
+    DatasetKeyValueEvaluation,
+    KeyValueEvaluator,
+)
 from docling_eval.prediction_providers.aws_prediction_provider import (
     AWSTextractPredictionProvider,
 )
@@ -570,7 +574,21 @@ def evaluate(
             idir,
             split=split,
         )
+        with open(save_fn, "w") as fd:
+            json.dump(
+                evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
 
+    elif modality == EvaluationModality.KEY_VALUE:
+        keyvalue_evaluator = KeyValueEvaluator()
+        evaluation = keyvalue_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
         with open(save_fn, "w") as fd:
             json.dump(
                 evaluation.model_dump(),
