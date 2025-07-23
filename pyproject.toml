@@ -26,7 +26,7 @@ classifiers = [
 requires-python = '>=3.10,<4.0'
 dependencies = [
     'docling[vlm] (>=2.42.0,<3.0.0)',
-    "docling-core>=2.42.0",
+    "docling-core>=2.43.1",
     'pydantic (>=2.0.0,<3.0.0)',
     'lxml (>=5.3.0,<6.0.0)',
     'datasets (>=3.2.0,<4.0.0)',
@@ -102,9 +102,6 @@ dev = [
 
 [tool.uv]
 package = true
-
-[tool.uv.sources]
-docling-core = { git = "https://github.com/docling-project/docling-core.git", rev = "cau/fix-layout-viz-traverse-pictures" }
 
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]

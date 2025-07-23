@@ -87,6 +87,13 @@ class ImageLayoutEvaluation(UnitEvaluation):
     segmentation_recall_no_pictures: Optional[float] = None
     segmentation_f1_no_pictures: Optional[float] = None
 
+    # New per-sample element count metrics
+    true_element_count: int
+    pred_element_count: int
+    element_count_diff: int
+    # Difference as percentage of average total elements
+    element_count_diff_pct: float
+
 
 class DatasetLayoutEvaluation(DatasetEvaluation):
     true_labels: Dict[str, int]
@@ -295,9 +302,6 @@ class LayoutEvaluator(BaseEvaluator):
             ):
                 rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT] += 1
 
-            # logging.info(f"gts: {gts}")
-            # logging.info(f"preds: {preds}")
-
             # The new _extract_layout_data method ensures proper alignment
             # gts and preds are guaranteed to have the same length and corresponding indices
             if len(gts) > 0:
@@ -353,6 +357,21 @@ class LayoutEvaluator(BaseEvaluator):
         for i, (doc_id, pred, gt) in enumerate(
             zip(doc_ids, predictions, ground_truths)
         ):
+            # Use the number of boxes in gt and pred tensors for element counts
+            true_elements = len(gt["boxes"])
+            pred_elements = len(pred["boxes"])
+            element_count_diff = true_elements - pred_elements
+            avg_total_elements = (
+                (true_elements + pred_elements) / 2
+                if (true_elements + pred_elements) > 0
+                else 1
+            )
+            element_count_diff_pct = (
+                (element_count_diff / avg_total_elements) * 100.0
+                if avg_total_elements > 0
+                else 0.0
+            )
+
             # logging.info(f"gt: {gt}")
             # logging.info(f"pred: {pred}")
 
@@ -435,6 +454,11 @@ class LayoutEvaluator(BaseEvaluator):
                 segmentation_precision_no_pictures=precision_no_pics,
                 segmentation_recall_no_pictures=recall_no_pics,
                 segmentation_f1_no_pictures=f1_no_pics,
+                # New per-sample element count metrics
+                true_element_count=true_elements,
+                pred_element_count=pred_elements,
+                element_count_diff=element_count_diff,
+                element_count_diff_pct=element_count_diff_pct,
             )
             evaluations_per_image.append(image_evaluation)
             if self._intermediate_evaluations_path:
