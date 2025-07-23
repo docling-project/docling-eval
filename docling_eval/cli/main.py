@@ -156,6 +156,32 @@ app = typer.Typer(
 )
 
 
+def derive_input_output_dirs(
+    benchmark: BenchMarkNames,
+    modality: EvaluationModality,
+    input_dir: Optional[Path],
+    output_dir: Optional[Path],
+) -> Tuple[Path, Path]:
+    r"""
+    One of the input or output dirs must be non None.
+    In case one of them is None, it can be derived from the other one.
+    """
+    if input_dir and output_dir:
+        return input_dir, output_dir
+    if not input_dir and not output_dir:
+        raise ValueError("Either input_dir or output_dir must be provided")
+
+    if not input_dir and output_dir:
+        # Derive input and output paths based on the directory structure in test_dataset_builder.py
+        input_dir = output_dir / "eval_dataset" / benchmark.value / modality.value
+
+    if not output_dir and input_dir:
+        output_dir = input_dir.parent
+    assert input_dir is not None
+    assert output_dir is not None
+    return input_dir, output_dir
+
+
 def log_and_save_stats(
     odir: Path,
     benchmark: BenchMarkNames,
@@ -1251,16 +1277,9 @@ def evaluate_cmd(
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
 ):
     """Evaluate predictions against ground truth."""
-    if not input_dir and not output_dir:
-        raise ValueError("Either input_dir or output_dir must be provided")
-
-    if not input_dir and output_dir:
-        # Derive input and output paths based on the directory structure in test_dataset_builder.py
-        input_dir = output_dir / "eval_dataset" / benchmark.value / modality.value
-
-    if not output_dir and input_dir:
-        output_dir = input_dir.parent
-
+    input_dir, output_dir = derive_input_output_dirs(
+        benchmark, modality, input_dir, output_dir
+    )
     assert input_dir is not None
     assert output_dir is not None
     eval_output_dir = output_dir / "evaluations" / modality.value
@@ -1284,7 +1303,18 @@ def visualize_cmd(
         EvaluationModality, typer.Option(help="Visualization modality")
     ],
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
-    output_dir: Annotated[Path, typer.Option(help="Base output directory")],
+    input_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory with evaluation dataset. If not provided, the input directory will be derived from the output directory."
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Base output directory. If not provided, the output directory will be derived from the input directory."
+        ),
+    ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
     begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
     end_index: Annotated[
@@ -1292,8 +1322,11 @@ def visualize_cmd(
     ] = -1,
 ):
     """Visualize evaluation results."""
-    # Derive input and output paths based on the directory structure in test_dataset_builder.py
-    input_dir = output_dir / "eval_dataset"
+    input_dir, output_dir = derive_input_output_dirs(
+        benchmark, modality, input_dir, output_dir
+    )
+    assert input_dir is not None
+    assert output_dir is not None
     eval_output_dir = output_dir / "evaluations" / modality.value
 
     # Create output directory
