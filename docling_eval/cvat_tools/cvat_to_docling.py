@@ -924,10 +924,7 @@ class CVATToDoclingConverter:
         # Overall provenance omitted – not needed for CVAT
         self.doc.add_key_values(graph=graph, prov=None)
 
-        try:
-            sort_cell_ids(self.doc)
-        except Exception:
-            pass
+        sort_cell_ids(self.doc)
 
     def _add_caption_or_footnote(
         self, container_id: int, target_id: int, is_caption: bool

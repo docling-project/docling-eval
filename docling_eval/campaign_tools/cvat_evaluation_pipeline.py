@@ -233,6 +233,7 @@ class CVATEvaluationPipeline:
             else:
                 _log.warning(f"Unknown modality: {modality_name}. Skipping.")
                 continue
+            # TODO: add key-value evaluation, see https://github.com/docling-project/docling-eval/pull/140
 
             try:
                 evaluation_result = evaluate(
