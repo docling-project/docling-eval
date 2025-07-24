@@ -94,6 +94,7 @@ def _parse_image_element(
                 label = GraphCellLabel(label_str)  # type: ignore
             except ValueError:
                 # Skip invalid labels
+                logger.debug(f"Skipping invalid label: {label_str}")
                 continue
         xtl = float(box.attrib["xtl"])
         ytl = float(box.attrib["ytl"])
