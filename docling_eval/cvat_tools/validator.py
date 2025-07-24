@@ -286,7 +286,7 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         """Helper method to print tree structure recursively."""
         indent = "  " * depth
         el = node.element
-        print(f"{indent}Element {el.id} ({el.label}) - type: {el.type}")
+        logger.debug(f"{indent}Element {el.id} ({el.label}) - type: {el.type}")
         for child in node.children:
             self._print_tree_node(child, depth + 1)
 
