@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 import numpy as np
 from datasets import load_dataset
 from docling_core.types.doc.document import DoclingDocument, KeyValueItem
-from Levenshtein import distance, ratio
+from editdistance import eval as _edit_distance_eval
 from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm  # type: ignore
 
@@ -21,6 +21,18 @@ from docling_eval.evaluators.base_evaluator import (
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 
 _log = logging.getLogger(__name__)
+
+
+# --- Levenshtein-compatible helpers using 'editdistance' --------------------
+def distance(s1: str, s2: str) -> int:
+    return _edit_distance_eval(s1, s2)
+
+
+def ratio(s1: str, s2: str) -> float:
+    total = len(s1) + len(s2)
+    if total == 0:
+        return 1.0
+    return (total - distance(s1, s2)) / total
 
 
 # ---------- basic utilities ----------
