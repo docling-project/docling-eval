@@ -17,20 +17,21 @@ from docling_core.types.doc.document import (
     DocItemLabel,
     DoclingDocument,
     FloatingItem,
+    GraphCell,
     GraphData,
+    GraphLink,
     GroupItem,
     GroupLabel,
     ImageRef,
     ListItem,
     NodeItem,
-    OrderedList,
     PictureClassificationClass,
     PictureClassificationData,
     ProvenanceItem,
     Size,
     TableData,
-    UnorderedList,
 )
+from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
 from docling_core.types.doc.page import (
     BoundingRectangle,
     PageGeometry,
@@ -50,6 +51,7 @@ from docling_eval.cvat_tools.tree import (
     find_node_by_element_id,
 )
 from docling_eval.cvat_tools.validator import Validator
+from docling_eval.utils.utils import classify_cells, sort_cell_ids
 
 _logger = logging.getLogger(__name__)
 
@@ -851,13 +853,81 @@ class CVATToDoclingConverter:
         ) in self.doc_structure.path_mappings.to_footnote.items():
             self._add_caption_or_footnote(container_id, footnote_id, is_caption=False)
 
-    def _process_to_value_relationships(self):
-        """Process to_value relationships (key-value links)."""
+    def _process_to_value_relationships(self) -> None:  # noqa: C901
+        """Convert CVAT *to_value* links into a single KeyValueItem graph."""
+
+        if not self.doc_structure.path_mappings.to_value:
+            return
+
+        cell_by_element: dict[int, GraphCell] = {}
+        links: list[GraphLink] = []
+        cell_id_seq: int = 0
+
+        def _make_cell(element_id: int, label: GraphCellLabel) -> GraphCell:
+            nonlocal cell_id_seq
+
+            if element_id in cell_by_element:
+                return cell_by_element[element_id]
+
+            element = self.doc_structure.get_element_by_id(element_id)
+            if element is None:
+                raise RuntimeError(
+                    f"Element {element_id} referenced in to_value path is missing."
+                )
+
+            _, text, prov = self._process_element_bbox(element)
+
+            item_ref = None
+            node_item = self.element_to_item.get(element_id)
+            if node_item is not None:
+                item_ref = node_item.get_ref()
+
+            cell = GraphCell(
+                cell_id=cell_id_seq,
+                label=label,
+                text=text,
+                orig=text,
+                prov=prov,
+                item_ref=item_ref,
+            )
+            cell_by_element[element_id] = cell
+            cell_id_seq += 1
+            return cell
+
         for path_id, (
             key_id,
             value_id,
         ) in self.doc_structure.path_mappings.to_value.items():
-            pass  # TODO: implement this properly.
+            try:
+                key_cell = _make_cell(key_id, GraphCellLabel.KEY)
+                value_cell = _make_cell(value_id, GraphCellLabel.VALUE)
+                links.append(
+                    GraphLink(
+                        label=GraphLinkLabel.TO_VALUE,
+                        source_cell_id=key_cell.cell_id,
+                        target_cell_id=value_cell.cell_id,
+                    )
+                )
+            except Exception as err:
+                _logger.warning(f"Skipping malformed to_value path {path_id}: {err}")
+
+        if not cell_by_element:
+            return
+
+        graph = GraphData(cells=list(cell_by_element.values()), links=links)
+
+        try:
+            classify_cells(graph=graph)
+        except Exception as err:
+            _logger.debug(f"classify_cells failed: {err}")
+
+        # Overall provenance omitted – not needed for CVAT
+        self.doc.add_key_values(graph=graph, prov=None)
+
+        try:
+            sort_cell_ids(self.doc)
+        except Exception:
+            pass
 
     def _add_caption_or_footnote(
         self, container_id: int, target_id: int, is_caption: bool
