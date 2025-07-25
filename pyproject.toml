@@ -150,6 +150,7 @@ module = [
     "pyarrow.*",
     "ocrmac.*",
     "editdistance.*",
+    "xlsxwriter.*",
 ]
 ignore_missing_imports = true
 

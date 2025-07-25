@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from docling_eval.campaign_tools.combine_cvat_evaluations import (
+    combine_cvat_evaluations,
+)
 from docling_eval.cli.main import evaluate
 from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
 from docling_eval.cvat_tools.parser import MissingImageInCVATXML
@@ -201,7 +204,9 @@ class CVATEvaluationPipeline:
         )
         _log.info(f"✓ Prediction dataset created: {self.eval_dataset_dir}")
 
-    def run_evaluation(self, modalities: Optional[List[str]] = None) -> None:
+    def run_evaluation(
+        self, modalities: Optional[List[str]] = None, user_csv: Optional[Path] = None
+    ) -> None:
         """
         Step 3: Run evaluation on the prediction dataset.
 
@@ -209,6 +214,7 @@ class CVATEvaluationPipeline:
             modalities: List of evaluation modalities.
                        Options: ['layout', 'document_structure']
                        Default: both modalities
+            user_csv: Path to user CSV file for provenance/self-confidence (optional)
         """
         _log.info("=== Running Evaluation ===")
 
@@ -219,7 +225,7 @@ class CVATEvaluationPipeline:
             )
 
         if modalities is None:
-            modalities = ["layout", "document_structure"]
+            modalities = ["layout", "document_structure", "key_value"]
 
         self.evaluation_results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -230,6 +236,8 @@ class CVATEvaluationPipeline:
                 modality = EvaluationModality.LAYOUT
             elif modality_name == "document_structure":
                 modality = EvaluationModality.DOCUMENT_STRUCTURE
+            elif modality_name == "key_value":
+                modality = EvaluationModality.KEY_VALUE
             else:
                 _log.warning(f"Unknown modality: {modality_name}. Skipping.")
                 continue
@@ -245,7 +253,9 @@ class CVATEvaluationPipeline:
                 )
 
                 if evaluation_result:
-                    _log.info(f"✓ {modality_name} evaluation completed successfully")
+                    _log.info(
+                        f"\u2713 {modality_name} evaluation completed successfully"
+                    )
                     _log.info(
                         f"Evaluated samples: {evaluation_result.evaluated_samples}"
                     )
@@ -257,38 +267,70 @@ class CVATEvaluationPipeline:
                             f"Mean edit distance: {evaluation_result.edit_distance_stats.mean:.4f}"
                         )
                 else:
-                    _log.error(f"✗ {modality_name} evaluation failed")
+                    _log.error(f"\u2717 {modality_name} evaluation failed")
 
             except Exception as e:
-                _log.error(f"✗ Error in {modality_name} evaluation: {e}")
+                _log.error(f"\u2717 Error in {modality_name} evaluation: {e}")
+                raise e
+
+        # Combine results if user_csv is provided
+        combined_out = self.output_dir / "combined_evaluation.xlsx"
+        layout_json = self.evaluation_results_dir / "evaluation_CVAT_layout.json"
+        docstruct_json = (
+            self.evaluation_results_dir / "evaluation_CVAT_document_structure.json"
+        )
+        _log.info(f"Combining evaluation results to {combined_out}")
+        combine_cvat_evaluations(
+            layout_json=layout_json,
+            docstruct_json=docstruct_json,
+            user_csv=user_csv,
+            out=combined_out,
+        )
 
     def run_full_pipeline(
         self,
         gt_cvat_xml: Path,
         pred_cvat_xml: Path,
         modalities: Optional[List[str]] = None,
+        user_csv: Optional[Path] = None,
     ) -> None:
         """
-        Run the complete pipeline: create datasets and run evaluation.
+        Run the complete pipeline: create datasets, run evaluation, and combine results.
 
         Args:
             gt_cvat_xml: Path to ground truth CVAT XML file
             pred_cvat_xml: Path to prediction CVAT XML file
             modalities: List of evaluation modalities to run
+            user_csv: Path to user CSV file for provenance/self-confidence
+            combined_out: Output file for combined evaluation (defaults to output_dir/combined_evaluation.xlsx)
         """
         _log.info("=== Running Full CVAT Evaluation Pipeline ===")
 
         try:
             self.create_ground_truth_dataset(gt_cvat_xml)
             self.create_prediction_dataset(pred_cvat_xml)
-            self.run_evaluation(modalities)
+            self.run_evaluation(modalities, user_csv)
+
+            # Combine results if user_csv is provided
+            combined_out = self.output_dir / "combined_evaluation.xlsx"
+            layout_json = self.evaluation_results_dir / "evaluation_CVAT_layout.json"
+            docstruct_json = (
+                self.evaluation_results_dir / "evaluation_CVAT_document_structure.json"
+            )
+            _log.info(f"Combining evaluation results to {combined_out}")
+            combine_cvat_evaluations(
+                layout_json=layout_json,
+                docstruct_json=docstruct_json,
+                user_csv=user_csv,
+                out=combined_out,
+            )
 
             _log.info("=== Pipeline completed successfully! ===")
             _log.info(f"Results available in: {self.output_dir}")
 
         except Exception as e:
             _log.error(f"Pipeline failed with error: {e}")
-            raise
+            raise e
 
 
 def main():
@@ -311,6 +353,13 @@ def main():
 
     parser.add_argument(
         "--pred-xml", type=Path, help="Path to prediction CVAT XML file"
+    )
+
+    parser.add_argument(
+        "--user-csv",
+        type=Path,
+        default=None,
+        help="Path to user CSV file for provenance/self-confidence (optional, used for combining evaluation results)",
     )
 
     parser.add_argument(
@@ -345,45 +394,40 @@ def main():
     # Initialize pipeline
     pipeline = CVATEvaluationPipeline(args.images_dir, args.output_dir)
 
-    try:
-        if args.step == "gt":
-            if not args.gt_xml:
-                _log.error("--gt-xml is required for ground truth step")
-                sys.exit(1)
-            if not args.gt_xml.exists():
-                _log.error(f"Ground truth XML file does not exist: {args.gt_xml}")
-                sys.exit(1)
-            pipeline.create_ground_truth_dataset(args.gt_xml)
+    if args.step == "gt":
+        if not args.gt_xml:
+            _log.error("--gt-xml is required for ground truth step")
+            sys.exit(1)
+        if not args.gt_xml.exists():
+            _log.error(f"Ground truth XML file does not exist: {args.gt_xml}")
+            sys.exit(1)
+        pipeline.create_ground_truth_dataset(args.gt_xml)
 
-        elif args.step == "pred":
-            if not args.pred_xml:
-                _log.error("--pred-xml is required for prediction step")
-                sys.exit(1)
-            if not args.pred_xml.exists():
-                _log.error(f"Prediction XML file does not exist: {args.pred_xml}")
-                sys.exit(1)
-            pipeline.create_prediction_dataset(args.pred_xml)
+    elif args.step == "pred":
+        if not args.pred_xml:
+            _log.error("--pred-xml is required for prediction step")
+            sys.exit(1)
+        if not args.pred_xml.exists():
+            _log.error(f"Prediction XML file does not exist: {args.pred_xml}")
+            sys.exit(1)
+        pipeline.create_prediction_dataset(args.pred_xml)
 
-        elif args.step == "eval":
-            pipeline.run_evaluation(args.modalities)
+    elif args.step == "eval":
+        pipeline.run_evaluation(args.modalities, user_csv=args.user_csv)
 
-        elif args.step == "full":
-            if not args.gt_xml or not args.pred_xml:
-                _log.error(
-                    "Both --gt-xml and --pred-xml are required for full pipeline"
-                )
-                sys.exit(1)
-            if not args.gt_xml.exists():
-                _log.error(f"Ground truth XML file does not exist: {args.gt_xml}")
-                sys.exit(1)
-            if not args.pred_xml.exists():
-                _log.error(f"Prediction XML file does not exist: {args.pred_xml}")
-                sys.exit(1)
-            pipeline.run_full_pipeline(args.gt_xml, args.pred_xml, args.modalities)
-
-    except Exception as e:
-        _log.error(f"Pipeline execution failed: {e}")
-        sys.exit(1)
+    elif args.step == "full":
+        if not args.gt_xml or not args.pred_xml:
+            _log.error("Both --gt-xml and --pred-xml are required for full pipeline")
+            sys.exit(1)
+        if not args.gt_xml.exists():
+            _log.error(f"Ground truth XML file does not exist: {args.gt_xml}")
+            sys.exit(1)
+        if not args.pred_xml.exists():
+            _log.error(f"Prediction XML file does not exist: {args.pred_xml}")
+            sys.exit(1)
+        pipeline.run_full_pipeline(
+            args.gt_xml, args.pred_xml, args.modalities, user_csv=args.user_csv
+        )
 
 
 if __name__ == "__main__":

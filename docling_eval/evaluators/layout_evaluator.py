@@ -90,9 +90,13 @@ class ImageLayoutEvaluation(UnitEvaluation):
     # New per-sample element count metrics
     true_element_count: int
     pred_element_count: int
+    true_table_count: int
+    pred_table_count: int
+    true_picture_count: int
+    pred_picture_count: int
     element_count_diff: int
-    # Difference as percentage of average total elements
-    element_count_diff_pct: float
+    table_count_diff: int
+    picture_count_diff: int
 
 
 class DatasetLayoutEvaluation(DatasetEvaluation):
@@ -243,6 +247,8 @@ class LayoutEvaluator(BaseEvaluator):
             EvaluationRejectionType.MISMATHCED_DOCUMENT: 0,
         }
 
+        doc_stats: Dict[str, Dict[str, int]] = {}
+
         for i, data in tqdm(
             enumerate(ds_selection),
             desc="Layout evaluations",
@@ -264,6 +270,19 @@ class LayoutEvaluator(BaseEvaluator):
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
+
+            doc_stats[doc_id] = {
+                "true_element_count": len(true_doc.texts)
+                + len(true_doc.tables)
+                + len(true_doc.pictures),
+                "pred_element_count": len(pred_doc.texts)
+                + len(pred_doc.tables)
+                + len(pred_doc.pictures),
+                "true_table_count": len(true_doc.tables),
+                "pred_table_count": len(pred_doc.tables),
+                "true_picture_count": len(true_doc.pictures),
+                "pred_picture_count": len(pred_doc.pictures),
+            }
 
             gts, preds = self._extract_layout_data(
                 true_doc=true_doc,
@@ -306,7 +325,7 @@ class LayoutEvaluator(BaseEvaluator):
             # gts and preds are guaranteed to have the same length and corresponding indices
             if len(gts) > 0:
                 for i, (page_no, _) in enumerate(gts):
-                    doc_ids.append(data[BenchMarkColumns.DOC_ID] + f"-page-{page_no}")
+                    doc_ids.append(data_record.doc_id + f"-page-{page_no}")
 
                 # Extract the tensor dictionaries from tuples
                 gt_tensors = [tensor_dict for _, tensor_dict in gts]
@@ -357,21 +376,6 @@ class LayoutEvaluator(BaseEvaluator):
         for i, (doc_id, pred, gt) in enumerate(
             zip(doc_ids, predictions, ground_truths)
         ):
-            # Use the number of boxes in gt and pred tensors for element counts
-            true_elements = len(gt["boxes"])
-            pred_elements = len(pred["boxes"])
-            element_count_diff = true_elements - pred_elements
-            avg_total_elements = (
-                (true_elements + pred_elements) / 2
-                if (true_elements + pred_elements) > 0
-                else 1
-            )
-            element_count_diff_pct = (
-                (element_count_diff / avg_total_elements) * 100.0
-                if avg_total_elements > 0
-                else 0.0
-            )
-
             # logging.info(f"gt: {gt}")
             # logging.info(f"pred: {pred}")
 
@@ -455,16 +459,42 @@ class LayoutEvaluator(BaseEvaluator):
                 segmentation_recall_no_pictures=recall_no_pics,
                 segmentation_f1_no_pictures=f1_no_pics,
                 # New per-sample element count metrics
-                true_element_count=true_elements,
-                pred_element_count=pred_elements,
-                element_count_diff=element_count_diff,
-                element_count_diff_pct=element_count_diff_pct,
+                true_element_count=0,
+                pred_element_count=0,
+                true_table_count=0,
+                pred_table_count=0,
+                true_picture_count=0,
+                pred_picture_count=0,
+                table_count_diff=0,
+                picture_count_diff=0,
+                element_count_diff=0,
             )
             evaluations_per_image.append(image_evaluation)
             if self._intermediate_evaluations_path:
                 self.save_intermediate_evaluations(
                     "Layout_image", i, doc_id, evaluations_per_image
                 )
+
+        for image_eval in evaluations_per_image:
+            doc_id = image_eval.name.split("-page-")[0]
+            image_eval.true_element_count = doc_stats[doc_id]["true_element_count"]
+            image_eval.pred_element_count = doc_stats[doc_id]["pred_element_count"]
+            image_eval.true_table_count = doc_stats[doc_id]["true_table_count"]
+            image_eval.pred_table_count = doc_stats[doc_id]["pred_table_count"]
+            image_eval.true_picture_count = doc_stats[doc_id]["true_picture_count"]
+            image_eval.pred_picture_count = doc_stats[doc_id]["pred_picture_count"]
+            image_eval.table_count_diff = abs(
+                doc_stats[doc_id]["true_table_count"]
+                - doc_stats[doc_id]["pred_table_count"]
+            )
+            image_eval.picture_count_diff = abs(
+                doc_stats[doc_id]["true_picture_count"]
+                - doc_stats[doc_id]["pred_picture_count"]
+            )
+            image_eval.element_count_diff = abs(
+                doc_stats[doc_id]["true_element_count"]
+                - doc_stats[doc_id]["pred_element_count"]
+            )
 
         evaluations_per_class = sorted(evaluations_per_class, key=lambda x: -x.value)
         evaluations_per_image = sorted(evaluations_per_image, key=lambda x: -x.value)
