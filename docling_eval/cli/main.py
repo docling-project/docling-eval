@@ -55,6 +55,10 @@ from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.doc_structure_evaluator import DocStructureEvaluator
+from docling_eval.evaluators.keyvalue_evaluator import (
+    DatasetKeyValueEvaluation,
+    KeyValueEvaluator,
+)
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LabelFilteringStrategy,
@@ -573,7 +577,21 @@ def evaluate(
             idir,
             split=split,
         )
+        with open(save_fn, "w") as fd:
+            json.dump(
+                evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
 
+    elif modality == EvaluationModality.KEY_VALUE:
+        keyvalue_evaluator = KeyValueEvaluator()
+        evaluation = keyvalue_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
         with open(save_fn, "w") as fd:
             json.dump(
                 evaluation.model_dump(),

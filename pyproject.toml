@@ -51,6 +51,9 @@ dependencies = [
     'mlx-vlm<0.2; sys_platform == "darwin" and platform_machine == "arm64"',
     "pyarrow>=20.0.0",
     "typer>=0.16.0",
+    "scipy>=1.15.3",
+    "scipy-stubs>=1.15.3.0",
+    "editdistance>=0.8.1",
 ]
 
 [project.urls]
@@ -146,6 +149,7 @@ module = [
     "pycocotools.*",
     "pyarrow.*",
     "ocrmac.*",
+    "editdistance.*",
 ]
 ignore_missing_imports = true
 
