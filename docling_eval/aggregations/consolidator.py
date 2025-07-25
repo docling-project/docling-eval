@@ -198,7 +198,7 @@ class Consolidator:
         dfs: Dict[EvaluationModality, DataFrame] = {}
         for modality, m_data in df_data.items():
             df = DataFrame(m_data)
-            df = df.sort_values(by=["Benchmark"], ascending=[True])
+            df = df.sort_values(by=["Benchmark", "Experiment"], ascending=[True, True])
             dfs[modality] = df
 
         return dfs
@@ -206,9 +206,10 @@ class Consolidator:
     def _layout_metrics(self, evaluation: DatasetLayoutEvaluation) -> Dict[str, str]:
         r"""Get the metrics for the LayoutEvaluation"""
         metrics = {
-            "mAP": export_value(evaluation.map_stats),
-            "mAP_50": export_value(evaluation.map_50_stats),
-            "mAP_75": export_value(evaluation.map_75_stats),
+            "mAP": export_value(evaluation.mAP),
+            "stat_mAP": export_value(evaluation.map_stats),
+            "stat_mAP_50": export_value(evaluation.map_50_stats),
+            "stat_mAP_75": export_value(evaluation.map_75_stats),
             "weighted_mAP_50": export_value(evaluation.weighted_map_50_stats),
             "weighted_mAP_75": export_value(evaluation.weighted_map_75_stats),
             "weighted_mAP_90": export_value(evaluation.weighted_map_90_stats),

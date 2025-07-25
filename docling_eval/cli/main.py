@@ -5,18 +5,33 @@ import multiprocessing
 import os
 import sys
 from pathlib import Path
-from typing import Annotated, Dict, Optional, Tuple
+
+# --- DoclingLayoutOptionsManager definition moved here ---
+from typing import Annotated, Dict, List, Optional, Tuple
 
 import typer
+from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.layout_model_specs import (
+    DOCLING_LAYOUT_EGRET_LARGE,
+    DOCLING_LAYOUT_EGRET_MEDIUM,
+    DOCLING_LAYOUT_EGRET_XLARGE,
+    DOCLING_LAYOUT_HERON,
+    DOCLING_LAYOUT_HERON_101,
+    DOCLING_LAYOUT_V2,
+    LayoutModelConfig,
+)
 from docling.datamodel.pipeline_options import (
-    AcceleratorDevice,
-    AcceleratorOptions,
+    LayoutOptions,
     PaginatedPipelineOptions,
     PdfPipelineOptions,
     VlmPipelineOptions,
-    smoldocling_vlm_conversion_options,
-    smoldocling_vlm_mlx_conversion_options,
+)
+from docling.datamodel.vlm_model_specs import (
+    SMOLDOCLING_MLX as smoldocling_vlm_mlx_conversion_options,
+)
+from docling.datamodel.vlm_model_specs import (
+    SMOLDOCLING_TRANSFORMERS as smoldocling_vlm_conversion_options,
 )
 from docling.document_converter import FormatOption, PdfFormatOption
 from docling.models.factories import get_ocr_factory
@@ -103,6 +118,26 @@ from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
 
+
+class DoclingLayoutOptionsManager:
+    layout_model_configs = {
+        "docling_layout_v2": DOCLING_LAYOUT_V2,
+        "docling_layout_heron": DOCLING_LAYOUT_HERON,
+        "docling_layout_heron_101": DOCLING_LAYOUT_HERON_101,
+        "docling_layout_egret_medium": DOCLING_LAYOUT_EGRET_MEDIUM,
+        "docling_layout_egret_large": DOCLING_LAYOUT_EGRET_LARGE,
+        "docling_layout_egret_xlarge": DOCLING_LAYOUT_EGRET_XLARGE,
+    }
+
+    @staticmethod
+    def get_layout_model_config(model_spec: str) -> LayoutModelConfig:
+        return DoclingLayoutOptionsManager.layout_model_configs[model_spec]
+
+    @staticmethod
+    def get_layout_model_config_names() -> List[str]:
+        return list(DoclingLayoutOptionsManager.layout_model_configs.keys())
+
+
 # Configure logging
 logging_level = logging.WARNING
 # logging_level = logging.DEBUG
@@ -123,6 +158,32 @@ app = typer.Typer(
     add_completion=False,
     pretty_exceptions_enable=False,
 )
+
+
+def derive_input_output_dirs(
+    benchmark: BenchMarkNames,
+    modality: EvaluationModality,
+    input_dir: Optional[Path],
+    output_dir: Optional[Path],
+) -> Tuple[Path, Path]:
+    r"""
+    One of the input or output dirs must be non None.
+    In case one of them is None, it can be derived from the other one.
+    """
+    if input_dir and output_dir:
+        return input_dir, output_dir
+    if not input_dir and not output_dir:
+        raise ValueError("Either input_dir or output_dir must be provided")
+
+    if not input_dir and output_dir:
+        # Derive input and output paths based on the directory structure in test_dataset_builder.py
+        input_dir = output_dir / "eval_dataset" / benchmark.value / modality.value
+
+    if not output_dir and input_dir:
+        output_dir = input_dir.parent
+    assert input_dir is not None
+    assert output_dir is not None
+    return input_dir, output_dir
 
 
 def log_and_save_stats(
@@ -259,6 +320,9 @@ def get_prediction_provider(
     do_table_structure: bool = True,
     artifacts_path: Optional[Path] = None,
     image_scale_factor: Optional[float] = None,
+    docling_layout_model_spec: Optional[LayoutModelConfig] = None,
+    docling_layout_create_orphan_clusters: Optional[bool] = None,
+    docling_layout_keep_empty_clusters: Optional[bool] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -288,6 +352,17 @@ def get_prediction_provider(
         pipeline_options.generate_picture_images = True
         pipeline_options.generate_parsed_pages = True
         pipeline_options.accelerator_options = accelerator_options
+
+        layout_options: LayoutOptions = LayoutOptions()
+        if docling_layout_model_spec is not None:
+            layout_options.model_spec = docling_layout_model_spec
+        if docling_layout_create_orphan_clusters is not None:
+            layout_options.create_orphan_clusters = (
+                docling_layout_create_orphan_clusters
+            )
+        if docling_layout_keep_empty_clusters is not None:
+            layout_options.keep_empty_clusters = docling_layout_keep_empty_clusters
+        pipeline_options.layout_options = layout_options
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
@@ -1035,6 +1110,24 @@ def create_eval(
             help="Directory for local model artifacts. Will only be passed to providers supporting this."
         ),
     ] = None,
+    docling_layout_model_spec: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Layout model spec for Docling. Supported values: {}".format(
+                DoclingLayoutOptionsManager.get_layout_model_config_names()
+            )
+        ),
+    ] = "docling_layout_heron",
+    docling_layout_create_orphan_clusters: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Enable orphan clusters creation in Docling layout post-processing"
+        ),
+    ] = True,
+    docling_layout_keep_empty_clusters: Annotated[
+        Optional[bool],
+        typer.Option(help="Keep the empty clusters in Docling layout post-processing"),
+    ] = False,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
@@ -1067,6 +1160,14 @@ def create_eval(
         )
 
         # Create the appropriate prediction provider
+        docling_layout_model_spec_obj = (
+            DoclingLayoutOptionsManager.get_layout_model_config(
+                docling_layout_model_spec
+            )
+            if docling_layout_model_spec
+            else None
+        )
+
         provider = get_prediction_provider(
             provider_type=prediction_provider,
             file_source_path=file_source_path,
@@ -1077,6 +1178,9 @@ def create_eval(
             do_visualization=do_visualization,
             image_scale_factor=image_scale_factor,
             do_table_structure=do_table_structure,
+            docling_layout_model_spec=docling_layout_model_spec_obj,
+            docling_layout_create_orphan_clusters=docling_layout_create_orphan_clusters,
+            docling_layout_keep_empty_clusters=docling_layout_keep_empty_clusters,
         )
 
         # Get the dataset name from the benchmark
@@ -1170,13 +1274,32 @@ def create(
 @app.command(name="evaluate")
 def evaluate_cmd(
     modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
-    benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
-    output_dir: Annotated[Path, typer.Option(help="Base output directory")],
+    benchmark: Annotated[
+        BenchMarkNames,
+        typer.Option(
+            help="Benchmark name. It is used only to set the filename of the evaluation json file."
+        ),
+    ],
+    input_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory with evaluation dataset. If not provided, the input directory will be derived from the output directory."
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Base output directory. If not provided, the output directory will be derived from the input directory."
+        ),
+    ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
 ):
     """Evaluate predictions against ground truth."""
-    # Derive input and output paths based on the directory structure in test_dataset_builder.py
-    input_dir = output_dir / "eval_dataset"
+    input_dir, output_dir = derive_input_output_dirs(
+        benchmark, modality, input_dir, output_dir
+    )
+    assert input_dir is not None
+    assert output_dir is not None
     eval_output_dir = output_dir / "evaluations" / modality.value
 
     # Create output directory
@@ -1198,7 +1321,18 @@ def visualize_cmd(
         EvaluationModality, typer.Option(help="Visualization modality")
     ],
     benchmark: Annotated[BenchMarkNames, typer.Option(help="Benchmark name")],
-    output_dir: Annotated[Path, typer.Option(help="Base output directory")],
+    input_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Directory with evaluation dataset. If not provided, the input directory will be derived from the output directory."
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Base output directory. If not provided, the output directory will be derived from the input directory."
+        ),
+    ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
     begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
     end_index: Annotated[
@@ -1206,8 +1340,11 @@ def visualize_cmd(
     ] = -1,
 ):
     """Visualize evaluation results."""
-    # Derive input and output paths based on the directory structure in test_dataset_builder.py
-    input_dir = output_dir / "eval_dataset"
+    input_dir, output_dir = derive_input_output_dirs(
+        benchmark, modality, input_dir, output_dir
+    )
+    assert input_dir is not None
+    assert output_dir is not None
     eval_output_dir = output_dir / "evaluations" / modality.value
 
     # Create output directory

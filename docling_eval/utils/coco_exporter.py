@@ -308,6 +308,11 @@ def main(args):
     log_format = "%(asctime)s - %(levelname)s - %(message)s"
     logging.basicConfig(level=logging.INFO, format=log_format)
 
+    _log.info("Export eval-dataset in COCO-tools format")
+    _log.info("COCO dataset: %s", str(coco_path))
+    _log.info("eval-dataset: %s", str(docling_eval_path))
+    _log.info("Save path: %s", str(save_path))
+
     # Create the COCO exporter
     exporter = DoclingEvalCOCOExporter(docling_eval_path)
     exporter.export_predictions_wrt_original_COCO(

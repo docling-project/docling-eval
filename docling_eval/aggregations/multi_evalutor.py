@@ -385,11 +385,39 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
 
     @staticmethod
     def load_multi_evaluation(multi_evaluation_path: Path) -> MultiEvaluation:
-        r"""Load MultiEvaluation from disk files"""
-        # benchmark -> provider -> modality -> DatasetEvaluation
+        r"""
+        Load MultiEvaluation from disk files
+        """
+
+        def _get_modalities_evaluations(
+            evaluations_root: Path,
+            benchmark: BenchMarkNames,
+        ) -> Dict[EvaluationModality, SingleEvaluation]:
+            r"""
+            Scan the evaluations_root and load the evaluations for each modality
+            """
+            modalities_evaluations: Dict[EvaluationModality, SingleEvaluation] = {}
+            for modality_path in evaluations_root.iterdir():
+                try:
+                    modality = EvaluationModality(modality_path.name)
+                except ValueError:
+                    continue
+
+                # Load the evaluation
+                evaluation = load_evaluation(benchmark, modality, modality_path)
+                if not evaluation:
+                    continue
+
+                modalities_evaluations[modality] = SingleEvaluation(
+                    evaluation=evaluation,
+                    experiment=experiment,
+                )
+            return modalities_evaluations
+
+        # benchmark -> experiment_and_subexperiment -> modality-> SingleEvaluation
         evaluations: Dict[
             BenchMarkNames,
-            Dict[Path, Dict[EvaluationModality, DatasetEvaluationType]],
+            Dict[str, Dict[EvaluationModality, SingleEvaluation]],
         ] = {}
 
         # Get the benchmark
@@ -398,6 +426,9 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                 benchmark = BenchMarkNames(benchmark_path.name)
             except ValueError:
                 continue
+            if benchmark not in evaluations:
+                evaluations[benchmark] = {}
+
             # Get the experiment
             for experiment_path in benchmark_path.iterdir():
                 if not experiment_path.is_dir():
@@ -407,30 +438,35 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                 if experiment == MultiEvaluator.GT_LEAF_DIR:
                     continue
 
-                # Load the evaluations for each modality
-                evaluations_path = experiment_path / MultiEvaluator.EVALUATIONS_DIR
-                if not evaluations_path.is_dir():
-                    continue
-                for modality_path in evaluations_path.iterdir():
-                    try:
-                        modality = EvaluationModality(modality_path.name)
-                    except ValueError:
+                # Check if a sub-experiment is present
+                for exp_child_path in experiment_path.iterdir():
+                    if not exp_child_path.is_dir():
                         continue
 
-                    # Load the evaluation
-                    evaluation = load_evaluation(benchmark, modality, modality_path)
-                    if not evaluation:
+                    subexp_candidate = exp_child_path.name
+                    if subexp_candidate == MultiEvaluator.PRED_LEAF_DIR:
                         continue
 
-                    if benchmark not in evaluations:
-                        evaluations[benchmark] = {}
-                    if experiment not in evaluations[benchmark]:
-                        evaluations[benchmark][experiment] = {}
+                    modalities_evaluations: Dict[EvaluationModality, SingleEvaluation]
+                    if subexp_candidate == MultiEvaluator.EVALUATIONS_DIR:
+                        modalities_evaluations = _get_modalities_evaluations(
+                            exp_child_path, benchmark
+                        )
 
-                    evaluations[benchmark][experiment][modality] = SingleEvaluation(
-                        evaluation=evaluation,
-                        experiment=experiment,
-                    )
+                        exp_and_subexp = experiment
+                        evaluations[benchmark][exp_and_subexp] = modalities_evaluations
+                    else:
+                        subexp_candidate_evaluations = (
+                            exp_child_path / MultiEvaluator.EVALUATIONS_DIR
+                        )
+                        if not subexp_candidate_evaluations.is_dir():
+                            continue
+                        modalities_evaluations = _get_modalities_evaluations(
+                            subexp_candidate_evaluations, benchmark
+                        )
+
+                        exp_and_subexp = f"{experiment}_{subexp_candidate}"
+                        evaluations[benchmark][exp_and_subexp] = modalities_evaluations
 
         multi_evaluation: MultiEvaluation = MultiEvaluation(evaluations=evaluations)
         return multi_evaluation
