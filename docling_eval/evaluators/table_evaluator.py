@@ -163,6 +163,14 @@ class TableEvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
+
+            if data_record.status not in self._accepted_status:
+                _log.error(
+                    "Skipping record without successfull conversion status: %s", doc_id
+                )
+                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
+                continue
+
             gt_doc = data_record.ground_truth_doc
             pred_doc = self._get_pred_doc(data_record)
             if not pred_doc:
