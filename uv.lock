@@ -793,7 +793,7 @@ wheels = [
 [[package]]
 name = "docling"
 version = "2.41.0"
-source = { git = "https://github.com/docling-project/docling#d6d2dbe2f99bd965c1bc8eec3d332d0acf731189" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "certifi" },
@@ -822,6 +822,10 @@ dependencies = [
     { name = "scipy", version = "1.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "tqdm" },
     { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a2/73/69fb3749c419c846557ef397770e3309ad80898ee41ac957a14b0c8e3a2e/docling-2.41.0.tar.gz", hash = "sha256:94adf5cceb361b63e7e115b6b557f34ee28a5f52e0603f93fe36f98691e9c49e", size = 166338, upload-time = "2025-07-10T14:26:37.971Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/f3/1be481aac97e3f86dd18991407898c8f64e31dc365e6834ba7e92c4613fd/docling-2.41.0-py3-none-any.whl", hash = "sha256:d7869b1b461f13a386aa92c3d7fe8d596f773c41ddcfc1c8be667d131a0310e5", size = 187496, upload-time = "2025-07-10T14:26:36.345Z" },
 ]
 
 [package.optional-dependencies]
@@ -943,7 +947,7 @@ requires-dist = [
     { name = "cvat-sdk", marker = "extra == 'cvat-tools'", specifier = ">=2.40.0" },
     { name = "datasets", specifier = ">=3.2.0,<4.0.0" },
     { name = "distance", specifier = ">=0.1.3,<0.2.0" },
-    { name = "docling", extras = ["vlm"], git = "https://github.com/docling-project/docling" },
+    { name = "docling", extras = ["vlm"], specifier = ">=2.37.0,<3.0.0" },
     { name = "docling-core", specifier = ">=2.39.0" },
     { name = "edit-distance", specifier = ">=1.0.6,<2.0.0" },
     { name = "evaluate", specifier = ">=0.4.3,<0.5.0" },

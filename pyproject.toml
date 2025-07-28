@@ -104,10 +104,6 @@ dev = [
 [tool.uv]
 package = true
 
-[tool.uv.sources]
-docling = { git = "https://github.com/docling-project/docling"}
-
-
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]
 
