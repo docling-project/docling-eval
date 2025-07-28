@@ -138,7 +138,9 @@ def _get_document_visualization_data(
     Returns:
         Tuple of (base64_image, html_content)
     """
-    page_imgs = doc.get_visualization(show_label=False)
+    page_imgs = doc.get_visualization(
+        show_label=False
+    )  # TODO: addvisualizer="reading_order" | visualizer="key_value"
 
     if page_no in page_imgs:
         doc_img_b64 = from_pil_to_base64(page_imgs[page_no])
@@ -146,7 +148,14 @@ def _get_document_visualization_data(
         logging.error(f"{page_no} not in page_imgs, get default image.")
         doc_img_b64 = from_pil_to_base64(get_missing_pageimg())
 
-    doc_page = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED, page_no=page_no)
+    try:
+        doc_page = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED, page_no=page_no)
+    except ValueError as e:
+        logging.error(
+            f"Could not export page {page_no} to HTML due to a ValueError: {e}"
+        )
+        doc_page_body = f"<p>ERROR: Could not render page HTML due to invalid coordinates. Details: {e}</p>"
+        return doc_img_b64, doc_page_body
 
     # Search for the pattern in the HTML string
     mtch = pattern.search(doc_page)
@@ -202,15 +211,9 @@ def _create_visualization_html(
     html_parts.append("<tbody>")
 
     # Get page numbers and convert to set of integers
-    true_page_nos = {
-        k for k in true_doc.get_visualization(show_label=False).keys() if k is not None
-    }
+    true_page_nos = set(true_doc.pages.keys())
     if pred_doc is not None:
-        pred_page_nos = {
-            k
-            for k in pred_doc.get_visualization(show_label=False).keys()
-            if k is not None
-        }
+        pred_page_nos = set(pred_doc.pages.keys())
         if true_page_nos != pred_page_nos:
             logging.error(
                 f"incompatible page numbers: \n"

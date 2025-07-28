@@ -32,7 +32,7 @@ class TreeNode:
         return ids
 
 
-def contains(parent: CVATElement, child: CVATElement, iou_thresh: float = 0.99) -> bool:
+def contains(parent: CVATElement, child: CVATElement, iou_thresh: float = 0.7) -> bool:
     """Check if parent element contains child element based on IOU threshold."""
     intersection = parent.bbox.intersection_area_with(child.bbox)
     return intersection / (child.bbox.area() + 1e-6) > iou_thresh

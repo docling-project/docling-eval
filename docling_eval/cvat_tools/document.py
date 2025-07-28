@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
-from .parser import parse_cvat_xml_for_image
+from .parser import parse_cvat_xml
 from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
@@ -53,7 +53,8 @@ class DocumentStructure:
             DocumentStructure containing all core data structures
         """
         # Parse XML
-        elements, paths, image_info = parse_cvat_xml_for_image(xml_path, image_filename)
+        images = parse_cvat_xml(xml_path, image_filename)
+        elements, paths, image_info = next(iter(images.values()))
 
         # Build containment tree
         tree_roots = build_containment_tree(elements)

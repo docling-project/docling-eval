@@ -17,20 +17,21 @@ from docling_core.types.doc.document import (
     DocItemLabel,
     DoclingDocument,
     FloatingItem,
+    GraphCell,
     GraphData,
+    GraphLink,
     GroupItem,
     GroupLabel,
     ImageRef,
     ListItem,
     NodeItem,
-    OrderedList,
     PictureClassificationClass,
     PictureClassificationData,
     ProvenanceItem,
     Size,
     TableData,
-    UnorderedList,
 )
+from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
 from docling_core.types.doc.page import (
     BoundingRectangle,
     PageGeometry,
@@ -50,6 +51,7 @@ from docling_eval.cvat_tools.tree import (
     find_node_by_element_id,
 )
 from docling_eval.cvat_tools.validator import Validator
+from docling_eval.utils.utils import classify_cells, sort_cell_ids
 
 _logger = logging.getLogger(__name__)
 
@@ -336,6 +338,9 @@ class CVATToDoclingConverter:
 
         # Process captions and footnotes
         self._process_captions_and_footnotes()
+
+        # Process to_value relationships
+        self._process_to_value_relationships()
 
         return self.doc
 
@@ -677,10 +682,15 @@ class CVATToDoclingConverter:
         # Concatenate text
         merged_text = " ".join(all_texts)
 
-        # Create item based on label
-        item = self._create_item_by_label(
-            primary_element.label, merged_text, all_provs[0], primary_element, parent
-        )
+        if isinstance(primary_element.label, DocItemLabel):
+            # Create item based on label
+            item = self._create_item_by_label(
+                primary_element.label,
+                merged_text,
+                all_provs[0],
+                primary_element,
+                parent,
+            )
 
         # Add additional provenances
         if item and len(all_provs) > 1:
@@ -694,10 +704,13 @@ class CVATToDoclingConverter:
         """Create a DocItem for a single element."""
         page_no, text, provenance = self._process_element_bbox(element)
 
-        # Create item based on label
-        return self._create_item_by_label(
-            element.label, text, provenance, element, parent
-        )
+        if isinstance(element.label, DocItemLabel):
+            # Create item based on label
+            return self._create_item_by_label(
+                element.label, text, provenance, element, parent
+            )
+        else:
+            return None
 
     def _get_page_number_from_bbox(self, bbox: BoundingBox) -> int:
         """Determine which page a bbox belongs to based on its x-coordinate."""
@@ -730,7 +743,7 @@ class CVATToDoclingConverter:
 
     def _create_item_by_label(
         self,
-        label: str,
+        doc_label: DocItemLabel,
         text: str,
         prov: ProvenanceItem,
         element: CVATElement,
@@ -738,12 +751,6 @@ class CVATToDoclingConverter:
     ) -> Optional[DocItem]:
         """Create appropriate DocItem based on element label."""
         content_layer = ContentLayer(element.content_layer.lower())
-
-        try:
-            doc_label = DocItemLabel(label)
-        except ValueError:
-            _logger.warning(f"Unknown label: {label}, using TEXT")
-            doc_label = DocItemLabel.TEXT
 
         if doc_label == DocItemLabel.TITLE:
             return self.doc.add_title(
@@ -845,6 +852,79 @@ class CVATToDoclingConverter:
             footnote_id,
         ) in self.doc_structure.path_mappings.to_footnote.items():
             self._add_caption_or_footnote(container_id, footnote_id, is_caption=False)
+
+    def _process_to_value_relationships(self) -> None:  # noqa: C901
+        """Convert CVAT *to_value* links into a single KeyValueItem graph."""
+
+        if not self.doc_structure.path_mappings.to_value:
+            return
+
+        cell_by_element: dict[int, GraphCell] = {}
+        links: list[GraphLink] = []
+        cell_id_seq: int = 0
+
+        def _make_cell(element_id: int, label: GraphCellLabel) -> GraphCell:
+            nonlocal cell_id_seq
+
+            if element_id in cell_by_element:
+                return cell_by_element[element_id]
+
+            element = self.doc_structure.get_element_by_id(element_id)
+            if element is None:
+                raise RuntimeError(
+                    f"Element {element_id} referenced in to_value path is missing."
+                )
+
+            _, text, prov = self._process_element_bbox(element)
+
+            item_ref = None
+            node_item = self.element_to_item.get(element_id)
+            if node_item is not None:
+                item_ref = node_item.get_ref()
+
+            cell = GraphCell(
+                cell_id=cell_id_seq,
+                label=label,
+                text=text,
+                orig=text,
+                prov=prov,
+                item_ref=item_ref,
+            )
+            cell_by_element[element_id] = cell
+            cell_id_seq += 1
+            return cell
+
+        for path_id, (
+            key_id,
+            value_id,
+        ) in self.doc_structure.path_mappings.to_value.items():
+            try:
+                key_cell = _make_cell(key_id, GraphCellLabel.KEY)
+                value_cell = _make_cell(value_id, GraphCellLabel.VALUE)
+                links.append(
+                    GraphLink(
+                        label=GraphLinkLabel.TO_VALUE,
+                        source_cell_id=key_cell.cell_id,
+                        target_cell_id=value_cell.cell_id,
+                    )
+                )
+            except Exception as err:
+                _logger.warning(f"Skipping malformed to_value path {path_id}: {err}")
+
+        if not cell_by_element:
+            return
+
+        graph = GraphData(cells=list(cell_by_element.values()), links=links)
+
+        try:
+            classify_cells(graph=graph)
+        except Exception as err:
+            _logger.debug(f"classify_cells failed: {err}")
+
+        # Overall provenance omitted – not needed for CVAT
+        self.doc.add_key_values(graph=graph, prov=None)
+
+        sort_cell_ids(self.doc)
 
     def _add_caption_or_footnote(
         self, container_id: int, target_id: int, is_caption: bool

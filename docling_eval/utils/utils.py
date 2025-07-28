@@ -697,14 +697,26 @@ def classify_cells(graph: GraphData) -> None:
 
 
 def sort_cell_ids(doc: DoclingDocument) -> None:
+    if not doc.key_value_items:
+        return
     mapping = {}
     for i, item in enumerate(doc.key_value_items[0].graph.cells):
         mapping[item.cell_id] = i
     for i, item in enumerate(doc.key_value_items[0].graph.cells):
         item.cell_id = mapping[item.cell_id]
     for i, link in enumerate(doc.key_value_items[0].graph.links):
-        link.source_cell_id = mapping[link.source_cell_id]
-        link.target_cell_id = mapping[link.target_cell_id]
+        if link.source_cell_id in mapping:
+            link.source_cell_id = mapping[link.source_cell_id]
+        else:
+            logging.warning(
+                f"Link {i} source_cell_id {link.source_cell_id} not found in mapping."
+            )
+        if link.target_cell_id in mapping:
+            link.target_cell_id = mapping[link.target_cell_id]
+        else:
+            logging.warning(
+                f"Link {i} target_cell_id {link.target_cell_id} not found in mapping."
+            )
 
 
 def get_package_version(package_name):

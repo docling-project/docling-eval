@@ -70,6 +70,10 @@ from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
 from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.doc_structure_evaluator import DocStructureEvaluator
+from docling_eval.evaluators.keyvalue_evaluator import (
+    DatasetKeyValueEvaluation,
+    KeyValueEvaluator,
+)
 from docling_eval.evaluators.layout_evaluator import (
     DatasetLayoutEvaluation,
     LabelFilteringStrategy,
@@ -349,7 +353,9 @@ def get_prediction_provider(
         pipeline_options.generate_parsed_pages = True
         pipeline_options.accelerator_options = accelerator_options
 
+        # Layout options
         layout_options: LayoutOptions = LayoutOptions()
+        layout_options.keep_empty_clusters = True
         if docling_layout_model_spec is not None:
             layout_options.model_spec = docling_layout_model_spec
         if docling_layout_create_orphan_clusters is not None:
@@ -645,7 +651,21 @@ def evaluate(
             idir,
             split=split,
         )
+        with open(save_fn, "w") as fd:
+            json.dump(
+                evaluation.model_dump(),
+                fd,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
 
+    elif modality == EvaluationModality.KEY_VALUE:
+        keyvalue_evaluator = KeyValueEvaluator()
+        evaluation = keyvalue_evaluator(  # type: ignore
+            idir,
+            split=split,
+        )
         with open(save_fn, "w") as fd:
             json.dump(
                 evaluation.model_dump(),

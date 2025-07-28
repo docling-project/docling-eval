@@ -1,9 +1,9 @@
 from enum import Enum
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.document import ContentLayer
-from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.labels import DocItemLabel, GraphCellLabel
 from pydantic import BaseModel, Field
 
 
@@ -19,7 +19,7 @@ class CVATElement(BaseModel):
     """A rectangle element (box) in CVAT annotation, using BoundingBox from docling_core."""
 
     id: int
-    label: DocItemLabel
+    label: Union[DocItemLabel, GraphCellLabel]
     bbox: BoundingBox
     content_layer: ContentLayer
     type: Optional[str] = None
