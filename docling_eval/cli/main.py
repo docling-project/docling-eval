@@ -355,7 +355,6 @@ def get_prediction_provider(
 
         # Layout options
         layout_options: LayoutOptions = LayoutOptions()
-        layout_options.keep_empty_clusters = True
         if docling_layout_model_spec is not None:
             layout_options.model_spec = docling_layout_model_spec
         if docling_layout_create_orphan_clusters is not None:
