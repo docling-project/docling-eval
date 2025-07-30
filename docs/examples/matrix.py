@@ -7,6 +7,7 @@ from docling_eval.aggregations.consolidator import Consolidator
 from docling_eval.aggregations.multi_evalutor import MultiEvaluator
 from docling_eval.datamodels.types import (
     BenchMarkNames,
+    ConsolidationFormats,
     EvaluationModality,
     PredictionProviderType,
 )
@@ -38,9 +39,12 @@ def consolidate(
     multi_evaluation = MultiEvaluator.load_multi_evaluation(working_dir)
     consolidator = Consolidator(working_dir / "consolidation")
 
-    _log.info("Consolidating...")
-    dfs, produced_file = consolidator(multi_evaluation)
-    _log.info("Finish consolidation")
+    # Generate both Excel and Latex files
+    consolidation_formats = [ConsolidationFormats.EXCEL, ConsolidationFormats.LATEX]
+    for c_format in consolidation_formats:
+        _log.info("Consolidating in %s...", c_format.value)
+        consolidator(multi_evaluation, consolidation_format=c_format)
+        _log.info("Finish consolidation")
 
 
 def main(args):

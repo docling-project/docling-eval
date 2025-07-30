@@ -118,6 +118,7 @@ class PageTokens(BaseModel):
 
 class ConsolidationFormats(str, Enum):
     EXCEL = "excel"
+    LATEX = "latex"
 
 
 class PredictionProviderType(str, Enum):
