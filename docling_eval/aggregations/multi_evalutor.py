@@ -5,7 +5,7 @@ from typing import Any, Dict, Generic, List, Optional
 
 from datasets import load_dataset
 from datasets.iterable_dataset import IterableDataset
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from docling_eval.cli.main import evaluate, get_dataset_builder, get_prediction_provider
 from docling_eval.datamodels.types import (
@@ -55,15 +55,40 @@ def load_evaluation(
         EvaluationModality.MARKDOWN_TEXT: DatasetMarkdownEvaluation,
     }
 
+    # Allow to load the evaluation even if some fields are missing
+    default_counts = {
+        "true_element_count": -1,
+        "pred_element_count": -1,
+        "true_table_count": -1,
+        "pred_table_count": -1,
+        "true_picture_count": -1,
+        "pred_picture_count": -1,
+        "element_count_diff": -1,
+        "table_count_diff": -1,
+        "picture_count_diff": -1,
+    }
+
     eval_fn = eval_dir / f"evaluation_{benchmark.value}_{modality.value}.json"
     if not eval_fn.exists():
         return None
 
-    with open(eval_fn, "r") as fd:
-        eval_json = json.load(fd)
-        eval_class = modality_eval_classes[modality]
-        evaluation = eval_class.model_validate(eval_json)
-    return evaluation
+    try:
+        with open(eval_fn, "r") as fd:
+            eval_json = json.load(fd)
+
+            for evaluation_per_image in eval_json["evaluations_per_image"]:
+                for field_name, field_value in default_counts.items():
+                    if field_name not in evaluation_per_image:
+                        evaluation_per_image[field_name] = field_value
+
+            # Validate the evaluation JSON against the Pydantic model
+            eval_class = modality_eval_classes[modality]
+            evaluation = eval_class.model_validate(eval_json)
+            _log.info("Loading data from: %s", str(eval_fn))
+        return evaluation
+    except ValidationError as e:
+        _log.error("Failed to load evaluation json file: %s", str(eval_fn))
+        return None
 
 
 def validate_modality(

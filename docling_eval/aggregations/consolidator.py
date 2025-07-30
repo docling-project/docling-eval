@@ -10,7 +10,11 @@ from openpyxl.styles import Font
 from pandas import DataFrame
 
 from docling_eval.aggregations.multi_evalutor import MultiEvaluation
-from docling_eval.datamodels.types import ConsolidationFormats, EvaluationModality
+from docling_eval.datamodels.types import (
+    BenchMarkNames,
+    ConsolidationFormats,
+    EvaluationModality,
+)
 from docling_eval.evaluators.base_evaluator import EvaluationRejectionType
 from docling_eval.evaluators.bbox_text_evaluator import DatasetBoxesTextEvaluation
 from docling_eval.evaluators.layout_evaluator import DatasetLayoutEvaluation
@@ -47,7 +51,7 @@ class Consolidator:
         self._output_path = output_path
         self._excel_engine = "openpyxl"
         self._sheet_name = "matrix"
-        self._excel_filename = "consolidation_matrix.xlsx"
+        self._outfile_stem = "consolidation_matrix"
 
         self._output_path.mkdir(parents=True, exist_ok=True)
 
@@ -57,22 +61,124 @@ class Consolidator:
         consolidation_format: Optional[
             ConsolidationFormats
         ] = ConsolidationFormats.EXCEL,
-    ) -> Tuple[Dict[EvaluationModality, DataFrame], Optional[Path]]:
+    ) -> Tuple[Dict[EvaluationModality, DataFrame], Optional[List[Path]]]:
         r""" """
         dfs = self._build_dataframes(multi_evaluation)
 
         # Export dataframe
         if consolidation_format == ConsolidationFormats.EXCEL:
             produced_fn = self._to_excel(dfs)
-            _log.info("Produced excel: %s", str(produced_fn))
+            _log.info("Produced excel file: %s", str(produced_fn))
+            produced_fns = [produced_fn]
+        elif consolidation_format == ConsolidationFormats.LATEX:
+            benchmark_names: List[BenchMarkNames] = list(
+                multi_evaluation.evaluations.keys()
+            )
+            produced_fns = self._to_latex(benchmark_names, dfs)
+            _log.info(
+                "Produced latex files: %s", " ".join(str(fn) for fn in produced_fns)
+            )
         else:
             _log.info("Unsupported consolidation format: %s", consolidation_format)
 
-        return dfs, produced_fn
+        return dfs, produced_fns
+
+    def _to_latex(
+        self,
+        benchmark_names: List[BenchMarkNames],
+        dfs: Dict[EvaluationModality, DataFrame],
+    ) -> List[Path]:
+        r"""
+        Export to LaTeX
+        Produce separate tex files for each modality and benchmark
+        """
+        # Select the dataframe headers and their mapping to latex table headers
+        latex_headers: Dict[str, str] = {
+            "Experiment": "Experiment",
+            "mAP": "mAP",
+            "segmentation_f1": "segmentation-f1",
+            "weighted_mAP_50": "weighted-mAP-50",
+            "weighted_mAP_75": "weighted-mAP-75",
+            "weighted_mAP_90": "weighted-mAP-90",
+        }
+
+        def align_latex_ampersands(latex_str: str) -> str:
+            r"""Format the latex code to have all columns aligned"""
+            lines = latex_str.splitlines()
+            table_lines = []
+            output_lines = []
+
+            for line in lines:
+                if "&" in line:
+                    parts = [p.strip() for p in line.split("&")]
+                    table_lines.append(parts)
+                else:
+                    # Flush aligned table lines if any
+                    if table_lines:
+                        # Transpose to get max width per column
+                        col_widths = [
+                            max(len(row[i]) for row in table_lines)
+                            for i in range(len(table_lines[0]))
+                        ]
+                        for row in table_lines:
+                            padded = [
+                                val.ljust(col_widths[i]) for i, val in enumerate(row)
+                            ]
+                            output_lines.append(" & ".join(padded))
+                        table_lines = []
+                    output_lines.append(line)
+
+            # In case table ends without a non-& line
+            if table_lines:
+                col_widths = [
+                    max(len(row[i]) for row in table_lines)
+                    for i in range(len(table_lines[0]))
+                ]
+                for row in table_lines:
+                    padded = [val.ljust(col_widths[i]) for i, val in enumerate(row)]
+                    output_lines.append(" & ".join(padded))
+
+            return "\n".join(output_lines)
+
+        # Filter the dataframe
+        latexes: List[Path] = []
+        for evaluation_modality, df in dfs.items():
+            for benchmark in benchmark_names:
+                # Select the benchmark rows
+                b_df = df[df["Benchmark"] == benchmark]
+
+                # Filter to keep only the latex columns and rename according to the mapping
+                b_df = b_df[list(latex_headers.keys())]
+                b_df.rename(columns=lambda x: latex_headers[x], inplace=True)
+                b_df = b_df.applymap(  # type: ignore
+                    lambda x: x.replace("_", "-") if isinstance(x, str) else x
+                )
+                b_df = b_df.sort_values(
+                    by=["Experiment"],
+                    ascending=[True],
+                )
+
+                # Generate latex
+                latex: str = b_df.to_latex(index=False, float_format="%.2f")
+                latex = align_latex_ampersands(latex)
+
+                # Save latex
+                latex_fn = (
+                    self._output_path
+                    / f"{self._outfile_stem}_{evaluation_modality.value}_{benchmark.value}.tex"
+                )
+                with open(latex_fn, "w") as fd:
+                    fd.write(latex)
+                latexes.append(latex_fn)
+
+        return latexes
 
     def _to_excel(self, dfs: Dict[EvaluationModality, DataFrame]) -> Path:
-        r""" """
-        excel_fn = self._output_path / self._excel_filename
+        r"""
+        Export to Excel
+        Produce a single spreadsheet for all modalities
+        """
+        excel_fn = self._output_path / f"{self._outfile_stem}.xlsx"
         startrow = 0
         header_rows: List[int] = []
         with pd.ExcelWriter(excel_fn, engine=self._excel_engine) as writer:  # type: ignore
