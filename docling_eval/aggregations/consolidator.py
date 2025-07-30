@@ -102,6 +102,44 @@ class Consolidator:
             "weighted_mAP_90": "weighted-mAP-90",
         }
 
+        def align_latex_ampersands(latex_str: str) -> str:
+            r"""Format the latex code to have all columns aligned"""
+            lines = latex_str.splitlines()
+            table_lines = []
+            output_lines = []
+
+            for line in lines:
+                if "&" in line:
+                    parts = [p.strip() for p in line.split("&")]
+                    table_lines.append(parts)
+                else:
+                    # Flush aligned table lines if any
+                    if table_lines:
+                        # Transpose to get max width per column
+                        col_widths = [
+                            max(len(row[i]) for row in table_lines)
+                            for i in range(len(table_lines[0]))
+                        ]
+                        for row in table_lines:
+                            padded = [
+                                val.ljust(col_widths[i]) for i, val in enumerate(row)
+                            ]
+                            output_lines.append(" & ".join(padded))
+                        table_lines = []
+                    output_lines.append(line)
+
+            # In case table ends without a non-& line
+            if table_lines:
+                col_widths = [
+                    max(len(row[i]) for row in table_lines)
+                    for i in range(len(table_lines[0]))
+                ]
+                for row in table_lines:
+                    padded = [val.ljust(col_widths[i]) for i, val in enumerate(row)]
+                    output_lines.append(" & ".join(padded))
+
+            return "\n".join(output_lines)
+
         # Filter the dataframe
         latexes: List[Path] = []
         for evaluation_modality, df in dfs.items():
@@ -122,6 +160,7 @@ class Consolidator:
 
                 # Generate latex
                 latex: str = b_df.to_latex(index=False, float_format="%.2f")
+                latex = align_latex_ampersands(latex)
 
                 # Save latex
                 latex_fn = (
