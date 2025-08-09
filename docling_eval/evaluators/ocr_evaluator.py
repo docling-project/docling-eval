@@ -285,21 +285,22 @@ class OCRVisualizer:
                         prediction_segmented_pages = parsed_pred_pages
 
                 image_item: Union[dict, Image.Image] = page_images_data[0]
+                base_image: Image.Image
+
                 if isinstance(image_item, dict):
                     if "image" in image_item and isinstance(
                         image_item["image"], Image.Image
                     ):
-                        base_image: Image.Image = image_item["image"]
+                        base_image = image_item["image"]
                     elif "bytes" in image_item and image_item["bytes"]:
-                        base_image: Image.Image = Image.open(
-                            io.BytesIO(image_item["bytes"])
-                        )
+                        base_image = Image.open(io.BytesIO(image_item["bytes"]))
                     elif "path" in image_item and image_item["path"]:
-                        base_image: Image.Image = Image.open(image_item["path"])
+                        base_image = Image.open(image_item["path"])
                     else:
                         raise ValueError(f"Unsupported image_item format: {image_item}")
                 else:
                     base_image = image_item
+
                 if base_image.mode != "RGB":
                     base_image = base_image.convert("RGB")
 
