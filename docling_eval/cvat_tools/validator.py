@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Type
 
+from docling_core.types.doc.document import ContentLayer
+
 from .document import DocumentStructure
 from .models import (
     CVATElement,
@@ -176,7 +178,7 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         # Collect all elements that would fail the reading order validation
         untouched_elements = []
         for el in doc.elements:
-            if el.content_layer.upper() == "BACKGROUND":
+            if el.content_layer == ContentLayer.BACKGROUND:
                 continue
 
             # Skip validation for elements inside table containers

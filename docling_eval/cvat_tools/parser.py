@@ -111,7 +111,7 @@ def _parse_image_element(
             attributes[name] = value
             if name == "content_layer" and value is not None:
                 try:
-                    content_layer = ContentLayer(value)
+                    content_layer = ContentLayer(value.lower())
                 except Exception:
                     content_layer = ContentLayer.BODY
             elif name == "type":

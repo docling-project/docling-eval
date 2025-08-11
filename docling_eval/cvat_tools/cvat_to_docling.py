@@ -750,7 +750,7 @@ class CVATToDoclingConverter:
         parent: Optional[NodeItem],
     ) -> Optional[DocItem]:
         """Create appropriate DocItem based on element label."""
-        content_layer = ContentLayer(element.content_layer.lower())
+        content_layer = element.content_layer
 
         if doc_label == DocItemLabel.TITLE:
             return self.doc.add_title(
