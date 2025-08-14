@@ -44,6 +44,7 @@ from PIL import Image as PILImage
 
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATElement
+from docling_eval.cvat_tools.parser import MissingImageInCVATXML
 from docling_eval.cvat_tools.tree import (
     TreeNode,
     apply_reading_order_to_tree,
@@ -1124,7 +1125,6 @@ def convert_cvat_to_docling(
         DoclingDocument or None if conversion fails
     """
     try:
-
         # Create DocumentStructure
         doc_structure = DocumentStructure.from_cvat_xml(xml_path, input_path.name)
 
@@ -1199,6 +1199,9 @@ def convert_cvat_to_docling(
         # Convert
         return converter.convert()
 
+    except MissingImageInCVATXML:
+        # Re-raise so that calling code can handle with appropriate messaging
+        raise
     except Exception as e:
         _logger.error(f"Failed to convert CVAT to DoclingDocument: {e}")
         import traceback

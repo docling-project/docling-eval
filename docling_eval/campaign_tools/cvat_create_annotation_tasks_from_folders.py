@@ -10,12 +10,13 @@ this tool creates, for each subdirectory:
 This is useful for preparing large-scale annotation tasks for CVAT or similar tools.
 
 Usage:
-    uv run python scratches/scratch_46.py --input-directory <input_dir> --output-directory <output_dir> [--sliding-window <int>]
+    uv run python docling_eval/campaign_tools/cvat_create_annotation_tasks_from_folders.py batch-prepare --input-directory <input_dir> --output-directory <output_dir> [--sliding-window <int>] [--use-predictions/--no-use-predictions]
 
 Arguments:
     input_directory: Root directory containing subdirectories with files to process
     output_directory: Where to store the generated datasets (one subdir per input subdir)
     sliding_window: Number of pages per CVAT task (default: 1)
+    use_predictions: Whether to create prediction dataset and use predictions in CVAT (default: True)
 """
 
 from pathlib import Path
@@ -30,7 +31,7 @@ app = typer.Typer(add_completion=False)
 
 
 def process_subdirectories(
-    input_directory: Path, output_directory: Path, sliding_window: int = 1
+    input_directory: Path, output_directory: Path, sliding_window: int = 1, use_predictions: bool = True
 ) -> None:
     """
     For each subdirectory in input_directory, create gt_dataset, eval_dataset, and cvat_dataset_preannotated
@@ -40,6 +41,7 @@ def process_subdirectories(
         input_directory: Root directory with subdirectories to process
         output_directory: Where to store generated datasets
         sliding_window: Number of pages per CVAT task (default: 1)
+        use_predictions: Whether to create prediction dataset and use predictions in CVAT
     """
     input_directory = input_directory.expanduser().resolve()
     output_directory = output_directory.expanduser().resolve()
@@ -71,26 +73,31 @@ def process_subdirectories(
         else:
             typer.echo(f"  GT dataset already exists, skipping.")
 
-        if not eval_dir.exists():
-            typer.echo(f"  Creating prediction dataset (Docling)...")
-            create_eval(
-                benchmark=BenchMarkNames.PLAIN_FILES,
-                output_dir=odir,
-                prediction_provider=PredictionProviderType.DOCLING,
-                do_visualization=True,
-                image_scale_factor=2.0,
-                do_table_structure=False,
-            )
+        if use_predictions:
+            if not eval_dir.exists():
+                typer.echo(f"  Creating prediction dataset (Docling)...")
+                create_eval(
+                    benchmark=BenchMarkNames.PLAIN_FILES,
+                    output_dir=odir,
+                    prediction_provider=PredictionProviderType.DOCLING,
+                    do_visualization=True,
+                    image_scale_factor=2.0,
+                    do_table_structure=False,
+                )
+            else:
+                typer.echo(f"  Prediction dataset already exists, skipping.")
         else:
-            typer.echo(f"  Prediction dataset already exists, skipping.")
+            typer.echo(f"  Skipping prediction dataset creation (use_predictions=False).")
 
         if not cvat_dir.exists():
             typer.echo(f"  Creating CVAT pre-annotated dataset...")
+            # Use gt_dir when no predictions, eval_dir when using predictions
+            source_dir = (eval_dir / "test") if use_predictions else (gt_dir / "test")
             create_cvat(
-                gt_dir=eval_dir / "test",
+                gt_dir=source_dir,
                 output_dir=cvat_dir,
                 bucket_size=100,
-                use_predictions=True,
+                use_predictions=use_predictions,
                 sliding_window=sliding_window,
             )
         else:
@@ -114,11 +121,14 @@ def batch_prepare(
     sliding_window: int = typer.Option(
         1, help="Number of pages per CVAT task (default: 1)"
     ),
+    use_predictions: bool = typer.Option(
+        True, help="Whether to create prediction dataset and use predictions in CVAT"
+    ),
 ) -> None:
     """
     Batch-create Docling evaluation datasets for all subdirectories in input_directory.
     """
-    process_subdirectories(input_directory, output_directory, sliding_window)
+    process_subdirectories(input_directory, output_directory, sliding_window, use_predictions)
     typer.echo("\nAll benchmarks created successfully!")
 
 

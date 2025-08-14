@@ -38,6 +38,7 @@ python cvat_evaluation_pipeline.py <images_dir> <output_dir> [OPTIONS]
 - `--pred-xml PATH`: Path to prediction CVAT XML file
 - `--step {gt,pred,eval,full}`: Pipeline step to run (default: full)
 - `--modalities {layout,document_structure}`: Evaluation modalities to run (default: both)
+- `--strict`: Strict mode - require all images to have annotations in XML files (default: allow partial annotation batches)
 - `--verbose, -v`: Enable verbose logging
 
 ## Examples
@@ -103,6 +104,25 @@ python cvat_evaluation_pipeline.py \
     --pred-xml /path/to/predictions.xml \
     --modalities document_structure
 ```
+
+### 5. Strict Mode
+
+By default, the pipeline allows partial annotation batches where not all images need to have annotations in the XML file. This is useful when you have a large set of images but only a subset has been annotated.
+
+To enforce that ALL images must have annotations, use the `--strict` flag:
+
+```bash
+python cvat_evaluation_pipeline.py \
+    /path/to/images \
+    /path/to/output \
+    --gt-xml /path/to/complete_annotations.xml \
+    --strict
+```
+
+In strict mode:
+- The pipeline will fail with an error if any image lacks annotations
+- Useful for validating complete annotation batches
+- Helps catch missing annotations early in the process
 
 ## Output Structure
 
