@@ -163,6 +163,7 @@ class DoclingEvalCOCOExporter:
         for i, data in enumerate(ds_selection):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
+
             if data_record.predicted_doc is not None and source_doc_column == "pred":
                 doc = data_record.predicted_doc
                 _log.info("Dataset document to export: 'predicted_doc'")
@@ -247,7 +248,6 @@ class DoclingEvalCOCOExporter:
                 _log.error("Skip item without provenance: %s: %s", doc_id, label.value)
                 continue
 
-            increase_image_id = False
             prov = item.prov[0]
             page_no = prov.page_no
             page = doc.pages[page_no]
@@ -279,15 +279,14 @@ class DoclingEvalCOCOExporter:
                             "id": image_id,
                         }
                     )
-                    increase_image_id = True
+                    image_id += 1
 
             # Get the bbox in [x,y,w,h] COCO format
-            bbox: BoundingBox = prov.bbox.to_top_left_origin(
-                page_height=page_size.height
-            )
+            bbox: BoundingBox = prov.bbox
+            bbox = bbox.to_top_left_origin(page_height=page_size.height)
             doc_anns.append(
                 {
-                    "image_id": image_id,
+                    "image_id": image_id - 1,
                     "category_id": category_id,
                     "bbox": [bbox.l, bbox.t, bbox.width, bbox.height],
                     "iscrowd": 0,
@@ -295,11 +294,7 @@ class DoclingEvalCOCOExporter:
                     "id": annotation_id,
                 }
             )
-
-            # Update the ids
             annotation_id += 1
-            if increase_image_id:
-                image_id += 1
 
         return doc_images, doc_anns, image_id, annotation_id
 
