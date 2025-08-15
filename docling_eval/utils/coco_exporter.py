@@ -3,7 +3,7 @@ import glob
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.base import BoundingBox, Size
@@ -120,7 +120,9 @@ class DoclingEvalCOCOExporter:
         self,
         split: str,
         save_dir: Path,
-        doc_label_to_valid_label_mapping: dict[DocItemLabel, DocItemLabel],
+        extra_doc_label_to_valid_label_mapping: dict[
+            DocItemLabel, Optional[DocItemLabel]
+        ],
         source_doc_column: str = "GT",
     ):
         r"""
@@ -128,6 +130,8 @@ class DoclingEvalCOCOExporter:
         ----------
         save_dir: Location to save the exported COCO dataset
         split: COCO split to be created: One of ['train', 'test', 'val']
+        doc_label_to_valid_label_mapping: Exta mappings from docling document to valid docling labels.
+                                          If a mapping value is None, it means to ignore this key.
         source_doc_column: Which column from the parquet file should be used to generate the COCO dataset.
                            It should be one of ["GT", "pred"]. By default "GT"
         """
@@ -142,9 +146,12 @@ class DoclingEvalCOCOExporter:
                 VALID_DOCLING_LABELS_TO_COCO_CATEGORIES.items()
             )
         }
-        # Add the additional document labels which are not "valid"
-        for doc_label, valid_label in doc_label_to_valid_label_mapping.items():
-            label_to_category_id[doc_label] = label_to_category_id[valid_label]
+        # Apply the corrections given in the doc_label_to_valid_label_mapping
+        for doc_label, valid_label in extra_doc_label_to_valid_label_mapping.items():
+            if valid_label is not None:
+                label_to_category_id[doc_label] = label_to_category_id[valid_label]
+            elif doc_label in label_to_category_id:
+                del label_to_category_id[doc_label]
 
         # Build the categories
         categories: list[dict] = self._build_categories()
@@ -237,13 +244,13 @@ class DoclingEvalCOCOExporter:
 
             # Skip label without mapping into a COCO categories
             if category_id == -1:
-                _log.error(
+                _log.warning(
                     "Skip prediction with label that does not map to COCO categories: '%s'",
                     label,
                 )
                 continue
 
-            # TODO: Use only the first provenance of the item
+            # Use only the first provenance of the item
             if len(item.prov) == 0:
                 _log.error("Skip item without provenance: %s: %s", doc_id, label.value)
                 continue
@@ -575,7 +582,8 @@ def main():
             DocItemLabel.PAGE_FOOTER: DocItemLabel.TEXT,
             DocItemLabel.PAGE_HEADER: DocItemLabel.TEXT,
             DocItemLabel.HANDWRITTEN_TEXT: DocItemLabel.PICTURE,
-            DocItemLabel.EMPTY_VALUE: DocItemLabel.KEY_VALUE_REGION,
+            DocItemLabel.EMPTY_VALUE: None,
+            DocItemLabel.KEY_VALUE_REGION: None,
             DocItemLabel.PARAGRAPH: DocItemLabel.TEXT,
             DocItemLabel.REFERENCE: DocItemLabel.TEXT,
         }
