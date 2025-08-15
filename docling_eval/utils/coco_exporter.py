@@ -290,7 +290,7 @@ class DoclingEvalCOCOExporter:
                     "image_id": image_id,
                     "category_id": category_id,
                     "bbox": [bbox.l, bbox.t, bbox.width, bbox.height],
-                    "iscrowed": 0,
+                    "iscrowd": 0,
                     "area": bbox.area(),
                     "id": annotation_id,
                 }
