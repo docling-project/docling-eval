@@ -158,8 +158,8 @@ class DoclingEvalCOCOExporter:
         anns: list[dict] = []
         ds = self._load_ds(split)
         ds_selection = ds[split]
-        image_id = -1
-        annotation_id = -1
+        image_id = 0
+        annotation_id = 0
         for i, data in enumerate(ds_selection):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
@@ -224,8 +224,8 @@ class DoclingEvalCOCOExporter:
         doc_anns: list[dict] = []  # Annotations of the document
 
         included_content_layers = {c for c in ContentLayer}
-        image_id = 1 + image_id_offset
-        annotation_id = 1 + annotation_id_offset
+        image_id = image_id_offset
+        annotation_id = annotation_id_offset
         for item, _ in doc.iterate_items(
             included_content_layers=included_content_layers
         ):
