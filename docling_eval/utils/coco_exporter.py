@@ -3,7 +3,7 @@ import glob
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.base import BoundingBox, Size
@@ -19,7 +19,7 @@ _log = logging.getLogger(__name__)
 
 
 # If the original COCO dataset does not call all categories (e.g. DLNv1), the mapping is ignored
-DOCLING_LABELS_TO_COCO_CATEGORIES: Dict[DocItemLabel, str] = {
+VALID_DOCLING_LABELS_TO_COCO_CATEGORIES: Dict[DocItemLabel, str] = {
     DocItemLabel.CAPTION: "Caption",
     DocItemLabel.FOOTNOTE: "Footnote",
     DocItemLabel.FORMULA: "Formula",
@@ -105,6 +105,7 @@ class DoclingEvalCOCOExporter:
 
     def export_COCO_and_predictions(
         self,
+        split: str,
         save_dir: Path,
     ):
         r"""
@@ -115,12 +116,246 @@ class DoclingEvalCOCOExporter:
         # TODO
         pass
 
+    def export_COCO(
+        self,
+        split: str,
+        save_dir: Path,
+        extra_doc_label_to_valid_label_mapping: dict[
+            DocItemLabel, Optional[DocItemLabel]
+        ],
+        source_doc_column: str = "GT",
+    ):
+        r"""
+        Parameters
+        ----------
+        save_dir: Location to save the exported COCO dataset
+        split: COCO split to be created: One of ['train', 'test', 'val']
+        doc_label_to_valid_label_mapping: Exta mappings from docling document to valid docling labels.
+                                          If a mapping value is None, it means to ignore this key.
+        source_doc_column: Which column from the parquet file should be used to generate the COCO dataset.
+                           It should be one of ["GT", "pred"]. By default "GT"
+        """
+        # Build the info and licenses
+        info: dict = self._build_info()
+        licenses: list[dict] = self._build_licenses()
+
+        # Generate mapping from document labels to category_id
+        label_to_category_id: dict[DocItemLabel, int] = {
+            label: cat_id
+            for cat_id, (label, category) in enumerate(
+                VALID_DOCLING_LABELS_TO_COCO_CATEGORIES.items()
+            )
+        }
+        # Apply the corrections given in the doc_label_to_valid_label_mapping
+        for doc_label, valid_label in extra_doc_label_to_valid_label_mapping.items():
+            if valid_label is not None:
+                label_to_category_id[doc_label] = label_to_category_id[valid_label]
+            elif doc_label in label_to_category_id:
+                del label_to_category_id[doc_label]
+
+        # Build the categories
+        categories: list[dict] = self._build_categories()
+
+        # Get the images dir
+        images_dir = save_dir / split
+        images_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build images and annotations
+        images: list[dict] = []
+        anns: list[dict] = []
+        ds = self._load_ds(split)
+        ds_selection = ds[split]
+        image_id = 0
+        annotation_id = 0
+        for i, data in enumerate(ds_selection):
+            data_record = DatasetRecordWithPrediction.model_validate(data)
+            doc_id = data_record.doc_id
+
+            if data_record.predicted_doc is not None and source_doc_column == "pred":
+                doc = data_record.predicted_doc
+                _log.info("Dataset document to export: 'predicted_doc'")
+            else:
+                doc = data_record.ground_truth_doc
+                _log.info("Dataset document to export: 'ground_truth_doc'")
+
+            # Convert the doc in a COCO-dataset
+            doc_images: list[dict]
+            doc_anns: list[dict]
+            doc_images, doc_anns, image_id, annotation_id = (
+                self._extract_layout_coco_annotations(
+                    doc_id,
+                    doc,
+                    label_to_category_id,
+                    images_dir,
+                    image_id,
+                    annotation_id,
+                )
+            )
+            images.extend(doc_images)
+            anns.extend(doc_anns)
+
+        # Save the annotations
+        annotations: dict = {
+            "info": info,
+            "categories": categories,
+            "images": images,
+            "annotations": anns,
+            "licenses": licenses,
+        }
+        annotations_dir = save_dir / "annotations"
+        annotations_dir.mkdir(parents=True, exist_ok=True)
+        annotations_fn = annotations_dir / f"{split}2017.json"
+        _log.info("Saving the exported COCO annotations in: %s", str(annotations_fn))
+        with open(annotations_fn, "w") as fd:
+            json.dump(annotations, fd)
+
+        return annotations
+
+    def _extract_layout_coco_annotations(
+        self,
+        doc_id: str,
+        doc: DoclingDocument,
+        labels_to_category_ids: Dict[DocItemLabel, int],
+        images_dir: Path,
+        image_id_offset: int,
+        annotation_id_offset: int,
+    ) -> Tuple[List[Dict], List[Dict], int, int]:
+        r"""
+        Returns
+        -------
+        images: List of dict in COCO format with the images in the document
+        annotations: List of dict in COCO format with the annotations in the document
+        last_image_id: The last image id generated by that document
+        last_annotation_id: The last annotation_id generated by that document
+        """
+        doc_images: list[dict] = []  # Images of the document
+        doc_anns: list[dict] = []  # Annotations of the document
+
+        included_content_layers = {c for c in ContentLayer}
+        image_id = image_id_offset
+        annotation_id = annotation_id_offset
+        for item, _ in doc.iterate_items(
+            included_content_layers=included_content_layers
+        ):
+            if not isinstance(item, DocItem):
+                continue
+            label = item.label
+            category_id = labels_to_category_ids.get(label, -1)
+
+            # Skip label without mapping into a COCO categories
+            if category_id == -1:
+                _log.warning(
+                    "Skip prediction with label that does not map to COCO categories: '%s'",
+                    label,
+                )
+                continue
+
+            # Use only the first provenance of the item
+            if len(item.prov) == 0:
+                _log.error("Skip item without provenance: %s: %s", doc_id, label.value)
+                continue
+
+            prov = item.prov[0]
+            page_no = prov.page_no
+            page = doc.pages[page_no]
+            page_size = page.size
+
+            # Save the page image
+            if page.image is not None and page_no > len(doc_images):
+                img: Image.Image = page.image.pil_image  # type: ignore
+                if img:
+                    assert (
+                        img.width == page_size.width and img.height == page_size.height
+                    )
+
+                    image_filename = (
+                        f"{doc_id}.png"
+                        if "page" in doc_id
+                        else f"{doc_id}_page_{page_no:06d}.png"
+                    )
+                    image_fn = images_dir / image_filename
+                    _log.info("Saving image: %s", str(image_fn))
+                    img.save(image_fn)
+
+                    doc_images.append(
+                        {
+                            "licence": 1,
+                            "file_name": image_filename,
+                            "height": img.height,
+                            "width": img.width,
+                            "id": image_id,
+                        }
+                    )
+                    image_id += 1
+
+            # Get the bbox in [x,y,w,h] COCO format
+            bbox: BoundingBox = prov.bbox
+            bbox = bbox.to_top_left_origin(page_height=page_size.height)
+            doc_anns.append(
+                {
+                    "image_id": image_id - 1,
+                    "category_id": category_id,
+                    "bbox": [bbox.l, bbox.t, bbox.width, bbox.height],
+                    "iscrowd": 0,
+                    "area": bbox.area(),
+                    "id": annotation_id,
+                }
+            )
+            annotation_id += 1
+
+        return doc_images, doc_anns, image_id, annotation_id
+
+    def _build_licenses(self) -> list[dict]:
+        r""" """
+        license = {
+            "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+            "id": 1,
+            "name": "Attribution-NonCommercial-ShareAlike License",
+        }
+        return [license]
+
+    def _load_ds(self, split: str) -> Dataset:
+        r"""Load the dataset from the parquet files"""
+        split_path = str(self._docling_eval_ds_path / split / "*.parquet")
+        split_files = glob.glob(split_path)
+        ds = load_dataset("parquet", data_files={split: split_files})
+        return ds
+
+    def _build_info(self):
+        r""" """
+        info = {
+            "description": "COCO 2017 Dataset",
+            "url": "http://cocodataset.org",
+            "version": "1.0",
+            "year": 2017,
+            "contributor": "COCO Consortium",
+            "date_created": "2017/09/01",
+        }
+        return info
+
+    def _build_categories(
+        self,
+        supercategory: str = "DoclingDocument",
+    ) -> list[dict]:
+        r""" """
+        categories: list[dict] = []
+        for cat_id, (label, category_name) in enumerate(
+            VALID_DOCLING_LABELS_TO_COCO_CATEGORIES.items()
+        ):
+            categories.append(
+                {
+                    "supercategory": supercategory,
+                    "id": cat_id,
+                    "name": category_name,
+                }
+            )
+        return categories
+
     def export_predictions_wrt_original_COCO(
         self,
         split: str,
         save_dir: Path,
         original_coco_dir: Path,
-        labels_to_categories: Dict[DocItemLabel, str],
     ) -> List[Dict]:
         r"""
         Export the predictions as a json file in pycocotools format:
@@ -169,14 +404,12 @@ class DoclingEvalCOCOExporter:
         }
         labels_to_category_ids: Dict[DocItemLabel, int] = {
             label: category_to_id[category]
-            for label, category in labels_to_categories.items()
+            for label, category in VALID_DOCLING_LABELS_TO_COCO_CATEGORIES.items()
             if category in category_to_id
         }
 
         # Load the HF dataset
-        split_path = str(self._docling_eval_ds_path / split / "*.parquet")
-        split_files = glob.glob(split_path)
-        ds = load_dataset("parquet", data_files={split: split_files})
+        ds = self._load_ds(split)
         ds_selection: Dataset = ds[split]
 
         # Debug
@@ -212,7 +445,7 @@ class DoclingEvalCOCOExporter:
                 coco_img_height = im.height
 
             # Extract labels, bboxes, scores
-            category_ids, scores, bboxes = self._extract_layout_data(
+            category_ids, scores, bboxes = self._extract_layout_predictions(
                 doc_id,
                 pred_doc,
                 coco_img_width,
@@ -240,7 +473,7 @@ class DoclingEvalCOCOExporter:
             json.dump(predictions, fd)
         return predictions
 
-    def _extract_layout_data(
+    def _extract_layout_predictions(
         self,
         doc_id: str,
         pred_doc: DoclingDocument,
@@ -296,47 +529,78 @@ class DoclingEvalCOCOExporter:
         return category_ids, scores, bboxes
 
 
-def main(args):
+def main():
     r""" """
-    # Get args
-    docling_eval_path = Path(args.docling_eval_dir)
-    coco_path = Path(args.coco_dir)
-    save_path = Path(args.save_dir)
+    # Input parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-o",
+        "--operation",
+        required=True,
+        type=str,
+        help="Operation to perform. One of ['coco']",
+    )
+    parser.add_argument(
+        "-s",
+        "--save_dir",
+        required=True,
+        type=Path,
+        help="Output directory to save files",
+    )
+    parser.add_argument(
+        "-d",
+        "--docling_eval_dir",
+        required=True,
+        type=Path,
+        help="Root dir with the docling-eval parquet dataset with the predictions",
+    )
+    parser.add_argument(
+        "-c",
+        "--coco_dir",
+        required=False,
+        type=Path,
+        help="Root dir of the COCO dataset",
+    )
+    args = parser.parse_args()
 
     # Setup logger
     logging.getLogger("docling").setLevel(logging.WARNING)
     log_format = "%(asctime)s - %(levelname)s - %(message)s"
     logging.basicConfig(level=logging.INFO, format=log_format)
 
-    _log.info("Export eval-dataset in COCO-tools format")
-    _log.info("COCO dataset: %s", str(coco_path))
-    _log.info("eval-dataset: %s", str(docling_eval_path))
-    _log.info("Save path: %s", str(save_path))
+    _log.info("Operation: %s", args.operation)
+    _log.info("eval-dataset: %s", str(args.docling_eval_dir))
+    _log.info("Save path: %s", str(args.save_dir))
 
     # Create the COCO exporter
-    exporter = DoclingEvalCOCOExporter(docling_eval_path)
-    exporter.export_predictions_wrt_original_COCO(
-        "test",
-        save_path,
-        coco_path,
-        DOCLING_LABELS_TO_COCO_CATEGORIES,
-    )
+    exporter = DoclingEvalCOCOExporter(args.docling_eval_dir)
+
+    # Run the operation
+    if args.operation.upper() == "COCO":
+        # Mapping from the parquet document label to the valid docling labels
+        doc_label_to_valid_label_mapping: dict[DocItemLabel, DocItemLabel] = {
+            DocItemLabel.PAGE_FOOTER: DocItemLabel.TEXT,
+            DocItemLabel.PAGE_HEADER: DocItemLabel.TEXT,
+            DocItemLabel.HANDWRITTEN_TEXT: DocItemLabel.PICTURE,
+            DocItemLabel.EMPTY_VALUE: None,
+            DocItemLabel.KEY_VALUE_REGION: None,
+            DocItemLabel.PARAGRAPH: DocItemLabel.TEXT,
+            DocItemLabel.REFERENCE: DocItemLabel.TEXT,
+        }
+        exporter.export_COCO(
+            "test",
+            args.save_dir,
+            doc_label_to_valid_label_mapping,
+        )
+    elif args.operation.upper() == "predictions":
+        exporter.export_predictions_wrt_original_COCO(
+            "test",
+            args.save_dir,
+            args.coco_dir,
+        )
+    else:
+        raise ValueError(f"Not supported operation: {args.operation}")
 
 
 if __name__ == "__main__":
-    # Input parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-d",
-        "--docling_eval_dir",
-        required=False,
-        help="Root dir with the docling-eval parquet dataset with the predictions",
-    )
-    parser.add_argument(
-        "-c", "--coco_dir", required=False, help="Root dir of the COCO dataset"
-    )
-    parser.add_argument(
-        "-s", "--save_dir", required=True, help="Output directory to save files"
-    )
-    args = parser.parse_args()
-    main(args)
+    main()
