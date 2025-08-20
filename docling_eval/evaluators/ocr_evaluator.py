@@ -244,7 +244,7 @@ class OCRVisualizer:
                 "arial.ttf", size=10
             )
         except IOError:
-            self._rendering_font = self._default_font
+            self._rendering_font = self._default_font  # type: ignore
 
     def __call__(
         self,
@@ -262,6 +262,20 @@ class OCRVisualizer:
         hf_dataset: Dataset = load_dataset(
             "parquet", data_files={data_split_name: path_to_parquet_files}
         )
+
+        empty_bounding_rect = BoundingRectangle(
+            r_x0=0,
+            r_y0=0,
+            r_x1=0,
+            r_y1=0,
+            r_x2=0,
+            r_y2=0,
+            r_x3=0,
+            r_y3=0,
+            coord_origin=CoordOrigin.TOPLEFT,
+        )
+        empty_page_dims = PageGeometry(angle=0, rect=empty_bounding_rect)
+        empty_segmented_page = SegmentedPage(dimension=empty_page_dims)
 
         generated_visualization_paths: List[Path] = []
         if hf_dataset and data_split_name in hf_dataset:
@@ -349,10 +363,10 @@ class OCRVisualizer:
                     prediction_words=raw_pred_words,
                     ground_truth_words=raw_gt_words,
                     prediction_segmented_page_metadata=(
-                        pred_page if pred_page else SegmentedPage()
+                        pred_page if pred_page else empty_segmented_page
                     ),
                     ground_truth_segmented_page_metadata=(
-                        gt_page if gt_page else SegmentedPage()
+                        gt_page if gt_page else empty_segmented_page
                     ),
                 )
 
