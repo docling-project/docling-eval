@@ -72,3 +72,21 @@ class OcrDatasetEvaluationResult(BaseModel):
     f1_score: float = 0.0
     recall: float = 0.0
     precision: float = 0.0
+
+
+class ErrorWord(BaseModel):
+    text: str
+    confidence: Optional[float] = None
+    bounding_box: BoundingBox
+
+
+class SubstitutionError(BaseModel):
+    ground_truth: ErrorWord
+    prediction: ErrorWord
+
+
+class DocumentErrorReport(BaseModel):
+    doc_id: str
+    substitution_errors: List[SubstitutionError]
+    insertion_errors_fp: List[ErrorWord]
+    deletion_errors_fn: List[ErrorWord]

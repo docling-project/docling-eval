@@ -5,20 +5,32 @@ import json
 import logging
 import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from datasets import Dataset, load_dataset
-from docling_core.types.doc import CoordOrigin
+from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_core.types.doc.page import BoundingRectangle, PageGeometry, SegmentedPage
 from PIL import Image, ImageDraw, ImageFont
+from pydantic import BaseModel
 from tqdm import tqdm
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator
 from docling_eval.evaluators.ocr.benchmark_runner import _OcrBenchmark
-from docling_eval.evaluators.ocr.evaluation_models import OcrDatasetEvaluationResult
-from docling_eval.evaluators.ocr.processing_utils import parse_segmented_pages
+from docling_eval.evaluators.ocr.evaluation_models import (
+    DocumentErrorReport,
+    ErrorWord,
+    OcrDatasetEvaluationResult,
+    SubstitutionError,
+    Word,
+)
+from docling_eval.evaluators.ocr.geometry_utils import box_to_key
+from docling_eval.evaluators.ocr.performance_calculator import _OcrPerformanceCalculator
+from docling_eval.evaluators.ocr.processing_utils import (
+    extract_word_from_text_cell,
+    parse_segmented_pages,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -224,6 +236,7 @@ class OCRVisualizer:
         self._correct_match_color: str = "blue"
         self._text_label_color: str = "black"
         self._visualization_subdir_name: str = "ocr_visualizations"
+        self._error_reports_subdir_name: str = "ocr_error_reports"
 
         self._default_font: Any = ImageFont.load_default()
         try:
@@ -231,7 +244,7 @@ class OCRVisualizer:
                 "arial.ttf", size=10
             )
         except IOError:
-            self._rendering_font = self._default_font  # type: ignore
+            self._rendering_font = self._default_font
 
     def __call__(
         self,
@@ -240,10 +253,10 @@ class OCRVisualizer:
         output_directory: Path = Path("./visual_output"),
         data_split_name: str = "test",
     ) -> List[Path]:
-        visualizations_output_path: Path = (
-            output_directory / self._visualization_subdir_name
-        )
+        visualizations_output_path = output_directory / self._visualization_subdir_name
+        error_reports_output_path = output_directory / self._error_reports_subdir_name
         visualizations_output_path.mkdir(parents=True, exist_ok=True)
+        error_reports_output_path.mkdir(parents=True, exist_ok=True)
 
         path_to_parquet_files: str = str(dataset_path / data_split_name / "*.parquet")
         hf_dataset: Dataset = load_dataset(
@@ -265,28 +278,27 @@ class OCRVisualizer:
                     BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
                 )
 
-                ground_truth_segmented_pages: Dict[int, SegmentedPage] = {}
-                prediction_segmented_pages: Dict[int, SegmentedPage] = {}
+                gt_seg_pages: Dict[int, SegmentedPage] = {}
+                pred_seg_pages: Dict[int, SegmentedPage] = {}
 
                 gt_col_name: str = BenchMarkColumns.GROUNDTRUTH_SEGMENTED_PAGES
                 if gt_col_name in data_row and data_row[gt_col_name]:
-                    parsed_gt_pages: Optional[Dict[int, SegmentedPage]] = (
-                        parse_segmented_pages(data_row[gt_col_name], doc_id_val)
+                    parsed_gt_pages = parse_segmented_pages(
+                        data_row[gt_col_name], doc_id_val
                     )
                     if parsed_gt_pages:
-                        ground_truth_segmented_pages = parsed_gt_pages
+                        gt_seg_pages = parsed_gt_pages
 
                 pred_col_name: str = BenchMarkColumns.PREDICTED_SEGMENTED_PAGES
                 if pred_col_name in data_row and data_row[pred_col_name]:
-                    parsed_pred_pages: Optional[Dict[int, SegmentedPage]] = (
-                        parse_segmented_pages(data_row[pred_col_name], doc_id_val)
+                    parsed_pred_pages = parse_segmented_pages(
+                        data_row[pred_col_name], doc_id_val
                     )
                     if parsed_pred_pages:
-                        prediction_segmented_pages = parsed_pred_pages
+                        pred_seg_pages = parsed_pred_pages
 
                 image_item: Union[dict, Image.Image] = page_images_data[0]
                 base_image: Image.Image
-
                 if isinstance(image_item, dict):
                     if "image" in image_item and isinstance(
                         image_item["image"], Image.Image
@@ -304,11 +316,52 @@ class OCRVisualizer:
                 if base_image.mode != "RGB":
                     base_image = base_image.convert("RGB")
 
+                page_idx = -1
+                if gt_seg_pages:
+                    page_idx = sorted(list(gt_seg_pages.keys()))[0]
+                elif pred_seg_pages:
+                    page_idx = sorted(list(pred_seg_pages.keys()))[0]
+
+                gt_page = gt_seg_pages.get(page_idx)
+                pred_page = pred_seg_pages.get(page_idx)
+
+                page_h, page_w = 0.0, 0.0
+                if gt_page:
+                    page_h, page_w = gt_page.dimension.height, gt_page.dimension.width
+                elif pred_page:
+                    page_h, page_w = (
+                        pred_page.dimension.height,
+                        pred_page.dimension.width,
+                    )
+
+                if page_w == 0 or page_h == 0:
+                    page_w, page_h = float(base_image.width), float(base_image.height)
+
+                raw_gt_words, raw_pred_words = [], []
+                if gt_page and gt_page.has_words:
+                    for cell in gt_page.word_cells:
+                        raw_gt_words.append(extract_word_from_text_cell(cell, page_h))
+                if pred_page and pred_page.has_words:
+                    for cell in pred_page.word_cells:
+                        raw_pred_words.append(extract_word_from_text_cell(cell, page_h))
+
+                perf_calculator = _OcrPerformanceCalculator(
+                    prediction_words=raw_pred_words,
+                    ground_truth_words=raw_gt_words,
+                    prediction_segmented_page_metadata=(
+                        pred_page if pred_page else SegmentedPage()
+                    ),
+                    ground_truth_segmented_page_metadata=(
+                        gt_page if gt_page else SegmentedPage()
+                    ),
+                )
+
+                self._save_error_report(
+                    doc_id_val, perf_calculator, error_reports_output_path
+                )
+
                 comparison_image: Image.Image = self._render_ocr_comparison_on_image(
-                    doc_id_val,
-                    base_image,
-                    ground_truth_segmented_pages,
-                    prediction_segmented_pages,
+                    base_image, perf_calculator, page_w, page_h
                 )
                 output_image_path: Path = (
                     visualizations_output_path / f"{doc_id_val}_ocr_comparison.png"
@@ -322,143 +375,146 @@ class OCRVisualizer:
 
         return generated_visualization_paths
 
-    def _render_ocr_comparison_on_image(
+    def _word_to_error_word(self, word: Word) -> ErrorWord:
+        return ErrorWord(
+            text=word.text,
+            confidence=word.confidence,
+            bounding_box=BoundingBox.model_validate(word.bbox.model_dump()),
+        )
+
+    def _save_error_report(
         self,
         doc_id: str,
+        perf_calculator: _OcrPerformanceCalculator,
+        output_path: Path,
+    ) -> None:
+        substitution_errors: List[SubstitutionError] = []
+        used_gt_keys: Set[Tuple] = set()
+        used_pred_keys: Set[Tuple] = set()
+
+        for gt_word, pred_word in perf_calculator.confirmed_gt_prediction_matches:
+            if gt_word.text.strip() != pred_word.text.strip():
+                substitution_errors.append(
+                    SubstitutionError(
+                        ground_truth=self._word_to_error_word(gt_word),
+                        prediction=self._word_to_error_word(pred_word),
+                    )
+                )
+            used_gt_keys.add(box_to_key(gt_word.bbox))
+            used_pred_keys.add(box_to_key(pred_word.bbox))
+
+        insertions = [
+            self._word_to_error_word(word)
+            for word in perf_calculator.current_false_positives
+            if box_to_key(word.bbox) not in used_pred_keys
+        ]
+
+        deletions = [
+            self._word_to_error_word(word)
+            for word in perf_calculator.current_false_negatives
+            if box_to_key(word.bbox) not in used_gt_keys
+        ]
+
+        if not substitution_errors and not insertions and not deletions:
+            return
+
+        report = DocumentErrorReport(
+            doc_id=doc_id,
+            substitution_errors=substitution_errors,
+            insertion_errors_fp=insertions,
+            deletion_errors_fn=deletions,
+        )
+        report_path = output_path / f"{doc_id}_errors.json"
+        with open(report_path, "w") as f:
+            f.write(report.model_dump_json(indent=2))
+
+    def _render_ocr_comparison_on_image(
+        self,
         source_page_image: Image.Image,
-        ground_truth_pages: Dict[int, SegmentedPage],
-        prediction_pages: Dict[int, SegmentedPage],
+        perf_calculator: _OcrPerformanceCalculator,
+        page_w: float,
+        page_h: float,
     ) -> Image.Image:
-        gt_image_canvas: Image.Image = copy.deepcopy(source_page_image)
-        pred_image_canvas: Image.Image = copy.deepcopy(source_page_image)
+        gt_image_canvas = copy.deepcopy(source_page_image)
+        pred_image_canvas = copy.deepcopy(source_page_image)
 
-        gt_draw_context: ImageDraw.ImageDraw = ImageDraw.Draw(gt_image_canvas)
-        pred_draw_context: ImageDraw.ImageDraw = ImageDraw.Draw(pred_image_canvas)
+        gt_draw_context = ImageDraw.Draw(gt_image_canvas)
+        pred_draw_context = ImageDraw.Draw(pred_image_canvas)
 
-        if not ground_truth_pages:
-            _log.debug(
-                f"No ground truth segmented pages provided for doc {doc_id} for drawing."
+        scale_factor_x = source_page_image.width / page_w if page_w > 0 else 1.0
+        scale_factor_y = source_page_image.height / page_h if page_h > 0 else 1.0
+
+        all_gt_words = [
+            gt for gt, _ in perf_calculator.confirmed_gt_prediction_matches
+        ] + perf_calculator.current_false_negatives
+
+        for cell_item in all_gt_words:
+            bbox_obj = cell_item.rect.to_bounding_box()
+            if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
+            l, t = round(bbox_obj.l * scale_factor_x), round(
+                bbox_obj.t * scale_factor_y
+            )
+            r, b = round(bbox_obj.r * scale_factor_x), round(
+                bbox_obj.b * scale_factor_y
+            )
+            gt_draw_context.rectangle(
+                [l, t, r, b],
+                outline=self._ground_truth_color,
+                width=self._outline_thickness,
+            )
+            text_y = t - 15 if t > 15 else b + 2
+            gt_draw_context.text(
+                (l, text_y),
+                cell_item.text,
+                fill=self._text_label_color,
+                font=self._rendering_font,
             )
 
-        page_index_for_drawing: int = -1
-        if ground_truth_pages:
-            page_index_for_drawing = sorted(list(ground_truth_pages.keys()))[0]
-        elif prediction_pages:
-            page_index_for_drawing = sorted(list(prediction_pages.keys()))[0]
+        for _, cell_item in perf_calculator.confirmed_gt_prediction_matches:
+            bbox_obj = cell_item.rect.to_bounding_box()
+            if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
+            l, t = round(bbox_obj.l * scale_factor_x), round(
+                bbox_obj.t * scale_factor_y
+            )
+            r, b = round(bbox_obj.r * scale_factor_x), round(
+                bbox_obj.b * scale_factor_y
+            )
+            pred_draw_context.rectangle(
+                [l, t, r, b],
+                outline=self._correct_match_color,
+                width=self._outline_thickness,
+            )
 
-        gt_page_to_draw: Optional[SegmentedPage] = (
-            ground_truth_pages.get(page_index_for_drawing)
-            if page_index_for_drawing != -1
-            else None
-        )
-        pred_page_to_draw: Optional[SegmentedPage] = (
-            prediction_pages.get(page_index_for_drawing)
-            if page_index_for_drawing != -1
-            else None
-        )
+        for cell_item in perf_calculator.current_false_positives:
+            bbox_obj = cell_item.rect.to_bounding_box()
+            if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
+            l, t = round(bbox_obj.l * scale_factor_x), round(
+                bbox_obj.t * scale_factor_y
+            )
+            r, b = round(bbox_obj.r * scale_factor_x), round(
+                bbox_obj.b * scale_factor_y
+            )
+            pred_draw_context.rectangle(
+                [l, t, r, b],
+                outline=self._prediction_color,
+                width=self._outline_thickness,
+            )
+            text_y = t - 15 if t > 15 else b + 2
+            pred_draw_context.text(
+                (l, text_y),
+                cell_item.text,
+                fill=self._text_label_color,
+                font=self._rendering_font,
+            )
 
-        page_h: float = 0.0
-        page_w: float = 0.0
-
-        if gt_page_to_draw:
-            page_h = gt_page_to_draw.dimension.height
-            page_w = gt_page_to_draw.dimension.width
-        elif pred_page_to_draw:
-            page_h = pred_page_to_draw.dimension.height
-            page_w = pred_page_to_draw.dimension.width
-
-        if page_w == 0 or page_h == 0:
-            page_w = float(source_page_image.width)
-            page_h = float(source_page_image.height)
-
-        scale_factor_x: float = source_page_image.width / page_w if page_w > 0 else 1.0
-        scale_factor_y: float = source_page_image.height / page_h if page_h > 0 else 1.0
-
-        if gt_page_to_draw and gt_page_to_draw.has_words:
-            for cell_item in gt_page_to_draw.word_cells:
-                bbox_obj = cell_item.rect.to_bounding_box()
-                if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
-                    bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
-
-                l_coord, t_coord = round(bbox_obj.l * scale_factor_x), round(
-                    bbox_obj.t * scale_factor_y
-                )
-                r_coord, b_coord = round(bbox_obj.r * scale_factor_x), round(
-                    bbox_obj.b * scale_factor_y
-                )
-
-                gt_draw_context.rectangle(
-                    [l_coord, t_coord, r_coord, b_coord],
-                    outline=self._ground_truth_color,
-                    width=self._outline_thickness,
-                )
-                text_y_pos = t_coord - 15 if t_coord > 15 else b_coord + 2
-                gt_draw_context.text(
-                    (l_coord, text_y_pos),
-                    cell_item.text,
-                    fill=self._text_label_color,
-                    font=self._rendering_font,
-                )
-
-        if pred_page_to_draw and pred_page_to_draw.has_words:
-            for cell_item in pred_page_to_draw.word_cells:
-                bbox_obj = cell_item.rect.to_bounding_box()
-                if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
-                    bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
-
-                l_coord, t_coord = round(bbox_obj.l * scale_factor_x), round(
-                    bbox_obj.t * scale_factor_y
-                )
-                r_coord, b_coord = round(bbox_obj.r * scale_factor_x), round(
-                    bbox_obj.b * scale_factor_y
-                )
-
-                is_match_correct: bool = False
-                if gt_page_to_draw and gt_page_to_draw.has_words:
-                    for gt_cell_item in gt_page_to_draw.word_cells:
-                        if gt_cell_item.text == cell_item.text:
-                            gt_bbox_obj = gt_cell_item.rect.to_bounding_box()
-                            if gt_bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
-                                gt_bbox_obj = gt_bbox_obj.to_top_left_origin(
-                                    page_height=page_h
-                                )
-
-                            if not (
-                                l_coord > round(gt_bbox_obj.r * scale_factor_x)
-                                or r_coord < round(gt_bbox_obj.l * scale_factor_x)
-                                or t_coord > round(gt_bbox_obj.b * scale_factor_y)
-                                or b_coord < round(gt_bbox_obj.t * scale_factor_y)
-                            ):
-                                is_match_correct = True
-                                break
-
-                box_draw_color: str = (
-                    self._correct_match_color
-                    if is_match_correct
-                    else self._prediction_color
-                )
-                pred_draw_context.rectangle(
-                    [l_coord, t_coord, r_coord, b_coord],
-                    outline=box_draw_color,
-                    width=self._outline_thickness,
-                )
-                text_y_pos = t_coord - 15 if t_coord > 15 else b_coord + 2
-                pred_draw_context.text(
-                    (l_coord, text_y_pos),
-                    cell_item.text,
-                    fill=self._text_label_color,
-                    font=self._rendering_font,
-                )
-
-        img_mode: str = source_page_image.mode
         img_w, img_h = source_page_image.size
-        stitched_image: Image.Image = Image.new(img_mode, (2 * img_w, img_h), "white")
-        stitched_image.paste(gt_image_canvas, (0, 0))
-        stitched_image.paste(pred_image_canvas, (img_w, 0))
+        img_mode = source_page_image.mode
 
-        stitched_draw_context: ImageDraw.ImageDraw = ImageDraw.Draw(stitched_image)
-        header_font_size: int = max(15, int(img_h * 0.02))
-        sub_header_font_size: int = max(12, int(img_h * 0.015))
+        header_font_size = max(15, int(img_h * 0.02))
+        sub_header_font_size = max(12, int(img_h * 0.015))
 
         try:
             title_text_font = ImageFont.truetype("arial.ttf", size=header_font_size)
@@ -469,6 +525,18 @@ class OCRVisualizer:
             title_text_font = self._default_font
             legend_text_font = self._default_font
 
+        line_height = sub_header_font_size + 8
+        footer_padding = 20
+        footer_height = (7 * line_height) + footer_padding
+
+        final_img_h = img_h + footer_height
+        stitched_image = Image.new(img_mode, (2 * img_w, final_img_h), "white")
+
+        stitched_image.paste(gt_image_canvas, (0, 0))
+        stitched_image.paste(pred_image_canvas, (img_w, 0))
+
+        stitched_draw_context = ImageDraw.Draw(stitched_image)
+
         stitched_draw_context.text(
             (10, 10), "Ground Truth OCR", fill="black", font=title_text_font
         )
@@ -476,61 +544,67 @@ class OCRVisualizer:
             (img_w + 10, 10), "Predicted OCR", fill="black", font=title_text_font
         )
 
-        legend_start_y: int = header_font_size + 20
-        legend_rect_dim: int = sub_header_font_size
-        legend_item_gap: int = int(sub_header_font_size * 0.5)
+        metrics_summary = perf_calculator.calculate_image_metrics()
 
-        stitched_draw_context.rectangle(
-            [
-                10,
-                legend_start_y,
-                10 + legend_rect_dim,
-                legend_start_y + legend_rect_dim,
-            ],
-            outline=self._ground_truth_color,
-            fill=self._ground_truth_color,
-        )
-        stitched_draw_context.text(
-            (15 + legend_rect_dim, legend_start_y),
-            "Ground Truth Word",
-            fill="black",
-            font=legend_text_font,
-        )
+        stats_texts = {
+            "TP (True Positives)": f"{metrics_summary.number_of_true_positive_matches}",
+            "FP (False Positives)": f"{metrics_summary.number_of_false_positive_detections}",
+            "FN (False Negatives)": f"{metrics_summary.number_of_false_negative_detections}",
+            "---": "---",
+            "Precision": f"{metrics_summary.detection_precision:.2f}% (TP / (TP + FP))",
+            "Recall": f"{metrics_summary.detection_recall:.2f}% (TP / (TP + FN))",
+            "F1-Score": f"{metrics_summary.detection_f1:.2f}% (2*P*R / (P+R))",
+        }
 
-        current_pred_legend_y = legend_start_y
-        stitched_draw_context.rectangle(
-            [
-                img_w + 10,
-                current_pred_legend_y,
-                img_w + 10 + legend_rect_dim,
-                current_pred_legend_y + legend_rect_dim,
-            ],
-            outline=self._correct_match_color,
-            fill=self._correct_match_color,
-        )
-        stitched_draw_context.text(
-            (img_w + 15 + legend_rect_dim, current_pred_legend_y),
-            "Correct Prediction",
-            fill="black",
-            font=legend_text_font,
-        )
+        stats_start_x = 15
+        stats_start_y = img_h + (footer_padding // 2)
 
-        current_pred_legend_y += legend_rect_dim + legend_item_gap
-        stitched_draw_context.rectangle(
-            [
-                img_w + 10,
-                current_pred_legend_y,
-                img_w + 10 + legend_rect_dim,
-                current_pred_legend_y + legend_rect_dim,
-            ],
-            outline=self._prediction_color,
-            fill=self._prediction_color,
-        )
-        stitched_draw_context.text(
-            (img_w + 15 + legend_rect_dim, current_pred_legend_y),
-            "Incorrect Prediction",
-            fill="black",
-            font=legend_text_font,
-        )
+        for i, (key, val) in enumerate(stats_texts.items()):
+            y_pos = stats_start_y + (i * line_height)
+            if key != "---":
+                stitched_draw_context.text(
+                    (stats_start_x, y_pos),
+                    f"{key}: {val}",
+                    fill=self._text_label_color,
+                    font=legend_text_font,
+                )
+            else:
+                stitched_draw_context.line(
+                    [
+                        (stats_start_x, y_pos + line_height // 2),
+                        (img_w * 2 - 20, y_pos + line_height // 2),
+                    ],
+                    fill="lightgray",
+                    width=1,
+                )
+
+        legend_start_x = img_w + 15
+        legend_start_y = img_h + (footer_padding // 2)
+        legend_rect_dim = sub_header_font_size
+
+        legend_items = {
+            "Ground Truth Word": self._ground_truth_color,
+            "Correct Prediction": self._correct_match_color,
+            "Incorrect Prediction": self._prediction_color,
+        }
+
+        for i, (label, color) in enumerate(legend_items.items()):
+            y_pos = legend_start_y + (i * line_height)
+            stitched_draw_context.rectangle(
+                [
+                    legend_start_x,
+                    y_pos,
+                    legend_start_x + legend_rect_dim,
+                    y_pos + legend_rect_dim,
+                ],
+                outline=color,
+                fill=color,
+            )
+            stitched_draw_context.text(
+                (legend_start_x + legend_rect_dim + 10, y_pos),
+                label,
+                fill="black",
+                font=legend_text_font,
+            )
 
         return stitched_image
