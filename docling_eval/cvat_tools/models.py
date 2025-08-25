@@ -15,11 +15,21 @@ class ValidationSeverity(str, Enum):
     FATAL = "fatal"
 
 
+class TableStructLabel(str, Enum):
+    TABLE_ROW = "table_row"
+    TABLE_COLUMN = "table_column"
+    TABLE_MERGED_CELL = "table_merged_cell"
+    COL_HEADER = "col_header"
+    ROW_HEADER = "row_header"
+    ROW_SECTION = "row_section"
+    BODY = "body"
+
+
 class CVATElement(BaseModel):
     """A rectangle element (box) in CVAT annotation, using BoundingBox from docling_core."""
 
     id: int
-    label: Union[DocItemLabel, GraphCellLabel]
+    label: Union[DocItemLabel, GraphCellLabel, TableStructLabel]
     bbox: BoundingBox
     content_layer: ContentLayer
     type: Optional[str] = None

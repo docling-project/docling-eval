@@ -12,6 +12,7 @@ from docling_eval.cvat_tools.models import (
     CVATAnnotationPath,
     CVATElement,
     CVATImageInfo,
+    TableStructLabel,
 )
 
 logger = logging.getLogger("docling_eval.cvat_tools.")
@@ -76,35 +77,50 @@ def _parse_image_element(
     Parse a single <image> element and extract elements and paths.
     Returns (elements, paths, image_info).
     """
+    # Local import to avoid touching the module-level imports if you prefer
+    from docling_eval.cvat_tools.models import TableStructLabel
+
     image_info = CVATImageInfo(
         width=float(image_el.attrib["width"]),
         height=float(image_el.attrib["height"]),
         name=image_el.attrib["name"],
     )
-    elements = []
-    paths = []
+
+    elements: list[CVATElement] = []
+    paths: list[CVATAnnotationPath] = []
     box_id = box_id_start
     path_id = path_id_start
+
+    # ---- parse <box> (rectangles) with strict labels (DocItemLabel | GraphCellLabel | TableStructLabel)
     for box in image_el.findall("box"):
         label_str = box.attrib["label"]
+
+        # Parse into one of the known enums; skip if unknown
+        label_obj: Optional[object] = None
         try:
-            label = DocItemLabel(label_str)
+            label_obj = DocItemLabel(label_str)
         except ValueError:
             try:
-                label = GraphCellLabel(label_str)  # type: ignore
+                label_obj = GraphCellLabel(label_str)  # type: ignore[assignment]
             except ValueError:
-                # Skip invalid labels
-                logger.debug(f"Skipping invalid label: {label_str}")
-                continue
+                try:
+                    label_obj = TableStructLabel(label_str)  # type: ignore[assignment]
+                except ValueError:
+                    logger.debug(f"Skipping invalid label: {label_str}")
+                    continue
+
         xtl = float(box.attrib["xtl"])
         ytl = float(box.attrib["ytl"])
         xbr = float(box.attrib["xbr"])
         ybr = float(box.attrib["ybr"])
-        bbox = cvat_box_to_bbox(xtl, ytl, xbr, ybr)
-        attributes = {}
+        bbox = cvat_box_to_bbox(xtl, ytl, xbr, ybr)  # -> BoundingBox(l,t,r,b) TOPLEFT
+
+        # Parse child <attribute> tags; default content_layer to BODY
+        attributes: dict[str, str | None] = {}
         content_layer = None
-        type_ = None
-        level = None
+        type_: Optional[str] = None
+        level: Optional[int] = None
+
         for attr in box.findall("attribute"):
             name = attr.attrib["name"]
             value = attr.text.strip() if attr.text else None
@@ -116,18 +132,19 @@ def _parse_image_element(
                     content_layer = ContentLayer.BODY
             elif name == "type":
                 type_ = value
-            elif name == "level":
-                if value is not None:
-                    try:
-                        level = int(value)
-                    except Exception:
-                        level = None
+            elif name == "level" and value is not None:
+                try:
+                    level = int(value)
+                except Exception:
+                    level = None
+
         if content_layer is None:
             content_layer = ContentLayer.BODY
+
         elements.append(
             CVATElement(
                 id=box_id,
-                label=label,
+                label=label_obj,  # Union[DocItemLabel, GraphCellLabel, TableStructLabel]
                 bbox=bbox,
                 content_layer=content_layer,
                 type=type_,
@@ -136,12 +153,15 @@ def _parse_image_element(
             )
         )
         box_id += 1
+
+    # ---- parse <polyline> (paths)
     for poly in image_el.findall("polyline"):
         poly_label = poly.attrib["label"]
         points_str = poly.attrib["points"]
         points = [tuple(map(float, pt.split(","))) for pt in points_str.split(";")]
-        attributes = {}
-        level = None
+
+        attributes: dict[str, str | None] = {}  # type: ignore
+        level: Optional[int] = None  # type: ignore
         for attr in poly.findall("attribute"):
             name = attr.attrib["name"]
             value = attr.text.strip() if attr.text else None
@@ -151,6 +171,7 @@ def _parse_image_element(
                     level = int(value)
                 except Exception:
                     level = None
+
         paths.append(
             CVATAnnotationPath(
                 id=path_id,
@@ -161,6 +182,7 @@ def _parse_image_element(
             )
         )
         path_id += 1
+
     return elements, paths, image_info
 
 

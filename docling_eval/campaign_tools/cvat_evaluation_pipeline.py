@@ -20,9 +20,13 @@ from typing import List, Optional
 from docling_eval.campaign_tools.combine_cvat_evaluations import (
     combine_cvat_evaluations,
 )
+from docling_eval.campaign_tools.evaluate_cvat_tables import evaluate_tables
 from docling_eval.cli.main import evaluate
 from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
-from docling_eval.cvat_tools.parser import MissingImageInCVATXML, get_all_images_from_cvat_xml
+from docling_eval.cvat_tools.parser import (
+    MissingImageInCVATXML,
+    get_all_images_from_cvat_xml,
+)
 from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
@@ -102,32 +106,49 @@ class CVATEvaluationPipeline:
 
         # Get all images available in the directory
         image_files = self._find_image_files()
-        
+
         # Get all images that have annotations in the CVAT XML
         try:
             annotated_images = set(get_all_images_from_cvat_xml(cvat_xml_path))
         except Exception as e:
             _log.error(f"Failed to read CVAT XML {cvat_xml_path}: {e}")
             return []
-        
+
         # Filter to only process images that have annotations (unless in strict mode)
         if self.strict:
             # In strict mode, require all images to have annotations
-            missing_images = [img.name for img in image_files if img.name not in annotated_images]
+            missing_images = [
+                img.name for img in image_files if img.name not in annotated_images
+            ]
             if missing_images:
-                _log.error(f"Strict mode: Found {len(missing_images)} images without annotations in {cvat_xml_path.name}")
-                _log.error(f"Missing annotations for: {', '.join(missing_images[:10])}" + ("..." if len(missing_images) > 10 else ""))
-                raise ValueError(f"Strict mode enabled: {len(missing_images)} images lack annotations in {cvat_xml_path.name}")
+                _log.error(
+                    f"Strict mode: Found {len(missing_images)} images without annotations in {cvat_xml_path.name}"
+                )
+                _log.error(
+                    f"Missing annotations for: {', '.join(missing_images[:10])}"
+                    + ("..." if len(missing_images) > 10 else "")
+                )
+                raise ValueError(
+                    f"Strict mode enabled: {len(missing_images)} images lack annotations in {cvat_xml_path.name}"
+                )
             images_to_process = image_files
-            _log.info(f"Strict mode: All {len(image_files)} image files have annotations in {cvat_xml_path.name}")
+            _log.info(
+                f"Strict mode: All {len(image_files)} image files have annotations in {cvat_xml_path.name}"
+            )
         else:
             # Normal mode: allow partial annotation batches
-            images_to_process = [img for img in image_files if img.name in annotated_images]
+            images_to_process = [
+                img for img in image_files if img.name in annotated_images
+            ]
             skipped_count = len(image_files) - len(images_to_process)
-            
-            _log.info(f"Found {len(image_files)} image files, {len(images_to_process)} have annotations in {cvat_xml_path.name}")
+
+            _log.info(
+                f"Found {len(image_files)} image files, {len(images_to_process)} have annotations in {cvat_xml_path.name}"
+            )
             if skipped_count > 0:
-                _log.info(f"Skipping {skipped_count} images without annotations (expected for partial annotation batches)")
+                _log.info(
+                    f"Skipping {skipped_count} images without annotations (expected for partial annotation batches)"
+                )
 
         for image_path in images_to_process:
             _log.info(
@@ -158,7 +179,9 @@ class CVATEvaluationPipeline:
             except MissingImageInCVATXML:
                 if self.strict:
                     # In strict mode, this is a fatal error
-                    _log.error(f"Strict mode: Image {image_path.name} not found in {cvat_xml_path.name}")
+                    _log.error(
+                        f"Strict mode: Image {image_path.name} not found in {cvat_xml_path.name}"
+                    )
                     raise
                 else:
                     # In normal mode, this should be unexpected due to pre-filtering
@@ -244,6 +267,42 @@ class CVATEvaluationPipeline:
         )
         _log.info(f"✓ Prediction dataset created: {self.eval_dataset_dir}")
 
+    def run_table_evaluation(
+        self,
+        gt_cvat_xml: Path,
+        pred_cvat_xml: Path,
+        out_json: Optional[Path] = None,
+        containment_thresh: float = 0.50,
+        table_pair_iou: float = 0.20,
+        sem_match_iou: float = 0.30,
+    ) -> Path:
+        """
+        Run the table structure/semantics evaluation directly on the two CVAT XMLs.
+
+        Writes a JSON file (default: evaluation_results/evaluation_CVAT_tables.json) and returns its path.
+        """
+        _log.info("=== Running Table Evaluation ===")
+
+        if out_json is None:
+            out_json = self.evaluation_results_dir / "evaluation_CVAT_tables.json"
+
+        self.evaluation_results_dir.mkdir(parents=True, exist_ok=True)
+
+        result = evaluate_tables(
+            set_a=gt_cvat_xml,
+            set_b=pred_cvat_xml,
+            containment_thresh=containment_thresh,
+            table_pair_iou=table_pair_iou,
+            sem_match_iou=sem_match_iou,
+        )
+
+        out_json.write_text(
+            json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        _log.info(f"✓ Tables evaluation written to: {out_json}")
+        return out_json
+
     def run_evaluation(
         self, modalities: Optional[List[str]] = None, user_csv: Optional[Path] = None
     ) -> None:
@@ -319,11 +378,15 @@ class CVATEvaluationPipeline:
         docstruct_json = (
             self.evaluation_results_dir / "evaluation_CVAT_document_structure.json"
         )
+        key_value_json = self.evaluation_results_dir / "evaluation_CVAT_key_value.json"
+        tables_json = self.evaluation_results_dir / "evaluation_CVAT_tables.json"
         _log.info(f"Combining evaluation results to {combined_out}")
         combine_cvat_evaluations(
             layout_json=layout_json,
             docstruct_json=docstruct_json,
+            keyvalue_json=key_value_json,
             user_csv=user_csv,
+            tables_json=tables_json,
             out=combined_out,
         )
 
@@ -349,6 +412,7 @@ class CVATEvaluationPipeline:
         try:
             self.create_ground_truth_dataset(gt_cvat_xml)
             self.create_prediction_dataset(pred_cvat_xml)
+            self.run_table_evaluation(gt_cvat_xml, pred_cvat_xml)
             self.run_evaluation(modalities, user_csv)
 
             # Combine results if user_csv is provided
@@ -357,11 +421,18 @@ class CVATEvaluationPipeline:
             docstruct_json = (
                 self.evaluation_results_dir / "evaluation_CVAT_document_structure.json"
             )
+            key_value_json = (
+                self.evaluation_results_dir / "evaluation_CVAT_key_value.json"
+            )
+            tables_json = self.evaluation_results_dir / "evaluation_CVAT_tables.json"
+
             _log.info(f"Combining evaluation results to {combined_out}")
             combine_cvat_evaluations(
                 layout_json=layout_json,
                 docstruct_json=docstruct_json,
+                keyvalue_json=key_value_json,
                 user_csv=user_csv,
+                tables_json=tables_json,
                 out=combined_out,
             )
 
@@ -404,16 +475,16 @@ def main():
 
     parser.add_argument(
         "--step",
-        choices=["gt", "pred", "eval", "full"],
+        choices=["gt", "pred", "tables", "eval", "full"],
         default="full",
-        help="Pipeline step to run: gt (ground truth), pred (predictions), eval (evaluation), full (all steps)",
+        help="Pipeline step to run: gt (ground truth), pred (predictions), tables (table eval only), eval, or full.",
     )
 
     parser.add_argument(
         "--modalities",
         nargs="+",
-        choices=["layout", "document_structure"],
-        default=["layout", "document_structure"],
+        choices=["layout", "document_structure", "key_value"],
+        default=["layout", "document_structure", "key_value"],
         help="Evaluation modalities to run",
     )
 
@@ -424,7 +495,7 @@ def main():
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Strict mode: require all images to have annotations in XML files (default: allow partial annotation batches)"
+        help="Strict mode: require all images to have annotations in XML files (default: allow partial annotation batches)",
     )
 
     args = parser.parse_args()
@@ -438,7 +509,9 @@ def main():
         sys.exit(1)
 
     # Initialize pipeline
-    pipeline = CVATEvaluationPipeline(args.images_dir, args.output_dir, strict=args.strict)
+    pipeline = CVATEvaluationPipeline(
+        args.images_dir, args.output_dir, strict=args.strict
+    )
 
     if args.step == "gt":
         if not args.gt_xml:
@@ -457,7 +530,17 @@ def main():
             _log.error(f"Prediction XML file does not exist: {args.pred_xml}")
             sys.exit(1)
         pipeline.create_prediction_dataset(args.pred_xml)
-
+    elif args.step == "tables":
+        if not args.gt_xml or not args.pred_xml:
+            _log.error("Both --gt-xml and --pred-xml are required for tables step")
+            sys.exit(1)
+        if not args.gt_xml.exists():
+            _log.error(f"Ground truth XML file does not exist: {args.gt_xml}")
+            sys.exit(1)
+        if not args.pred_xml.exists():
+            _log.error(f"Prediction XML file does not exist: {args.pred_xml}")
+            sys.exit(1)
+        pipeline.run_table_evaluation(args.gt_xml, args.pred_xml)
     elif args.step == "eval":
         pipeline.run_evaluation(args.modalities, user_csv=args.user_csv)
 

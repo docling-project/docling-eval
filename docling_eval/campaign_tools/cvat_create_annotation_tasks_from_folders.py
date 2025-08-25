@@ -31,7 +31,10 @@ app = typer.Typer(add_completion=False)
 
 
 def process_subdirectories(
-    input_directory: Path, output_directory: Path, sliding_window: int = 1, use_predictions: bool = True
+    input_directory: Path,
+    output_directory: Path,
+    sliding_window: int = 1,
+    use_predictions: bool = True,
 ) -> None:
     """
     For each subdirectory in input_directory, create gt_dataset, eval_dataset, and cvat_dataset_preannotated
@@ -87,7 +90,9 @@ def process_subdirectories(
             else:
                 typer.echo(f"  Prediction dataset already exists, skipping.")
         else:
-            typer.echo(f"  Skipping prediction dataset creation (use_predictions=False).")
+            typer.echo(
+                f"  Skipping prediction dataset creation (use_predictions=False)."
+            )
 
         if not cvat_dir.exists():
             typer.echo(f"  Creating CVAT pre-annotated dataset...")
@@ -128,7 +133,9 @@ def batch_prepare(
     """
     Batch-create Docling evaluation datasets for all subdirectories in input_directory.
     """
-    process_subdirectories(input_directory, output_directory, sliding_window, use_predictions)
+    process_subdirectories(
+        input_directory, output_directory, sliding_window, use_predictions
+    )
     typer.echo("\nAll benchmarks created successfully!")
 
 
