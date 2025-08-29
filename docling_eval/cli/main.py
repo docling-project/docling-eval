@@ -603,7 +603,7 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.OCR:
-        ocr_evaluator = OCREvaluator()
+        ocr_evaluator = OCREvaluator(intermediate_evaluations_path=odir)
         evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,

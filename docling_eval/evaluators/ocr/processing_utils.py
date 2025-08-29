@@ -3,6 +3,7 @@ import logging
 import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
+import edit_distance
 from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_core.types.doc.page import (
     BoundingRectangle,
@@ -254,3 +255,21 @@ def parse_segmented_pages(
             traceback.print_exc()
             continue
     return segmented_pages_map if segmented_pages_map else None
+
+
+def replace_chars_by_map(text: str, char_map: Dict[str, str]) -> str:
+    """Replaces characters in a string based on a provided mapping."""
+    if not char_map:
+        return text
+    return "".join(char_map.get(char, char) for char in text)
+
+
+def calculate_edit_distance(
+    str1: str, str2: str, normalize_map: Optional[Dict[str, str]] = None
+) -> int:
+    """Calculates the Levenshtein edit distance between two strings after optional normalization."""
+    map_to_use = normalize_map or {}
+    str1_normalized = replace_chars_by_map(str1, map_to_use)
+    str2_normalized = replace_chars_by_map(str2, map_to_use)
+    sm = edit_distance.SequenceMatcher(str1_normalized, str2_normalized)
+    return sm.distance()

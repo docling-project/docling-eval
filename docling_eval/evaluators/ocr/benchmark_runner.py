@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional
 from docling_core.types.doc.page import SegmentedPage
 
 from docling_eval.evaluators.ocr.evaluation_models import (
-    AggregatedBenchmarkMetrics,
     OcrBenchmarkEntry,
     OcrMetricsSummary,
     Word,
@@ -126,6 +125,20 @@ class _OcrBenchmark:
                     if key not in summed_metrics:
                         summed_metrics[key] = ""
 
+        num_images = len(self.image_metrics_results)
+        avg_word_acc_sensitive = (
+            summed_metrics.get("word_accuracy_sensitive", 0.0) / num_images
+        )
+        avg_word_acc_insensitive = (
+            summed_metrics.get("word_accuracy_insensitive", 0.0) / num_images
+        )
+        avg_char_acc_sensitive = (
+            summed_metrics.get("character_accuracy_sensitive", 0.0) / num_images
+        )
+        avg_char_acc_insensitive = (
+            summed_metrics.get("character_accuracy_insensitive", 0.0) / num_images
+        )
+
         total_true_positives: float = summed_metrics.get(
             "number_of_true_positive_matches", _CalculationConstants.EPS
         )
@@ -151,24 +164,24 @@ class _OcrBenchmark:
             "f1": 100 * overall_f1_score,
             "recall": 100 * overall_recall,
             "precision": 100 * overall_precision,
+            "word_accuracy_sensitive": avg_word_acc_sensitive,
+            "word_accuracy_insensitive": avg_word_acc_insensitive,
+            "character_accuracy_sensitive": avg_char_acc_sensitive,
+            "character_accuracy_insensitive": avg_char_acc_insensitive,
         }
 
-        aggregated_metrics = AggregatedBenchmarkMetrics.model_validate(
-            aggregated_metrics_data
-        )
-        output_results = aggregated_metrics.model_dump(by_alias=True)
-
-        for key, val in output_results.items():
+        for key, val in aggregated_metrics_data.items():
             try:
                 formatted_value: float = float(f"{{:.{float_precision}f}}".format(val))
-                output_results[key] = formatted_value
+                aggregated_metrics_data[key] = formatted_value
             except (ValueError, TypeError):
                 pass
-        return output_results
+
+        return aggregated_metrics_data
 
     def get_formatted_metrics_summary(
         self,
-        float_precision: int = 1,
+        float_precision: int = 2,
     ) -> List[Dict[str, Any]]:
         summary_list: List[Dict[str, Any]] = []
 
