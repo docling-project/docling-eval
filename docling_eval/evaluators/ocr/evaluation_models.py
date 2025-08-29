@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from docling_core.types.doc import BoundingBox
 from docling_core.types.doc.page import TextCell
@@ -7,6 +7,16 @@ from pydantic import BaseModel, Field
 
 class _CalculationConstants:
     EPS: float = 1.0e-6
+    CHAR_NORMALIZE_MAP: Dict[str, str] = {
+        "ﬁ": "fi",
+        "ﬂ": "fl",
+        """: "'", """: "'",
+        '"': '"',
+        '"': '"',
+        "—": "-",
+        "–": "-",
+        "\xa0": " ",
+    }
 
 
 class Word(TextCell):
@@ -42,6 +52,11 @@ class OcrMetricsSummary(BaseModel):
     detection_precision: float
     detection_recall: float
     detection_f1: float
+    # recognition metrics
+    word_accuracy_sensitive: float = 0.0
+    word_accuracy_insensitive: float = 0.0
+    character_accuracy_sensitive: float = 0.0
+    character_accuracy_insensitive: float = 0.0
 
     class Config:
         populate_by_name = True
@@ -50,15 +65,6 @@ class OcrMetricsSummary(BaseModel):
 class OcrBenchmarkEntry(BaseModel):
     image_name: str
     metrics: OcrMetricsSummary
-
-
-class AggregatedBenchmarkMetrics(BaseModel):
-    f1: float = Field(alias="F1")
-    recall: float = Field(alias="Recall")
-    precision: float = Field(alias="Precision")
-
-    class Config:
-        populate_by_name = True
 
 
 class DocumentEvaluationEntry(BaseModel):
@@ -72,21 +78,31 @@ class OcrDatasetEvaluationResult(BaseModel):
     f1_score: float = 0.0
     recall: float = 0.0
     precision: float = 0.0
+    word_accuracy_sensitive: float = 0.0
+    word_accuracy_insensitive: float = 0.0
+    character_accuracy_sensitive: float = 0.0
+    character_accuracy_insensitive: float = 0.0
 
 
-class ErrorWord(BaseModel):
+class WordEvaluationMetadata(BaseModel):
     text: str
     confidence: Optional[float] = None
     bounding_box: BoundingBox
+    is_true_positive: bool = False
+    is_false_positive: bool = False
+    is_false_negative: bool = False
+    edit_distance_sensitive: Optional[int] = None
+    edit_distance_insensitive: Optional[int] = None
 
 
-class SubstitutionError(BaseModel):
-    ground_truth: ErrorWord
-    prediction: ErrorWord
+class TruePositiveMatch(BaseModel):
+    pred: WordEvaluationMetadata
+    gt: WordEvaluationMetadata
 
 
-class DocumentErrorReport(BaseModel):
+class DocumentEvaluationMetadata(BaseModel):
     doc_id: str
-    substitution_errors: List[SubstitutionError]
-    insertion_errors_fp: List[ErrorWord]
-    deletion_errors_fn: List[ErrorWord]
+    true_positives: List[TruePositiveMatch]
+    false_positives: List[WordEvaluationMetadata]
+    false_negatives: List[WordEvaluationMetadata]
+    metrics: OcrMetricsSummary

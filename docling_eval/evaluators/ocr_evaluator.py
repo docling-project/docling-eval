@@ -19,16 +19,17 @@ from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator
 from docling_eval.evaluators.ocr.benchmark_runner import _OcrBenchmark
 from docling_eval.evaluators.ocr.evaluation_models import (
-    DocumentErrorReport,
-    ErrorWord,
+    DocumentEvaluationMetadata,
     OcrDatasetEvaluationResult,
-    SubstitutionError,
+    TruePositiveMatch,
     Word,
+    WordEvaluationMetadata,
+    _CalculationConstants,
 )
 from docling_eval.evaluators.ocr.geometry_utils import box_to_key
 from docling_eval.evaluators.ocr.performance_calculator import _OcrPerformanceCalculator
 from docling_eval.evaluators.ocr.processing_utils import (
-    extract_word_from_text_cell,
+    calculate_edit_distance,
     parse_segmented_pages,
 )
 
@@ -52,6 +53,7 @@ class OCREvaluator(BaseEvaluator):
             prediction_sources=prediction_sources,
             supported_prediction_formats=[PredictionFormats.DOCLING_DOCUMENT],
         )
+        self.intermediate_evaluations_path = intermediate_evaluations_path
 
     def __call__(
         self,
@@ -105,6 +107,12 @@ class OCREvaluator(BaseEvaluator):
             coord_origin=CoordOrigin.TOPLEFT,
         )
         empty_page_dims = PageGeometry(angle=0, rect=empty_bounding_rect)
+
+        if self.intermediate_evaluations_path is not None:
+            evaluation_metadata_output_path = (
+                self.intermediate_evaluations_path / "evaluation_metadata"
+            )
+            evaluation_metadata_output_path.mkdir(parents=True, exist_ok=True)
 
         for i, data_row in tqdm(
             enumerate(selected_dataset_split),
@@ -193,13 +201,28 @@ class OCREvaluator(BaseEvaluator):
                 prediction_page=pred_page_data,
                 image_identifier=page_identifier_for_benchmark,
             )
+            if (
+                page_identifier_for_benchmark
+                in benchmark_tool.image_to_performance_calculator_map
+            ):
+                perf_calculator = benchmark_tool.image_to_performance_calculator_map[
+                    page_identifier_for_benchmark
+                ]
+                metadata = self._create_evaluation_metadata(
+                    document_id, perf_calculator
+                )
+                metadata_path = (
+                    evaluation_metadata_output_path / f"{document_id}_metadata.json"
+                )
+                with open(metadata_path, "w") as f:
+                    f.write(metadata.model_dump_json(indent=2))
             processed_item_count += 1
 
         overall_evaluation_results = OcrDatasetEvaluationResult()
         if processed_item_count > 0:
             _log.info(f"Processed {processed_item_count} documents for OCR benchmark.")
             formatted_summary: List[Dict[str, Any]] = (
-                benchmark_tool.get_formatted_metrics_summary(float_precision=1)
+                benchmark_tool.get_formatted_metrics_summary(float_precision=2)
             )
             _log.info("\nAggregated OCR Metrics:")
             _log.info(json.dumps(formatted_summary, indent=2))
@@ -212,9 +235,21 @@ class OCREvaluator(BaseEvaluator):
                 metrics_from_summary: Dict[str, Any] = formatted_summary[0]
                 if isinstance(metrics_from_summary, dict):
                     overall_evaluation_results = OcrDatasetEvaluationResult(
-                        f1_score=metrics_from_summary.get("F1", 0.0),
-                        recall=metrics_from_summary.get("Recall", 0.0),
-                        precision=metrics_from_summary.get("Precision", 0.0),
+                        f1_score=metrics_from_summary.get("f1", 0.0),
+                        recall=metrics_from_summary.get("recall", 0.0),
+                        precision=metrics_from_summary.get("precision", 0.0),
+                        word_accuracy_sensitive=metrics_from_summary.get(
+                            "word_accuracy_sensitive", 0.0
+                        ),
+                        word_accuracy_insensitive=metrics_from_summary.get(
+                            "word_accuracy_insensitive", 0.0
+                        ),
+                        character_accuracy_sensitive=metrics_from_summary.get(
+                            "character_accuracy_sensitive", 0.0
+                        ),
+                        character_accuracy_insensitive=metrics_from_summary.get(
+                            "character_accuracy_insensitive", 0.0
+                        ),
                     )
         else:
             _log.warning("No documents were processed for the OCR benchmark.")
@@ -226,6 +261,68 @@ class OCREvaluator(BaseEvaluator):
         _log.info(f"Final Dataset Recall: {overall_evaluation_results.recall:.4f}")
 
         return overall_evaluation_results
+
+    def _create_evaluation_metadata(
+        self, doc_id: str, perf_calculator: _OcrPerformanceCalculator
+    ) -> DocumentEvaluationMetadata:
+        def word_to_metadata(
+            word: Word,
+            is_tp: bool = False,
+            is_fp: bool = False,
+            is_fn: bool = False,
+            other_word: Optional[Word] = None,
+        ) -> WordEvaluationMetadata:
+            edit_dist_sensitive = None
+            edit_dist_insensitive = None
+
+            if other_word is not None:
+                edit_dist_sensitive = calculate_edit_distance(
+                    word.text, other_word.text, _CalculationConstants.CHAR_NORMALIZE_MAP
+                )
+                edit_dist_insensitive = calculate_edit_distance(
+                    word.text.upper(),
+                    other_word.text.upper(),
+                    _CalculationConstants.CHAR_NORMALIZE_MAP,
+                )
+
+            return WordEvaluationMetadata(
+                text=word.text,
+                confidence=word.confidence,
+                bounding_box=BoundingBox.model_validate(word.bbox.model_dump()),
+                is_true_positive=is_tp,
+                is_false_positive=is_fp,
+                is_false_negative=is_fn,
+                edit_distance_sensitive=edit_dist_sensitive,
+                edit_distance_insensitive=edit_dist_insensitive,
+            )
+
+        true_positives = []
+        for gt_word, pred_word in perf_calculator.confirmed_gt_prediction_matches:
+            gt_meta = word_to_metadata(gt_word, is_tp=True, other_word=pred_word)
+            pred_meta = word_to_metadata(pred_word, is_tp=True, other_word=gt_word)
+
+            tp_match = TruePositiveMatch(pred=pred_meta, gt=gt_meta)
+            true_positives.append(tp_match)
+
+        false_positives = [
+            word_to_metadata(word, is_fp=True)
+            for word in perf_calculator.current_false_positives
+        ]
+
+        false_negatives = [
+            word_to_metadata(word, is_fn=True)
+            for word in perf_calculator.current_false_negatives
+        ]
+
+        metrics = perf_calculator.calculate_image_metrics()
+
+        return DocumentEvaluationMetadata(
+            doc_id=doc_id,
+            true_positives=true_positives,
+            false_positives=false_positives,
+            false_negatives=false_negatives,
+            metrics=metrics,
+        )
 
 
 class OCRVisualizer:
@@ -254,28 +351,22 @@ class OCRVisualizer:
         data_split_name: str = "test",
     ) -> List[Path]:
         visualizations_output_path = output_directory / self._visualization_subdir_name
-        error_reports_output_path = output_directory / self._error_reports_subdir_name
         visualizations_output_path.mkdir(parents=True, exist_ok=True)
-        error_reports_output_path.mkdir(parents=True, exist_ok=True)
+
+        metadata_path = output_directory / "evaluation_metadata"
+        if not metadata_path.exists():
+            _log.warning(
+                f"No evaluation metadata found at {metadata_path}. Please run evaluation first."
+            )
+            raise FileNotFoundError(
+                f"No evaluation metadata found at {metadata_path}. Please run evaluation first."
+            )
+            return []
 
         path_to_parquet_files: str = str(dataset_path / data_split_name / "*.parquet")
         hf_dataset: Dataset = load_dataset(
             "parquet", data_files={data_split_name: path_to_parquet_files}
         )
-
-        empty_bounding_rect = BoundingRectangle(
-            r_x0=0,
-            r_y0=0,
-            r_x1=0,
-            r_y1=0,
-            r_x2=0,
-            r_y2=0,
-            r_x3=0,
-            r_y3=0,
-            coord_origin=CoordOrigin.TOPLEFT,
-        )
-        empty_page_dims = PageGeometry(angle=0, rect=empty_bounding_rect)
-        empty_segmented_page = SegmentedPage(dimension=empty_page_dims)
 
         generated_visualization_paths: List[Path] = []
         if hf_dataset and data_split_name in hf_dataset:
@@ -288,9 +379,54 @@ class OCRVisualizer:
                 total=len(dataset_for_visualization),
             ):
                 doc_id_val: str = data_row[BenchMarkColumns.DOC_ID]
+
+                metadata_file = metadata_path / f"{doc_id_val}_metadata.json"
+                if not metadata_file.exists():
+                    _log.warning(f"No metadata found for document {doc_id_val}")
+                    continue
+
+                try:
+                    with open(metadata_file, "r") as f:
+                        metadata = DocumentEvaluationMetadata.model_validate_json(
+                            f.read()
+                        )
+                except Exception as e:
+                    _log.error(f"Failed to load metadata for {doc_id_val}: {e}")
+                    continue
+
                 page_images_data: Any = data_row.get(
                     BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES
                 )
+
+                if not page_images_data or len(page_images_data) == 0:
+                    _log.warning(f"No page images found for document {doc_id_val}")
+                    continue
+
+                image_item: Union[dict, Image.Image] = page_images_data[0]
+                base_image: Image.Image
+
+                try:
+                    if isinstance(image_item, dict):
+                        if "image" in image_item and isinstance(
+                            image_item["image"], Image.Image
+                        ):
+                            base_image = image_item["image"]
+                        elif "bytes" in image_item and image_item["bytes"]:
+                            base_image = Image.open(io.BytesIO(image_item["bytes"]))
+                        elif "path" in image_item and image_item["path"]:
+                            base_image = Image.open(image_item["path"])
+                        else:
+                            raise ValueError(
+                                f"Unsupported image_item format: {image_item}"
+                            )
+                    else:
+                        base_image = image_item
+
+                    if base_image.mode != "RGB":
+                        base_image = base_image.convert("RGB")
+                except Exception as e:
+                    _log.error(f"Failed to load image for {doc_id_val}: {e}")
+                    continue
 
                 gt_seg_pages: Dict[int, SegmentedPage] = {}
                 pred_seg_pages: Dict[int, SegmentedPage] = {}
@@ -310,25 +446,6 @@ class OCRVisualizer:
                     )
                     if parsed_pred_pages:
                         pred_seg_pages = parsed_pred_pages
-
-                image_item: Union[dict, Image.Image] = page_images_data[0]
-                base_image: Image.Image
-                if isinstance(image_item, dict):
-                    if "image" in image_item and isinstance(
-                        image_item["image"], Image.Image
-                    ):
-                        base_image = image_item["image"]
-                    elif "bytes" in image_item and image_item["bytes"]:
-                        base_image = Image.open(io.BytesIO(image_item["bytes"]))
-                    elif "path" in image_item and image_item["path"]:
-                        base_image = Image.open(image_item["path"])
-                    else:
-                        raise ValueError(f"Unsupported image_item format: {image_item}")
-                else:
-                    base_image = image_item
-
-                if base_image.mode != "RGB":
-                    base_image = base_image.convert("RGB")
 
                 page_idx = -1
                 if gt_seg_pages:
@@ -351,32 +468,10 @@ class OCRVisualizer:
                 if page_w == 0 or page_h == 0:
                     page_w, page_h = float(base_image.width), float(base_image.height)
 
-                raw_gt_words, raw_pred_words = [], []
-                if gt_page and gt_page.has_words:
-                    for cell in gt_page.word_cells:
-                        raw_gt_words.append(extract_word_from_text_cell(cell, page_h))
-                if pred_page and pred_page.has_words:
-                    for cell in pred_page.word_cells:
-                        raw_pred_words.append(extract_word_from_text_cell(cell, page_h))
-
-                perf_calculator = _OcrPerformanceCalculator(
-                    prediction_words=raw_pred_words,
-                    ground_truth_words=raw_gt_words,
-                    prediction_segmented_page_metadata=(
-                        pred_page if pred_page else empty_segmented_page
-                    ),
-                    ground_truth_segmented_page_metadata=(
-                        gt_page if gt_page else empty_segmented_page
-                    ),
+                comparison_image: Image.Image = self._render_comparison_from_metadata(
+                    base_image, metadata, page_w, page_h
                 )
 
-                self._save_error_report(
-                    doc_id_val, perf_calculator, error_reports_output_path
-                )
-
-                comparison_image: Image.Image = self._render_ocr_comparison_on_image(
-                    base_image, perf_calculator, page_w, page_h
-                )
                 output_image_path: Path = (
                     visualizations_output_path / f"{doc_id_val}_ocr_comparison.png"
                 )
@@ -389,63 +484,10 @@ class OCRVisualizer:
 
         return generated_visualization_paths
 
-    def _word_to_error_word(self, word: Word) -> ErrorWord:
-        return ErrorWord(
-            text=word.text,
-            confidence=word.confidence,
-            bounding_box=BoundingBox.model_validate(word.bbox.model_dump()),
-        )
-
-    def _save_error_report(
-        self,
-        doc_id: str,
-        perf_calculator: _OcrPerformanceCalculator,
-        output_path: Path,
-    ) -> None:
-        substitution_errors: List[SubstitutionError] = []
-        used_gt_keys: Set[Tuple] = set()
-        used_pred_keys: Set[Tuple] = set()
-
-        for gt_word, pred_word in perf_calculator.confirmed_gt_prediction_matches:
-            if gt_word.text.strip() != pred_word.text.strip():
-                substitution_errors.append(
-                    SubstitutionError(
-                        ground_truth=self._word_to_error_word(gt_word),
-                        prediction=self._word_to_error_word(pred_word),
-                    )
-                )
-            used_gt_keys.add(box_to_key(gt_word.bbox))
-            used_pred_keys.add(box_to_key(pred_word.bbox))
-
-        insertions = [
-            self._word_to_error_word(word)
-            for word in perf_calculator.current_false_positives
-            if box_to_key(word.bbox) not in used_pred_keys
-        ]
-
-        deletions = [
-            self._word_to_error_word(word)
-            for word in perf_calculator.current_false_negatives
-            if box_to_key(word.bbox) not in used_gt_keys
-        ]
-
-        if not substitution_errors and not insertions and not deletions:
-            return
-
-        report = DocumentErrorReport(
-            doc_id=doc_id,
-            substitution_errors=substitution_errors,
-            insertion_errors_fp=insertions,
-            deletion_errors_fn=deletions,
-        )
-        report_path = output_path / f"{doc_id}_errors.json"
-        with open(report_path, "w") as f:
-            f.write(report.model_dump_json(indent=2))
-
-    def _render_ocr_comparison_on_image(
+    def _render_comparison_from_metadata(
         self,
         source_page_image: Image.Image,
-        perf_calculator: _OcrPerformanceCalculator,
+        metadata: DocumentEvaluationMetadata,
         page_w: float,
         page_h: float,
     ) -> Image.Image:
@@ -458,12 +500,14 @@ class OCRVisualizer:
         scale_factor_x = source_page_image.width / page_w if page_w > 0 else 1.0
         scale_factor_y = source_page_image.height / page_h if page_h > 0 else 1.0
 
-        all_gt_words = [
-            gt for gt, _ in perf_calculator.confirmed_gt_prediction_matches
-        ] + perf_calculator.current_false_negatives
+        # draw ground truth words (TPs + FNs)
+        all_gt_words = []
+        for tp_match in metadata.true_positives:
+            all_gt_words.append(tp_match.gt)
+        all_gt_words.extend(metadata.false_negatives)
 
-        for cell_item in all_gt_words:
-            bbox_obj = cell_item.rect.to_bounding_box()
+        for word_meta in all_gt_words:
+            bbox_obj = word_meta.bounding_box
             if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
                 bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
             l, t = round(bbox_obj.l * scale_factor_x), round(
@@ -480,13 +524,15 @@ class OCRVisualizer:
             text_y = t - 15 if t > 15 else b + 2
             gt_draw_context.text(
                 (l, text_y),
-                cell_item.text,
+                word_meta.text,
                 fill=self._text_label_color,
                 font=self._rendering_font,
             )
 
-        for _, cell_item in perf_calculator.confirmed_gt_prediction_matches:
-            bbox_obj = cell_item.rect.to_bounding_box()
+        # correct predictions (TPs only)
+        for tp_match in metadata.true_positives:
+            pred_meta = tp_match.pred
+            bbox_obj = pred_meta.bounding_box
             if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
                 bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
             l, t = round(bbox_obj.l * scale_factor_x), round(
@@ -501,8 +547,11 @@ class OCRVisualizer:
                 width=self._outline_thickness,
             )
 
-        for cell_item in perf_calculator.current_false_positives:
-            bbox_obj = cell_item.rect.to_bounding_box()
+        # Draw incorrect predictions (FPs)
+        all_incorrect_preds = metadata.false_positives.copy()
+
+        for word_meta in all_incorrect_preds:
+            bbox_obj = word_meta.bounding_box
             if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
                 bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
             l, t = round(bbox_obj.l * scale_factor_x), round(
@@ -519,7 +568,7 @@ class OCRVisualizer:
             text_y = t - 15 if t > 15 else b + 2
             pred_draw_context.text(
                 (l, text_y),
-                cell_item.text,
+                word_meta.text,
                 fill=self._text_label_color,
                 font=self._rendering_font,
             )
@@ -558,7 +607,7 @@ class OCRVisualizer:
             (img_w + 10, 10), "Predicted OCR", fill="black", font=title_text_font
         )
 
-        metrics_summary = perf_calculator.calculate_image_metrics()
+        metrics_summary = metadata.metrics
 
         stats_texts = {
             "TP (True Positives)": f"{metrics_summary.number_of_true_positive_matches}",

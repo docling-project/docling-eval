@@ -2,6 +2,8 @@ import copy
 from collections import namedtuple
 from typing import Dict, List, Tuple
 
+import edit_distance
+import numpy as np
 from docling_core.types.doc.page import SegmentedPage
 
 from docling_eval.evaluators.ocr.evaluation_models import (
@@ -17,6 +19,7 @@ from docling_eval.evaluators.ocr.matching_logic import (
     refine_prediction_to_many_gt_boxes,
 )
 from docling_eval.evaluators.ocr.processing_utils import (
+    calculate_edit_distance,
     convert_word_to_text_cell,
     merge_words_into_one,
 )
@@ -389,6 +392,63 @@ class _OcrPerformanceCalculator:
             recall + precision, _CalculationConstants.EPS
         )
 
+        sum_ed_sensitive = _CalculationConstants.EPS
+        sum_ed_insensitive = _CalculationConstants.EPS
+        sum_max_len_tp = _CalculationConstants.EPS
+        perfect_matches_sensitive = 0
+        perfect_matches_insensitive = 0
+        total_tp_words = 0
+
+        for gt_word, pred_word in self.confirmed_gt_prediction_matches:
+            gt_text = gt_word.text
+            pred_text = pred_word.text
+            total_tp_words += 1
+
+            max_len = max(len(gt_text), len(pred_text), 1)
+            sum_max_len_tp += max_len
+
+            # Case-sensitive metrics
+            ed_sensitive = calculate_edit_distance(
+                gt_text, pred_text, _CalculationConstants.CHAR_NORMALIZE_MAP
+            )
+            sum_ed_sensitive += ed_sensitive
+            if ed_sensitive == 0:
+                perfect_matches_sensitive += 1
+
+            # Case-insensitive metrics
+            ed_insensitive = calculate_edit_distance(
+                gt_text.upper(),
+                pred_text.upper(),
+                _CalculationConstants.CHAR_NORMALIZE_MAP,
+            )
+            sum_ed_insensitive += ed_insensitive
+            if ed_insensitive == 0:
+                perfect_matches_insensitive += 1
+
+        text_len_fp = sum(len(w.text) for w in self.current_false_positives)
+        text_len_fn = sum(len(w.text) for w in self.current_false_negatives)
+
+        # wrod accuracy (union-based)
+        total_union_words = total_tp_words + num_false_positives + num_false_negatives
+        word_acc_union_sensitive = perfect_matches_sensitive / max(
+            _CalculationConstants.EPS, total_union_words
+        )
+        word_acc_union_insensitive = perfect_matches_insensitive / max(
+            _CalculationConstants.EPS, total_union_words
+        )
+
+        # character accuracy (edit score union-based)
+        total_chars_union = sum_max_len_tp + text_len_fp + text_len_fn
+        avg_ed_union_sensitive = (sum_ed_sensitive + text_len_fp + text_len_fn) / max(
+            _CalculationConstants.EPS, total_chars_union
+        )
+        avg_ed_union_insensitive = (
+            sum_ed_insensitive + text_len_fp + text_len_fn
+        ) / max(_CalculationConstants.EPS, total_chars_union)
+
+        char_acc_sensitive = 1 - avg_ed_union_sensitive
+        char_acc_insensitive = 1 - avg_ed_union_insensitive
+
         metrics_summary_data = {
             "number_of_prediction_cells": num_prediction_cells_final,
             "number_of_gt_cells": num_gt_cells_final,
@@ -398,6 +458,10 @@ class _OcrPerformanceCalculator:
             "detection_precision": 100.0 * precision,
             "detection_recall": 100.0 * recall,
             "detection_f1": 100.0 * f1_score,
+            "word_accuracy_sensitive": 100.0 * word_acc_union_sensitive,
+            "word_accuracy_insensitive": 100.0 * word_acc_union_insensitive,
+            "character_accuracy_sensitive": 100.0 * char_acc_sensitive,
+            "character_accuracy_insensitive": 100.0 * char_acc_insensitive,
         }
 
         summary_instance = OcrMetricsSummary.model_validate(metrics_summary_data)
