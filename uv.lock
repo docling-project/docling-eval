@@ -850,7 +850,7 @@ vlm = [
 
 [[package]]
 name = "docling-core"
-version = "2.43.1"
+version = "2.46.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonref" },
@@ -864,9 +864,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/eb/c5af5ab617ca162fac7a1b9b89db6e52c33beb50b083b4eed858cea4f4b3/docling_core-2.43.1.tar.gz", hash = "sha256:8bc76879439e4ef6f65e60621fc70e6c81e02cb7490b08a12e416bfb05593180", size = 155583, upload-time = "2025-07-23T14:18:34.149Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/7c/7f70a695b324b230790d5a92c4d2851358c9465f5b17860e0c1c07dd7dad/docling_core-2.46.0.tar.gz", hash = "sha256:f8f5d1583b35b3e9ddac46f2b47d7ec218f914803a7edf46ad3392da870f4d88", size = 160789, upload-time = "2025-09-01T09:30:52.428Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/a1/25eafa2cfd8e73ff15a23e74d3698dac7608e1ca984081728788dd1444df/docling_core-2.43.1-py3-none-any.whl", hash = "sha256:24364a2344b3324a55fb4eba8cf2396345a90ca782766daa78412b6cdef00776", size = 159318, upload-time = "2025-07-23T14:18:32.576Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/c2/674bf25baa178af9f8397e48997205a3f5ab0382d35f68f1d64d92ed79af/docling_core-2.46.0-py3-none-any.whl", hash = "sha256:890e375bc569ccfd9499aa8f8c635c8714e5e8ab27f901a862ba84dd4fcb3e0c", size = 164097, upload-time = "2025-09-01T09:30:50.794Z" },
 ]
 
 [package.optional-dependencies]
@@ -963,7 +963,7 @@ requires-dist = [
     { name = "datasets", specifier = ">=3.2.0,<4.0.0" },
     { name = "distance", specifier = ">=0.1.3,<0.2.0" },
     { name = "docling", extras = ["vlm"], specifier = ">=2.42.0,<3.0.0" },
-    { name = "docling-core", specifier = ">=2.43.1" },
+    { name = "docling-core", specifier = ">=2.46.0" },
     { name = "edit-distance", specifier = ">=1.0.6,<2.0.0" },
     { name = "editdistance", specifier = ">=0.8.1" },
     { name = "evaluate", specifier = ">=0.4.3,<0.5.0" },
