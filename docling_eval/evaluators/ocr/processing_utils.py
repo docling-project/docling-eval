@@ -268,8 +268,12 @@ def calculate_edit_distance(
     str1: str, str2: str, normalize_map: Optional[Dict[str, str]] = None
 ) -> int:
     """Calculates the Levenshtein edit distance between two strings after optional normalization."""
+    str1_stripped = str1.strip()
+    str2_stripped = str2.strip()
+
     map_to_use = normalize_map or {}
-    str1_normalized = replace_chars_by_map(str1, map_to_use)
-    str2_normalized = replace_chars_by_map(str2, map_to_use)
+    str1_normalized = replace_chars_by_map(str1_stripped, map_to_use)
+    str2_normalized = replace_chars_by_map(str2_stripped, map_to_use)
+
     sm = edit_distance.SequenceMatcher(str1_normalized, str2_normalized)
     return sm.distance()
