@@ -22,6 +22,7 @@ class TableStructLabel(str, Enum):
     COL_HEADER = "col_header"
     ROW_HEADER = "row_header"
     ROW_SECTION = "row_section"
+    TABLE_FILLABLE_CELLS = "fillable_cells"
     BODY = "body"
 
 
