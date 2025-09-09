@@ -105,14 +105,9 @@ class Cell:
     row_header: bool = False
     row_section: bool = False
     fillable_cell: bool = False
-    # fillable: Optional[bool] = None
 
 
-# ==========================================================================================
-# ============================== CVAT ELEMENTS BBOX CHECKS =================================
-# ==========================================================================================
-
-
+# === CVAT ELEMENTS BBOX CHECKS ===
 # Compute IOU between two bboxes
 def compute_iou(a: "BoundingBox", b: "BoundingBox") -> float:
     """Intersection over Union with another box."""
@@ -172,11 +167,7 @@ def is_bbox_within(
     return inside_ratio >= threshold
 
 
-# ==========================================================================================
-# ============================== COMPUTE UNIQUE TABLE CELLS ================================
-# ==========================================================================================
-
-
+# COMPUTE UNIQUE TABLE CELLS
 def intersect_bboxes(a: BoundingBox, b: BoundingBox) -> Optional[BoundingBox]:
     l1 = max(a.l, b.l)
     t1 = max(a.t, b.t)
@@ -289,6 +280,7 @@ def compute_cells(
                 column_header=c_column_header,
                 row_header=c_row_header,
                 row_section=c_row_section,
+                fillable_cell=c_fillable,
             )
         )
 
@@ -322,6 +314,7 @@ def compute_cells(
                     column_header=c_column_header,
                     row_header=c_row_header,
                     row_section=c_row_section,
+                    fillable_cell=c_fillable,
                 )
             )
     return cells
@@ -352,11 +345,6 @@ def process_table_headers(
         if is_bbox_within(fillable_cell.bbox, bbox):
             c_fillable = True
     return c_column_header, c_row_header, c_row_section, c_fillable
-
-
-# ==========================================================================================
-# ==========================================================================================
-# ==========================================================================================
 
 
 class ListHierarchyManager:
@@ -840,11 +828,6 @@ class CVATToDoclingConverter:
         # go over tables and populate them with cells
         # This includes rich cell elements
 
-        # print("++++++++++++++++++++++++++++++")
-        # print("# of tables {}".format(len(self.doc.tables)))
-        # print("++++++++++++++++++++++++++++++")
-        # print(self.tabular_data)
-
         for tind, table_item in enumerate(self.doc.tables):
             # table_item.children - would be rich elements for each table cell
             table_cell_data = self.tabular_data[tind]["computed_table_cells"]
@@ -861,7 +844,7 @@ class CVATToDoclingConverter:
                 # Get text to populate TableData
                 cell_text = self._extract_text_from_bbox(c.bbox, page_no)
 
-                # DEFINE IF CELL IS RICH
+                # Define if cell is Rich
                 rich_cell = False
                 provs_in_cell = []
 
@@ -877,7 +860,6 @@ class CVATToDoclingConverter:
                             if is_bbox_within(c.bbox, prov_bbox_tl):
                                 # At least one child is inside the cell!
                                 rich_cell = True
-                                # print("RICH CELL TEXT: {}".format(cell_text))
                                 item_parent = item.parent.resolve(self.doc)
                                 if item.get_ref() in item_parent.children:
                                     item_parent.children.remove(item.get_ref())
@@ -915,9 +897,9 @@ class CVATToDoclingConverter:
                         column_header=c.column_header,
                         row_header=c.row_header,
                         row_section=c.row_section,
+                        fillable=c.fillable_cell,
                         ref=ref_for_rich_cell,  # points to an artificial group around children, or to child directly
                     )
-                    # table_data.table_cells.append(cell)
                     self.doc.add_table_cell(table_item=table_item, cell=cell)
                 else:
                     cell = TableCell(
@@ -931,9 +913,9 @@ class CVATToDoclingConverter:
                         end_col_offset_idx=c.start_column + c.column_span_length,
                         column_header=c.column_header,
                         row_header=c.row_header,
+                        fillable=c.fillable_cell,
                         row_section=c.row_section,
                     )
-                    # table_data.table_cells.append(cell)
                     self.doc.add_table_cell(table_item=table_item, cell=cell)
 
     def _find_parent_node(self, node: TreeNode) -> Optional[TreeNode]:
@@ -1176,12 +1158,6 @@ class CVATToDoclingConverter:
 
         elif doc_label == DocItemLabel.SECTION_HEADER:
             level = element.level or 1
-            # page_no = self._get_page_number_from_bbox(element.bbox)
-            # extracted_text = self._extract_text_from_bbox(element.bbox, page_no)
-            # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SECTION HEADER ({}): {}".format(level, text))
-            # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXTRACTED TEXT: {}".format(extracted_text))
-            # print(element.bbox)
-            # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
             return self.doc.add_heading(
                 text=text,
                 level=level,
