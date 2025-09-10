@@ -76,6 +76,9 @@ class DocumentStructure:
             image_info=image_info,
         )
 
+    def get_elements_by_label(self, label: object) -> list[CVATElement]:
+        return [e for e in self.elements if e.label == label]
+
     def get_element_by_id(self, element_id: int) -> Optional[CVATElement]:
         """Get an element by its ID."""
         return next((el for el in self.elements if el.id == element_id), None)

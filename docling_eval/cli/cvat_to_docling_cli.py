@@ -187,7 +187,7 @@ def main():
         description="Convert CVAT annotations to DoclingDocuments in batch."
     )
     parser.add_argument(
-        "input_path",
+        "--input_path",
         type=str,
         help="Path to input directory or XML file",
     )
