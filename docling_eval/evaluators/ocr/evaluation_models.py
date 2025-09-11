@@ -10,9 +10,10 @@ class _CalculationConstants:
     CHAR_NORMALIZE_MAP: Dict[str, str] = {
         "ﬁ": "fi",
         "ﬂ": "fl",
-        """: "'", """: "'",
-        '"': '"',
-        '"': '"',
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
         "—": "-",
         "–": "-",
         "\xa0": " ",
@@ -25,6 +26,8 @@ class Word(TextCell):
     matched: bool = Field(default=False)
     ignore_zone: Optional[bool] = None
     to_remove: Optional[bool] = None
+    # number of GT words represented by this Word after merging
+    word_weight: int = Field(default=1)
 
     @property
     def bbox(self) -> BoundingBox:
@@ -57,6 +60,15 @@ class OcrMetricsSummary(BaseModel):
     word_accuracy_insensitive: float = 0.0
     character_accuracy_sensitive: float = 0.0
     character_accuracy_insensitive: float = 0.0
+    # for dataset-level union aggregation
+    tp_words_weighted: float = 0.0
+    perfect_matches_sensitive_weighted: float = 0.0
+    perfect_matches_insensitive_weighted: float = 0.0
+    sum_ed_sensitive_tp: float = 0.0
+    sum_ed_insensitive_tp: float = 0.0
+    sum_max_len_tp: float = 0.0
+    text_len_fp: float = 0.0
+    text_len_fn: float = 0.0
 
     class Config:
         populate_by_name = True

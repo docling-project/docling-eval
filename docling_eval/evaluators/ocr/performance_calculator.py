@@ -397,39 +397,39 @@ class _OcrPerformanceCalculator:
         sum_max_len_tp = _CalculationConstants.EPS
         perfect_matches_sensitive = 0
         perfect_matches_insensitive = 0
-        total_tp_words = 0
+        total_tp_words_weighted = 0
 
         for gt_word, pred_word in self.confirmed_gt_prediction_matches:
             gt_text = gt_word.text
             pred_text = pred_word.text
-            total_tp_words += 1
+            # weight by the number of GT words represented by this merged word
+            gt_weight = getattr(gt_word, "word_weight", 1)
+            total_tp_words_weighted += gt_weight
 
             max_len = max(len(gt_text), len(pred_text), 1)
             sum_max_len_tp += max_len
 
             # Case-sensitive metrics
-            ed_sensitive = calculate_edit_distance(
-                gt_text, pred_text, _CalculationConstants.CHAR_NORMALIZE_MAP
-            )
+            ed_sensitive = calculate_edit_distance(gt_text, pred_text, None)
             sum_ed_sensitive += ed_sensitive
             if ed_sensitive == 0:
-                perfect_matches_sensitive += 1
+                perfect_matches_sensitive += gt_weight
 
             # Case-insensitive metrics
             ed_insensitive = calculate_edit_distance(
-                gt_text.upper(),
-                pred_text.upper(),
-                _CalculationConstants.CHAR_NORMALIZE_MAP,
+                gt_text.upper(), pred_text.upper(), None
             )
             sum_ed_insensitive += ed_insensitive
             if ed_insensitive == 0:
-                perfect_matches_insensitive += 1
+                perfect_matches_insensitive += gt_weight
 
         text_len_fp = sum(len(w.text) for w in self.current_false_positives)
         text_len_fn = sum(len(w.text) for w in self.current_false_negatives)
 
-        # wrod accuracy (union-based)
-        total_union_words = total_tp_words + num_false_positives + num_false_negatives
+        # word accuracy (union-based), weighted by GT merges for TPs
+        total_union_words = (
+            total_tp_words_weighted + num_false_positives + num_false_negatives
+        )
         word_acc_union_sensitive = perfect_matches_sensitive / max(
             _CalculationConstants.EPS, total_union_words
         )
@@ -462,6 +462,15 @@ class _OcrPerformanceCalculator:
             "word_accuracy_insensitive": 100.0 * word_acc_union_insensitive,
             "character_accuracy_sensitive": 100.0 * char_acc_sensitive,
             "character_accuracy_insensitive": 100.0 * char_acc_insensitive,
+            # additional counters for dataset-level union aggregation
+            "tp_words_weighted": float(total_tp_words_weighted),
+            "perfect_matches_sensitive_weighted": float(perfect_matches_sensitive),
+            "perfect_matches_insensitive_weighted": float(perfect_matches_insensitive),
+            "sum_ed_sensitive_tp": float(sum_ed_sensitive),
+            "sum_ed_insensitive_tp": float(sum_ed_insensitive),
+            "sum_max_len_tp": float(sum_max_len_tp),
+            "text_len_fp": float(text_len_fp),
+            "text_len_fn": float(text_len_fn),
         }
 
         summary_instance = OcrMetricsSummary.model_validate(metrics_summary_data)

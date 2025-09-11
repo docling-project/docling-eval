@@ -71,6 +71,7 @@ class OCREvaluator(BaseEvaluator):
             ignore_zone_filter_type=ignore_zone_filter_config,
             add_space_for_merged_prediction_words=use_space_for_prediction_merge,
             add_space_for_merged_gt_words=use_space_for_gt_merge,
+            aggregation_mode="union",
         )
 
         _log.info("Loading data split '%s' from: '%s'", data_split_name, dataset_path)
@@ -277,12 +278,12 @@ class OCREvaluator(BaseEvaluator):
 
             if other_word is not None:
                 edit_dist_sensitive = calculate_edit_distance(
-                    word.text, other_word.text, _CalculationConstants.CHAR_NORMALIZE_MAP
+                    word.text, other_word.text, None
                 )
                 edit_dist_insensitive = calculate_edit_distance(
                     word.text.upper(),
                     other_word.text.upper(),
-                    _CalculationConstants.CHAR_NORMALIZE_MAP,
+                    None,
                 )
 
             return WordEvaluationMetadata(
@@ -298,8 +299,17 @@ class OCREvaluator(BaseEvaluator):
 
         true_positives = []
         for gt_word, pred_word in perf_calculator.confirmed_gt_prediction_matches:
-            gt_meta = word_to_metadata(gt_word, is_tp=True, other_word=pred_word)
-            pred_meta = word_to_metadata(pred_word, is_tp=True, other_word=gt_word)
+            ed_sensitive = calculate_edit_distance(
+                gt_word.text, pred_word.text, _CalculationConstants.CHAR_NORMALIZE_MAP
+            )
+            is_perfect_match = ed_sensitive == 0
+
+            gt_meta = word_to_metadata(
+                gt_word, is_tp=is_perfect_match, other_word=pred_word
+            )
+            pred_meta = word_to_metadata(
+                pred_word, is_tp=is_perfect_match, other_word=gt_word
+            )
 
             tp_match = TruePositiveMatch(pred=pred_meta, gt=gt_meta)
             true_positives.append(tp_match)
@@ -510,11 +520,13 @@ class OCRVisualizer:
             bbox_obj = word_meta.bounding_box
             if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
                 bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
-            l, t = round(bbox_obj.l * scale_factor_x), round(
-                bbox_obj.t * scale_factor_y
+            l, t = (
+                round(bbox_obj.l * scale_factor_x),
+                round(bbox_obj.t * scale_factor_y),
             )
-            r, b = round(bbox_obj.r * scale_factor_x), round(
-                bbox_obj.b * scale_factor_y
+            r, b = (
+                round(bbox_obj.r * scale_factor_x),
+                round(bbox_obj.b * scale_factor_y),
             )
             gt_draw_context.rectangle(
                 [l, t, r, b],
@@ -529,22 +541,65 @@ class OCRVisualizer:
                 font=self._rendering_font,
             )
 
-        # correct predictions (TPs only)
+        correct_tp_pairs: List[TruePositiveMatch] = []
+        incorrect_tp_pairs: List[TruePositiveMatch] = []
         for tp_match in metadata.true_positives:
             pred_meta = tp_match.pred
+            ed = pred_meta.edit_distance_sensitive
+            if ed is not None and ed == 0:
+                correct_tp_pairs.append(tp_match)
+            else:
+                incorrect_tp_pairs.append(tp_match)
+
+        # draw correct predictions (exact text match)
+        for tp in correct_tp_pairs:
+            pred_meta = tp.pred
             bbox_obj = pred_meta.bounding_box
             if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
                 bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
-            l, t = round(bbox_obj.l * scale_factor_x), round(
-                bbox_obj.t * scale_factor_y
+            l, t = (
+                round(bbox_obj.l * scale_factor_x),
+                round(bbox_obj.t * scale_factor_y),
             )
-            r, b = round(bbox_obj.r * scale_factor_x), round(
-                bbox_obj.b * scale_factor_y
+            r, b = (
+                round(bbox_obj.r * scale_factor_x),
+                round(bbox_obj.b * scale_factor_y),
             )
             pred_draw_context.rectangle(
                 [l, t, r, b],
                 outline=self._correct_match_color,
                 width=self._outline_thickness,
+            )
+
+        # draw incorrect predictions (TPs with text mismatch) and label "pred | gt"
+        for tp in incorrect_tp_pairs:
+            pred_meta = tp.pred
+            gt_meta = tp.gt
+            bbox_obj = pred_meta.bounding_box
+            if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
+                bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
+            l, t = (
+                round(bbox_obj.l * scale_factor_x),
+                round(bbox_obj.t * scale_factor_y),
+            )
+            r, b = (
+                round(bbox_obj.r * scale_factor_x),
+                round(bbox_obj.b * scale_factor_y),
+            )
+            pred_draw_context.rectangle(
+                [l, t, r, b],
+                outline=self._prediction_color,
+                width=self._outline_thickness,
+            )
+            # label with "pred | gt"
+            text_y = t - 15 if t > 15 else b + 2
+            # label_text = f"{pred_meta.text} | {gt_meta.text}"
+            label_text = f"{pred_meta.text}"
+            pred_draw_context.text(
+                (l, text_y),
+                label_text,
+                fill=self._text_label_color,
+                font=self._rendering_font,
             )
 
         # Draw incorrect predictions (FPs)
@@ -554,11 +609,13 @@ class OCRVisualizer:
             bbox_obj = word_meta.bounding_box
             if bbox_obj.coord_origin != CoordOrigin.TOPLEFT:
                 bbox_obj = bbox_obj.to_top_left_origin(page_height=page_h)
-            l, t = round(bbox_obj.l * scale_factor_x), round(
-                bbox_obj.t * scale_factor_y
+            l, t = (
+                round(bbox_obj.l * scale_factor_x),
+                round(bbox_obj.t * scale_factor_y),
             )
-            r, b = round(bbox_obj.r * scale_factor_x), round(
-                bbox_obj.b * scale_factor_y
+            r, b = (
+                round(bbox_obj.r * scale_factor_x),
+                round(bbox_obj.b * scale_factor_y),
             )
             pred_draw_context.rectangle(
                 [l, t, r, b],
