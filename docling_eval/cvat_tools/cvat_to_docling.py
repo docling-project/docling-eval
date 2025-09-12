@@ -1022,17 +1022,17 @@ class CVATToDoclingConverter:
         # Check captions
         for path_id, (
             container_id,
-            target_id,
+            caption_id,
         ) in self.doc_structure.path_mappings.to_caption.items():
-            if target_id == element_id:
+            if caption_id == element_id:
                 return True
 
         # Check footnotes
         for path_id, (
             container_id,
-            target_id,
+            footnote_id,
         ) in self.doc_structure.path_mappings.to_footnote.items():
-            if target_id == element_id:
+            if footnote_id == element_id:
                 return True
 
         return False

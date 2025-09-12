@@ -4,6 +4,7 @@ This module provides functions for mapping different types of paths (reading ord
 to elements and validating their relationships.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -16,6 +17,8 @@ from .utils import (
     is_container_element,
     is_footnote_element,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -74,10 +77,46 @@ def map_path_points_to_elements(
             group[path.id] = touched_elements
         elif path.label == "to_caption" and len(touched_elements) == 2:
             # First element should be container, second should be caption
-            to_caption[path.id] = (touched_elements[0], touched_elements[1])
+            container_id, caption_id = touched_elements[0], touched_elements[1]
+
+            # Get elements to check their types
+            container_el = next((el for el in elements if el.id == container_id), None)
+            caption_el = next((el for el in elements if el.id == caption_id), None)
+
+            # Check if the relationship is backwards and auto-correct with warning
+            if (
+                container_el
+                and caption_el
+                and is_caption_element(container_el)
+                and is_container_element(caption_el)
+            ):
+                logger.warning(
+                    f"Caption path {path.id}: Backwards annotation detected, auto-correcting"
+                )
+                container_id, caption_id = caption_id, container_id
+
+            to_caption[path.id] = (container_id, caption_id)
         elif path.label == "to_footnote" and len(touched_elements) == 2:
             # First element should be container, second should be footnote
-            to_footnote[path.id] = (touched_elements[0], touched_elements[1])
+            container_id, footnote_id = touched_elements[0], touched_elements[1]
+
+            # Get elements to check their types
+            container_el = next((el for el in elements if el.id == container_id), None)
+            footnote_el = next((el for el in elements if el.id == footnote_id), None)
+
+            # Check if the relationship is backwards and auto-correct with warning
+            if (
+                container_el
+                and footnote_el
+                and is_footnote_element(container_el)
+                and is_container_element(footnote_el)
+            ):
+                logger.warning(
+                    f"Footnote path {path.id}: Backwards annotation detected, auto-correcting"
+                )
+                container_id, footnote_id = footnote_id, container_id
+
+            to_footnote[path.id] = (container_id, footnote_id)
         elif path.label == "to_value" and len(touched_elements) == 2:
             # First element should be key, second should be value
             to_value[path.id] = (touched_elements[0], touched_elements[1])
