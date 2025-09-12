@@ -761,7 +761,10 @@ class CVATToDoclingConverter:
         return None
 
     def _process_list_item_with_hierarchy(
-        self, element: CVATElement, parent_item: Optional[NodeItem]
+        self,
+        element: CVATElement,
+        global_order: List[int],
+        current_position: Optional[int],
     ) -> Optional[ListItem]:
         """Process a list item with proper hierarchy based on level."""
         level = element.level or 1
@@ -796,6 +799,19 @@ class CVATToDoclingConverter:
         # Update level stack
         self.list_manager.update_level_stack(level, list_item)
 
+        # Process logical child text elements immediately if position is available
+        if current_position is not None:
+            child_elements = self._find_logical_children_for_list_item(
+                element, global_order, current_position
+            )
+            for child_element in child_elements:
+                # Create child item with list_item as parent
+                child_item = self._create_single_item(child_element, list_item)
+                if child_item:
+                    # Mark as processed to prevent duplicate processing
+                    self.processed_elements.add(child_element.id)
+                    self.element_to_item[child_element.id] = child_item
+
         return list_item
 
     def _find_group_id_for_element(self, element: CVATElement) -> Optional[int]:
@@ -808,10 +824,77 @@ class CVATToDoclingConverter:
                 return path_id
         return None
 
+    def _find_logical_children_for_list_item(
+        self, list_element: CVATElement, global_order: List[int], current_pos: int
+    ) -> List[CVATElement]:
+        """Find text elements that should be children of this list item.
+
+        Looks ahead in reading order to find text elements between this list item
+        and the next list item, stopping at group/structural boundaries.
+
+        Args:
+            list_element: The list item element to find children for
+            global_order: The global reading order
+            current_pos: Current position in the global_order
+
+        Returns:
+            List of text elements that should be children of this list item
+        """
+        group_id = self._find_group_id_for_element(list_element)
+        list_content_layer = list_element.content_layer
+
+        children = []
+        # Look ahead in reading order
+        for i in range(current_pos + 1, len(global_order)):
+            next_element_id = global_order[i]
+            next_element = self.doc_structure.get_element_by_id(next_element_id)
+
+            if not next_element:
+                continue
+
+            # Stop if we hit another list item (any list item, any group)
+            if next_element.label == DocItemLabel.LIST_ITEM:
+                break
+
+            # Stop if we hit structural elements that indicate new sections
+            if next_element.label in [
+                DocItemLabel.SECTION_HEADER,
+                DocItemLabel.TITLE,
+                DocItemLabel.TABLE,
+                DocItemLabel.PICTURE,
+                DocItemLabel.FORM,
+            ]:
+                break
+
+            # Only collect text elements on the same content layer
+            if (
+                next_element.label == DocItemLabel.TEXT
+                and next_element.content_layer == list_content_layer
+            ):
+
+                next_group_id = self._find_group_id_for_element(next_element)
+
+                # If we have a group, only include text from same group or no group
+                if group_id is not None:
+                    if next_group_id is None or next_group_id == group_id:
+                        children.append(next_element)
+                    else:
+                        # Different group means we've moved to a new section
+                        break
+                else:
+                    # If list item has no group, only include text with no group
+                    if next_group_id is None:
+                        children.append(next_element)
+                    else:
+                        # Text has a group but list doesn't - stop here
+                        break
+
+        return children
+
     def _process_elements_in_order(self, global_order: List[int]):
         """Process elements in reading order."""
         # Process elements in global reading order
-        for element_id in global_order:
+        for i, element_id in enumerate(global_order):
             # Skip if already processed
             if element_id in self.processed_elements:
                 continue
@@ -820,7 +903,11 @@ class CVATToDoclingConverter:
             node = find_node_by_element_id(self.doc_structure.tree_roots, element_id)
             if node:
                 self._process_node(
-                    node, None, parent_item=None, global_order=global_order
+                    node,
+                    None,
+                    parent_item=None,
+                    global_order=global_order,
+                    current_position=i,
                 )
 
     def _process_table_data(self):
@@ -944,6 +1031,7 @@ class CVATToDoclingConverter:
         parentTreeNode: Optional[TreeNode],
         parent_item: Optional[NodeItem],
         global_order: List[int],
+        current_position: Optional[int] = None,
     ):
         """Process a tree node and its children."""
         element = node.element
@@ -958,7 +1046,9 @@ class CVATToDoclingConverter:
 
         # Handle list items with hierarchy
         if element.label == DocItemLabel.LIST_ITEM:
-            list_item = self._process_list_item_with_hierarchy(element, parent_item)
+            list_item = self._process_list_item_with_hierarchy(
+                element, global_order, current_position
+            )
             if list_item:
                 self.element_to_item[element.id] = list_item
                 self.processed_elements.add(element.id)
@@ -1015,7 +1105,9 @@ class CVATToDoclingConverter:
             )
 
             for child in sorted_children:
-                self._process_node(child, node, item, global_order)
+                self._process_node(
+                    child, node, item, global_order, current_position=None
+                )
 
     def _is_caption_or_footnote_target(self, element_id: int) -> bool:
         """Check if element is a target of caption/footnote relationship."""
