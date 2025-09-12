@@ -141,7 +141,7 @@ def _dedupe_by_bboxes(
 
 
 def is_bbox_within(
-    bbox_a: BoundingBox, bbox_b: BoundingBox, threshold: float = 0.2
+    bbox_a: BoundingBox, bbox_b: BoundingBox, threshold: float = 0.5
 ) -> bool:
     """
     Returns True if at least `threshold` proportion of B is inside A.
@@ -630,7 +630,7 @@ class CVATToDoclingConverter:
         # Process elements in reading order, building list hierarchy on-demand
         self._process_elements_in_order(global_order)
 
-        # TODO: Process table data
+        # Process table data
         self._process_table_data()
 
         # Process captions and footnotes
@@ -1198,6 +1198,13 @@ class CVATToDoclingConverter:
             )
 
             tb = element.bbox
+
+            pool_rows.extend(
+                pool_row_sections
+            )  # use row sections to compensate for missing rows
+            # pool_rows.extend(pool_col_headers)  # use column headers to compensate for missing rows
+
+            print(pool_row_sections)
 
             rows = _dedupe_by_bboxes(
                 [
