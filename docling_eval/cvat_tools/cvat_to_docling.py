@@ -1182,6 +1182,9 @@ class CVATToDoclingConverter:
                 primary_element,
                 parent,
             )
+        else:
+            # Return None if label is not a DocItemLabel
+            return None
 
         # Add additional provenances
         if item and len(all_provs) > 1:
