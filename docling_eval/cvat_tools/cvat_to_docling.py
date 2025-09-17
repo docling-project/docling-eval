@@ -474,7 +474,25 @@ class ListHierarchyManager:
 
 
 class CVATToDoclingConverter:
-    """Converts CVAT DocumentStructure to DoclingDocument."""
+    """Converts CVAT DocumentStructure to DoclingDocument.
+
+    Caption and Footnote Support:
+    ----------------------------
+    The following containers (FloatingItem subclasses) can have captions and footnotes:
+    - TableItem (DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX)
+    - PictureItem (DocItemLabel.PICTURE, DocItemLabel.HANDWRITTEN_TEXT)
+    - CodeItem (DocItemLabel.CODE)
+    - FormItem (DocItemLabel.FORM)
+    - KeyValueItem (DocItemLabel.KEY_VALUE_REGION)
+
+    Caption/footnote relationships support both directions:
+    - Forward: container -> caption/footnote (standard case)
+    - Backward: caption/footnote -> container (handles annotation errors)
+
+    The converter is resilient to caption elements being labeled as TEXT instead
+    of CAPTION in the CVAT annotations - it will create the proper DocItemLabel.CAPTION
+    items regardless of the original label.
+    """
 
     def __init__(
         self,
@@ -1539,28 +1557,41 @@ class CVATToDoclingConverter:
     def _add_caption_or_footnote(
         self, container_id: int, target_id: int, is_caption: bool
     ):
-        """Add caption or footnote to a container item."""
-        # Get container item
-        container_item = self.element_to_item.get(container_id)
-        if not container_item:
-            _logger.warning(f"Container {container_id} not found.")
+        """Add caption or footnote to a container item.
+
+        Handles both forward and backward relationships. Tolerates caption/footnote
+        elements labeled as TEXT - always creates items with correct CAPTION/FOOTNOTE
+        labels regardless of original label.
+        """
+        # Try forward direction first (container -> caption)
+        if self._try_caption_direction(container_id, target_id, is_caption):
             return
 
-        # Check if container supports captions/footnotes
-        if not isinstance(container_item, FloatingItem):
-            _logger.warning(
-                f"Container {container_id} does not support {'captions' if is_caption else 'footnotes'}"
-            )
+        # Try backward direction (caption -> container)
+        if self._try_caption_direction(target_id, container_id, is_caption):
             return
+
+        _logger.warning(
+            f"Could not establish {'caption' if is_caption else 'footnote'} relationship between {container_id} and {target_id}"
+        )
+
+    def _try_caption_direction(
+        self, container_id: int, target_id: int, is_caption: bool
+    ) -> bool:
+        """Try to add caption/footnote in a specific direction. Returns True if successful."""
+        # Get container item
+        container_item = self.element_to_item.get(container_id)
+        if not container_item or not isinstance(container_item, FloatingItem):
+            return False
 
         # Get target element
         target_element = self.doc_structure.get_element_by_id(target_id)
         if not target_element:
-            return
+            return False
 
         page_no, text, provenance = self._process_element_bbox(target_element)
 
-        # Create caption/footnote item
+        # Create caption/footnote item - always use correct label regardless of original element label
         label = DocItemLabel.CAPTION if is_caption else DocItemLabel.FOOTNOTE
         item = self.doc.add_text(
             label=label,
@@ -1579,6 +1610,9 @@ class CVATToDoclingConverter:
 
             self.element_to_item[target_id] = item
             self.processed_elements.add(target_id)
+            return True
+
+        return False
 
     def _extract_text_from_bbox(self, bbox: BoundingBox, page_no: int) -> str:
         """Extract text from bounding box using SegmentedPage text cells."""

@@ -52,6 +52,9 @@ def get_deepest_element_at_point(
 ) -> Optional[CVATElement]:
     """Get the deepest (smallest area) element containing the given point.
 
+    Filters out TableStructLabel elements as they are only structural annotations
+    for table reconstruction, not content elements for reading order.
+
     Args:
         point: (x, y) coordinates of the point
         elements: List of elements to search
@@ -60,8 +63,16 @@ def get_deepest_element_at_point(
     Returns:
         The deepest element containing the point, or None if no element found
     """
+    from .models import TableStructLabel
+
     candidates = find_elements_containing_point(point, elements, proximity_thresh)
-    return candidates[0] if candidates else None
+
+    # Filter out TableStructLabel elements (they are only structural annotations)
+    filtered_candidates = [
+        el for el in candidates if not isinstance(el.label, TableStructLabel)
+    ]
+
+    return filtered_candidates[0] if filtered_candidates else None
 
 
 def validate_element_types(
@@ -118,7 +129,7 @@ def is_caption_element(element: CVATElement) -> bool:
     Returns:
         True if the element is a caption
     """
-    return element.label == "caption"
+    return element.label in ["caption", "text"]
 
 
 def is_footnote_element(element: CVATElement) -> bool:
