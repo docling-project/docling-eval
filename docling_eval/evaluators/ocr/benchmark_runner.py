@@ -7,6 +7,7 @@ from docling_core.types.doc.page import SegmentedPage
 from docling_eval.evaluators.ocr.evaluation_models import (
     OcrBenchmarkEntry,
     OcrMetricsSummary,
+    TextCellUnit,
     Word,
 )
 from docling_eval.evaluators.ocr.performance_calculator import _OcrPerformanceCalculator
@@ -26,7 +27,8 @@ class _OcrBenchmark:
         ignore_zone_filter_type: str = "default",
         add_space_for_merged_prediction_words: bool = True,
         add_space_for_merged_gt_words: bool = True,
-        aggregation_mode: str = "union",  # "mean" or "union"
+        aggregation_mode: str = "union",
+        text_unit: TextCellUnit = TextCellUnit.WORD,
     ) -> None:
         self.model_identifier: str = model_identifier
         self.add_space_for_merged_prediction_words: bool = (
@@ -41,6 +43,7 @@ class _OcrBenchmark:
         self.image_to_ignore_zones_map: Dict[str, List[Word]] = {}
         self.calculator_type: str = performance_calculator_type
         self.aggregation_mode: str = aggregation_mode
+        self.text_unit = text_unit
 
         self.ignore_zone_filter: "_IgnoreZoneFilter | _IgnoreZoneFilterHWR"
         if ignore_zone_filter_type.lower() == "hwr":
@@ -54,18 +57,29 @@ class _OcrBenchmark:
         prediction_page: SegmentedPage,
         image_identifier: str,
     ) -> None:
+        if self.text_unit == TextCellUnit.LINE:
+            prediction_cells = prediction_page.textline_cells
+            prediction_has_cells = prediction_page.has_lines
+            gt_cells = ground_truth_page.textline_cells
+            gt_has_cells = ground_truth_page.has_lines
+        else:
+            prediction_cells = prediction_page.word_cells
+            prediction_has_cells = prediction_page.has_words
+            gt_cells = ground_truth_page.word_cells
+            gt_has_cells = ground_truth_page.has_words
+
         raw_prediction_words: List[Word] = []
-        if prediction_page.has_words:
+        if prediction_has_cells:
             page_height = prediction_page.dimension.height
-            for text_cell_item in prediction_page.word_cells:
+            for text_cell_item in prediction_cells:
                 raw_prediction_words.append(
                     extract_word_from_text_cell(text_cell_item, page_height)
                 )
 
         raw_ground_truth_words: List[Word] = []
-        if ground_truth_page.has_words:
+        if gt_has_cells:
             page_height = ground_truth_page.dimension.height
-            for text_cell_item in ground_truth_page.word_cells:
+            for text_cell_item in gt_cells:
                 raw_ground_truth_words.append(
                     extract_word_from_text_cell(text_cell_item, page_height)
                 )
