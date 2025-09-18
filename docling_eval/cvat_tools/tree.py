@@ -33,7 +33,14 @@ class TreeNode:
 
 
 def contains(parent: CVATElement, child: CVATElement, iou_thresh: float = 0.7) -> bool:
-    """Check if parent element contains child element based on IOU threshold."""
+    """Check if parent element contains child element based on IOU threshold.
+
+    Only larger elements can contain smaller ones to prevent circular dependencies.
+    """
+    # Only larger elements can contain smaller ones
+    if parent.bbox.area() <= child.bbox.area():
+        return False
+
     intersection = parent.bbox.intersection_area_with(child.bbox)
     return intersection / (child.bbox.area() + 1e-6) > iou_thresh
 
