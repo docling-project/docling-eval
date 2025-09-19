@@ -845,9 +845,9 @@ class CVATToDoclingConverter:
     def _find_logical_children_for_list_item(
         self, list_element: CVATElement, global_order: List[int], current_pos: int
     ) -> List[CVATElement]:
-        """Find text elements that should be children of this list item.
+        """Find elements that should be children of this list item.
 
-        Looks ahead in reading order to find text elements between this list item
+        Looks ahead in reading order to find elements between this list item
         and the next list item, stopping at group/structural boundaries.
 
         Args:
@@ -856,7 +856,7 @@ class CVATToDoclingConverter:
             current_pos: Current position in the global_order
 
         Returns:
-            List of text elements that should be children of this list item
+            List of elements that should be children of this list item
         """
         group_id = self._find_group_id_for_element(list_element)
         list_content_layer = list_element.content_layer
@@ -884,15 +884,12 @@ class CVATToDoclingConverter:
             ]:
                 break
 
-            # Only collect text elements on the same content layer
-            if (
-                next_element.label == DocItemLabel.TEXT
-                and next_element.content_layer == list_content_layer
-            ):
+            # Collect any elements (except list items) on the same content layer
+            if next_element.content_layer == list_content_layer:
 
                 next_group_id = self._find_group_id_for_element(next_element)
 
-                # If we have a group, only include text from same group or no group
+                # If we have a group, only include elements from same group or no group
                 if group_id is not None:
                     if next_group_id is None or next_group_id == group_id:
                         children.append(next_element)
@@ -900,11 +897,11 @@ class CVATToDoclingConverter:
                         # Different group means we've moved to a new section
                         break
                 else:
-                    # If list item has no group, only include text with no group
+                    # If list item has no group, only include elements with no group
                     if next_group_id is None:
                         children.append(next_element)
                     else:
-                        # Text has a group but list doesn't - stop here
+                        # Element has a group but list doesn't - stop here
                         break
 
         return children
