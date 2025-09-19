@@ -957,19 +957,29 @@ class CVATToDoclingConverter:
                 for item_ref in all_items:
                     item = item_ref.resolve(self.doc)
 
+                    # Skip the table itself - it should never be processed as cell content
+                    if item == table_item:
+                        continue
+
                     if isinstance(item, DocItem):
                         for prov in item.prov:
                             prov_bbox_tl = prov.bbox.to_top_left_origin(page_height)
 
-                            # print(f"{prov_bbox_tl=}")
                             if is_bbox_within(c.bbox, prov_bbox_tl):
                                 # At least one child is inside the cell!
                                 rich_cell = True
-                                item_parent = item.parent.resolve(self.doc)
-                                if item.get_ref() in item_parent.children:
+                                item_parent = (
+                                    item.parent.resolve(self.doc)
+                                    if item.parent
+                                    else None
+                                )
+                                # Only remove from parent if parent is not the table itself
+                                if (
+                                    item_parent
+                                    and item_parent != table_item
+                                    and item.get_ref() in item_parent.children
+                                ):
                                     item_parent.children.remove(item.get_ref())
-                                # if item.get_ref() in self.doc.body.children:
-                                #     self.doc.body.children.remove(item.get_ref())
                                 item.parent = table_item.get_ref()
                                 provs_in_cell.append(item.get_ref())
                 if rich_cell:
@@ -1317,8 +1327,6 @@ class CVATToDoclingConverter:
             )  # use row sections to compensate for missing rows
             # pool_rows.extend(pool_col_headers)  # use column headers to compensate for missing rows
 
-            print(pool_row_sections)
-
             rows = _dedupe_by_bboxes(
                 [
                     e
@@ -1380,17 +1388,6 @@ class CVATToDoclingConverter:
                 row_sections,
                 fillable_cells,
             )
-            print("")
-            print(
-                "================================ TABLE CELLS ================================"
-            )
-            for idx, c in enumerate(computed_table_cells):
-                print(
-                    f"{idx} - r{c.start_row}..{c.end_row}, c{c.start_column}..{c.end_column}, "
-                    f"row_span={c.row_span_length}, col_span={c.column_span_length}, "
-                    f"bbox={c.bbox}"
-                )
-            print("")
 
             # Create empty table data with proper number of rows/cols
             table_data = TableData(num_rows=len(rows), num_cols=len(cols))

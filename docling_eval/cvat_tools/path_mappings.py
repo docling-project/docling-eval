@@ -121,6 +121,9 @@ def map_path_points_to_elements(
             # First element should be key, second should be value
             to_value[path.id] = (touched_elements[0], touched_elements[1])
 
+    # Resolve reading order conflicts before returning
+    reading_order = _resolve_reading_order_conflicts(reading_order, paths, elements)
+
     return PathMappings(
         reading_order=reading_order,
         merge=merge,
@@ -129,6 +132,89 @@ def map_path_points_to_elements(
         to_footnote=to_footnote,
         to_value=to_value,
     )
+
+
+def _find_container_for_conflicted_path(
+    path: CVATAnnotationPath, lost_elements: List[int], elements: List[CVATElement]
+) -> Optional[CVATElement]:
+    """Find container element for reading order path using existing spatial utilities."""
+    from .tree import contains
+    from .utils import is_container_element
+
+    # Find containers that contain any of the lost elements, but path isn't fully inside
+    container_candidates = []
+    for element in elements:
+        if is_container_element(element):
+            # Skip if path is fully contained (violates constraint)
+            if all(
+                element.bbox.l <= x <= element.bbox.r
+                and element.bbox.t <= y <= element.bbox.b
+                for x, y in path.points
+            ):
+                continue
+
+            # Check if container holds any lost elements
+            for lost_id in lost_elements:
+                lost_el = next((el for el in elements if el.id == lost_id), None)
+                if lost_el and contains(element, lost_el):
+                    container_candidates.append(element)
+                    break
+
+    return (
+        min(container_candidates, key=lambda e: e.bbox.area())
+        if container_candidates
+        else None
+    )
+
+
+def _resolve_reading_order_conflicts(
+    reading_order: Dict[int, List[int]],
+    paths: List[CVATAnnotationPath],
+    elements: List[CVATElement],
+) -> Dict[int, List[int]]:
+    """Resolve conflicts where elements appear in multiple reading order paths."""
+    # Build path mappings (reuse existing pattern from associate_paths_to_containers)
+    path_levels = {
+        p.id: p.level or 1 for p in paths if p.label.startswith("reading_order")
+    }
+    path_by_id = {p.id: p for p in paths if p.label.startswith("reading_order")}
+
+    # Find element conflicts
+    element_to_paths: Dict[int, List[Tuple[int, int]]] = {}
+    for path_id, element_ids in reading_order.items():
+        level = path_levels.get(path_id, 1)
+        for element_id in element_ids:
+            element_to_paths.setdefault(element_id, []).append((path_id, level))
+
+    conflicts = {
+        eid: paths for eid, paths in element_to_paths.items() if len(paths) > 1
+    }
+    if conflicts:
+        logger.info(f"Resolving {len(conflicts)} reading order conflicts")
+
+    # Resolve conflicts: assign to deepest level, find containers for emptied paths
+    emptied_paths: Dict[int, List[int]] = {}
+    for element_id, path_level_pairs in conflicts.items():
+        keep_path_id = max(path_level_pairs, key=lambda x: x[1])[0]
+        for path_id, _ in path_level_pairs:
+            if path_id != keep_path_id:
+                reading_order[path_id].remove(element_id)
+                emptied_paths.setdefault(path_id, []).append(element_id)
+
+    # Add containers for paths that lost elements
+    for path_id, lost_elements in emptied_paths.items():
+        path = path_by_id.get(path_id)
+        if path:
+            container = _find_container_for_conflicted_path(
+                path, lost_elements, elements
+            )
+            if container and container.id not in reading_order[path_id]:
+                reading_order[path_id].append(container.id)
+                logger.info(
+                    f"Added container element {container.id} ({container.label}) to reading order path {path_id}"
+                )
+
+    return reading_order
 
 
 def associate_paths_to_containers(
