@@ -262,17 +262,135 @@ class BasePredictionProvider:
         # Copy the original input data to avoid modifying it
         input_data = copy.deepcopy(record.original)
 
-        # Convert Path to DocumentStream if needed
-        if not isinstance(input_data, DocumentStream):
-            if isinstance(input_data, Path):
-                input_data = DocumentStream(
-                    name=input_data.name, stream=BytesIO(input_data.open("rb").read())
-                )
+        # Special handling for JSON DoclingDocument records with page images
+        if record.mime_type == "application/json":
+            input_data, new_mime_type = self._handle_json_docling_document(record)
+            record.mime_type = new_mime_type
+        else:
+            # Standard processing for other mime types
+            # Convert Path to DocumentStream if needed
+            if not isinstance(input_data, DocumentStream):
+                if isinstance(input_data, Path):
+                    input_data = DocumentStream(
+                        name=input_data.name,
+                        stream=BytesIO(input_data.open("rb").read()),
+                    )
 
         record.original = input_data
         pred_record = self.predict(record)
 
         return pred_record
+
+    def _handle_json_docling_document(
+        self, record: DatasetRecord
+    ) -> tuple[DocumentStream, str]:
+        """
+        Handle records where the original is a JSON DoclingDocument.
+
+        Validates DoclingDocument and converts ground_truth_page_images to document stream.
+        Returns the DocumentStream and appropriate mime_type.
+        """
+        # Validate DoclingDocument structure
+        try:
+            if not isinstance(record.original, DocumentStream):
+                raise ValueError("Original is not a DocumentStream")
+
+            content = record.original.stream.read().decode("utf-8")
+            record.original.stream.seek(0)
+
+            import json
+
+            doc_data = json.loads(content)
+
+            if not (
+                isinstance(doc_data, dict)
+                and "schema_name" in doc_data
+                and "version" in doc_data
+                and "body" in doc_data
+            ):
+                raise ValueError("Invalid DoclingDocument structure")
+
+        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, ValueError) as e:
+            raise ValueError(
+                f"Record {record.doc_id} has mime_type 'application/json' but "
+                f"original is not a valid DoclingDocument: {e}"
+            )
+
+        # Ensure we have page images
+        if not record.ground_truth_page_images:
+            raise ValueError(
+                f"Record {record.doc_id} has mime_type 'application/json' but "
+                "no ground_truth_page_images available for processing"
+            )
+
+        # Log the conversion
+        _log.info(
+            f"Converting JSON DoclingDocument to document stream using "
+            f"{len(record.ground_truth_page_images)} page image(s) for record {record.doc_id}"
+        )
+
+        # Convert page images to document stream (unified path for single/multi-page)
+        images = record.ground_truth_page_images
+
+        if not images:
+            raise ValueError("No page images available for processing")
+
+        # Unified approach: Always create PDF (works for both single and multi-page)
+        pdf_buffer = BytesIO()
+
+        import io
+
+        from reportlab.lib.utils import ImageReader
+        from reportlab.pdfgen import canvas
+
+        # Convert images to RGB if needed
+        rgb_images = []
+        for img in images:
+            if img.mode != "RGB":
+                rgb_images.append(img.convert("RGB"))
+            else:
+                rgb_images.append(img)
+
+        # Create PDF using reportlab (lossless embedding)
+        # Adapted from user's pil_rgbs_to_lossless_pdf function
+        c = None
+
+        for img in rgb_images:
+            w_px, h_px = img.size
+            # Hard coded scale for 72 DPI (1 pixel = 1 point)
+            page_w_pt = w_px * 1.0
+            page_h_pt = h_px * 1.0
+
+            if c is None:
+                c = canvas.Canvas(pdf_buffer, pagesize=(page_w_pt, page_h_pt))
+            else:
+                c.setPageSize((page_w_pt, page_h_pt))
+
+            # Convert image to PNG in memory buffer for lossless embedding
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+
+            # Draw image at full size (lossless)
+            c.drawImage(
+                ImageReader(buf),
+                0,
+                0,
+                width=page_w_pt,
+                height=page_h_pt,
+                preserveAspectRatio=False,
+            )
+            c.showPage()
+
+        if c is not None:
+            c.save()
+            return (
+                DocumentStream(name="document.pdf", stream=pdf_buffer),
+                "application/pdf",
+            )
+
+        # This should never be reached due to the structure above, but mypy requires it
+        raise RuntimeError("Unexpected error in PDF creation")
 
     def get_effective_indices(
         self, total_items: int, begin_index: int, end_index: int

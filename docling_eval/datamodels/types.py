@@ -133,6 +133,7 @@ class PredictionProviderType(str, Enum):
     TABLEFORMER = "TableFormer"
     FILE = "File"
     SMOLDOCLING = "SmolDocling"
+    GRANITEDOCLING = "GraniteDocling"
     AWS = "AWS"
     AZURE = "Azure"
     GOOGLE = "Google"
