@@ -100,14 +100,19 @@ def _parse_image_element(
         try:
             label_obj = DocItemLabel(label_str)
         except ValueError:
+            # Handle common CVAT label variations (e.g., "document Index" -> "document_index")
+            normalized_label = label_str.lower().replace(" ", "_")
             try:
-                label_obj = GraphCellLabel(label_str)  # type: ignore[assignment]
+                label_obj = DocItemLabel(normalized_label)
             except ValueError:
                 try:
-                    label_obj = TableStructLabel(label_str)  # type: ignore[assignment]
+                    label_obj = GraphCellLabel(label_str)  # type: ignore[assignment]
                 except ValueError:
-                    logger.debug(f"Skipping invalid label: {label_str}")
-                    continue
+                    try:
+                        label_obj = TableStructLabel(label_str)  # type: ignore[assignment]
+                    except ValueError:
+                        logger.debug(f"Skipping invalid label: {label_str}")
+                        continue
 
         xtl = float(box.attrib["xtl"])
         ytl = float(box.attrib["ytl"])

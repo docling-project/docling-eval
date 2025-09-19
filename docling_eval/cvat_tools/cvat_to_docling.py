@@ -1389,8 +1389,26 @@ class CVATToDoclingConverter:
                 fillable_cells,
             )
 
-            # Create empty table data with proper number of rows/cols
-            table_data = TableData(num_rows=len(rows), num_cols=len(cols))
+            # If no table structure found, create single fake cell for content
+            if not rows or not cols:
+                computed_table_cells = [
+                    Cell(
+                        start_row=0,
+                        end_row=0,
+                        start_column=0,
+                        end_column=0,
+                        row_span_length=1,
+                        column_span_length=1,
+                        bbox=tb,
+                        column_header=False,
+                        row_header=False,
+                        row_section=False,
+                        fillable_cell=False,
+                    )
+                ]
+                table_data = TableData(num_rows=1, num_cols=1)
+            else:
+                table_data = TableData(num_rows=len(rows), num_cols=len(cols))
             # Store pre-computed table structure
             # to be used for re-construction of actual table cells in _process_table_data
             self.tabular_data.append(
