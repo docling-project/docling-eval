@@ -21,6 +21,7 @@ from docling_eval.evaluators.ocr.benchmark_runner import _OcrBenchmark
 from docling_eval.evaluators.ocr.evaluation_models import (
     DocumentEvaluationMetadata,
     OcrDatasetEvaluationResult,
+    TextCellUnit,
     TruePositiveMatch,
     Word,
     WordEvaluationMetadata,
@@ -47,6 +48,7 @@ class OCREvaluator(BaseEvaluator):
         prediction_sources: List[PredictionFormats] = [
             PredictionFormats.DOCLING_DOCUMENT
         ],
+        text_unit: TextCellUnit = TextCellUnit.WORD,
     ) -> None:
         super().__init__(
             intermediate_evaluations_path=intermediate_evaluations_path,
@@ -54,6 +56,7 @@ class OCREvaluator(BaseEvaluator):
             supported_prediction_formats=[PredictionFormats.DOCLING_DOCUMENT],
         )
         self.intermediate_evaluations_path = intermediate_evaluations_path
+        self.text_unit: TextCellUnit = text_unit
 
     def __call__(
         self,
@@ -72,6 +75,7 @@ class OCREvaluator(BaseEvaluator):
             add_space_for_merged_prediction_words=use_space_for_prediction_merge,
             add_space_for_merged_gt_words=use_space_for_gt_merge,
             aggregation_mode="union",
+            text_unit=self.text_unit,
         )
 
         _log.info("Loading data split '%s' from: '%s'", data_split_name, dataset_path)
