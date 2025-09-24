@@ -54,11 +54,9 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
     def _create_ground_truth_doc(
         self, doc_id: str, gt_data: Dict, image: Image.Image
     ) -> Tuple[DoclingDocument, Dict[int, SegmentedPage]]:
-        """Create a DoclingDocument from ground truth data and image file."""
         true_doc = DoclingDocument(name=doc_id)
         img_width, img_height = image.width, image.height
 
-        # Add page with image
         image_ref = ImageRef(
             mimetype="image/png",
             dpi=72,
@@ -131,6 +129,8 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                 "You must first retrieve the source dataset. Call retrieve_input_dataset()."
             )
 
+        assert isinstance(self.dataset_source, HFSource)
+
         self.target.mkdir(parents=True, exist_ok=True)
         features = Features(
             {
@@ -148,7 +148,7 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
         )
 
         local_parquet_path = hf_hub_download(
-            repo_id=self.dataset_source.repo_id,  # type: ignore
+            repo_id=self.dataset_source.repo_id,
             filename="idl_ocr_dataset.parquet",
             repo_type="dataset",
         )
