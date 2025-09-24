@@ -797,6 +797,53 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
                         )
                     )
 
+            for line in page.get("lines", []):
+                text_content = ""
+                if "layout" in line and "textAnchor" in line["layout"]:
+                    for text_segment in line["layout"]["textAnchor"].get(
+                        "textSegments", []
+                    ):
+                        if "endIndex" in text_segment:
+                            start_index = int(text_segment.get("startIndex", 0))
+                            end_index = int(text_segment.get("endIndex", 0))
+                            if document.get("text") and start_index < len(
+                                document["text"]
+                            ):
+                                text_content += document["text"][start_index:end_index]
+
+                vertices = (
+                    line.get("layout", {}).get("boundingPoly", {}).get("vertices", [])
+                )
+                normalized_vertices = (
+                    line.get("layout", {})
+                    .get("boundingPoly", {})
+                    .get("normalizedVertices", [])
+                )
+
+                if vertices:
+                    line_bbox = self.extract_bbox_from_vertices(vertices)
+                else:
+                    line_bbox = self.extract_bbox_from_normalized_vertices(
+                        normalized_vertices, page_width, page_height
+                    )
+
+                if text_content and line_bbox:
+                    bbox_obj = BoundingBox(
+                        l=line_bbox["l"],
+                        t=line_bbox["t"],
+                        r=line_bbox["r"],
+                        b=line_bbox["b"],
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+                    segmented_pages[page_no].textline_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            from_ocr=False,
+                        )
+                    )
+
             segmented_pages[page_no] = self._word_merger.apply_word_merging_to_page(
                 segmented_pages[page_no]
             )

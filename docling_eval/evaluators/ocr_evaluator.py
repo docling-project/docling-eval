@@ -56,7 +56,7 @@ class OCREvaluator(BaseEvaluator):
             supported_prediction_formats=[PredictionFormats.DOCLING_DOCUMENT],
         )
         self.intermediate_evaluations_path = intermediate_evaluations_path
-        self.text_unit = text_unit
+        self.text_unit: TextCellUnit = text_unit
 
     def __call__(
         self,

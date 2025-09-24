@@ -290,6 +290,16 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
             )
             cell_by_id[cell_id] = cell
 
+            if cell_text and bbox_instance:
+                seg_page.textline_cells.append(
+                    TextCell(
+                        from_ocr=True,
+                        rect=BoundingRectangle.from_bounding_box(bbox_instance),
+                        text=cell_text,
+                        orig=cell_text,
+                    )
+                )
+
             for word in item.get("words", []):
                 text = word.get("text", None)
                 bbox = word.get("box", None)
