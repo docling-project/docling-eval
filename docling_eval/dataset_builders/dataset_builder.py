@@ -165,6 +165,7 @@ class BaseEvaluationDatasetBuilder:
             if not self.dataset_local_path:
                 path_str = snapshot_download(
                     repo_id=self.dataset_source.repo_id,
+                    revision=self.dataset_source.revision,
                     repo_type="dataset",
                     token=self.dataset_source.hf_token,
                 )
@@ -173,6 +174,7 @@ class BaseEvaluationDatasetBuilder:
             else:
                 path_str = snapshot_download(
                     repo_id=self.dataset_source.repo_id,
+                    revision=self.dataset_source.revision,
                     repo_type="dataset",
                     token=self.dataset_source.hf_token,
                     local_dir=self.dataset_local_path,

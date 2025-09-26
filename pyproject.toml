@@ -48,14 +48,12 @@ dependencies = [
     'pypdf2 (>=3.0.1,<4.0.0)',
     "xmltodict (>=0.14.2,<0.15.0)",
     'edit-distance (>=1.0.6,<2.0.0)',
-    'mlx-vlm<0.4; sys_platform == "darwin" and platform_machine == "arm64"',
     "pyarrow>=20.0.0",
     "typer>=0.16.0",
     "scipy>=1.15.3",
     "scipy-stubs>=1.15.3.0",
     "editdistance>=0.8.1",
-    "reportlab>=4.4.3",
-    "mlx-vlm>=0.1.27",
+    "reportlab>=4.4.3"
 ]
 
 [project.urls]
