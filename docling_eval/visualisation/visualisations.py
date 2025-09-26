@@ -149,7 +149,11 @@ def _get_document_visualization_data(
         doc_img_b64 = from_pil_to_base64(get_missing_pageimg())
 
     try:
-        doc_page = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED, page_no=page_no)
+        doc_page = doc.export_to_html(
+            image_mode=ImageRefMode.EMBEDDED,
+            page_no=page_no,
+            included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
+        )
     except ValueError as e:
         logging.error(
             f"Could not export page {page_no} to HTML due to a ValueError: {e}"

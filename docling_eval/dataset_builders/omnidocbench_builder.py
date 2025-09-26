@@ -108,7 +108,9 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         """
         super().__init__(
             name="OmniDocBench: end-to-end",
-            dataset_source=HFSource(repo_id="opendatalab/OmniDocBench"),
+            dataset_source=HFSource(
+                repo_id="opendatalab/OmniDocBench", revision="v1_0"
+            ),
             target=target,
             split=split,
             begin_index=begin_index,
