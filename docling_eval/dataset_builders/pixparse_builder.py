@@ -15,7 +15,6 @@ from docling_core.types.doc.page import (
     TextCell,
 )
 from docling_core.types.io import DocumentStream
-from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
 
@@ -37,9 +36,13 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
-        dataset_source: Optional[str] = None,
+        dataset_source: Optional[Path] = None,
     ):
-        source = HFSource(repo_id=dataset_source or self.DEFAULT_REPO_ID)
+        if dataset_source is not None:
+            repo_id = str(dataset_source)
+        else:
+            repo_id = self.DEFAULT_REPO_ID
+        source = HFSource(repo_id=repo_id)
         super().__init__(
             name="pixparse-idl",
             dataset_source=source,
@@ -129,7 +132,7 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                 "You must first retrieve the source dataset. Call retrieve_input_dataset()."
             )
 
-        assert isinstance(self.dataset_source, HFSource)
+        assert self.dataset_local_path is not None
 
         self.target.mkdir(parents=True, exist_ok=True)
         features = Features(
@@ -147,15 +150,11 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
             }
         )
 
-        local_parquet_path = hf_hub_download(
-            repo_id=self.dataset_source.repo_id,
-            filename="idl_ocr_dataset.parquet",
-            repo_type="dataset",
-        )
+        local_parquet_path = self.dataset_local_path / "idl_ocr_dataset.parquet"
 
         dataset = load_dataset(
             "parquet",
-            data_files=local_parquet_path,
+            data_files=str(local_parquet_path),
             split="train",
             features=features,
         )
