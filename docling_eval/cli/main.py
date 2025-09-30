@@ -472,7 +472,7 @@ def get_prediction_provider(
                 import mlx_vlm  # type: ignore
 
                 pipeline_options.vlm_options = smoldocling_vlm_mlx_conversion_options
-                _log.warning("running SmolDocling on MLX!")
+                _log.info("running SmolDocling on MLX!")
             except ImportError:
                 _log.warning(
                     "To run SmolDocling faster, please install mlx-vlm:\n"
@@ -507,7 +507,7 @@ def get_prediction_provider(
                 import mlx_vlm  # type: ignore
 
                 pipeline_options.vlm_options = GRANITEDOCLING_MLX
-                _log.warning("running GraniteDocling on MLX!")
+                _log.info("running GraniteDocling on MLX!")
             except ImportError:
                 _log.warning(
                     "To run SmolDocling faster, please install mlx-vlm:\n"
