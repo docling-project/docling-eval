@@ -271,6 +271,29 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                         )
                     )
 
+            elif block["BlockType"] == "LINE" and block.get("Page", 1) == page_no:
+                text_content = block.get("Text", None)
+                geometry = block.get("Geometry", None)
+
+                if text_content is not None and geometry is not None:
+                    bbox = self.extract_bbox_from_geometry(geometry)
+                    bbox_obj = BoundingBox(
+                        l=bbox["l"] * width,
+                        t=bbox["t"] * height,
+                        r=bbox["r"] * width,
+                        b=bbox["b"] * height,
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    segmented_pages[page_no].textline_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            from_ocr=False,
+                        )
+                    )
+
             elif block["BlockType"] == "LAYOUT_TITLE":
                 self._add_title(block, doc, height, page_no, width, blocks_map)
 

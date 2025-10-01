@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 from docling_core.types.doc import BoundingBox
@@ -18,6 +19,11 @@ class _CalculationConstants:
         "–": "-",
         "\xa0": " ",
     }
+
+
+class TextCellUnit(str, Enum):
+    WORD = "word"
+    LINE = "line"
 
 
 class Word(TextCell):

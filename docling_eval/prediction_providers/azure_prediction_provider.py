@@ -183,6 +183,30 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                         )
                     )
 
+            for line in page.get("lines", []):
+                polygon = line.get("polygon", None)
+                text_content = line.get("content", None)
+
+                if text_content is not None and polygon is not None:
+                    bbox = self.extract_bbox_from_polygon(polygon)
+                    bbox_obj = BoundingBox(
+                        l=bbox["l"],
+                        t=bbox["t"],
+                        r=bbox["r"],
+                        b=bbox["b"],
+                        coord_origin=CoordOrigin.TOPLEFT,
+                    )
+
+                    segmented_pages[page_no].textline_cells.append(
+                        TextCell(
+                            rect=BoundingRectangle.from_bounding_box(bbox_obj),
+                            text=text_content,
+                            orig=text_content,
+                            # Keeping from_ocr flag False since Azure output doesn't indicate whether the given line is programmatic or OCR
+                            from_ocr=False,
+                        )
+                    )
+
         # Iterate over tables in the response and add to DoclingDocument
         self._add_tables(analyze_result, doc)
 

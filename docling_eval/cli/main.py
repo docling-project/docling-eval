@@ -88,6 +88,7 @@ from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
     MarkdownTextEvaluator,
 )
+from docling_eval.evaluators.ocr.evaluation_models import TextCellUnit
 from docling_eval.evaluators.ocr_evaluator import (
     OcrDatasetEvaluationResult,
     OCREvaluator,
@@ -643,7 +644,17 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.OCR:
-        ocr_evaluator = OCREvaluator(intermediate_evaluations_path=odir)
+        if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
+            text_unit = TextCellUnit.LINE
+        else:
+            text_unit = TextCellUnit.WORD
+
+        logging.info(f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})")
+        logging.info(f"Text unit set to {text_unit}")
+
+        ocr_evaluator = OCREvaluator(
+            intermediate_evaluations_path=odir, text_unit=text_unit
+        )
         evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,
