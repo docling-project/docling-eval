@@ -327,6 +327,8 @@ def get_prediction_provider(
     docling_layout_model_spec: Optional[LayoutModelConfig] = None,
     docling_layout_create_orphan_clusters: Optional[bool] = None,
     docling_layout_keep_empty_clusters: Optional[bool] = None,
+    # Controls orphan text cells only for the programmatic Docling pipeline (PDF_DOCLING)
+    docling_programmatic_add_orphan_text_cells: Optional[bool] = None,
     docling_force_full_page_ocr: Optional[bool] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
@@ -430,6 +432,14 @@ def get_prediction_provider(
         pdf_pipeline_options.images_scale = image_scale_factor or 2.0
         pdf_pipeline_options.generate_page_images = True
         pdf_pipeline_options.generate_picture_images = True
+
+        # Only for programmatic Docling (PDF), optionally control orphan text cells
+        if docling_programmatic_add_orphan_text_cells is not None:
+            layout_options_prog = LayoutOptions()
+            layout_options_prog.create_orphan_clusters = (
+                docling_programmatic_add_orphan_text_cells
+            )
+            pdf_pipeline_options.layout_options = layout_options_prog
 
         ocr_pipeline_options = PdfPipelineOptions(
             do_ocr=True,
@@ -1169,6 +1179,15 @@ def create_eval(
         Optional[bool],
         typer.Option(help="Keep the empty clusters in Docling layout post-processing"),
     ] = False,
+    programmatic_add_orphan_text_cells: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "Add orphan text cells for programmatic Docling pipeline (PDF_DOCLING). "
+                "Defaults to False."
+            )
+        ),
+    ] = False,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
@@ -1226,6 +1245,7 @@ def create_eval(
             docling_layout_model_spec=docling_layout_model_spec_obj,
             docling_layout_create_orphan_clusters=docling_layout_create_orphan_clusters,
             docling_layout_keep_empty_clusters=docling_layout_keep_empty_clusters,
+            docling_programmatic_add_orphan_text_cells=programmatic_add_orphan_text_cells,
             docling_force_full_page_ocr=docling_force_full_page_ocr,
         )
 
@@ -1285,6 +1305,15 @@ def create(
         bool,
         typer.Option(help="Force OCR on entire page (only Docling OCR providers)"),
     ] = False,
+    programmatic_add_orphan_text_cells: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "Add orphan text cells for programmatic Docling pipeline (PDF_DOCLING). "
+                "Defaults to False."
+            )
+        ),
+    ] = False,
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
@@ -1315,6 +1344,7 @@ def create(
             image_scale_factor=image_scale_factor,
             do_table_structure=do_table_structure,
             docling_force_full_page_ocr=docling_force_full_page_ocr,
+            programmatic_add_orphan_text_cells=programmatic_add_orphan_text_cells,
         )
     else:
         _log.info(
