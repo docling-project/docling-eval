@@ -96,6 +96,8 @@ def run_jobs(
     force: bool = False,
     merge_only: bool = False,
     eval_only: bool = False,
+    force_ocr: bool = False,
+    ocr_scale: float = 1.0,
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
@@ -171,6 +173,8 @@ def run_jobs(
                     output_dir=job.output_dir,
                     strict=strict,
                     tasks_root=job.tasks_root,
+                    force_ocr=force_ocr,
+                    ocr_scale=ocr_scale,
                 )
 
                 job.output_dir.mkdir(parents=True, exist_ok=True)
@@ -325,6 +329,17 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Skip dataset creation and rerun only the evaluation stage.",
     )
+    parser.add_argument(
+        "--force-ocr",
+        action="store_true",
+        help="Force OCR on PDF page images instead of using native text layer.",
+    )
+    parser.add_argument(
+        "--ocr-scale",
+        type=float,
+        default=1.0,
+        help="Scale for rendering PDFs for OCR (default: 1.0 = 72 DPI). Higher values may improve OCR accuracy.",
+    )
 
     return parser.parse_args(argv)
 
@@ -353,6 +368,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         force=args.force,
         merge_only=args.merge_only,
         eval_only=args.eval_only,
+        force_ocr=args.force_ocr,
+        ocr_scale=args.ocr_scale,
     )
 
 

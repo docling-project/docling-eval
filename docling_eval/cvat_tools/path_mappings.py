@@ -6,7 +6,7 @@ to elements and validating their relationships.
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Set, Tuple
 
 from .models import CVATAnnotationPath, CVATElement
 from .tree import TreeNode, closest_common_ancestor, find_node_by_element_id
@@ -117,12 +117,20 @@ def map_path_points_to_elements(
                 container_id, footnote_id = footnote_id, container_id
 
             to_footnote[path.id] = (container_id, footnote_id)
-        elif path.label == "to_value" and len(touched_elements) == 2:
-            # First element should be key, second should be value
-            to_value[path.id] = (touched_elements[0], touched_elements[1])
+        elif path.label == "to_value":
+            if len(touched_elements) == 2:
+                # Simple case: exactly 2 elements
+                to_value[path.id] = (touched_elements[0], touched_elements[1])
+            elif len(touched_elements) > 2:
+                # Check if elements can be reduced to 2 logical elements via merges
+                # This will be resolved after all paths are parsed
+                to_value[path.id] = tuple(touched_elements)  # type: ignore[assignment]
 
     # Resolve reading order conflicts before returning
     reading_order = _resolve_reading_order_conflicts(reading_order, paths, elements)
+
+    # Resolve to_value paths that touch more than 2 elements via merges
+    to_value = _resolve_to_value_with_merges(dict(to_value), merge, elements)
 
     return PathMappings(
         reading_order=reading_order,
@@ -132,6 +140,52 @@ def map_path_points_to_elements(
         to_footnote=to_footnote,
         to_value=to_value,
     )
+
+
+def _resolve_to_value_with_merges(
+    to_value: Dict[int, Tuple[int, ...]],
+    merge: Dict[int, List[int]],
+    elements: List[CVATElement],
+) -> Dict[int, Tuple[int, int]]:
+    """Resolve to_value paths by grouping elements via merge relationships."""
+    # Build element-to-merge-group mapping
+    element_to_group: Dict[int, Set[int]] = {}
+    for merge_elements in merge.values():
+        group = set(merge_elements)
+        for el_id in merge_elements:
+            element_to_group[el_id] = group
+
+    resolved: Dict[int, Tuple[int, int]] = {}
+
+    for path_id, element_tuple in to_value.items():
+        if len(element_tuple) == 2:
+            resolved[path_id] = element_tuple  # type: ignore[assignment]
+            continue
+
+        # Group elements by merge relationships
+        groups: List[Set[int]] = []
+        seen = set()
+
+        for el_id in element_tuple:
+            if el_id in seen:
+                continue
+            group = element_to_group.get(el_id, {el_id})
+            groups.append(group)
+            seen.update(group)
+
+        if len(groups) == 2:
+            # Valid: 2 logical elements (use min ID as representative)
+            resolved[path_id] = (min(groups[0]), min(groups[1]))
+            logger.info(
+                f"to_value path {path_id}: Resolved {len(element_tuple)} elements to 2 groups via merges"
+            )
+        else:
+            # Invalid: will be caught by validation
+            logger.warning(
+                f"to_value path {path_id}: {len(element_tuple)} elements → {len(groups)} groups (expected 2). Ignored."
+            )
+
+    return resolved
 
 
 def _find_container_for_conflicted_path(
@@ -295,50 +349,3 @@ def associate_paths_to_containers(
             path_to_container[path_id] = node
 
     return mappings, path_to_container
-
-
-def validate_caption_footnote_paths(
-    elements: List[CVATElement],
-    to_caption: Dict[int, Tuple[int, int]],
-    to_footnote: Dict[int, Tuple[int, int]],
-) -> List[str]:
-    """Validate caption and footnote paths.
-
-    Rules:
-    1. Starting point of to_caption and to_footnote paths must be on a container element
-    2. End point must be on a caption or footnote element, respectively
-    3. If container elements are connected by a group path, only one member container of the group must have a to_caption or to_footnote path
-
-    Returns:
-        List of validation error messages
-    """
-    errors = []
-    id_to_element = {el.id: el for el in elements}
-
-    # Validate to_caption paths
-    for path_id, (container_id, caption_id) in to_caption.items():
-        container = id_to_element.get(container_id)
-        caption = id_to_element.get(caption_id)
-
-        if not container or not is_container_element(container):
-            errors.append(
-                f"Caption path {path_id}: Starting point is not a container element"
-            )
-        if not caption or not is_caption_element(caption):
-            errors.append(f"Caption path {path_id}: End point is not a caption element")
-
-    # Validate to_footnote paths
-    for path_id, (container_id, footnote_id) in to_footnote.items():
-        container = id_to_element.get(container_id)
-        footnote = id_to_element.get(footnote_id)
-
-        if not container or not is_container_element(container):
-            errors.append(
-                f"Footnote path {path_id}: Starting point is not a container element"
-            )
-        if not footnote or not is_footnote_element(footnote):
-            errors.append(
-                f"Footnote path {path_id}: End point is not a footnote element"
-            )
-
-    return errors

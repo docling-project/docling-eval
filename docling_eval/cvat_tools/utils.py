@@ -35,9 +35,13 @@ def find_elements_containing_point(
 
     for el in elements:
         bbox = el.bbox
+        # Handle both normal and inverted bboxes (rotated elements can have t > b)
+        x_min, x_max = min(bbox.l, bbox.r), max(bbox.l, bbox.r)
+        y_min, y_max = min(bbox.t, bbox.b), max(bbox.t, bbox.b)
+
         if (
-            bbox.l - proximity_thresh <= x <= bbox.r + proximity_thresh
-            and bbox.t - proximity_thresh <= y <= bbox.b + proximity_thresh
+            x_min - proximity_thresh <= x <= x_max + proximity_thresh
+            and y_min - proximity_thresh <= y <= y_max + proximity_thresh
         ):
             candidates.append(el)
 

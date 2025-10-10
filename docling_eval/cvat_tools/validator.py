@@ -2,9 +2,9 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Type
+from typing import Dict, List, Optional, Set, Tuple, Type
 
-from docling_core.types.doc.document import ContentLayer
+from docling_core.types.doc.document import ContentLayer, DocItemLabel
 
 from .document import DocumentStructure
 from .folder_models import CVATDocument
@@ -14,7 +14,6 @@ from .models import (
     CVATValidationReport,
     ValidationSeverity,
 )
-from .path_mappings import validate_caption_footnote_paths
 from .tree import find_ancestor
 from .utils import DEFAULT_PROXIMITY_THRESHOLD, find_elements_containing_point
 
@@ -123,11 +122,15 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             return False
 
         return (
-            find_ancestor(node, lambda ancestor: ancestor.element.label == "table")
+            find_ancestor(
+                node, lambda ancestor: ancestor.element.label == DocItemLabel.TABLE
+            )
             is not None
         )
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        from .models import GraphCellLabel
+
         errors: list[CVATValidationError] = []
         touched = set()
         for elist in doc.path_mappings.reading_order.values():
@@ -180,13 +183,17 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             if el.content_layer == ContentLayer.BACKGROUND:
                 continue
 
+            # Skip validation for GraphCellLabel elements (key/value) - they don't need reading order
+            if isinstance(el.label, GraphCellLabel):
+                continue
+
             # Skip validation for elements inside table containers
             if self._is_element_inside_table(el, doc):
                 continue
 
             # Skip validation for picture elements that have descendants touched by level 1 reading order
             if (
-                el.label == "picture"
+                el.label == DocItemLabel.PICTURE
                 and self._has_descendants_touched_by_level1_reading_order_fast(
                     el.id, element_descendants, level1_touched
                 )
@@ -211,7 +218,7 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             chart_infographic_untouched = set()
             for el in doc.elements:
                 if (
-                    el.label == "picture"
+                    el.label == DocItemLabel.PICTURE
                     and el.type
                     and el.type.upper() in ["CHART", "INFOGRAPHIC"]
                 ):
@@ -248,7 +255,7 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
                 in_untouched_chart_infographic = False
                 for picture_el in doc.elements:
                     if (
-                        picture_el.label == "picture"
+                        picture_el.label == DocItemLabel.PICTURE
                         and picture_el.type
                         and picture_el.type.upper() in ["CHART", "INFOGRAPHIC"]
                         and picture_el.id in chart_infographic_untouched
@@ -374,26 +381,416 @@ class MergeGroupPathsRule(ValidationRule):
                         )
                     )
 
+            # For group paths with list_item elements, check that all have same level
+            if path_type == "group" and DocItemLabel.LIST_ITEM in labels:
+                levels = {
+                    el.level
+                    for el in elements_in_group
+                    if el.label == DocItemLabel.LIST_ITEM
+                }
+                if None in levels:
+                    errors.append(
+                        CVATValidationError(
+                            error_type="group_path_list_items_missing_level",
+                            message=f"Group path {path_id}: Some list_item elements missing level attribute",
+                            severity=ValidationSeverity.ERROR,
+                            path_id=path_id,
+                        )
+                    )
+                elif len(levels) > 1:
+                    # Filter out None values for sorting (we know None is not in levels due to elif)
+                    non_none_levels = [lv for lv in levels if lv is not None]
+                    errors.append(
+                        CVATValidationError(
+                            error_type="group_path_list_items_different_levels",
+                            message=f"Group path {path_id}: list_item elements have different levels: {sorted(non_none_levels)}",
+                            severity=ValidationSeverity.ERROR,
+                            path_id=path_id,
+                        )
+                    )
+
         return errors
 
 
 class CaptionFootnotePathsRule(ValidationRule):
     """Validate caption and footnote paths - ERROR level."""
 
-    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
-        errors: list[CVATValidationError] = []
-        for error_msg in validate_caption_footnote_paths(
-            doc.elements,
-            doc.path_mappings.to_caption,
-            doc.path_mappings.to_footnote,
-        ):
-            errors.append(
-                CVATValidationError(
-                    error_type="caption_footnote_path_error",
-                    message=error_msg,
-                    severity=ValidationSeverity.ERROR,
+    def _validate_basic_requirements(
+        self,
+        elements: List[CVATElement],
+        to_caption: Dict[int, Tuple[int, int]],
+        to_footnote: Dict[int, Tuple[int, int]],
+    ) -> List[CVATValidationError]:
+        """Validate basic caption and footnote path requirements.
+
+        Rules:
+        1. Starting point of to_caption and to_footnote paths must be on a container element
+        2. End point must be on a caption or footnote element, respectively
+        """
+        from .utils import is_caption_element, is_container_element, is_footnote_element
+
+        errors: List[CVATValidationError] = []
+        id_to_element = {el.id: el for el in elements}
+
+        # Validate to_caption paths
+        for path_id, (container_id, caption_id) in to_caption.items():
+            container = id_to_element.get(container_id)
+            caption = id_to_element.get(caption_id)
+
+            if not container or not is_container_element(container):
+                errors.append(
+                    CVATValidationError(
+                        error_type="caption_footnote_path_error",
+                        message=f"Caption path {path_id}: Starting point is not a container element",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path_id,
+                    )
                 )
+            if not caption or not is_caption_element(caption):
+                errors.append(
+                    CVATValidationError(
+                        error_type="caption_footnote_path_error",
+                        message=f"Caption path {path_id}: End point is not a caption element",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path_id,
+                    )
+                )
+
+        # Validate to_footnote paths
+        for path_id, (container_id, footnote_id) in to_footnote.items():
+            container = id_to_element.get(container_id)
+            footnote = id_to_element.get(footnote_id)
+
+            if not container or not is_container_element(container):
+                errors.append(
+                    CVATValidationError(
+                        error_type="caption_footnote_path_error",
+                        message=f"Footnote path {path_id}: Starting point is not a container element",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path_id,
+                    )
+                )
+            if not footnote or not is_footnote_element(footnote):
+                errors.append(
+                    CVATValidationError(
+                        error_type="caption_footnote_path_error",
+                        message=f"Footnote path {path_id}: End point is not a footnote element",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path_id,
+                    )
+                )
+
+        return errors
+
+    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        from .utils import is_container_element
+
+        errors: list[CVATValidationError] = []
+        id_to_element = {el.id: el for el in doc.elements}
+
+        # First check for the special case where neither side is a container (ERROR)
+        caption_paths_to_skip = set()
+        for path_id, (container_id, caption_id) in doc.path_mappings.to_caption.items():
+            container_el = id_to_element.get(container_id)
+            caption_el = id_to_element.get(caption_id)
+
+            if container_el and caption_el:
+                if not is_container_element(container_el) and not is_container_element(
+                    caption_el
+                ):
+                    errors.append(
+                        CVATValidationError(
+                            error_type="caption_path_no_container",
+                            message=f"Caption path {path_id}: Neither element {container_id} ({container_el.label}) nor element {caption_id} ({caption_el.label}) is a container type",
+                            severity=ValidationSeverity.ERROR,
+                            path_id=path_id,
+                        )
+                    )
+                    caption_paths_to_skip.add(path_id)
+
+        footnote_paths_to_skip = set()
+        for path_id, (
+            container_id,
+            footnote_id,
+        ) in doc.path_mappings.to_footnote.items():
+            container_el = id_to_element.get(container_id)
+            footnote_el = id_to_element.get(footnote_id)
+
+            if container_el and footnote_el:
+                if not is_container_element(container_el) and not is_container_element(
+                    footnote_el
+                ):
+                    errors.append(
+                        CVATValidationError(
+                            error_type="footnote_path_no_container",
+                            message=f"Footnote path {path_id}: Neither element {container_id} ({footnote_el.label}) nor element {footnote_id} ({footnote_el.label}) is a container type",
+                            severity=ValidationSeverity.ERROR,
+                            path_id=path_id,
+                        )
+                    )
+                    footnote_paths_to_skip.add(path_id)
+
+        # Now validate other caption/footnote path requirements (ERROR level)
+        # Skip paths already reported as ERROR above to avoid duplicate errors
+        errors.extend(
+            self._validate_basic_requirements(
+                doc.elements,
+                {
+                    k: v
+                    for k, v in doc.path_mappings.to_caption.items()
+                    if k not in caption_paths_to_skip
+                },
+                {
+                    k: v
+                    for k, v in doc.path_mappings.to_footnote.items()
+                    if k not in footnote_paths_to_skip
+                },
             )
+        )
+
+        # Validate caption uniqueness: each caption must be referenced by exactly one to_caption path
+        caption_to_paths: Dict[int, List[int]] = {}
+        for path_id, (_, caption_id) in doc.path_mappings.to_caption.items():
+            caption_to_paths.setdefault(caption_id, []).append(path_id)
+
+        # Check for captions with multiple references
+        for caption_id, path_ids in caption_to_paths.items():
+            if len(path_ids) > 1:
+                errors.append(
+                    CVATValidationError(
+                        error_type="caption_multiple_references",
+                        message=f"Caption element {caption_id} is referenced by multiple to_caption paths: {path_ids}",
+                        severity=ValidationSeverity.ERROR,
+                        element_id=caption_id,
+                        path_ids=path_ids,
+                    )
+                )
+
+        # Check for caption elements with no references
+        for el in doc.elements:
+            if el.label == DocItemLabel.CAPTION and el.id not in caption_to_paths:
+                errors.append(
+                    CVATValidationError(
+                        error_type="caption_no_reference",
+                        message=f"Caption element {el.id} is not referenced by any to_caption path",
+                        severity=ValidationSeverity.ERROR,
+                        element_id=el.id,
+                    )
+                )
+
+        return errors
+
+
+class TableStructLocationRule(ValidationRule):
+    """Validate that TableStructLabel elements are inside table or document_index containers - ERROR level."""
+
+    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        from .models import TableStructLabel
+        from .tree import contains
+
+        errors: list[CVATValidationError] = []
+
+        # Find all table and document_index container elements
+        containers = [
+            el
+            for el in doc.elements
+            if el.label in [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]
+        ]
+
+        # Check each TableStructLabel element
+        for el in doc.elements:
+            if isinstance(el.label, TableStructLabel):
+                # Check if contained in any table or document_index
+                is_contained = any(contains(container, el) for container in containers)
+
+                if not is_contained:
+                    errors.append(
+                        CVATValidationError(
+                            error_type="table_struct_outside_container",
+                            message=f"TableStructLabel element {el.id} ({el.label}) is not contained within a table or document_index",
+                            severity=ValidationSeverity.ERROR,
+                            element_id=el.id,
+                        )
+                    )
+
+        return errors
+
+
+class GraphCellLocationRule(ValidationRule):
+    """Validate that GraphCellLabel (key/value) elements are contained in valid text-item parents - ERROR level."""
+
+    # Valid parent labels for key/value elements
+    VALID_TEXT_ITEM_LABELS = {
+        DocItemLabel.TEXT,
+        DocItemLabel.SECTION_HEADER,
+        DocItemLabel.LIST_ITEM,
+        DocItemLabel.FOOTNOTE,
+        DocItemLabel.CAPTION,
+        DocItemLabel.CHECKBOX_SELECTED,
+        DocItemLabel.CHECKBOX_UNSELECTED,
+        DocItemLabel.HANDWRITTEN_TEXT,
+    }
+
+    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        from .models import GraphCellLabel
+
+        errors: list[CVATValidationError] = []
+
+        # Check each GraphCellLabel element (key/value)
+        for el in doc.elements:
+            if isinstance(el.label, GraphCellLabel):
+                node = doc.get_node_by_element_id(el.id)
+
+                if not node:
+                    # Element not in tree - should not happen but handle gracefully
+                    errors.append(
+                        CVATValidationError(
+                            error_type="graph_cell_not_in_tree",
+                            message=f"GraphCellLabel element {el.id} ({el.label}) not found in containment tree",
+                            severity=ValidationSeverity.ERROR,
+                            element_id=el.id,
+                        )
+                    )
+                    continue
+
+                if not node.parent:
+                    # No parent - at root level
+                    errors.append(
+                        CVATValidationError(
+                            error_type="graph_cell_no_parent",
+                            message=f"GraphCellLabel element {el.id} ({el.label}) has no parent container",
+                            severity=ValidationSeverity.ERROR,
+                            element_id=el.id,
+                        )
+                    )
+                    continue
+
+                parent_label = node.parent.element.label
+                if parent_label not in self.VALID_TEXT_ITEM_LABELS:
+                    errors.append(
+                        CVATValidationError(
+                            error_type="graph_cell_invalid_parent",
+                            message=f"GraphCellLabel element {el.id} ({el.label}) has invalid parent {node.parent.element.id} ({parent_label}). Must be contained in text-item labels: {sorted(str(lbl) for lbl in self.VALID_TEXT_ITEM_LABELS)}",
+                            severity=ValidationSeverity.ERROR,
+                            element_id=el.id,
+                        )
+                    )
+
+        return errors
+
+
+class ToValuePathStructureRule(ValidationRule):
+    """Validate that to_value paths connect exactly 2 logical elements (after merges) - ERROR level."""
+
+    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        from .utils import get_deepest_element_at_point
+
+        errors: list[CVATValidationError] = []
+
+        # Build element-to-merge-group mapping
+        element_to_merge_group: Dict[int, Set[int]] = {}
+        for merge_elements in doc.path_mappings.merge.values():
+            group = set(merge_elements)
+            for el_id in merge_elements:
+                element_to_merge_group[el_id] = group
+
+        # Check each to_value path
+        for path in doc.paths:
+            if path.label != "to_value":
+                continue
+
+            # Find which elements this path touches
+            touched_elements: List[int] = []
+            for pt in path.points:
+                deepest = get_deepest_element_at_point(
+                    pt, doc.elements, DEFAULT_PROXIMITY_THRESHOLD
+                )
+                if deepest:
+                    if not touched_elements or touched_elements[-1] != deepest.id:
+                        touched_elements.append(deepest.id)
+
+            if len(touched_elements) < 2:
+                errors.append(
+                    CVATValidationError(
+                        error_type="to_value_path_insufficient_elements",
+                        message=f"to_value path {path.id} touches only {len(touched_elements)} element(s), expected 2",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path.id,
+                    )
+                )
+                continue
+
+            # Group elements by merge relationships to count logical elements
+            logical_groups: List[Set[int]] = []
+            seen_elements = set()
+
+            for el_id in touched_elements:
+                if el_id in seen_elements:
+                    continue
+
+                if el_id in element_to_merge_group:
+                    group = element_to_merge_group[el_id]
+                    logical_groups.append(group)
+                    seen_elements.update(group)
+                else:
+                    logical_groups.append({el_id})
+                    seen_elements.add(el_id)
+
+            if len(logical_groups) != 2:
+                errors.append(
+                    CVATValidationError(
+                        error_type="to_value_path_invalid_element_count",
+                        message=f"to_value path {path.id} touches {len(touched_elements)} element(s) "
+                        f"which resolve to {len(logical_groups)} logical group(s) after merges. Expected exactly 2 logical elements (key and value).",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path.id,
+                    )
+                )
+
+        return errors
+
+
+class GraphCellConnectionRule(ValidationRule):
+    """Validate that all GraphCellLabel (key/value) elements are connected by to_value paths - ERROR level."""
+
+    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        from .models import GraphCellLabel
+
+        errors: list[CVATValidationError] = []
+
+        # Build set of all element IDs touched by to_value paths
+        connected_elements: Set[int] = set()
+        for key_id, value_id in doc.path_mappings.to_value.values():
+            connected_elements.add(key_id)
+            connected_elements.add(value_id)
+
+        # Build element-to-merge-group mapping to handle merged elements
+        element_to_merge_group: Dict[int, Set[int]] = {}
+        for merge_elements in doc.path_mappings.merge.values():
+            group = set(merge_elements)
+            for el_id in merge_elements:
+                element_to_merge_group[el_id] = group
+
+        # Check each GraphCellLabel element has a connection (directly or via merge)
+        for el in doc.elements:
+            if isinstance(el.label, GraphCellLabel):
+                is_connected = el.id in connected_elements
+
+                # Also check if element is merged with a connected element
+                if not is_connected and el.id in element_to_merge_group:
+                    merge_group = element_to_merge_group[el.id]
+                    is_connected = bool(merge_group & connected_elements)
+
+                if not is_connected:
+                    errors.append(
+                        CVATValidationError(
+                            error_type="graph_cell_no_connection",
+                            message=f"GraphCellLabel element {el.id} ({el.label}) is not connected by any to_value path",
+                            severity=ValidationSeverity.ERROR,
+                            element_id=el.id,
+                        )
+                    )
+
         return errors
 
 
@@ -443,7 +840,7 @@ class MissingAttributesRule(ValidationRule):
                 )
 
             # Check level for specific labels
-            if el.label in ["section_header", "list_item"]:
+            if el.label in [DocItemLabel.SECTION_HEADER, DocItemLabel.LIST_ITEM]:
                 if el.level is None:
                     errors.append(
                         CVATValidationError(
@@ -513,6 +910,10 @@ class Validator:
             ElementTouchedByReadingOrderRule,
             MergeGroupPathsRule,
             CaptionFootnotePathsRule,
+            TableStructLocationRule,
+            GraphCellLocationRule,
+            ToValuePathStructureRule,
+            GraphCellConnectionRule,
             GroupConsecutiveReadingOrderRule,
             # WARNING
             ValidLabelsRule,

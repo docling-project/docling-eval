@@ -42,7 +42,6 @@ from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
     map_path_points_to_elements,
-    validate_caption_footnote_paths,
 )
 from .tree import (
     TreeNode,
@@ -106,7 +105,6 @@ __all__ = [
     "PathMappings",
     "map_path_points_to_elements",
     "associate_paths_to_containers",
-    "validate_caption_footnote_paths",
     # Validator
     "Validator",
     "ValidationRule",

@@ -65,6 +65,8 @@ class CVATEvaluationPipeline:
         *,
         strict: bool = False,
         tasks_root: Optional[Path] = None,
+        force_ocr: bool = False,
+        ocr_scale: float = 1.0,
     ):
         """
         Initialize the pipeline.
@@ -74,11 +76,16 @@ class CVATEvaluationPipeline:
             output_dir: Base directory for all pipeline outputs
             strict: If True, treat conversion failures as fatal (default: False)
             tasks_root: Optional override directory containing ``cvat_tasks`` XMLs
+            force_ocr: If True, force OCR on PDF page images instead of using native text layer (default: False)
+            ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
+                      Higher values increase OCR resolution. Coordinates are mapped back to 144 DPI.
         """
         self.cvat_root = Path(cvat_root)
         self.output_dir = Path(output_dir)
         self.strict = strict
         self.tasks_root = Path(tasks_root).resolve() if tasks_root else None
+        self.force_ocr = force_ocr
+        self.ocr_scale = ocr_scale
         self._folder_cache: Dict[str, CVATFolderStructure] = {}
 
         # Create subdirectories
@@ -133,6 +140,8 @@ class CVATEvaluationPipeline:
             save_formats=["json"],
             folder_structure=folder_structure,
             log_validation=self.strict,
+            force_ocr=self.force_ocr,
+            ocr_scale=self.ocr_scale,
         )
 
         json_files: List[Path] = []
@@ -524,6 +533,20 @@ def main():
         help="Strict mode: abort if any conversion fails (default: log and continue)",
     )
 
+    parser.add_argument(
+        "--force-ocr",
+        action="store_true",
+        help="Force OCR on PDF page images instead of using native text layer",
+    )
+
+    parser.add_argument(
+        "--ocr-scale",
+        type=float,
+        default=1.0,
+        help="Scale for rendering PDFs for OCR (default: 1.0 = 72 DPI, 2.0 = 144 DPI, 3.0 = 216 DPI). "
+        "Higher values may improve OCR accuracy. Coordinates are mapped back to 144 DPI to match CVAT annotations.",
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
@@ -560,6 +583,8 @@ def main():
         output_dir=args.output_dir,
         strict=args.strict,
         tasks_root=tasks_root,
+        force_ocr=args.force_ocr,
+        ocr_scale=args.ocr_scale,
     )
 
     if args.step == "gt":

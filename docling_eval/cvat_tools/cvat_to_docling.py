@@ -1099,15 +1099,38 @@ class CVATToDoclingConverter:
                     child, node, item, global_order, current_position=None
                 )
 
+    def _has_valid_container_relationship(
+        self, element_id_1: int, element_id_2: int
+    ) -> bool:
+        """Check if at least one element in a relationship is a container.
+
+        Returns True if at least one side of the relationship is a container element.
+        """
+        from .utils import is_container_element
+
+        element_1 = self.doc_structure.get_element_by_id(element_id_1)
+        element_2 = self.doc_structure.get_element_by_id(element_id_2)
+
+        if element_1 and element_2:
+            return is_container_element(element_1) or is_container_element(element_2)
+
+        return False
+
     def _is_caption_or_footnote_target(self, element_id: int) -> bool:
-        """Check if element is a target of caption/footnote relationship."""
+        """Check if element is a target of a VALID caption/footnote relationship.
+
+        Only returns True if the element is a target AND at least one side of the
+        relationship is a container element. This prevents non-container elements
+        from being skipped when they're part of invalid caption/footnote paths.
+        """
         # Check captions
         for path_id, (
             container_id,
             caption_id,
         ) in self.doc_structure.path_mappings.to_caption.items():
             if caption_id == element_id:
-                return True
+                if self._has_valid_container_relationship(container_id, caption_id):
+                    return True
 
         # Check footnotes
         for path_id, (
@@ -1115,7 +1138,8 @@ class CVATToDoclingConverter:
             footnote_id,
         ) in self.doc_structure.path_mappings.to_footnote.items():
             if footnote_id == element_id:
-                return True
+                if self._has_valid_container_relationship(container_id, footnote_id):
+                    return True
 
         return False
 
@@ -1443,12 +1467,19 @@ class CVATToDoclingConverter:
             )
 
     def _process_captions_and_footnotes(self):
-        """Process caption and footnote relationships."""
+        """Process caption and footnote relationships.
+
+        Skips invalid paths where neither side is a container element (these are
+        already validated and reported as warnings).
+        """
         # Process captions
         for path_id, (
             container_id,
             caption_id,
         ) in self.doc_structure.path_mappings.to_caption.items():
+            # Skip if neither side is a container (invalid path)
+            if not self._has_valid_container_relationship(container_id, caption_id):
+                continue
             self._add_caption_or_footnote(container_id, caption_id, is_caption=True)
 
         # Process footnotes
@@ -1456,6 +1487,9 @@ class CVATToDoclingConverter:
             container_id,
             footnote_id,
         ) in self.doc_structure.path_mappings.to_footnote.items():
+            # Skip if neither side is a container (invalid path)
+            if not self._has_valid_container_relationship(container_id, footnote_id):
+                continue
             self._add_caption_or_footnote(container_id, footnote_id, is_caption=False)
 
     def _process_to_value_relationships(self) -> None:  # noqa: C901
@@ -1657,31 +1691,46 @@ class CVATToDoclingConverter:
             return ""
 
 
-def create_segmented_page_from_ocr(image):
+def create_segmented_page_from_ocr(
+    image: PILImage.Image,
+    coordinate_scale: float = 1.0,
+    target_width: int | None = None,
+    target_height: int | None = None,
+) -> SegmentedPage:
     """Create a SegmentedPage from OCR results.
 
     Args:
-        ocr_results: List of (text, confidence, coords) tuples from ocrmac
-        image_width: Width of the image in pixels
-        image_height: Height of the image in pixels
+        image: PIL Image to run OCR on
+        coordinate_scale: Scale to map OCR coordinates back (for PDFs: 2.0/ocr_scale)
+        target_width: Target page width for geometry (defaults to image width)
+        target_height: Target page height for geometry (defaults to image height)
 
     Returns:
-        SegmentedPage object
+        SegmentedPage object with coordinates mapped to target dimensions
     """
     from ocrmac import ocrmac
 
-    ocr_results = ocrmac.OCR(image, framework="vision").recognize(px=True)
+    ocr_results = ocrmac.OCR(
+        image,
+        framework="vision",
+        recognition_level="fast",
+        language_preference=["en-US"],
+    ).recognize(px=True)
 
-    # Create page geometry (in pixels, TOP_LEFT origin)
+    # Use provided dimensions or fall back to image dimensions
+    page_width = target_width if target_width is not None else image.width
+    page_height = target_height if target_height is not None else image.height
+
+    # Create page geometry (in pixels, TOP_LEFT origin) using target dimensions
     page_rect = BoundingRectangle(
         r_x0=0,
         r_y0=0,
-        r_x1=image.width,
+        r_x1=page_width,
         r_y1=0,
-        r_x2=image.width,
-        r_y2=image.height,
+        r_x2=page_width,
+        r_y2=page_height,
         r_x3=0,
-        r_y3=image.height,
+        r_y3=page_height,
         coord_origin=CoordOrigin.TOPLEFT,
     )
 
@@ -1692,6 +1741,13 @@ def create_segmented_page_from_ocr(image):
     for idx, (text, confidence, coords) in enumerate(ocr_results):
         # coords are in pixels with TOP_LEFT origin: (x0, y0, x1, y1)
         x0, y0, x1, y1 = coords
+
+        # Map coordinates to target space if needed
+        if coordinate_scale != 1.0:
+            x0 = x0 * coordinate_scale
+            y0 = y0 * coordinate_scale
+            x1 = x1 * coordinate_scale
+            y1 = y1 * coordinate_scale
 
         # Create BoundingRectangle for the word (TOP_LEFT origin, pixels)
         rect = BoundingRectangle(
@@ -1726,6 +1782,146 @@ def create_segmented_page_from_ocr(image):
     return seg_page
 
 
+def load_document_pages(
+    input_path: Path,
+    page_numbers: Optional[List[int]] = None,
+    force_ocr: bool = False,
+    ocr_scale: float = 1.0,
+) -> Tuple[Dict[int, SegmentedPage], Dict[int, PILImage.Image]]:
+    """Load document pages with text extraction.
+
+    Args:
+        input_path: Path to document (PDF or image)
+        page_numbers: Specific page numbers to load (1-indexed). If None, loads all pages.
+        force_ocr: Force OCR on PDFs instead of using native text layer
+        ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
+                  PDF pages are rendered at this scale for OCR, then coordinates are mapped
+                  back to scale=2.0 (144 DPI) to match CVAT annotations. Has no effect on images.
+
+    Returns:
+        Tuple of (segmented_pages dict, page_images dict) with 1-indexed page numbers as keys
+    """
+    segmented_pages: Dict[int, SegmentedPage] = {}
+    page_images: Dict[int, PILImage.Image] = {}
+
+    is_pdf = input_path.suffix.lower() == ".pdf"
+
+    if is_pdf and not force_ocr:
+        # PDF with native text layer
+        from docling.backend.docling_parse_v4_backend import (
+            DoclingParseV4DocumentBackend,
+        )
+        from docling.datamodel.base_models import InputFormat
+        from docling.datamodel.document import InputDocument
+
+        in_doc = InputDocument(
+            path_or_stream=input_path,
+            format=InputFormat.PDF,
+            backend=DoclingParseV4DocumentBackend,
+        )
+        doc_backend: DoclingParseV4DocumentBackend = in_doc._backend  # type: ignore
+
+        num_pages = doc_backend.page_count()
+
+        # Determine which pages to load
+        if page_numbers is None:
+            pages_to_load = list(range(1, num_pages + 1))
+        else:
+            pages_to_load = page_numbers
+
+        for page_no in pages_to_load:
+            if page_no < 1 or page_no > num_pages:
+                _logger.warning(
+                    "Page %s out of bounds for document %s (has %s pages)",
+                    page_no,
+                    input_path.name,
+                    num_pages,
+                )
+                continue
+
+            page = doc_backend.load_page(page_no - 1)
+            seg_page = page.get_segmented_page()
+            # Use scale=2.0 to match 144 DPI used in CVAT annotations (default 1.0 = 72 DPI)
+            page_image = page.get_page_image(scale=2.0)
+
+            if seg_page is not None:
+                segmented_pages[page_no] = seg_page
+            if page_image is not None:
+                page_images[page_no] = page_image
+
+            page.unload()
+
+        doc_backend.unload()
+
+    elif is_pdf and force_ocr:
+        # PDF with OCR
+        from docling.backend.docling_parse_v4_backend import (
+            DoclingParseV4DocumentBackend,
+        )
+        from docling.datamodel.base_models import InputFormat
+        from docling.datamodel.document import InputDocument
+
+        in_doc = InputDocument(
+            path_or_stream=input_path,
+            format=InputFormat.PDF,
+            backend=DoclingParseV4DocumentBackend,
+        )
+        doc_backend: DoclingParseV4DocumentBackend = in_doc._backend  # type: ignore
+
+        num_pages = doc_backend.page_count()
+
+        # Determine which pages to load
+        if page_numbers is None:
+            pages_to_load = list(range(1, num_pages + 1))
+        else:
+            pages_to_load = page_numbers
+
+        for page_no in pages_to_load:
+            if page_no < 1 or page_no > num_pages:
+                _logger.warning(
+                    "Page %s out of bounds for document %s (has %s pages)",
+                    page_no,
+                    input_path.name,
+                    num_pages,
+                )
+                continue
+
+            page = doc_backend.load_page(page_no - 1)
+
+            # Get high-res image for OCR at user-specified scale
+            ocr_image = page.get_page_image(scale=ocr_scale)
+            # Get 144 DPI image for storage (to match CVAT annotations)
+            storage_image = page.get_page_image(scale=2.0)
+
+            if ocr_image is not None and storage_image is not None:
+                # Map OCR coordinates from ocr_scale back to scale=2.0
+                coord_scale = 2.0 / ocr_scale
+                seg_page = create_segmented_page_from_ocr(
+                    ocr_image,
+                    coordinate_scale=coord_scale,
+                    target_width=storage_image.width,
+                    target_height=storage_image.height,
+                )
+                segmented_pages[page_no] = seg_page
+                page_images[page_no] = storage_image
+
+            page.unload()
+
+        doc_backend.unload()
+
+    else:
+        # Image input
+        image = PILImage.open(input_path)
+        seg_page = create_segmented_page_from_ocr(image)
+
+        # For images, use page number 1 if not specified
+        page_no = page_numbers[0] if page_numbers else 1
+        segmented_pages[page_no] = seg_page
+        page_images[page_no] = image
+
+    return segmented_pages, page_images
+
+
 @dataclass
 class CVATConversionResult:
     """Outcome of converting a CVAT document."""
@@ -1743,8 +1939,26 @@ def convert_cvat_folder_to_docling(
     save_formats: Optional[List[str]] = None,
     folder_structure: Optional[CVATFolderStructure] = None,
     log_validation: bool = False,
+    force_ocr: bool = False,
+    ocr_scale: float = 1.0,
 ) -> Dict[str, CVATConversionResult]:
-    """Convert an entire CVAT folder into DoclingDocument objects grouped by document."""
+    """Convert an entire CVAT folder into DoclingDocument objects grouped by document.
+
+    Args:
+        folder_path: Path to CVAT folder
+        xml_pattern: Pattern for XML files to process
+        output_dir: Directory for output files
+        save_formats: List of output formats
+        folder_structure: Pre-parsed folder structure
+        log_validation: Whether to log validation reports
+        force_ocr: Force OCR on PDFs instead of using native text layer
+        ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
+                  The PDF backend renders at this scale for OCR, then coordinates are mapped
+                  back to scale=2.0 (144 DPI) to match CVAT annotations. Has no effect on image inputs.
+
+    Returns:
+        Dictionary mapping doc_hash to CVATConversionResult
+    """
 
     if save_formats is None:
         save_formats = ["json"]
@@ -1754,7 +1968,12 @@ def convert_cvat_folder_to_docling(
 
     if folder_structure is None:
         folder_structure = parse_cvat_folder(folder_path, xml_pattern)
-    converter = CVATFolderConverter(folder_structure, log_validation=log_validation)
+    converter = CVATFolderConverter(
+        folder_structure,
+        log_validation=log_validation,
+        force_ocr=force_ocr,
+        ocr_scale=ocr_scale,
+    )
     results = converter.convert_all_documents()
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1794,10 +2013,16 @@ class CVATFolderConverter:
     """Convert CVAT folder structures into DoclingDocument instances."""
 
     def __init__(
-        self, folder_structure: CVATFolderStructure, log_validation: bool = False
+        self,
+        folder_structure: CVATFolderStructure,
+        log_validation: bool = False,
+        force_ocr: bool = False,
+        ocr_scale: float = 1.0,
     ):
         self.folder_structure = folder_structure
         self.log_validation = log_validation
+        self.force_ocr = force_ocr
+        self.ocr_scale = ocr_scale
 
     def convert_document(self, doc_hash: str) -> CVATConversionResult:
         """Convert a single document identified by its hash."""
@@ -1858,56 +2083,32 @@ class CVATFolderConverter:
                 self.folder_structure, doc_hash
             )
 
-            segmented_pages: Dict[int, SegmentedPage] = {}
-            page_images: Dict[int, PILImage.Image] = {}
+            # Determine which pages to load and the input path
+            annotated_page_numbers = sorted(
+                {page_info.page_number for page_info in cvat_doc.pages}
+            )
 
+            # Use shared function to load document pages
             if cvat_doc.mime_type == "application/pdf":
-                from docling.backend.docling_parse_v4_backend import (
-                    DoclingParseV4DocumentBackend,
+                segmented_pages, page_images = load_document_pages(
+                    input_path=cvat_doc.bin_file,
+                    page_numbers=annotated_page_numbers,
+                    force_ocr=self.force_ocr,
+                    ocr_scale=self.ocr_scale,
                 )
-                from docling.datamodel.base_models import InputFormat
-                from docling.datamodel.document import InputDocument
-
-                in_doc = InputDocument(
-                    path_or_stream=cvat_doc.bin_file,
-                    format=InputFormat.PDF,
-                    backend=DoclingParseV4DocumentBackend,
-                )
-                doc_backend: DoclingParseV4DocumentBackend = in_doc._backend  # type: ignore
-
-                num_pages = doc_backend.page_count()
-                annotated_page_numbers = sorted(
-                    {page_info.page_number for page_info in cvat_doc.pages}
-                )
-
-                for page_no in annotated_page_numbers:
-                    if page_no < 1 or page_no > num_pages:
-                        _logger.warning(
-                            "Annotated page %s out of bounds for document %s",
-                            page_no,
-                            cvat_doc.doc_name,
-                        )
-                        continue
-
-                    page = doc_backend.load_page(page_no - 1)
-                    seg_page = page.get_segmented_page()
-                    page_image = page.get_page_image()
-
-                    if seg_page is not None:
-                        segmented_pages[page_no] = seg_page
-                    if page_image is not None:
-                        page_images[page_no] = page_image
-
-                    page.unload()
-
-                doc_backend.unload()
-
             else:
+                # For images, load each page individually (since they may be separate files)
+                segmented_pages = {}
+                page_images = {}
                 for page_info in cvat_doc.pages:
-                    image = PILImage.open(page_info.image_path)
-                    seg_page = create_segmented_page_from_ocr(image)
-                    segmented_pages[page_info.page_number] = seg_page
-                    page_images[page_info.page_number] = image
+                    seg_pages, p_images = load_document_pages(
+                        input_path=page_info.image_path,
+                        page_numbers=[page_info.page_number],
+                        force_ocr=False,  # Images always use OCR
+                        ocr_scale=1.0,
+                    )
+                    segmented_pages.update(seg_pages)
+                    page_images.update(p_images)
 
             converter = CVATToDoclingConverter(
                 doc_structure,
@@ -1948,6 +2149,9 @@ class CVATFolderConverter:
 def convert_cvat_to_docling(
     xml_path: Path,
     input_path: Path,
+    image_identifier: Optional[str] = None,
+    force_ocr: bool = False,
+    ocr_scale: float = 1.0,
 ) -> Optional[DoclingDocument]:
     """Convert a CVAT annotation to DoclingDocument.
 
@@ -1962,13 +2166,20 @@ def convert_cvat_to_docling(
     Args:
         xml_path: Path to CVAT XML file
         input_path: Path to document (image or PDF)
-        ocr_framework: OCR framework to use for images ("vision" or "livetext")
+        image_identifier: Image filename as it appears in the CVAT XML (optional, defaults to input_path.name)
+        force_ocr: Force OCR on PDFs instead of using native text layer
+        ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
+                  PDF pages are rendered at this scale for OCR, then coordinates are mapped
+                  back to scale=2.0 (144 DPI) to match CVAT annotations. Has no effect on images.
 
     Returns:
         DoclingDocument or None if conversion fails
     """
     try:
-        validated_sample = validate_cvat_sample(xml_path, input_path.name)
+        image_name = (
+            image_identifier if image_identifier is not None else input_path.name
+        )
+        validated_sample = validate_cvat_sample(xml_path, image_name)
         doc_structure = validated_sample.structure
         validation_report = validated_sample.report
 
@@ -1980,57 +2191,13 @@ def convert_cvat_to_docling(
             )
             return None
 
-        is_pdf = input_path.suffix.lower() == ".pdf"
-
-        # Prepare segmented pages and images
-        segmented_pages = {}
-        page_images = {}
-
-        if is_pdf:
-            # Handle PDF input
-            from docling.backend.docling_parse_v4_backend import (
-                DoclingParseV4DocumentBackend,
-            )
-            from docling.datamodel.base_models import InputFormat
-            from docling.datamodel.document import InputDocument
-
-            # Create input document
-            in_doc = InputDocument(
-                path_or_stream=input_path,
-                format=InputFormat.PDF,
-                backend=DoclingParseV4DocumentBackend,
-            )
-            doc_backend: DoclingParseV4DocumentBackend = in_doc._backend  # type: ignore
-
-            # Get number of pages
-            num_pages = doc_backend.page_count()
-
-            # Parse each page
-            for page_no in range(1, num_pages + 1):
-                page = doc_backend.load_page(page_no - 1)
-                seg_page = page.get_segmented_page()
-                page_image = page.get_page_image()
-
-                if seg_page is not None:
-                    segmented_pages[page_no] = seg_page
-                if page_image is not None:
-                    page_images[page_no] = page_image
-
-                page.unload()
-
-            doc_backend.unload()
-
-        else:
-            # Handle image input
-            image = PILImage.open(input_path)
-
-            # Run OCR
-
-            # Create SegmentedPage from OCR results
-            seg_page = create_segmented_page_from_ocr(image)
-
-            segmented_pages[1] = seg_page
-            page_images[1] = image
+        # Use shared function to load document pages
+        segmented_pages, page_images = load_document_pages(
+            input_path=input_path,
+            page_numbers=None,  # Load all pages
+            force_ocr=force_ocr,
+            ocr_scale=ocr_scale,
+        )
 
         # Create converter
         converter = CVATToDoclingConverter(
