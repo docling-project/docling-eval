@@ -342,34 +342,51 @@ def run_jobs(
     for job in jobs:
         jobs_by_submission.setdefault(job.submission_name, []).append(job)
 
+    # Track overall statistics
+    overall_stats = {
+        "total_submissions": 0,
+        "successful_submissions": 0,
+        "partial_submissions": 0,
+        "failed_submissions": 0,
+        "total_subsets": 0,
+        "completed_subsets": 0,
+        "failed_subsets": 0,
+        "skipped_subsets": 0,
+    }
+
     for submission_name, submission_jobs in jobs_by_submission.items():
         if not submission_jobs:
             continue
 
+        overall_stats["total_submissions"] += 1
         submission_dir = submission_jobs[0].output_dir.parent
         submission_dir.mkdir(parents=True, exist_ok=True)
         submission_dfs: List[pd.DataFrame] = []
         completed_jobs: List[SubmissionSubsetJob] = []
-        failure = False
+        failed_jobs: List[tuple[str, str]] = []  # (job_id, error_message)
+        skipped_jobs: List[tuple[str, str]] = []  # (job_id, reason)
 
-        _LOGGER.info("=== Processing submission %s ===", submission_name)
+        _LOGGER.info("")
+        _LOGGER.info("╔" + "=" * 78 + "╗")
+        _LOGGER.info("║" + f" SUBMISSION: {submission_name} ".center(78) + "║")
+        _LOGGER.info("╚" + "=" * 78 + "╝")
 
         for job in submission_jobs:
             job_id = job.format_job_id()
-            _LOGGER.info("Processing %s", job_id)
+            _LOGGER.info("→ Processing %s", job_id)
 
             # Check if job should be skipped
             should_skip, skip_reason = plan.should_skip_job(job)
             if should_skip:
-                _LOGGER.info("Skipping %s: %s", job_id, skip_reason)
+                _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
+                skipped_jobs.append((job_id, skip_reason))
                 continue
 
             # Handle dry-run mode
             if dry_run:
                 _LOGGER.info(
-                    "Dry-run: would %s %s with base=%s tasks=%s output=%s",
+                    "  [DRY-RUN] Would %s with base=%s tasks=%s output=%s",
                     plan.get_description(),
-                    job_id,
                     job.base_cvat_root,
                     job.tasks_root,
                     job.output_dir,
@@ -395,12 +412,14 @@ def run_jobs(
 
                 # Track successfully completed jobs for validation report aggregation
                 completed_jobs.append(job)
+                _LOGGER.info("  ✓ Completed successfully")
 
             except (
                 Exception
             ) as exc:  # noqa: BLE001 - we want to capture all failures per subset
-                failure = True
-                _LOGGER.error("%s failed: %s", job_id, exc)
+                error_msg = str(exc)
+                failed_jobs.append((job_id, error_msg))
+                _LOGGER.error("  ✗ FAILED: %s", error_msg)
                 _LOGGER.debug("Subset failure details", exc_info=True)
 
         # Aggregate validation reports across successfully completed subsets only
@@ -438,26 +457,49 @@ def run_jobs(
                     submission_name,
                 )
 
+        # Print submission summary
+        _LOGGER.info("")
+        _LOGGER.info("=" * 80)
+        _LOGGER.info(f"SUBMISSION SUMMARY: {submission_name}")
+        _LOGGER.info("=" * 80)
+        _LOGGER.info(f"  Total subsets:     {len(submission_jobs)}")
+        _LOGGER.info(f"  ✓ Completed:       {len(completed_jobs)}")
+        _LOGGER.info(f"  ✗ Failed:          {len(failed_jobs)}")
+        _LOGGER.info(f"  ⊘ Skipped:         {len(skipped_jobs)}")
+
+        if failed_jobs:
+            _LOGGER.error("  Failed subsets:")
+            for job_id, error_msg in failed_jobs:
+                _LOGGER.error(f"    • {job_id}: {error_msg}")
+
         if submission_dfs:
             combined_df = pd.concat(submission_dfs, ignore_index=True)
             combined_out = submission_dir / "combined_evaluation.xlsx"
-            status_label = "FAILED" if failure else "SUCCESS"
-            _LOGGER.info(
-                "Writing submission-level combined evaluation for %s (%s) to %s",
-                submission_name,
-                status_label,
-                combined_out,
-            )
             if "subset" not in combined_df.columns:
                 combined_df.insert(0, "subset", submission_name)
             _write_as_excel_table(combined_df, combined_out)
+            _LOGGER.info(f"  Combined evaluation: {combined_out}")
+
+        status = (
+            "✓ SUCCESS"
+            if not failed_jobs
+            else ("⚠ PARTIAL" if completed_jobs else "✗ FAILED")
+        )
+        _LOGGER.info(f"  Status: {status}")
+        _LOGGER.info("=" * 80)
+
+        # Update overall statistics
+        overall_stats["total_subsets"] += len(submission_jobs)
+        overall_stats["completed_subsets"] += len(completed_jobs)
+        overall_stats["failed_subsets"] += len(failed_jobs)
+        overall_stats["skipped_subsets"] += len(skipped_jobs)
+
+        if not failed_jobs:
+            overall_stats["successful_submissions"] += 1
+        elif completed_jobs:
+            overall_stats["partial_submissions"] += 1
         else:
-            status_label = "FAILED" if failure else "SKIPPED"
-            _LOGGER.warning(
-                "Submission %s completed with status %s (no aggregated dataframe)",
-                submission_name,
-                status_label,
-            )
+            overall_stats["failed_submissions"] += 1
 
         # Clean up per-subset artifacts (they're aggregated at submission level)
         for job in submission_jobs:
@@ -466,6 +508,30 @@ def run_jobs(
                 "subset combined evaluation",
             )
             _cleanup_path(job.output_dir / "intermediate", "intermediate directory")
+
+    # Print overall summary
+    _LOGGER.info("")
+    _LOGGER.info("╔" + "=" * 78 + "╗")
+    _LOGGER.info("║" + " PIPELINE EXECUTION COMPLETE ".center(78) + "║")
+    _LOGGER.info("╚" + "=" * 78 + "╝")
+    _LOGGER.info("Overall Statistics:")
+    _LOGGER.info(f"  Submissions: {overall_stats['total_submissions']} total")
+    _LOGGER.info(f"    ✓ Successful:  {overall_stats['successful_submissions']}")
+    _LOGGER.info(f"    ⚠ Partial:     {overall_stats['partial_submissions']}")
+    _LOGGER.info(f"    ✗ Failed:      {overall_stats['failed_submissions']}")
+    _LOGGER.info("")
+    _LOGGER.info(f"  Subsets: {overall_stats['total_subsets']} total")
+    _LOGGER.info(f"    ✓ Completed:   {overall_stats['completed_subsets']}")
+    _LOGGER.info(f"    ✗ Failed:      {overall_stats['failed_subsets']}")
+    _LOGGER.info(f"    ⊘ Skipped:     {overall_stats['skipped_subsets']}")
+    _LOGGER.info("=" * 80)
+
+    # Exit with error if any failures occurred
+    if overall_stats["failed_subsets"] > 0:
+        _LOGGER.error(
+            "Pipeline completed with %d failed subset(s). Review error messages above.",
+            overall_stats["failed_subsets"],
+        )
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:

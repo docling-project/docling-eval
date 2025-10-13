@@ -145,11 +145,12 @@ class CVATEvaluationPipeline:
                 stale_json.unlink()
         output_json_dir.mkdir(parents=True, exist_ok=True)
 
+        set_label = "ground truth" if "set_A" in xml_pattern else "predictions"
+        _log.info("=" * 60)
         _log.info(
-            "Converting %d document(s) matching %s",
-            len(folder_structure.documents),
-            xml_pattern,
+            f"Converting {len(folder_structure.documents)} {set_label} document(s)..."
         )
+        _log.info("=" * 60)
 
         results = convert_cvat_folder_to_docling(
             folder_path=self.cvat_root,
@@ -195,25 +196,32 @@ class CVATEvaluationPipeline:
             )
             _log.info(f"✓ Validation report saved to: {validation_report_path}")
 
-        if failed_docs:
-            _log.warning(
-                "Skipped %d document(s) due to conversion issues: %s",
-                len(failed_docs),
-                ", ".join(sorted(failed_docs)[:5])
-                + ("..." if len(failed_docs) > 5 else ""),
+        # Summary
+        json_files.sort()
+        success_count = len(json_files)
+        total_count = len(folder_structure.documents)
+        failed_count = len(failed_docs)
+
+        _log.info("=" * 60)
+        if failed_count == 0:
+            _log.info(
+                f"✓ SUCCESS: All {success_count} documents converted successfully"
             )
+        else:
+            _log.warning(
+                f"⚠ PARTIAL: {success_count}/{total_count} documents converted ({failed_count} failed)"
+            )
+            _log.warning(
+                f"  Failed documents: {', '.join(sorted(failed_docs)[:5])}"
+                + ("..." if len(failed_docs) > 5 else "")
+            )
+        _log.info("=" * 60)
 
         if self.strict and failed_docs:
             raise ValueError(
                 "Strict mode enabled: conversion errors were encountered while converting documents."
             )
 
-        json_files.sort()
-        _log.info(
-            "Converted %d/%d document(s) to JSON format",
-            len(json_files),
-            len(folder_structure.documents),
-        )
         return json_files
 
     def _merge_task_xmls(
@@ -267,7 +275,10 @@ class CVATEvaluationPipeline:
         """
         Step 1: Create ground truth dataset from CVAT folder exports.
         """
-        _log.info("=== Creating Ground Truth Dataset ===")
+        _log.info("")
+        _log.info("╔" + "=" * 58 + "╗")
+        _log.info("║" + " STEP 1: CREATE GROUND TRUTH DATASET ".center(58) + "║")
+        _log.info("╚" + "=" * 58 + "╝")
 
         # Convert CVAT XML to JSON
         gt_json_files = self._convert_cvat_set_to_json(
@@ -280,6 +291,7 @@ class CVATEvaluationPipeline:
             raise ValueError("No ground truth JSON files were created")
 
         # Create ground truth dataset
+        _log.info("Building ground truth dataset...")
         dataset_builder = FileDatasetBuilder(
             name="CVAT_Ground_Truth_Dataset",
             dataset_source=self.gt_json_dir,
@@ -295,7 +307,10 @@ class CVATEvaluationPipeline:
         """
         Step 2: Create prediction dataset from CVAT folder exports using the ground truth dataset.
         """
-        _log.info("=== Creating Prediction Dataset ===")
+        _log.info("")
+        _log.info("╔" + "=" * 58 + "╗")
+        _log.info("║" + " STEP 2: CREATE PREDICTION DATASET ".center(58) + "║")
+        _log.info("╚" + "=" * 58 + "╝")
 
         if not self.gt_dataset_dir.exists():
             raise ValueError(
@@ -314,6 +329,7 @@ class CVATEvaluationPipeline:
             raise ValueError("No prediction JSON files were created")
 
         # Create prediction dataset using FilePredictionProvider
+        _log.info("Building prediction dataset...")
         file_provider = FilePredictionProvider(
             prediction_format=PredictionFormats.JSON,
             source_path=self.pred_json_dir,
@@ -348,7 +364,10 @@ class CVATEvaluationPipeline:
 
         Writes a JSON file (default: evaluation_results/evaluation_CVAT_tables.json) and returns its path.
         """
-        _log.info("=== Running Table Evaluation ===")
+        _log.info("")
+        _log.info("╔" + "=" * 58 + "╗")
+        _log.info("║" + " RUNNING TABLE EVALUATION ".center(58) + "║")
+        _log.info("╚" + "=" * 58 + "╝")
 
         if out_json is None:
             out_json = self.evaluation_results_dir / "evaluation_CVAT_tables.json"
@@ -400,7 +419,10 @@ class CVATEvaluationPipeline:
                        Default: both modalities
             user_csv: Path to user CSV file for provenance/self-confidence (optional)
         """
-        _log.info("=== Running Evaluation ===")
+        _log.info("")
+        _log.info("╔" + "=" * 58 + "╗")
+        _log.info("║" + " STEP 3: RUNNING EVALUATION ".center(58) + "║")
+        _log.info("╚" + "=" * 58 + "╝")
 
         if not self.eval_dataset_dir.exists():
             raise ValueError(
@@ -416,8 +438,10 @@ class CVATEvaluationPipeline:
         overview_path = self.cvat_root / "cvat_overview.json"
         overview_for_eval = overview_path if overview_path.exists() else None
 
-        for modality_name in modalities:
-            _log.info(f"Running {modality_name} evaluation...")
+        for idx, modality_name in enumerate(modalities, start=1):
+            _log.info(
+                f"[{idx}/{len(modalities)}] Running {modality_name} evaluation..."
+            )
 
             modality = _MODALITY_MAP.get(modality_name)
             if modality is None:
@@ -456,8 +480,10 @@ class CVATEvaluationPipeline:
                 raise e
 
         # Combine results
+        _log.info("")
+        _log.info("=" * 60)
+        _log.info("Combining evaluation results...")
         combined_out = self.output_dir / "combined_evaluation.xlsx"
-        _log.info(f"Combining evaluation results to {combined_out}")
 
         def _result_path(name: str) -> Path:
             return self.evaluation_results_dir / f"evaluation_CVAT_{name}.json"
@@ -471,6 +497,10 @@ class CVATEvaluationPipeline:
             out=combined_out,
             cvat_overview_path=overview_for_eval,
         )
+
+        _log.info(f"✓ Combined evaluation saved to: {combined_out}")
+        _log.info("=" * 60)
+
         if subset_label is not None:
             combined_df = combined_df.copy()
             if "subset" not in combined_df.columns:

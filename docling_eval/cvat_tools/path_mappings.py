@@ -83,14 +83,14 @@ def map_path_points_to_elements(
             container_el = next((el for el in elements if el.id == container_id), None)
             caption_el = next((el for el in elements if el.id == caption_id), None)
 
-            # Check if the relationship is backwards and auto-correct with warning
+            # Check if the relationship is backwards and auto-correct
             if (
                 container_el
                 and caption_el
                 and is_caption_element(container_el)
                 and is_container_element(caption_el)
             ):
-                logger.warning(
+                logger.debug(
                     f"Caption path {path.id}: Backwards annotation detected, auto-correcting"
                 )
                 container_id, caption_id = caption_id, container_id
@@ -104,14 +104,14 @@ def map_path_points_to_elements(
             container_el = next((el for el in elements if el.id == container_id), None)
             footnote_el = next((el for el in elements if el.id == footnote_id), None)
 
-            # Check if the relationship is backwards and auto-correct with warning
+            # Check if the relationship is backwards and auto-correct
             if (
                 container_el
                 and footnote_el
                 and is_footnote_element(container_el)
                 and is_container_element(footnote_el)
             ):
-                logger.warning(
+                logger.debug(
                     f"Footnote path {path.id}: Backwards annotation detected, auto-correcting"
                 )
                 container_id, footnote_id = footnote_id, container_id
@@ -176,12 +176,12 @@ def _resolve_to_value_with_merges(
         if len(groups) == 2:
             # Valid: 2 logical elements (use min ID as representative)
             resolved[path_id] = (min(groups[0]), min(groups[1]))
-            logger.info(
+            logger.debug(
                 f"to_value path {path_id}: Resolved {len(element_tuple)} elements to 2 groups via merges"
             )
         else:
             # Invalid: will be caught by validation
-            logger.warning(
+            logger.debug(
                 f"to_value path {path_id}: {len(element_tuple)} elements → {len(groups)} groups (expected 2). Ignored."
             )
 
@@ -244,7 +244,7 @@ def _resolve_reading_order_conflicts(
         eid: paths for eid, paths in element_to_paths.items() if len(paths) > 1
     }
     if conflicts:
-        logger.info(f"Resolving {len(conflicts)} reading order conflicts")
+        logger.debug(f"Resolving {len(conflicts)} reading order conflicts")
 
     # Resolve conflicts: assign to deepest level, find containers for emptied paths
     emptied_paths: Dict[int, List[int]] = {}
@@ -264,7 +264,7 @@ def _resolve_reading_order_conflicts(
             )
             if container and container.id not in reading_order[path_id]:
                 reading_order[path_id].append(container.id)
-                logger.info(
+                logger.debug(
                     f"Added container element {container.id} ({container.label}) to reading order path {path_id}"
                 )
 

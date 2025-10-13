@@ -1441,7 +1441,7 @@ class CVATToDoclingConverter:
                 parent=parent,
             )
         elif doc_label == DocItemLabel.KEY_VALUE_REGION:
-            _logger.warning(f"Untreatable label: {doc_label}, ignoring.")
+            _logger.debug(f"Untreatable label: {doc_label}, ignoring.")
             return None
         elif doc_label == DocItemLabel.CODE:
             return self.doc.add_code(
@@ -1453,7 +1453,7 @@ class CVATToDoclingConverter:
                 text=text, prov=prov, parent=parent, content_layer=content_layer
             )
         elif doc_label == DocItemLabel.GRADING_SCALE:
-            _logger.warning(f"Untreatable label: {doc_label}, ignoring.")
+            _logger.debug(f"Untreatable label: {doc_label}, ignoring.")
             return None
         # elif doc_label == DocItemLabel.HANDWRITTEN_TEXT:
         #     _logger.warning(f"Untreatable label: {doc_label}, ignoring.")
@@ -1981,7 +1981,10 @@ def convert_cvat_folder_to_docling(
 
     # Convert and write documents one at a time to reduce memory usage
     results: Dict[str, CVATConversionResult] = {}
-    for doc_hash in folder_structure.documents:
+    total_docs = len(folder_structure.documents)
+    for idx, doc_hash in enumerate(folder_structure.documents, start=1):
+        cvat_doc = folder_structure.documents[doc_hash]
+        _logger.info(f"[{idx}/{total_docs}] Converting {cvat_doc.doc_name}...")
         result = converter.convert_document(doc_hash)
 
         # Store result (without document to save memory)
