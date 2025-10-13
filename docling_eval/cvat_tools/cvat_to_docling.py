@@ -514,8 +514,9 @@ class CVATToDoclingConverter:
         # Get CVAT image dimensions (in pixels)
         cvat_height = self.doc_structure.image_info.height
 
-        # For PDFs, calculate scaling based on height comparison
-        first_page = self.segmented_pages[1]
+        # Use the first available page (annotations may not include page 1)
+        first_page_num = min(self.segmented_pages.keys())
+        first_page = self.segmented_pages[first_page_num]
         if isinstance(first_page, SegmentedPdfPage):
             pdf_height_points = first_page.dimension.height
             # Scale factor: pixels per point
@@ -1968,43 +1969,54 @@ def convert_cvat_folder_to_docling(
 
     if folder_structure is None:
         folder_structure = parse_cvat_folder(folder_path, xml_pattern)
+
     converter = CVATFolderConverter(
         folder_structure,
         log_validation=log_validation,
         force_ocr=force_ocr,
         ocr_scale=ocr_scale,
     )
-    results = converter.convert_all_documents()
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for doc_hash, result in results.items():
+    # Convert and write documents one at a time to reduce memory usage
+    results: Dict[str, CVATConversionResult] = {}
+    for doc_hash in folder_structure.documents:
+        result = converter.convert_document(doc_hash)
+
+        # Store result (without document to save memory)
+        results[doc_hash] = result
+
+        # Write immediately if conversion succeeded
         doc = result.document
-        if doc is None:
-            continue
+        if doc is not None:
+            cvat_doc = folder_structure.documents[doc_hash]
+            base_filename = cvat_doc.doc_name
 
-        cvat_doc = folder_structure.documents[doc_hash]
-        base_filename = cvat_doc.doc_name
+            for format_type in save_formats:
+                if format_type == "json":
+                    output_path = output_dir / f"{base_filename}.json"
+                    doc.save_as_json(output_path)
+                elif format_type == "html":
+                    output_path = output_dir / f"{base_filename}.html"
+                    doc.save_as_html(output_path, image_mode=ImageRefMode.EMBEDDED)
+                elif format_type == "md":
+                    output_path = output_dir / f"{base_filename}.md"
+                    doc.save_as_markdown(output_path, image_mode=ImageRefMode.EMBEDDED)
+                elif format_type == "txt":
+                    output_path = output_dir / f"{base_filename}.txt"
+                    with open(output_path, "w", encoding="utf-8") as fp:
+                        fp.write(doc.export_to_element_tree())
+                elif format_type == "viz":
+                    viz_imgs = doc.get_visualization()
+                    for page_no, img in viz_imgs.items():
+                        if page_no is not None:
+                            img.save(
+                                output_dir / f"{base_filename}_docling_p{page_no}.png"
+                            )
 
-        for format_type in save_formats:
-            if format_type == "json":
-                output_path = output_dir / f"{base_filename}.json"
-                doc.save_as_json(output_path)
-            elif format_type == "html":
-                output_path = output_dir / f"{base_filename}.html"
-                doc.save_as_html(output_path, image_mode=ImageRefMode.EMBEDDED)
-            elif format_type == "md":
-                output_path = output_dir / f"{base_filename}.md"
-                doc.save_as_markdown(output_path, image_mode=ImageRefMode.EMBEDDED)
-            elif format_type == "txt":
-                output_path = output_dir / f"{base_filename}.txt"
-                with open(output_path, "w", encoding="utf-8") as fp:
-                    fp.write(doc.export_to_element_tree())
-            elif format_type == "viz":
-                viz_imgs = doc.get_visualization()
-                for page_no, img in viz_imgs.items():
-                    if page_no is not None:
-                        img.save(output_dir / f"{base_filename}_docling_p{page_no}.png")
+            # Free memory by discarding the document after writing
+            result.document = None
 
     return results
 
