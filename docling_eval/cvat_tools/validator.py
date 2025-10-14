@@ -412,6 +412,33 @@ class MergeGroupPathsRule(ValidationRule):
         return errors
 
 
+class MergePathDirectionRule(ValidationRule):
+    """Validate that merge path direction matches reading order - ERROR level."""
+
+    def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
+        errors: list[CVATValidationError] = []
+
+        # Check each merge path using the centralized helper
+        for path_id, element_ids in doc.path_mappings.merge.items():
+            corrected_ids, was_backwards = doc.get_corrected_merge_elements(
+                path_id, element_ids
+            )
+
+            if was_backwards:
+                errors.append(
+                    CVATValidationError(
+                        error_type="merge_path_backwards",
+                        message=f"Merge path {path_id}: Direction is backwards relative to reading order "
+                        f"(merge: {element_ids}, reading order: {corrected_ids}). "
+                        f"This will be auto-corrected during conversion.",
+                        severity=ValidationSeverity.WARNING,
+                        path_id=path_id,
+                    )
+                )
+
+        return errors
+
+
 class CaptionFootnotePathsRule(ValidationRule):
     """Validate caption and footnote paths - ERROR level."""
 
@@ -909,6 +936,7 @@ class Validator:
             # ERROR
             ElementTouchedByReadingOrderRule,
             MergeGroupPathsRule,
+            MergePathDirectionRule,
             CaptionFootnotePathsRule,
             TableStructLocationRule,
             GraphCellLocationRule,
