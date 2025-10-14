@@ -354,10 +354,22 @@ class MergeGroupPathsRule(ValidationRule):
 
             elements_in_group = [id_to_element[el_id] for el_id in el_ids]
             labels = {el.label for el in elements_in_group}
+            first_el = elements_in_group[0]
 
-            # Allow only the special case for checkboxes
-            if labels == {"checkbox_selected", "checkbox_unselected"}:
-                pass  # legal
+            # Check label consistency based on path type and content
+            # A group path is a "list group" if the first element is a list_item
+            # List groups can have mixed labels (list items grouped with their child content)
+            # Other groups must have uniform labels (except checkbox special case)
+            is_list_group = (
+                path_type == "group" and first_el.label == DocItemLabel.LIST_ITEM
+            )
+
+            if is_list_group:
+                # List groups can have mixed labels - skip label check
+                pass
+            elif labels == {"checkbox_selected", "checkbox_unselected"}:
+                # Special case for checkboxes - mixed labels allowed
+                pass
             elif len(labels) > 1:
                 errors.append(
                     CVATValidationError(
@@ -369,7 +381,6 @@ class MergeGroupPathsRule(ValidationRule):
                 )
 
             # Check same content_layer
-            first_el = elements_in_group[0]
             for el in elements_in_group[1:]:
                 if el.content_layer != first_el.content_layer:
                     errors.append(
@@ -381,8 +392,8 @@ class MergeGroupPathsRule(ValidationRule):
                         )
                     )
 
-            # For group paths with list_item elements, check that all have same level
-            if path_type == "group" and DocItemLabel.LIST_ITEM in labels:
+            # For list groups, check that all list_item elements have same level
+            if is_list_group:
                 levels = {
                     el.level
                     for el in elements_in_group
@@ -905,22 +916,89 @@ class UnrecognizedAttributesRule(ValidationRule):
 
 
 class GroupConsecutiveReadingOrderRule(ValidationRule):
-    """Validate that group paths connect consecutive elements in reading order."""
+    """Validate that group paths with list items don't have ungrouped elements sandwiched in reading order.
+
+    This validator flags cases where elements appear in reading order between grouped list items
+    but are not included in the group path. This typically indicates that the group path is
+    incomplete and may cause conversion issues where list content is not properly nested.
+    """
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         errors: List[CVATValidationError] = []
 
-        # Build global reading order - this needs proper implementation
-        # For now, skipping this validation
-        # global_order = build_global_reading_order(...)
+        id_to_element = {el.id: el for el in doc.elements}
 
-        for path_id, element_ids in doc.path_mappings.group.items():
-            if len(element_ids) < 2:
+        # Check each group path
+        for path_id, group_element_ids in doc.path_mappings.group.items():
+            if len(group_element_ids) < 2:
                 continue
 
-            # TODO: Implement proper consecutive reading order validation
-            # This requires building the global reading order first
-            pass
+            # Only check groups containing list_item elements
+            group_elements_raw = [id_to_element.get(eid) for eid in group_element_ids]
+            group_elements: List[CVATElement] = [
+                el for el in group_elements_raw if el is not None
+            ]
+
+            has_list_items = any(
+                el.label == DocItemLabel.LIST_ITEM for el in group_elements
+            )
+
+            if not has_list_items:
+                continue
+
+            # Get the reading order for this group
+            # We need to check all reading order paths that touch these elements
+            for ro_path_id, ro_element_ids in doc.path_mappings.reading_order.items():
+                # Find positions of grouped elements in this reading order
+                group_positions = []
+                for i, elem_id in enumerate(ro_element_ids):
+                    if elem_id in group_element_ids:
+                        group_positions.append((i, elem_id))
+
+                if len(group_positions) < 2:
+                    # Group elements not in this reading order, or only one element
+                    continue
+
+                # Check elements between consecutive group elements
+                group_positions.sort(key=lambda x: x[0])  # Sort by position
+
+                for j in range(len(group_positions) - 1):
+                    start_pos, start_id = group_positions[j]
+                    end_pos, end_id = group_positions[j + 1]
+
+                    # Check if there are elements between start and end
+                    sandwiched_elements = []
+                    for pos in range(start_pos + 1, end_pos):
+                        between_id = ro_element_ids[pos]
+                        # If this element is not in the group, it's sandwiched
+                        if between_id not in group_element_ids:
+                            sandwiched_elements.append(between_id)
+
+                    if sandwiched_elements:
+                        # Get element details for the error message
+                        sandwiched_labels = [
+                            (
+                                id_to_element[eid].label.value
+                                if id_to_element.get(eid)
+                                else "unknown"
+                            )
+                            for eid in sandwiched_elements
+                        ]
+
+                        errors.append(
+                            CVATValidationError(
+                                error_type="list_group_reading_order_impurity",
+                                message=(
+                                    f"Group path {path_id} (list group): Found {len(sandwiched_elements)} "
+                                    f"non-grouped element(s) in reading order between grouped list items "
+                                    f"{start_id} and {end_id}. Sandwiched elements: {sandwiched_elements} "
+                                    f"(labels: {sandwiched_labels}). These elements may not be properly "
+                                    f"nested in the converted document structure."
+                                ),
+                                severity=ValidationSeverity.WARNING,
+                                path_id=path_id,
+                            )
+                        )
 
         return errors
 
