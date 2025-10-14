@@ -137,6 +137,7 @@ def _execute_job(
     user_csv: Optional[Path],
     force_ocr: bool,
     ocr_scale: float,
+    storage_scale: float,
 ) -> Optional[pd.DataFrame]:
     """Execute pipeline stages for a single job according to the execution plan.
 
@@ -147,6 +148,7 @@ def _execute_job(
         user_csv: Optional user CSV for evaluation
         force_ocr: Force OCR on PDF pages
         ocr_scale: Scale factor for OCR rendering
+        storage_scale: Scale for stored page images and coordinates
 
     Returns:
         DataFrame with evaluation results, or None if no evaluation was run
@@ -158,6 +160,7 @@ def _execute_job(
         tasks_root=job.tasks_root,
         force_ocr=force_ocr,
         ocr_scale=ocr_scale,
+        storage_scale=storage_scale,
     )
 
     job.output_dir.mkdir(parents=True, exist_ok=True)
@@ -324,6 +327,7 @@ def run_jobs(
     eval_only: bool = False,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
+    storage_scale: float = 2.0,
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
@@ -402,6 +406,7 @@ def run_jobs(
                     user_csv=user_csv,
                     force_ocr=force_ocr,
                     ocr_scale=ocr_scale,
+                    storage_scale=storage_scale,
                 )
 
                 if subset_df is not None and not subset_df.empty:
@@ -602,6 +607,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         default=1.0,
         help="Scale for rendering PDFs for OCR (default: 1.0 = 72 DPI). Higher values may improve OCR accuracy.",
     )
+    parser.add_argument(
+        "--storage-scale",
+        type=float,
+        default=2.0,
+        help="Scale for stored page images and coordinates (default: 2.0 = 144 DPI).",
+    )
 
     return parser.parse_args(argv)
 
@@ -629,6 +640,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             eval_only=args.eval_only,
             force_ocr=args.force_ocr,
             ocr_scale=args.ocr_scale,
+            storage_scale=args.storage_scale,
         )
     except ValueError as exc:
         _LOGGER.error("%s", exc)

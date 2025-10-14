@@ -74,6 +74,7 @@ class CVATEvaluationPipeline:
         tasks_root: Optional[Path] = None,
         force_ocr: bool = False,
         ocr_scale: float = 1.0,
+        storage_scale: float = 2.0,
     ):
         """
         Initialize the pipeline.
@@ -85,7 +86,8 @@ class CVATEvaluationPipeline:
             tasks_root: Optional override directory containing ``cvat_tasks`` XMLs
             force_ocr: If True, force OCR on PDF page images instead of using native text layer (default: False)
             ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
-                      Higher values increase OCR resolution. Coordinates are mapped back to 144 DPI.
+                      Higher values increase OCR resolution. Coordinates are mapped back to storage_scale.
+            storage_scale: Scale for stored page images and coordinates (default: 2.0 for 144 DPI).
         """
         self.cvat_root = Path(cvat_root)
         self.output_dir = Path(output_dir)
@@ -93,6 +95,7 @@ class CVATEvaluationPipeline:
         self.tasks_root = Path(tasks_root).resolve() if tasks_root else None
         self.force_ocr = force_ocr
         self.ocr_scale = ocr_scale
+        self.storage_scale = storage_scale
         self._folder_cache: Dict[str, CVATFolderStructure] = {}
 
         # Create subdirectories
@@ -161,6 +164,7 @@ class CVATEvaluationPipeline:
             log_validation=self.strict,
             force_ocr=self.force_ocr,
             ocr_scale=self.ocr_scale,
+            storage_scale=self.storage_scale,
         )
 
         json_files: List[Path] = []
@@ -611,7 +615,14 @@ def main():
         type=float,
         default=1.0,
         help="Scale for rendering PDFs for OCR (default: 1.0 = 72 DPI, 2.0 = 144 DPI, 3.0 = 216 DPI). "
-        "Higher values may improve OCR accuracy. Coordinates are mapped back to 144 DPI to match CVAT annotations.",
+        "Higher values may improve OCR accuracy. Coordinates are mapped back to storage_scale.",
+    )
+
+    parser.add_argument(
+        "--storage-scale",
+        type=float,
+        default=2.0,
+        help="Scale for stored page images and coordinates (default: 2.0 = 144 DPI).",
     )
 
     args = parser.parse_args()
@@ -651,6 +662,7 @@ def main():
         tasks_root=tasks_root,
         force_ocr=args.force_ocr,
         ocr_scale=args.ocr_scale,
+        storage_scale=args.storage_scale,
     )
 
     # Execute requested pipeline step
