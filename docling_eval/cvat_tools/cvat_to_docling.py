@@ -1917,7 +1917,7 @@ def load_document_pages(
         cvat_input_scale = 1.0
 
     if is_pdf and not force_ocr:
-        # PDF with native text layer
+        # PDF with native text layer, fallback to OCR if no text found
         from docling.backend.docling_parse_v4_backend import (
             DoclingParseV4DocumentBackend,
         )
@@ -1955,10 +1955,39 @@ def load_document_pages(
             native_seg_page = page.get_segmented_page()
             page_image = page.get_page_image(scale=cvat_input_scale)
 
+            # Check if native page has text content
+            has_text = False
             if native_seg_page is not None:
-                # Scale the SegmentedPage to match cvat_input_scale
+                # Check if any text cells exist
+                has_text = (
+                    len(native_seg_page.word_cells) > 0
+                    or len(native_seg_page.textline_cells) > 0
+                    or len(native_seg_page.char_cells) > 0
+                )
+
+            if has_text and native_seg_page is not None:
+                # Use native text layer
                 seg_page = scale_segmented_pdf_page(native_seg_page, cvat_input_scale)
                 segmented_pages[page_no] = seg_page
+            else:
+                # Fallback to OCR
+                if not has_text:
+                    _logger.info(
+                        "Page %s of %s has no text layer, falling back to OCR",
+                        page_no,
+                        input_path.name,
+                    )
+                ocr_image = page.get_page_image(scale=ocr_scale)
+                if ocr_image is not None and page_image is not None:
+                    coord_scale = cvat_input_scale / ocr_scale
+                    seg_page = create_segmented_page_from_ocr(
+                        ocr_image,
+                        coordinate_scale=coord_scale,
+                        target_width=page_image.width,
+                        target_height=page_image.height,
+                    )
+                    segmented_pages[page_no] = seg_page
+
             if page_image is not None:
                 page_images[page_no] = page_image
 
