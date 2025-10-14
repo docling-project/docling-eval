@@ -1917,12 +1917,21 @@ def load_document_pages(
         cvat_input_scale = 1.0
 
     if is_pdf and not force_ocr:
-        # PDF with native text layer, fallback to OCR if no text found
+        # PDF with native text layer, fallback to OCR if no text found or text quality is poor
         from docling.backend.docling_parse_v4_backend import (
             DoclingParseV4DocumentBackend,
         )
         from docling.datamodel.base_models import InputFormat
         from docling.datamodel.document import InputDocument
+        from docling.models.page_preprocessing_model import (
+            PagePreprocessingModel,
+            PagePreprocessingOptions,
+        )
+
+        # Create text quality checker
+        quality_checker = PagePreprocessingModel(
+            PagePreprocessingOptions(images_scale=1.0)
+        )
 
         in_doc = InputDocument(
             path_or_stream=input_path,
@@ -1957,6 +1966,7 @@ def load_document_pages(
 
             # Check if native page has text content
             has_text = False
+            has_good_quality = True
             if native_seg_page is not None:
                 # Check if any text cells exist
                 has_text = (
@@ -1965,7 +1975,32 @@ def load_document_pages(
                     or len(native_seg_page.char_cells) > 0
                 )
 
-            if has_text and native_seg_page is not None:
+                # Check text quality if text exists
+                if has_text:
+                    # Use textline cells for quality check
+                    cells_to_check = native_seg_page.textline_cells
+
+                    if cells_to_check:
+                        low_quality_count = 0
+                        total_count = len(cells_to_check)
+
+                        for cell in cells_to_check:
+                            quality_score = quality_checker.rate_text_quality(cell.text)
+                            if quality_score < 0.7:
+                                low_quality_count += 1
+
+                        low_quality_ratio = low_quality_count / total_count
+                        has_good_quality = low_quality_ratio <= 0.05
+
+                        if not has_good_quality:
+                            _logger.info(
+                                "Page %s of %s has poor text quality (%.1f%% low-quality cells), falling back to OCR",
+                                page_no,
+                                input_path.name,
+                                low_quality_ratio * 100,
+                            )
+
+            if has_text and has_good_quality and native_seg_page is not None:
                 # Use native text layer
                 seg_page = scale_segmented_pdf_page(native_seg_page, cvat_input_scale)
                 segmented_pages[page_no] = seg_page
