@@ -4,8 +4,22 @@ This module provides functionality to convert a populated DocumentStructure
 from the CVAT parser into a DoclingDocument, handling text extraction via OCR
 or PDF parsing, reading order, containment hierarchy, groups, merges, and 
 caption/footnote relationships.
+
+Coordinate System Invariants:
+-----------------------------
+- CVAT annotations: Always TOP_LEFT origin (pixel coordinates)
+- PDF parser output: Always BOTTOM_LEFT origin (point coordinates at native 72 DPI)
+- OCR output: Always TOP_LEFT origin (pixel coordinates)
+- DoclingDocument provenance: Always BOTTOM_LEFT origin
+
+Scale Handling:
+--------------
+- All processing happens at cvat_input_scale (matches CVAT annotation scale)
+- SegmentedPages are loaded at cvat_input_scale
+- Final scaling to storage_scale happens at the end in _scale_document_to_storage()
 """
 
+import copy
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
@@ -37,7 +51,9 @@ from docling_core.types.doc.document import (
 from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
 from docling_core.types.doc.page import (
     BoundingRectangle,
+    Coord2D,
     PageGeometry,
+    PdfPageGeometry,
     SegmentedPage,
     SegmentedPdfPage,
     TextCell,
@@ -440,20 +456,28 @@ class CVATToDoclingConverter:
         segmented_pages: Dict[int, SegmentedPage],
         page_images: Dict[int, PILImage.Image],
         document_filename: Optional[str] = None,
+        cvat_input_scale: float = 2.0,
+        storage_scale: float = 2.0,
     ):
         """Initialize the converter.
 
         Args:
             doc_structure: The populated DocumentStructure from CVAT parser
-            segmented_pages: Dictionary mapping page numbers to SegmentedPage objects
-            page_images: Dictionary mapping page numbers to PIL images
+            segmented_pages: Dictionary mapping page numbers to SegmentedPage objects (at cvat_input_scale)
+            page_images: Dictionary mapping page numbers to PIL images (at cvat_input_scale)
             document_filename: Optional filename for the document
+            cvat_input_scale: Scale at which CVAT annotations and SegmentedPages are provided
+            storage_scale: Scale for final stored coordinates in DoclingDocument
         """
         self.doc_structure = doc_structure
         self.segmented_pages = segmented_pages
         self.page_images = page_images
         self.document_filename = document_filename or "document"
         self.num_pages = len(segmented_pages)
+
+        # SegmentedPages are at cvat_input_scale, we'll scale to storage_scale at the end
+        self.cvat_input_scale = cvat_input_scale
+        self.storage_scale = storage_scale
 
         # Initialize empty DoclingDocument
         self.doc = DoclingDocument(name=Path(self.document_filename).stem)
@@ -468,10 +492,8 @@ class CVATToDoclingConverter:
         # Centralized list hierarchy management
         self.list_manager = ListHierarchyManager(self.doc)
 
-        # Calculate single scaling factor for all pages
-        self._calculate_scaling_factor()
-
-        # Calculate page widths for multi-page handling (in CVAT pixel coordinates)
+        # Calculate page widths for multi-page handling (in CVAT pixel coordinates at cvat_input_scale)
+        # SegmentedPages are already at cvat_input_scale, so we can use their dimensions directly
         self.page_widths = {}
         cumulative_width = 0.0
 
@@ -483,85 +505,56 @@ class CVATToDoclingConverter:
             # For multi-page documents, CVAT concatenates pages horizontally
             total_cvat_width = self.doc_structure.image_info.width
             if self.num_pages > 1:
-                # Distribute width proportionally based on original page widths
-                total_original_width = sum(
+                # Distribute width proportionally based on page widths at cvat_input_scale
+                total_page_width = sum(
                     p.dimension.width for p in segmented_pages.values()
                 )
                 for page_no in sorted(segmented_pages.keys()):
                     self.page_widths[page_no] = cumulative_width
                     page_width_ratio = (
-                        segmented_pages[page_no].dimension.width / total_original_width
+                        segmented_pages[page_no].dimension.width / total_page_width
                     )
-                    page_width_pixels = total_cvat_width * page_width_ratio
-                    cumulative_width += page_width_pixels
+                    page_width_cvat_pixels = total_cvat_width * page_width_ratio
+                    cumulative_width += page_width_cvat_pixels
             else:
                 # Single page
                 self.page_widths[1] = 0.0
         else:
-            # Fallback: use page dimensions directly
+            # Fallback: use page dimensions directly (already at cvat_input_scale)
             for page_no in sorted(segmented_pages.keys()):
                 self.page_widths[page_no] = cumulative_width
-                cumulative_width += (
-                    segmented_pages[page_no].dimension.width * self.scale_factor
-                )
-
-    def _calculate_scaling_factor(self):
-        """Calculate single scaling factor between PDF points and CVAT pixels."""
-        if not self.doc_structure.image_info or not self.segmented_pages:
-            self.scale_factor = 1.0
-            return
-
-        # Get CVAT image dimensions (in pixels)
-        cvat_height = self.doc_structure.image_info.height
-
-        # Use the first available page (annotations may not include page 1)
-        first_page_num = min(self.segmented_pages.keys())
-        first_page = self.segmented_pages[first_page_num]
-        if isinstance(first_page, SegmentedPdfPage):
-            pdf_height_points = first_page.dimension.height
-            # Scale factor: pixels per point
-            self.scale_factor = cvat_height / pdf_height_points
-        else:
-            # For images, no scaling needed
-            self.scale_factor = 1.0
+                cumulative_width += segmented_pages[page_no].dimension.width
 
     def _process_element_bbox(
         self, element: CVATElement
     ) -> Tuple[int, str, ProvenanceItem]:
         """Process element bbox to extract page, text, and create provenance.
 
+        All processing happens at cvat_input_scale (same as SegmentedPages).
+        Scaling to storage_scale happens later in convert().
+
+        Coordinate system invariant:
+        - CVAT bboxes: Always TOP_LEFT origin
+        - DoclingDocument provenance: Always BOTTOM_LEFT origin
+
         Returns:
-            Tuple of (page_no, text, provenance_item)
+            Tuple of (page_no, text, provenance_item in BOTTOM_LEFT at cvat_input_scale)
         """
-        # Get page number from bbox position
+        # Get page number from bbox position (bbox is in CVAT TOP_LEFT coordinates at cvat_input_scale)
         page_no = self._get_page_number_from_bbox(element.bbox)
 
-        # Extract text
+        # Extract text (SegmentedPage is also at cvat_input_scale, coordinates match perfectly)
         text = self._extract_text_from_bbox(element.bbox, page_no)
 
-        # Adjust bbox for multi-page (still in pixels)
+        # Adjust bbox for multi-page (still in CVAT TOP_LEFT coordinates at cvat_input_scale)
         adjusted_bbox = self._adjust_bbox_for_page(element.bbox, page_no)
 
-        # Convert to page-native units and ensure BOTTOM_LEFT coordinates
+        # Convert from CVAT TOP_LEFT to DoclingDocument BOTTOM_LEFT (still at cvat_input_scale)
         seg_page = self.segmented_pages[page_no]
-        if isinstance(seg_page, SegmentedPdfPage):
-            # Convert pixels to points and ensure BOTTOM_LEFT
-            prov_bbox = BoundingBox(
-                l=adjusted_bbox.l / self.scale_factor,
-                r=adjusted_bbox.r / self.scale_factor,
-                t=adjusted_bbox.t / self.scale_factor,
-                b=adjusted_bbox.b / self.scale_factor,
-                coord_origin=CoordOrigin.TOPLEFT,
-            )
-            # Convert to BOTTOM_LEFT for consistency
-            page_height = seg_page.dimension.height
-            prov_bbox = prov_bbox.to_bottom_left_origin(page_height)
-        else:
-            # For images, convert pixels to BOTTOM_LEFT for consistency
-            page_height = seg_page.dimension.height
-            prov_bbox = adjusted_bbox.to_bottom_left_origin(page_height)
+        page_height = seg_page.dimension.height
+        prov_bbox = adjusted_bbox.to_bottom_left_origin(page_height)
 
-        # Create provenance
+        # Create provenance (BOTTOM_LEFT at cvat_input_scale - will be scaled later)
         provenance = ProvenanceItem(
             page_no=page_no, bbox=prov_bbox, charspan=(0, len(text))
         )
@@ -572,7 +565,7 @@ class CVATToDoclingConverter:
         """Convert the DocumentStructure to DoclingDocument.
 
         Returns:
-            The converted DoclingDocument
+            The converted DoclingDocument with coordinates scaled to storage_scale
         """
         # Reset list processing state to ensure clean conversion
         self._reset_list_state()
@@ -601,7 +594,55 @@ class CVATToDoclingConverter:
         # Remove groups left without any children during conversion
         self._prune_empty_groups()
 
+        # Scale document coordinates from cvat_input_scale to storage_scale
+        if self.storage_scale != self.cvat_input_scale:
+            self._scale_document_to_storage()
+
         return self.doc
+
+    def _scale_document_to_storage(self):
+        """Scale all coordinates in the document from cvat_input_scale to storage_scale.
+
+        This is the final step that transforms coordinates from the CVAT annotation scale
+        to the desired storage scale for the DoclingDocument.
+        """
+        scale_factor = self.storage_scale / self.cvat_input_scale
+
+        # Scale page sizes and images
+        for page_no, page_item in self.doc.pages.items():
+            page_item.size = Size(
+                width=page_item.size.width * scale_factor,
+                height=page_item.size.height * scale_factor,
+            )
+            # Scale and resize actual image if present
+            if page_item.image and page_no in self.page_images:
+                original_image = self.page_images[page_no]
+                new_width = int(original_image.width * scale_factor)
+                new_height = int(original_image.height * scale_factor)
+
+                # Resize the image
+                resized_image = original_image.resize(
+                    (new_width, new_height), PILImage.Resampling.LANCZOS
+                )
+
+                # Create new ImageRef with resized image
+                # DPI = 72 * storage_scale (since storage_scale is relative to base 72 DPI)
+                page_item.image = ImageRef.from_pil(
+                    resized_image, dpi=int(72 * self.storage_scale)
+                )
+
+        # Scale all item provenances
+        for item, _ in self.doc.iterate_items():
+            if isinstance(item, DocItem):
+                for prov in item.prov:
+                    prov.bbox = prov.bbox.scaled(scale_factor)
+
+        # Scale graph cell provenances (for key-value items)
+        for item in self.doc.key_value_items:
+            if item.graph and item.graph.cells:
+                for cell in item.graph.cells:
+                    if cell.prov:
+                        cell.prov.bbox = cell.prov.bbox.scaled(scale_factor)
 
     def _reset_list_state(self):
         """Reset list processing state for clean conversion."""
@@ -610,18 +651,11 @@ class CVATToDoclingConverter:
     def _add_pages(self):
         """Add page information to the document."""
         for page_no, seg_page in self.segmented_pages.items():
-            if isinstance(seg_page, SegmentedPdfPage):
-                # For PDFs, use the page geometry directly
-                page_size = Size(
-                    width=seg_page.dimension.width,
-                    height=seg_page.dimension.height,
-                )
-            else:
-                # For images, dimensions are already in pixels
-                page_size = Size(
-                    width=seg_page.dimension.width,
-                    height=seg_page.dimension.height,
-                )
+            # All SegmentedPages (PDF or image) have the same dimension interface
+            page_size = Size(
+                width=seg_page.dimension.width,
+                height=seg_page.dimension.height,
+            )
 
             # Create image reference if available
             image_ref = None
@@ -916,6 +950,9 @@ class CVATToDoclingConverter:
                 rich_cell = False
                 provs_in_cell = []
 
+                # Convert cell bbox to BOTTOM_LEFT once (provs are in BOTTOM_LEFT)
+                cell_bbox_bl = c.bbox.to_bottom_left_origin(page_height)
+
                 # FIND RICH ELEMENTS REFs HERE, MAKE A GROUP IF MANY
                 for item_ref in all_items:
                     item = item_ref.resolve(self.doc)
@@ -926,9 +963,8 @@ class CVATToDoclingConverter:
 
                     if isinstance(item, DocItem):
                         for prov in item.prov:
-                            prov_bbox_tl = prov.bbox.to_top_left_origin(page_height)
-
-                            if is_bbox_within(c.bbox, prov_bbox_tl):
+                            # Both are now in BOTTOM_LEFT, no conversion needed
+                            if is_bbox_within(cell_bbox_bl, prov.bbox):
                                 # At least one child is inside the cell!
                                 rich_cell = True
                                 item_parent = (
@@ -1627,55 +1663,49 @@ class CVATToDoclingConverter:
         return False
 
     def _extract_text_from_bbox(self, bbox: BoundingBox, page_no: int) -> str:
-        """Extract text from bounding box using SegmentedPage text cells."""
+        """Extract text from bounding box using SegmentedPage text cells.
+
+        Both bbox and SegmentedPage are at cvat_input_scale, so coordinates match perfectly.
+
+        Coordinate system invariant:
+        - CVAT bboxes: Always TOP_LEFT origin
+        - PDF parser cells: Always BOTTOM_LEFT origin
+        - OCR cells: Always TOP_LEFT origin
+
+        Args:
+            bbox: Bounding box in CVAT coordinates (TOP_LEFT, at cvat_input_scale)
+            page_no: Page number
+
+        Returns:
+            Extracted text from the bbox
+        """
         try:
             if page_no not in self.segmented_pages:
                 return ""
 
             seg_page = self.segmented_pages[page_no]
 
-            # Adjust bbox for multi-page (this gives us page-relative coordinates)
+            # Adjust bbox for multi-page (still in CVAT TOP_LEFT coordinates at cvat_input_scale)
             adjusted_bbox = self._adjust_bbox_for_page(bbox, page_no)
 
-            # CVAT bboxes are in pixels with TOP_LEFT origin
-            # Convert to the coordinate system of the segmented page
-
             if isinstance(seg_page, SegmentedPdfPage):
-                # Convert from pixels to points
-                scaled_bbox = BoundingBox(
-                    l=adjusted_bbox.l / self.scale_factor,
-                    r=adjusted_bbox.r / self.scale_factor,
-                    t=adjusted_bbox.t / self.scale_factor,
-                    b=adjusted_bbox.b / self.scale_factor,
-                    coord_origin=CoordOrigin.TOPLEFT,
-                )
-                # Convert to BOTTOM_LEFT for PDF comparison
-                page_height_points = seg_page.dimension.height
-                search_bbox = scaled_bbox.to_bottom_left_origin(page_height_points)
+                # PDF parser → BOTTOM_LEFT: Convert CVAT bbox from TOP_LEFT to BOTTOM_LEFT
+                page_height = seg_page.dimension.height
+                search_bbox = adjusted_bbox.to_bottom_left_origin(page_height)
 
                 # Get LINE cells only
                 cells = seg_page.get_cells_in_bbox(
                     TextCellUnit.LINE, search_bbox, ios=0.1
                 )
             else:
-                # For OCR/image pages, keep TOP_LEFT and use pixels
+                # OCR → TOP_LEFT: Both bbox and cells are TOP_LEFT, no conversion needed
                 search_bbox = adjusted_bbox
 
-                # Get LINE cells only
+                # Get WORD cells and filter by containment
                 cells = []
                 for cell in seg_page.iterate_cells(TextCellUnit.WORD):
                     cell_bbox = cell.rect.to_bounding_box()
 
-                    # Ensure we're comparing in the same coordinate system (TOP_LEFT)
-                    if cell_bbox.coord_origin != search_bbox.coord_origin:
-                        cell_bbox = cell_bbox.to_top_left_origin(
-                            seg_page.dimension.height
-                        )
-
-                    # IOU is not good for obtaining text cells, if text cell is much smaller than
-                    # tagret bbox, even if it's fully inside - IOU will be very small
-                    # if search_bbox.intersection_over_union(cell_bbox) > 0.001:
-                    #     cells.append(cell)
                     if is_bbox_within(search_bbox, cell_bbox):
                         cells.append(cell)
 
@@ -1690,6 +1720,77 @@ class CVATToDoclingConverter:
         except Exception as e:
             _logger.error(f"Error extracting text: {e}")
             return ""
+
+
+def scale_segmented_pdf_page(
+    seg_page: SegmentedPdfPage, scale: float
+) -> SegmentedPdfPage:
+    """Scale all coordinates in a SegmentedPdfPage by the given factor.
+
+    Modifies the page in-place for efficiency (no deep copy).
+
+    Args:
+        seg_page: SegmentedPdfPage to scale (will be modified in-place)
+        scale: Scale factor to apply (e.g., 2.0 for 144 DPI)
+
+    Returns:
+        The same SegmentedPdfPage with all coordinates scaled
+    """
+    if scale == 1.0:
+        return seg_page
+
+    # Scale page geometry rect in-place
+    rect = seg_page.dimension.rect
+    rect.r_x0 *= scale
+    rect.r_y0 *= scale
+    rect.r_x1 *= scale
+    rect.r_y1 *= scale
+    rect.r_x2 *= scale
+    rect.r_y2 *= scale
+    rect.r_x3 *= scale
+    rect.r_y3 *= scale
+
+    # Scale all bounding boxes in PdfPageGeometry in-place
+    seg_page.dimension.art_bbox = seg_page.dimension.art_bbox.scaled(scale)
+    seg_page.dimension.bleed_bbox = seg_page.dimension.bleed_bbox.scaled(scale)
+    seg_page.dimension.crop_bbox = seg_page.dimension.crop_bbox.scaled(scale)
+    seg_page.dimension.media_bbox = seg_page.dimension.media_bbox.scaled(scale)
+    seg_page.dimension.trim_bbox = seg_page.dimension.trim_bbox.scaled(scale)
+
+    # Scale all text cells in-place
+    for cell_list in [
+        seg_page.char_cells,
+        seg_page.word_cells,
+        seg_page.textline_cells,
+    ]:
+        for cell in cell_list:
+            cell.rect.r_x0 *= scale
+            cell.rect.r_y0 *= scale
+            cell.rect.r_x1 *= scale
+            cell.rect.r_y1 *= scale
+            cell.rect.r_x2 *= scale
+            cell.rect.r_y2 *= scale
+            cell.rect.r_x3 *= scale
+            cell.rect.r_y3 *= scale
+
+    # Scale lines in-place
+    for line in seg_page.lines:
+        # Scale line points
+        line.points = [Coord2D(p.x * scale, p.y * scale) for p in line.points]
+        line.width *= scale
+
+    # Scale bitmap resources in-place
+    for bitmap in seg_page.bitmap_resources:
+        bitmap.rect.r_x0 *= scale
+        bitmap.rect.r_y0 *= scale
+        bitmap.rect.r_x1 *= scale
+        bitmap.rect.r_y1 *= scale
+        bitmap.rect.r_x2 *= scale
+        bitmap.rect.r_y2 *= scale
+        bitmap.rect.r_x3 *= scale
+        bitmap.rect.r_y3 *= scale
+
+    return seg_page
 
 
 def create_segmented_page_from_ocr(
@@ -1788,24 +1889,32 @@ def load_document_pages(
     page_numbers: Optional[List[int]] = None,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
+    cvat_input_scale: float = 2.0,
 ) -> Tuple[Dict[int, SegmentedPage], Dict[int, PILImage.Image]]:
-    """Load document pages with text extraction.
+    """Load document pages with text extraction at CVAT input scale.
 
     Args:
         input_path: Path to document (PDF or image)
         page_numbers: Specific page numbers to load (1-indexed). If None, loads all pages.
         force_ocr: Force OCR on PDFs instead of using native text layer
         ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
-                  PDF pages are rendered at this scale for OCR, then coordinates are mapped
-                  back to scale=2.0 (144 DPI) to match CVAT annotations. Has no effect on images.
+        cvat_input_scale: Scale at which CVAT annotations are provided (2.0 for PDFs, 1.0 for images).
+                         All returned SegmentedPages and images will be at this scale.
 
     Returns:
-        Tuple of (segmented_pages dict, page_images dict) with 1-indexed page numbers as keys
+        Tuple of (segmented_pages dict at cvat_input_scale, page_images dict at cvat_input_scale) with 1-indexed page numbers as keys
     """
     segmented_pages: Dict[int, SegmentedPage] = {}
     page_images: Dict[int, PILImage.Image] = {}
 
     is_pdf = input_path.suffix.lower() == ".pdf"
+
+    # For images, cvat_input_scale must be 1.0 (native resolution)
+    if not is_pdf and cvat_input_scale != 1.0:
+        _logger.warning(
+            f"cvat_input_scale {cvat_input_scale} ignored for image input; using 1.0 (native resolution)"
+        )
+        cvat_input_scale = 1.0
 
     if is_pdf and not force_ocr:
         # PDF with native text layer
@@ -1841,11 +1950,14 @@ def load_document_pages(
                 continue
 
             page = doc_backend.load_page(page_no - 1)
-            seg_page = page.get_segmented_page()
-            # Use scale=2.0 to match 144 DPI used in CVAT annotations (default 1.0 = 72 DPI)
-            page_image = page.get_page_image(scale=2.0)
+            # Get native SegmentedPage and scale it to cvat_input_scale
+            # IMPORTANT: Both seg_page and page_image must be at the same scale (cvat_input_scale)
+            native_seg_page = page.get_segmented_page()
+            page_image = page.get_page_image(scale=cvat_input_scale)
 
-            if seg_page is not None:
+            if native_seg_page is not None:
+                # Scale the SegmentedPage to match cvat_input_scale
+                seg_page = scale_segmented_pdf_page(native_seg_page, cvat_input_scale)
                 segmented_pages[page_no] = seg_page
             if page_image is not None:
                 page_images[page_no] = page_image
@@ -1891,20 +2003,20 @@ def load_document_pages(
 
             # Get high-res image for OCR at user-specified scale
             ocr_image = page.get_page_image(scale=ocr_scale)
-            # Get 144 DPI image for storage (to match CVAT annotations)
-            storage_image = page.get_page_image(scale=2.0)
+            # Get image at cvat_input_scale
+            cvat_image = page.get_page_image(scale=cvat_input_scale)
 
-            if ocr_image is not None and storage_image is not None:
-                # Map OCR coordinates from ocr_scale back to scale=2.0
-                coord_scale = 2.0 / ocr_scale
+            if ocr_image is not None and cvat_image is not None:
+                # Map OCR coordinates from ocr_scale to cvat_input_scale
+                coord_scale = cvat_input_scale / ocr_scale
                 seg_page = create_segmented_page_from_ocr(
                     ocr_image,
                     coordinate_scale=coord_scale,
-                    target_width=storage_image.width,
-                    target_height=storage_image.height,
+                    target_width=cvat_image.width,
+                    target_height=cvat_image.height,
                 )
                 segmented_pages[page_no] = seg_page
-                page_images[page_no] = storage_image
+                page_images[page_no] = cvat_image
 
             page.unload()
 
@@ -1942,6 +2054,8 @@ def convert_cvat_folder_to_docling(
     log_validation: bool = False,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
+    cvat_input_scale: float = 2.0,
+    storage_scale: float = 2.0,
 ) -> Dict[str, CVATConversionResult]:
     """Convert an entire CVAT folder into DoclingDocument objects grouped by document.
 
@@ -1954,8 +2068,8 @@ def convert_cvat_folder_to_docling(
         log_validation: Whether to log validation reports
         force_ocr: Force OCR on PDFs instead of using native text layer
         ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
-                  The PDF backend renders at this scale for OCR, then coordinates are mapped
-                  back to scale=2.0 (144 DPI) to match CVAT annotations. Has no effect on image inputs.
+        cvat_input_scale: Scale at which CVAT annotations are provided (2.0 for PDFs, 1.0 for images)
+        storage_scale: Scale for stored page images and coordinates (default: 2.0 for PDFs, 1.0 for images)
 
     Returns:
         Dictionary mapping doc_hash to CVATConversionResult
@@ -1975,6 +2089,8 @@ def convert_cvat_folder_to_docling(
         log_validation=log_validation,
         force_ocr=force_ocr,
         ocr_scale=ocr_scale,
+        cvat_input_scale=cvat_input_scale,
+        storage_scale=storage_scale,
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -2033,11 +2149,15 @@ class CVATFolderConverter:
         log_validation: bool = False,
         force_ocr: bool = False,
         ocr_scale: float = 1.0,
+        cvat_input_scale: float = 2.0,
+        storage_scale: float = 2.0,
     ):
         self.folder_structure = folder_structure
         self.log_validation = log_validation
         self.force_ocr = force_ocr
         self.ocr_scale = ocr_scale
+        self.cvat_input_scale = cvat_input_scale
+        self.storage_scale = storage_scale
 
     def convert_document(self, doc_hash: str) -> CVATConversionResult:
         """Convert a single document identified by its hash."""
@@ -2103,13 +2223,19 @@ class CVATFolderConverter:
                 {page_info.page_number for page_info in cvat_doc.pages}
             )
 
-            # Use shared function to load document pages
-            if cvat_doc.mime_type == "application/pdf":
+            # Determine scales based on input type
+            is_pdf = cvat_doc.mime_type == "application/pdf"
+            actual_cvat_input_scale = self.cvat_input_scale if is_pdf else 1.0
+            actual_storage_scale = self.storage_scale if is_pdf else 1.0
+
+            # Use shared function to load document pages (always at cvat_input_scale)
+            if is_pdf:
                 segmented_pages, page_images = load_document_pages(
                     input_path=cvat_doc.bin_file,
                     page_numbers=annotated_page_numbers,
                     force_ocr=self.force_ocr,
                     ocr_scale=self.ocr_scale,
+                    cvat_input_scale=actual_cvat_input_scale,
                 )
             else:
                 # For images, load each page individually (since they may be separate files)
@@ -2121,6 +2247,7 @@ class CVATFolderConverter:
                         page_numbers=[page_info.page_number],
                         force_ocr=False,  # Images always use OCR
                         ocr_scale=1.0,
+                        cvat_input_scale=1.0,  # Images always at native resolution
                     )
                     segmented_pages.update(seg_pages)
                     page_images.update(p_images)
@@ -2130,6 +2257,8 @@ class CVATFolderConverter:
                 segmented_pages,
                 page_images,
                 cvat_doc.doc_name,
+                cvat_input_scale=actual_cvat_input_scale,
+                storage_scale=actual_storage_scale,
             )
 
             docling_doc = converter.convert()
@@ -2167,16 +2296,15 @@ def convert_cvat_to_docling(
     image_identifier: Optional[str] = None,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
+    cvat_input_scale: float = 2.0,
+    storage_scale: float = 2.0,
 ) -> Optional[DoclingDocument]:
     """Convert a CVAT annotation to DoclingDocument.
 
     This function handles both image and PDF inputs, with proper coordinate system conversion:
-    - CVAT annotations use pixels with TOP_LEFT origin
-    - PDF SegmentedPages use points with BOTTOM_LEFT origin
-    - Image/OCR SegmentedPages use pixels with TOP_LEFT origin
-
-    The converter automatically calculates scaling factors between PDF points and CVAT pixels
-    by comparing the CVAT image height with the PDF page height.
+    - CVAT annotations use pixels with TOP_LEFT origin at cvat_input_scale
+    - PDF SegmentedPages use points with BOTTOM_LEFT origin at storage_scale
+    - Image/OCR SegmentedPages use pixels with TOP_LEFT origin (always at scale 1.0)
 
     Args:
         xml_path: Path to CVAT XML file
@@ -2184,8 +2312,8 @@ def convert_cvat_to_docling(
         image_identifier: Image filename as it appears in the CVAT XML (optional, defaults to input_path.name)
         force_ocr: Force OCR on PDFs instead of using native text layer
         ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
-                  PDF pages are rendered at this scale for OCR, then coordinates are mapped
-                  back to scale=2.0 (144 DPI) to match CVAT annotations. Has no effect on images.
+        cvat_input_scale: Scale at which CVAT annotations are provided (2.0 for PDFs, 1.0 for images)
+        storage_scale: Scale for stored page images and coordinates (default: 2.0 for PDFs, 1.0 for images)
 
     Returns:
         DoclingDocument or None if conversion fails
@@ -2206,17 +2334,28 @@ def convert_cvat_to_docling(
             )
             return None
 
-        # Use shared function to load document pages
+        # Determine scales based on input type
+        is_pdf = input_path.suffix.lower() == ".pdf"
+        actual_cvat_input_scale = cvat_input_scale if is_pdf else 1.0
+        actual_storage_scale = storage_scale if is_pdf else 1.0
+
+        # Use shared function to load document pages (at cvat_input_scale)
         segmented_pages, page_images = load_document_pages(
             input_path=input_path,
             page_numbers=None,  # Load all pages
             force_ocr=force_ocr,
             ocr_scale=ocr_scale,
+            cvat_input_scale=actual_cvat_input_scale,
         )
 
         # Create converter
         converter = CVATToDoclingConverter(
-            doc_structure, segmented_pages, page_images, input_path.name  # type: ignore
+            doc_structure,
+            segmented_pages,
+            page_images,
+            input_path.name,
+            cvat_input_scale=actual_cvat_input_scale,
+            storage_scale=actual_storage_scale,
         )
 
         # Convert
