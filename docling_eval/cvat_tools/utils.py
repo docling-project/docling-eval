@@ -53,20 +53,27 @@ def get_deepest_element_at_point(
     point: tuple[float, float],
     elements: List[CVATElement],
     proximity_thresh: float = DEFAULT_PROXIMITY_THRESHOLD,
+    skip_graph_cells: bool = False,
 ) -> Optional[CVATElement]:
     """Get the deepest (smallest area) element containing the given point.
 
     Filters out TableStructLabel elements as they are only structural annotations
     for table reconstruction, not content elements for reading order.
 
+    Optionally filters out GraphCellLabel elements (key/value) which should not be
+    directly hit by most path types (except to_value paths).
+
     Args:
         point: (x, y) coordinates of the point
         elements: List of elements to search
         proximity_thresh: Distance threshold for proximity matching
+        skip_graph_cells: If True, skip GraphCellLabel elements and return their parent instead
 
     Returns:
         The deepest element containing the point, or None if no element found
     """
+    from docling_core.types.doc.labels import GraphCellLabel
+
     from .models import TableStructLabel
 
     candidates = find_elements_containing_point(point, elements, proximity_thresh)
@@ -75,6 +82,12 @@ def get_deepest_element_at_point(
     filtered_candidates = [
         el for el in candidates if not isinstance(el.label, TableStructLabel)
     ]
+
+    # Optionally skip GraphCellLabel elements (for group/merge/reading_order paths)
+    if skip_graph_cells:
+        filtered_candidates = [
+            el for el in filtered_candidates if not isinstance(el.label, GraphCellLabel)
+        ]
 
     return filtered_candidates[0] if filtered_candidates else None
 

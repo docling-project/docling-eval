@@ -48,6 +48,8 @@ def map_path_points_to_elements(
     Returns:
         PathMappings object containing all path-to-element mappings
     """
+    from docling_core.types.doc.labels import GraphCellLabel
+
     reading_order: Dict[int, List[int]] = {}
     merge: Dict[int, List[int]] = {}
     group: Dict[int, List[int]] = {}
@@ -56,9 +58,18 @@ def map_path_points_to_elements(
     to_value: Dict[int, Tuple[int, int]] = {}
 
     for path in paths:
+        # For group/merge/reading_order paths, skip GraphCellLabel elements (key/value)
+        # They should never be in groups, merges, or reading order directly
+        # For to_value paths, we need to hit GraphCellLabel elements
+        skip_graph_cells = path.label in ["group", "merge"] or path.label.startswith(
+            "reading_order"
+        )
+
         touched_elements: List[int] = []
         for pt in path.points:
-            deepest = get_deepest_element_at_point(pt, elements, proximity_thresh)
+            deepest = get_deepest_element_at_point(
+                pt, elements, proximity_thresh, skip_graph_cells=skip_graph_cells
+            )
             if deepest:
                 eid = deepest.id
                 # Only add if not a duplicate in sequence
