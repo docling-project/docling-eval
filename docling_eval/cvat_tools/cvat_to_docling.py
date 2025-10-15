@@ -632,7 +632,9 @@ class CVATToDoclingConverter:
                 )
 
         # Scale all item provenances
-        for item, _ in self.doc.iterate_items():
+        for item, _ in self.doc.iterate_items(
+            traverse_pictures=True, included_content_layers=set(ContentLayer)
+        ):
             if isinstance(item, DocItem):
                 for prov in item.prov:
                     prov.bbox = prov.bbox.scaled(scale_factor)
@@ -643,6 +645,13 @@ class CVATToDoclingConverter:
                 for cell in item.graph.cells:
                     if cell.prov:
                         cell.prov.bbox = cell.prov.bbox.scaled(scale_factor)
+
+        # Scale table cell bboxes
+        for table_item in self.doc.tables:
+            if table_item.data and table_item.data.table_cells:
+                for cell in table_item.data.table_cells:
+                    if isinstance(cell, TableCell) and cell.bbox:
+                        cell.bbox = cell.bbox.scaled(scale_factor)
 
     def _reset_list_state(self):
         """Reset list processing state for clean conversion."""
