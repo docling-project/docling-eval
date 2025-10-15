@@ -589,16 +589,16 @@ class MergeGroupPathsRule(ValidationRule):
                 )
 
             # Check same content_layer
-            for el in elements_in_group[1:]:
-                if el.content_layer != first_el.content_layer:
-                    errors.append(
-                        CVATValidationError(
-                            error_type=f"{path_type}_path_different_content_layers",
-                            message=f"{path_type.capitalize()} path {path_id}: Elements have different content layers: {first_el.content_layer} vs {el.content_layer}",
-                            severity=ValidationSeverity.ERROR,
-                            path_id=path_id,
-                        )
+            content_layers = {el.content_layer for el in elements_in_group}
+            if len(content_layers) > 1:
+                errors.append(
+                    CVATValidationError(
+                        error_type=f"{path_type}_path_different_content_layers",
+                        message=f"{path_type.capitalize()} path {path_id}: Elements have different content layers: {sorted(content_layers)}",
+                        severity=ValidationSeverity.ERROR,
+                        path_id=path_id,
                     )
+                )
 
             # For list groups, check that all list_item elements have same level
             if is_list_group:
@@ -648,8 +648,7 @@ class MergePathDirectionRule(ValidationRule):
                     CVATValidationError(
                         error_type="merge_path_backwards",
                         message=f"Merge path {path_id}: Direction is backwards relative to reading order "
-                        f"(merge: {element_ids}, reading order: {corrected_ids}). "
-                        f"This will be auto-corrected during conversion.",
+                        f"(merge: {element_ids}, reading order: {corrected_ids}). ",
                         severity=ValidationSeverity.WARNING,
                         path_id=path_id,
                     )
