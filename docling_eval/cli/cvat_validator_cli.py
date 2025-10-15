@@ -34,7 +34,9 @@ def process_samples(samples: List[Tuple[str, Path, str]]) -> CVATValidationRunRe
                 )
             )
 
-    return CVATValidationRunReport(samples=reports)
+    return CVATValidationRunReport(
+        samples=reports, statistics=CVATValidationRunReport.compute_statistics(reports)
+    )
 
 
 def main():
@@ -109,9 +111,20 @@ def main():
         return
 
     # Also print summary to stdout
-    print(
-        f"Processed {len(samples)} samples, found {len(report.samples)} samples with errors"
-    )
+    stats = report.statistics
+    print("\n=== Validation Summary ===")
+    print(f"Total samples processed: {len(samples)}")
+    print(f"Samples with errors: {len(report.samples)}")
+    print(f"\nError counts by severity:")
+    print(f"  FATAL:   {stats.total_fatal}")
+    print(f"  ERROR:   {stats.total_error}")
+    print(f"  WARNING: {stats.total_warning}")
+    print(f"  TOTAL:   {stats.total_errors}")
+    print(f"\nSamples affected by severity:")
+    print(f"  Any error: {stats.samples_with_any_error}")
+    print(f"  FATAL:     {stats.samples_with_fatal}")
+    print(f"  ERROR:     {stats.samples_with_error}")
+    print(f"  WARNING:   {stats.samples_with_warning}")
 
 
 if __name__ == "__main__":

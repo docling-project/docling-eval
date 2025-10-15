@@ -111,7 +111,32 @@ class SecondLevelReadingOrderParentRule(ValidationRule):
 
 
 class ElementTouchedByReadingOrderRule(ValidationRule):
-    """Validate that every non-background element is touched by a reading order path - ERROR level."""
+    """Validate that every non-background element is touched by a reading order path.
+
+    Severity levels:
+    - ERROR: Elements not touched by reading order (default case)
+    - ERROR: Elements inside tables not touched by second-level (level 2+) reading order
+    - WARNING: Elements inside regular picture containers (not chart/infographic/illustration)
+
+    Table-specific validation:
+    - Elements inside table containers MUST be in second-level reading order
+    - Exceptions: checkbox elements, picture elements, key/value elements (GraphCellLabel)
+
+    Exemptions (no error reported):
+    - GraphCellLabel elements (key/value) - don't need reading order anywhere
+    - Checkbox elements inside tables - can be standalone
+    - Picture elements inside tables - can be standalone
+    - Picture elements with descendants in level 1 reading order
+    - Elements inside completely untouched CHART/INFOGRAPHIC/ILLUSTRATION pictures
+      (when NO descendants are in reading order, treated as atomic visual units)
+
+    Special handling:
+    - Elements inside partially annotated CHART/INFOGRAPHIC/ILLUSTRATION pictures
+      (where SOME descendants are in reading order) still get ERROR if untouched
+    """
+
+    # Picture types that get special exemption handling (atomic visual units when completely untouched)
+    ATOMIC_PICTURE_TYPES = frozenset(["CHART", "INFOGRAPHIC", "ILLUSTRATION"])
 
     def _is_element_inside_table(
         self, element: CVATElement, doc: DocumentStructure
@@ -127,6 +152,33 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             )
             is not None
         )
+
+    def _is_element_inside_regular_picture(
+        self, element: CVATElement, doc: DocumentStructure
+    ) -> bool:
+        """Check if an element is inside a regular picture container.
+
+        Regular pictures are those that are NOT chart/infographic/illustration types.
+        Chart/infographic/illustration pictures get special exemption handling.
+        """
+        node = doc.get_node_by_element_id(element.id)
+        if not node:
+            return False
+
+        # Find if element has a picture ancestor that is NOT chart/infographic/illustration
+        picture_ancestor = find_ancestor(
+            node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
+        )
+
+        if not picture_ancestor:
+            return False
+
+        # Check if the picture is an atomic type (chart/infographic/illustration)
+        picture_type = picture_ancestor.element.type
+        if picture_type and picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
+            return False
+
+        return True
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         from .models import GraphCellLabel
@@ -158,17 +210,19 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
 
         # Pre-compute level 1 reading order touched elements for efficiency
         level1_touched = set()
+        level2_plus_touched = set()
         for path_id, element_ids in doc.path_mappings.reading_order.items():
             path = doc.get_path_by_id(path_id)
-            if (
-                path
-                and path.label.startswith("reading_order")
-                and (path.level == 1 or path.level is None)
-            ):
-                level1_touched.update(element_ids)
+            if path and path.label.startswith("reading_order"):
+                if path.level == 1 or path.level is None:
+                    level1_touched.update(element_ids)
+                elif path.level and path.level > 1:
+                    level2_plus_touched.update(element_ids)
 
         logger.debug(f"Level 1 touched elements: {len(level1_touched)}")
         logger.debug(f"Level 1 touched element IDs: {sorted(level1_touched)}")
+        logger.debug(f"Level 2+ touched elements: {len(level2_plus_touched)}")
+        logger.debug(f"Level 2+ touched element IDs: {sorted(level2_plus_touched)}")
 
         # Pre-compute all descendant IDs for efficiency (avoid repeated tree traversal)
         element_descendants = {}
@@ -177,8 +231,11 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             if node:
                 element_descendants[el.id] = node.get_descendant_ids()
 
-        # Collect all elements that would fail the reading order validation
+        # Collect elements that would fail reading order validation
+        # Split into table elements and non-table elements for different validation rules
         untouched_elements = []
+        untouched_table_elements = []
+
         for el in doc.elements:
             if el.content_layer == ContentLayer.BACKGROUND:
                 continue
@@ -187,8 +244,20 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             if isinstance(el.label, GraphCellLabel):
                 continue
 
-            # Skip validation for elements inside table containers
+            # Handle elements inside table containers separately
             if self._is_element_inside_table(el, doc):
+                # Checkboxes and pictures inside tables don't need reading order
+                if el.label in [
+                    DocItemLabel.CHECKBOX_SELECTED,
+                    DocItemLabel.CHECKBOX_UNSELECTED,
+                    DocItemLabel.PICTURE,
+                ]:
+                    continue
+
+                # Check if touched by level 2+ reading order
+                descendant_ids = element_descendants.get(el.id, set())
+                if not (descendant_ids & level2_plus_touched):
+                    untouched_table_elements.append(el)
                 continue
 
             # Skip validation for picture elements that have descendants touched by level 1 reading order
@@ -212,18 +281,20 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         )
         logger.debug(f"Untouched element IDs: {[el.id for el in untouched_elements]}")
 
-        # Apply special condition for CHART/INFOGRAPHIC picture elements
+        # Apply special condition for atomic picture elements (CHART/INFOGRAPHIC/ILLUSTRATION)
         if untouched_elements:
-            # Find CHART/INFOGRAPHIC pictures that have NO touched elements (completely untouched)
-            chart_infographic_untouched = set()
+            # Find atomic pictures that have NO touched descendants (completely untouched)
+            # Pre-compute mapping of element_id -> parent atomic picture_id for efficiency
+            element_to_untouched_atomic_picture: Dict[int, int] = {}
+
             for el in doc.elements:
                 if (
                     el.label == DocItemLabel.PICTURE
                     and el.type
-                    and el.type.upper() in ["CHART", "INFOGRAPHIC"]
+                    and el.type.upper() in self.ATOMIC_PICTURE_TYPES
                 ):
                     logger.debug(
-                        f"Found CHART/INFOGRAPHIC picture element {el.id} with type '{el.type}'"
+                        f"Found atomic picture element {el.id} with type '{el.type}'"
                     )
                     picture_descendants = element_descendants.get(el.id, set())
                     # Exclude the picture element itself from touched elements inside
@@ -236,39 +307,50 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
                     )
                     # Only add if the picture has NO touched elements (excluding the picture itself)
                     if not touched_inside:
-                        chart_infographic_untouched.add(el.id)
+                        # Map all descendants to this untouched atomic picture
+                        for desc_id in picture_descendants:
+                            element_to_untouched_atomic_picture[desc_id] = el.id
                         logger.debug(
-                            f"Added picture {el.id} to chart_infographic_untouched"
+                            f"Picture {el.id} is completely untouched, mapped {len(picture_descendants)} descendants"
                         )
                     else:
                         logger.debug(
-                            f"Picture {el.id} has touched descendants, NOT added to chart_infographic_untouched"
+                            f"Picture {el.id} has touched descendants, not exempt"
                         )
 
             logger.debug(
-                f"chart_infographic_untouched: {sorted(chart_infographic_untouched)}"
+                f"Elements in untouched atomic pictures: {len(element_to_untouched_atomic_picture)}"
             )
 
-            # Report errors for elements not in completely untouched CHART/INFOGRAPHIC pictures
+            # Report errors for elements not in completely untouched atomic pictures
             for el in untouched_elements:
-                # Check if element is in a completely untouched CHART/INFOGRAPHIC picture
-                in_untouched_chart_infographic = False
-                for picture_el in doc.elements:
-                    if (
-                        picture_el.label == DocItemLabel.PICTURE
-                        and picture_el.type
-                        and picture_el.type.upper() in ["CHART", "INFOGRAPHIC"]
-                        and picture_el.id in chart_infographic_untouched
-                        and el.id in element_descendants.get(picture_el.id, set())
-                    ):
-                        in_untouched_chart_infographic = True
-                        logger.debug(
-                            f"Element {el.id} is inside untouched CHART/INFOGRAPHIC picture {picture_el.id}"
-                        )
-                        break
+                # Skip if element is in a completely untouched atomic picture
+                if el.id in element_to_untouched_atomic_picture:
+                    picture_id = element_to_untouched_atomic_picture[el.id]
+                    logger.debug(
+                        f"Skipping element {el.id} - inside completely untouched atomic picture {picture_id}"
+                    )
+                    continue
 
-                if not in_untouched_chart_infographic:
-                    logger.debug(f"Adding error for element {el.id} ({el.label})")
+                logger.debug(f"Adding error for element {el.id} ({el.label})")
+
+                # Check if element is inside any NON-chart/infographic/illustration picture container
+                is_inside_regular_picture = self._is_element_inside_regular_picture(
+                    el, doc
+                )
+
+                if is_inside_regular_picture:
+                    # WARNING level for elements inside regular picture containers (not chart/infographic/illustration)
+                    errors.append(
+                        CVATValidationError(
+                            error_type="element_not_touched_by_reading_order_inside_picture",
+                            message=f"Element {el.id} ({el.label}) inside picture container not touched by any reading-order path.",
+                            severity=ValidationSeverity.WARNING,
+                            element_id=el.id,
+                        )
+                    )
+                else:
+                    # ERROR level for all other elements
                     errors.append(
                         CVATValidationError(
                             error_type="element_not_touched_by_reading_order",
@@ -277,6 +359,22 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
                             element_id=el.id,
                         )
                     )
+
+        # Report errors for elements inside tables not touched by level 2+ reading order
+        logger.debug(f"Untouched table elements: {len(untouched_table_elements)}")
+        logger.debug(
+            f"Untouched table element IDs: {[el.id for el in untouched_table_elements]}"
+        )
+
+        for el in untouched_table_elements:
+            errors.append(
+                CVATValidationError(
+                    error_type="element_not_touched_by_reading_order_inside_table",
+                    message=f"Element {el.id} ({el.label}) inside table container not touched by second-level reading-order path.",
+                    severity=ValidationSeverity.ERROR,
+                    element_id=el.id,
+                )
+            )
 
         return errors
 

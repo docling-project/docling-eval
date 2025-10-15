@@ -312,7 +312,10 @@ def aggregate_validation_reports(
                     exc,
                 )
 
-    return CVATValidationRunReport(samples=all_reports)
+    return CVATValidationRunReport(
+        samples=all_reports,
+        statistics=CVATValidationRunReport.compute_statistics(all_reports),
+    )
 
 
 def run_jobs(

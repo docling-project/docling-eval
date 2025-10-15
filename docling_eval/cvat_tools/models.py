@@ -80,10 +80,92 @@ class CVATValidationReport(BaseModel):
         return any(e.severity == ValidationSeverity.WARNING for e in self.errors)
 
 
+class CVATValidationStatistics(BaseModel):
+    """Global statistics for a validation run."""
+
+    total_errors: int = Field(
+        description="Total number of validation errors across all samples"
+    )
+    total_fatal: int = Field(description="Total number of FATAL errors")
+    total_error: int = Field(description="Total number of ERROR errors")
+    total_warning: int = Field(description="Total number of WARNING errors")
+    samples_with_any_error: int = Field(
+        description="Number of samples affected by at least one validation error"
+    )
+    samples_with_fatal: int = Field(
+        description="Number of samples affected by at least one FATAL error"
+    )
+    samples_with_error: int = Field(
+        description="Number of samples affected by at least one ERROR error"
+    )
+    samples_with_warning: int = Field(
+        description="Number of samples affected by at least one WARNING error"
+    )
+
+
 class CVATValidationRunReport(BaseModel):
     """Validation report for a run of multiple samples."""
 
     samples: List[CVATValidationReport]
+    statistics: CVATValidationStatistics
+
+    @staticmethod
+    def compute_statistics(
+        samples: List[CVATValidationReport],
+    ) -> CVATValidationStatistics:
+        """Compute global statistics from a list of validation reports."""
+        total_errors = 0
+        total_fatal = 0
+        total_error = 0
+        total_warning = 0
+        samples_with_any_error = 0
+        samples_with_fatal = 0
+        samples_with_error = 0
+        samples_with_warning = 0
+
+        for sample_report in samples:
+            # Count total errors by severity
+            sample_fatal = sum(
+                1
+                for e in sample_report.errors
+                if e.severity == ValidationSeverity.FATAL
+            )
+            sample_error = sum(
+                1
+                for e in sample_report.errors
+                if e.severity == ValidationSeverity.ERROR
+            )
+            sample_warning = sum(
+                1
+                for e in sample_report.errors
+                if e.severity == ValidationSeverity.WARNING
+            )
+
+            total_errors += len(sample_report.errors)
+            total_fatal += sample_fatal
+            total_error += sample_error
+            total_warning += sample_warning
+
+            # Count samples with at least one error of each type
+            if len(sample_report.errors) > 0:
+                samples_with_any_error += 1
+            if sample_fatal > 0:
+                samples_with_fatal += 1
+            if sample_error > 0:
+                samples_with_error += 1
+            if sample_warning > 0:
+                samples_with_warning += 1
+
+        return CVATValidationStatistics(
+            total_errors=total_errors,
+            total_fatal=total_fatal,
+            total_error=total_error,
+            total_warning=total_warning,
+            samples_with_any_error=samples_with_any_error,
+            samples_with_fatal=samples_with_fatal,
+            samples_with_error=samples_with_error,
+            samples_with_warning=samples_with_warning,
+        )
 
 
 class CVATImageInfo(BaseModel):

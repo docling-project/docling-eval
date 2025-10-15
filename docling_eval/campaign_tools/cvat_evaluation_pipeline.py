@@ -193,7 +193,12 @@ class CVATEvaluationPipeline:
             validation_report_path = (
                 self.output_dir / f"validation_report_{set_label}.json"
             )
-            run_report = CVATValidationRunReport(samples=all_validation_reports)
+            run_report = CVATValidationRunReport(
+                samples=all_validation_reports,
+                statistics=CVATValidationRunReport.compute_statistics(
+                    all_validation_reports
+                ),
+            )
             validation_report_path.write_text(
                 run_report.model_dump_json(indent=2),
                 encoding="utf-8",
