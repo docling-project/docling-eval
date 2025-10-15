@@ -96,6 +96,7 @@ class DPBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
+        max_workers: int = 8,
     ):
         """
         Initialize the DPBench dataset builder.
@@ -105,10 +106,13 @@ class DPBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             split: Dataset split to use
             begin_index: Start index for processing (inclusive)
             end_index: End index for processing (exclusive), -1 means process all
+            max_workers: Number of concurrent downloads (default=8 to avoid rate limits)
         """
         super().__init__(
             name="DPBench",
-            dataset_source=HFSource(repo_id="upstage/dp-bench"),
+            dataset_source=HFSource(
+                repo_id="upstage/dp-bench", max_workers=max_workers
+            ),
             target=target,
             split=split,
             begin_index=begin_index,

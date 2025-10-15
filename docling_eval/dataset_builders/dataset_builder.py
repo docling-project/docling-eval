@@ -10,7 +10,15 @@ import ibm_boto3  # type: ignore
 from docling.utils.utils import chunkify
 from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
+from huggingface_hub.errors import HfHubHTTPError
 from pydantic import BaseModel
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+)
 
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
@@ -34,6 +42,7 @@ class HFSource(BaseModel):
     repo_id: str
     revision: Optional[str] = None
     hf_token: Optional[str] = os.getenv("HF_TOKEN", None)
+    max_workers: int = 8  # Reduce concurrent downloads to avoid rate limits
 
 
 class S3Source(BaseModel):
@@ -154,6 +163,51 @@ class BaseEvaluationDatasetBuilder:
 
         self.must_retrieve = False
 
+    @retry(
+        retry=retry_if_exception_type(HfHubHTTPError),
+        stop=(stop_after_attempt(10) | stop_after_delay(600)),
+        wait=wait_exponential(multiplier=2, min=10, max=120),
+        before_sleep=lambda retry_state: _log.warning(
+            f"Rate limit hit. Retrying in {retry_state.next_action.sleep if retry_state.next_action else 'unknown'} seconds... "
+            f"(Attempt {retry_state.attempt_number}/10)"
+        ),
+    )
+    def _download_with_retry(
+        self,
+        repo_id: str,
+        repo_type: str,
+        token: Optional[str],
+        local_dir: Path,
+        max_workers: int,
+        revision: Optional[str] = None,
+    ) -> Path:
+        """
+        Download dataset with exponential backoff on rate limit errors.
+
+        Retries up to 10 times with exponential backoff (10s, 20s, 40s, 80s, 120s, 120s...).
+        Will stop retrying after 10 minutes total elapsed time.
+        """
+        try:
+            path_str = snapshot_download(
+                repo_id=repo_id,
+                revision=revision,
+                repo_type=repo_type,
+                token=token,
+                local_dir=local_dir,
+                max_workers=max_workers,
+            )
+            return Path(path_str)
+        except HfHubHTTPError as e:
+            if e.response.status_code == 429:
+                _log.warning(
+                    f"Rate limit exceeded (429). Will retry with backoff. "
+                    f"Tip: Reduce max_workers (currently {max_workers}) if this persists."
+                )
+                raise  # Re-raise to trigger retry
+            else:
+                _log.error(f"HTTP error downloading dataset: {e}")
+                raise
+
     def retrieve_input_dataset(self) -> Path:
         """
         Download and retrieve the input dataset.
@@ -163,23 +217,35 @@ class BaseEvaluationDatasetBuilder:
         """
         if isinstance(self.dataset_source, HFSource):
             if not self.dataset_local_path:
-                path_str = snapshot_download(
-                    repo_id=self.dataset_source.repo_id,
-                    revision=self.dataset_source.revision,
-                    repo_type="dataset",
-                    token=self.dataset_source.hf_token,
+                self.dataset_local_path = self.target / "source_data"
+            if self.dataset_local_path.exists():
+                _log.info(
+                    f"Dataset already exists at {self.dataset_local_path}, skipping download"
                 )
-                path: Path = Path(path_str)
-                self.dataset_local_path = path
-            else:
-                path_str = snapshot_download(
+                self.retrieved = True
+                return self.dataset_local_path
+
+            _log.info(f"Downloading dataset to {self.dataset_local_path}")
+            try:
+                path_str = self._download_with_retry(
                     repo_id=self.dataset_source.repo_id,
                     revision=self.dataset_source.revision,
                     repo_type="dataset",
                     token=self.dataset_source.hf_token,
                     local_dir=self.dataset_local_path,
+                    max_workers=self.dataset_source.max_workers,
                 )
                 path = Path(path_str)
+            except Exception as e:
+                _log.error(f"Failed to download dataset: {e}")
+                _log.info("If you encounter rate limit errors, try:")
+                _log.info("1. Wait a few minutes before retrying")
+                _log.info(
+                    "2. Set HF_TOKEN environment variable with your HuggingFace token"
+                )
+                _log.info("3. Use a local copy of the dataset if available")
+                raise
+
         elif isinstance(self.dataset_source, Path):
             path = self.dataset_source
         elif isinstance(self.dataset_source, S3Source):
