@@ -12,6 +12,7 @@ from .models import (
     CVATElement,
     CVATValidationError,
     CVATValidationReport,
+    TableStructLabel,
     ValidationSeverity,
 )
 from .tree import find_ancestor
@@ -120,10 +121,11 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
 
     Table-specific validation:
     - Elements inside table containers MUST be in second-level reading order
-    - Exceptions: checkbox elements, picture elements, key/value elements (GraphCellLabel)
+    - Exceptions: checkbox elements, picture elements, key/value elements (GraphCellLabel), table structure elements (TableStructLabel)
 
     Exemptions (no error reported):
     - GraphCellLabel elements (key/value) - don't need reading order anywhere
+    - TableStructLabel elements (table structure) - don't need reading order anywhere
     - Checkbox elements inside tables - can be standalone
     - Picture elements inside tables - can be standalone
     - Picture elements with descendants in level 1 reading order
@@ -138,19 +140,77 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
     # Picture types that get special exemption handling (atomic visual units when completely untouched)
     ATOMIC_PICTURE_TYPES = frozenset(["CHART", "INFOGRAPHIC", "ILLUSTRATION"])
 
+    def _is_merge_group_inside_container(
+        self,
+        element: CVATElement,
+        container_element: CVATElement,
+        doc: DocumentStructure,
+        threshold: float = 0.7,
+    ) -> bool:
+        """Check if an element's merge group is substantially inside a container.
+
+        For merged elements, ALL parts of the merge group must be inside the container.
+        If any element in a merge group is outside, the entire group is considered outside.
+
+        Args:
+            element: Element to check
+            container_element: Container element to check against
+            doc: Document structure
+            threshold: Fraction of element that must be inside (default 0.7 = 70%)
+
+        Returns:
+            True if all elements in the merge group are >threshold inside the container
+        """
+        from .geometry import bbox_fraction_inside
+
+        # Get all elements in the merge group (or just this element if not merged)
+        element_ids_to_check = {element.id}
+
+        # Find merge group containing this element
+        for merge_elements in doc.path_mappings.merge.values():
+            if element.id in merge_elements:
+                element_ids_to_check = set(merge_elements)
+                break
+
+        # Check all elements in the group
+        for el_id in element_ids_to_check:
+            el = next((e for e in doc.elements if e.id == el_id), None)
+            if not el:
+                continue
+
+            # Check spatial containment for each element in the group
+            fraction = bbox_fraction_inside(el.bbox, container_element.bbox)
+
+            # If any element in the merge group is not substantially inside,
+            # treat the entire group as outside the container
+            if fraction <= threshold:
+                return False
+
+        return True
+
     def _is_element_inside_table(
         self, element: CVATElement, doc: DocumentStructure
     ) -> bool:
-        """Check if an element is inside a table container."""
+        """Check if an element is inside a table container.
+
+        For merged elements, ALL parts of the merge group must be inside the table.
+        If any element in a merge group is outside, the entire group is considered outside.
+        """
         node = doc.get_node_by_element_id(element.id)
         if not node:
             return False
 
-        return (
-            find_ancestor(
-                node, lambda ancestor: ancestor.element.label == DocItemLabel.TABLE
-            )
-            is not None
+        # Check if element has a TABLE ancestor in containment tree
+        table_ancestor = find_ancestor(
+            node, lambda ancestor: ancestor.element.label == DocItemLabel.TABLE
+        )
+
+        if not table_ancestor:
+            return False
+
+        # Check if the merge group is substantially inside the table
+        return self._is_merge_group_inside_container(
+            element, table_ancestor.element, doc, threshold=0.7
         )
 
     def _is_element_inside_regular_picture(
@@ -160,6 +220,10 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
 
         Regular pictures are those that are NOT chart/infographic/illustration types.
         Chart/infographic/illustration pictures get special exemption handling.
+
+        For merged elements, ALL parts of the merge group must be inside the same
+        regular picture. If any element is outside or in a different container,
+        the entire group is considered outside.
         """
         node = doc.get_node_by_element_id(element.id)
         if not node:
@@ -178,12 +242,54 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         if picture_type and picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
             return False
 
+        # For merged elements, check that ALL are inside the same regular picture
+        element_ids_to_check = {element.id}
+
+        # Find merge group containing this element
+        for merge_elements in doc.path_mappings.merge.values():
+            if element.id in merge_elements:
+                element_ids_to_check = set(merge_elements)
+                break
+
+        # Check all elements in the merge group
+        for el_id in element_ids_to_check:
+            if el_id == element.id:
+                continue  # Already checked above
+
+            el_node = doc.get_node_by_element_id(el_id)
+            if not el_node:
+                # Element not in tree - treat as outside
+                return False
+
+            # Check if this element has the same picture ancestor
+            el_picture_ancestor = find_ancestor(
+                el_node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
+            )
+
+            # If element has no picture ancestor or different picture, treat group as outside
+            if (
+                not el_picture_ancestor
+                or el_picture_ancestor.element.id != picture_ancestor.element.id
+            ):
+                return False
+
+            # Check if this element's picture is also non-atomic
+            el_picture_type = el_picture_ancestor.element.type
+            if el_picture_type and el_picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
+                return False
+
         return True
 
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         from .models import GraphCellLabel
 
         errors: list[CVATValidationError] = []
+
+        # Skip reading order validation for samples with very few elements
+        # (0 or 1 elements don't need reading order)
+        if len(doc.elements) <= 1:
+            return errors
+
         touched = set()
         for elist in doc.path_mappings.reading_order.values():
             touched.update(elist)
@@ -242,6 +348,10 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
 
             # Skip validation for GraphCellLabel elements (key/value) - they don't need reading order
             if isinstance(el.label, GraphCellLabel):
+                continue
+
+            # Skip validation for TableStructLabel elements - they don't need reading order
+            if isinstance(el.label, TableStructLabel):
                 continue
 
             # Handle elements inside table containers separately
