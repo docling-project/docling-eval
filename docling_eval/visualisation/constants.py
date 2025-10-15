@@ -163,6 +163,7 @@ img {
   margin-top: 10px;
   margin-bottom: 10px;
   max-width: 100%; /* Images will be responsive within their container */
+  min-width: 300px;
   height: auto;
 }
 .table-container {
