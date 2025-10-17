@@ -119,7 +119,7 @@ pic_classes = {
     "LOGO": "logo",
     "OTHER": "other",
     "PERSON": "person",
-    "PICTOGRAM": "pictogram",
+    "PICTOGRAM": "icon",
     "SCREENSHOT": "screenshot",
     "UI_ELEMENT": "ui_element",
 }
