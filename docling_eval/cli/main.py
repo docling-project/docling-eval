@@ -160,6 +160,18 @@ class GraniteDoclingVlmOptionsManager:
     def get_granitedocling_vlm_config_names() -> List[str]:
         return list(GraniteDoclingVlmOptionsManager.vlm_options_configs.keys())
 
+    @staticmethod
+    def get_granitedocling_vlm_config_name(
+        vlm_options: InlineVlmOptions,
+    ) -> Optional[str]:
+        for (
+            config_name,
+            vlm_opt,
+        ) in GraniteDoclingVlmOptionsManager.vlm_options_configs.items():
+            if vlm_options == vlm_opt:
+                return config_name
+        return None
+
 
 # Configure logging
 logging_level = logging.WARNING
@@ -528,16 +540,24 @@ def get_prediction_provider(
         pipeline_options.images_scale = image_scale_factor or 2.0
         pipeline_options.generate_page_images = True
         pipeline_options.generate_picture_images = True
-        pipeline_options.vlm_options = (
-            granite_docling_vlm_options or GRANITEDOCLING_TRANSFORMERS
-        )
+        pipeline_options.vlm_options = GRANITEDOCLING_TRANSFORMERS
+
         if max_new_tokens:
             pipeline_options.vlm_options.max_new_tokens = max_new_tokens
 
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
 
-        if sys.platform == "darwin":
+        if granite_docling_vlm_options:
+            pipeline_options.vlm_options = granite_docling_vlm_options
+            vlm_option_name = (
+                GraniteDoclingVlmOptionsManager.get_granitedocling_vlm_config_name(
+                    granite_docling_vlm_options
+                )
+            )
+            if vlm_option_name:
+                _log.info("running GraniteDocling on %s", granite_docling_vlm_options)
+        elif sys.platform == "darwin":
             try:
                 import mlx_vlm  # type: ignore
 

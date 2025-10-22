@@ -134,6 +134,8 @@ class DoclingEvalCOCOExporter:
         source_doc_column: str = "GT",
     ):
         r"""
+        Export COCO dataset
+
         Parameters
         ----------
         save_dir: Location to save the exported COCO dataset
