@@ -110,6 +110,20 @@ DEFAULT_TABLE_PAIR_IOU: float = 0.20
 DEFAULT_CONTAINMENT_THRESH: float = 0.50
 DEFAULT_SEM_MATCH_IOU: float = 0.30
 
+pic_classes = {
+    "BARCODE": "bar_code",
+    "CHART": "chart",
+    "DECORATION": "decoration",
+    "ILLUSTRATION": "illustration",
+    "INFOGRAPHIC": "infographic",
+    "LOGO": "logo",
+    "OTHER": "other",
+    "PERSON": "person",
+    "PICTOGRAM": "icon",
+    "SCREENSHOT": "screenshot",
+    "UI_ELEMENT": "ui_element",
+}
+
 
 @dataclass(frozen=True)
 class Cell:
@@ -1475,12 +1489,14 @@ class CVATToDoclingConverter:
 
             if element.type is not None:
                 pic_class = element.type
+                pic_class_harmonized = pic_classes[pic_class]
+
                 pic_item.annotations.append(
                     PictureClassificationData(
                         provenance="human",
                         predicted_classes=[
                             PictureClassificationClass(
-                                class_name=pic_class, confidence=1.0
+                                class_name=pic_class_harmonized, confidence=1.0
                             )
                         ],
                     )
