@@ -27,6 +27,7 @@ class ExecutionPlan:
     run_merge: bool
     run_dataset_creation: bool
     run_evaluation: bool
+    run_validation_reports: bool
     force_rerun: bool
     modalities: List[str]
 
@@ -35,6 +36,7 @@ class ExecutionPlan:
         cls,
         merge_only: bool,
         eval_only: bool,
+        validation_only: bool,
         force: bool,
         modalities: Optional[Sequence[str]],
     ) -> ExecutionPlan:
@@ -52,13 +54,40 @@ class ExecutionPlan:
         Raises:
             ValueError: If incompatible flags are combined
         """
-        if merge_only and eval_only:
-            raise ValueError("Cannot combine --merge-only and --eval-only")
+        exclusive_flags = [
+            flag for flag in (merge_only, eval_only, validation_only) if flag
+        ]
+        if len(exclusive_flags) > 1:
+            raise ValueError(
+                "Cannot combine --merge-only, --eval-only, or --validation-only"
+            )
+
+        if merge_only:
+            run_merge = True
+            run_dataset_creation = False
+            run_evaluation = False
+            run_validation_reports = False
+        elif eval_only:
+            run_merge = False
+            run_dataset_creation = False
+            run_evaluation = True
+            run_validation_reports = False
+        elif validation_only:
+            run_merge = False
+            run_dataset_creation = False
+            run_evaluation = False
+            run_validation_reports = True
+        else:
+            run_merge = True
+            run_dataset_creation = True
+            run_evaluation = True
+            run_validation_reports = False
 
         return cls(
-            run_merge=merge_only or not eval_only,
-            run_dataset_creation=not merge_only and not eval_only,
-            run_evaluation=not merge_only,
+            run_merge=run_merge,
+            run_dataset_creation=run_dataset_creation,
+            run_evaluation=run_evaluation,
+            run_validation_reports=run_validation_reports,
             force_rerun=force,
             modalities=(
                 list(modalities)
@@ -76,6 +105,11 @@ class ExecutionPlan:
         Returns:
             Tuple of (should_skip, reason_message)
         """
+        if self.run_validation_reports and not (
+            self.run_merge or self.run_dataset_creation or self.run_evaluation
+        ):
+            return False, ""
+
         if self.force_rerun:
             return False, ""
 
@@ -104,10 +138,18 @@ class ExecutionPlan:
         """Get human-readable description of what will be executed."""
         if self.run_merge and not (self.run_dataset_creation or self.run_evaluation):
             return "merge annotations for"
+        if self.run_validation_reports and not (
+            self.run_merge or self.run_dataset_creation or self.run_evaluation
+        ):
+            return "regenerate validation reports for"
         elif not self.run_dataset_creation and self.run_evaluation:
             return "run evaluation for"
         else:
             return "evaluate"
+
+    def should_aggregate_validation(self) -> bool:
+        """Determine if validation reports should be aggregated."""
+        return self.run_evaluation or self.run_validation_reports
 
 
 @dataclass(frozen=True)
@@ -172,6 +214,12 @@ def _execute_job(
         # If only merging, return early
         if not (plan.run_dataset_creation or plan.run_evaluation):
             return None
+
+    if plan.run_validation_reports:
+        pipeline.regenerate_validation_reports_from_merged(
+            merged_dir=job.get_merged_xml_dir(),
+        )
+        return None
 
     # Stage 2: Create datasets
     if plan.run_dataset_creation:
@@ -328,6 +376,7 @@ def run_jobs(
     force: bool = False,
     merge_only: bool = False,
     eval_only: bool = False,
+    validation_only: bool = False,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
     storage_scale: float = 2.0,
@@ -341,6 +390,7 @@ def run_jobs(
     plan = ExecutionPlan.from_args(
         merge_only=merge_only,
         eval_only=eval_only,
+        validation_only=validation_only,
         force=force,
         modalities=modalities,
     )
@@ -431,7 +481,7 @@ def run_jobs(
                 _LOGGER.debug("Subset failure details", exc_info=True)
 
         # Aggregate validation reports across successfully completed subsets only
-        if plan.run_evaluation:
+        if plan.should_aggregate_validation():
             if completed_jobs:
                 _LOGGER.info(
                     "Aggregating validation reports for submission %s (%d/%d subsets completed)",
@@ -600,6 +650,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Skip dataset creation and rerun only the evaluation stage.",
     )
     parser.add_argument(
+        "--validation-only",
+        action="store_true",
+        help="Regenerate validation reports using existing merged annotations.",
+    )
+    parser.add_argument(
         "--force-ocr",
         action="store_true",
         help="Force OCR on PDF page images instead of using native text layer.",
@@ -641,6 +696,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             force=args.force,
             merge_only=args.merge_only,
             eval_only=args.eval_only,
+            validation_only=args.validation_only,
             force_ocr=args.force_ocr,
             ocr_scale=args.ocr_scale,
             storage_scale=args.storage_scale,

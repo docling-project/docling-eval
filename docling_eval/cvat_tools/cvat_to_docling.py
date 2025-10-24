@@ -71,6 +71,7 @@ from docling_eval.cvat_tools.geometry import (
 )
 from docling_eval.cvat_tools.models import (
     CVATElement,
+    CVATValidationError,
     CVATValidationReport,
     TableStructLabel,
     ValidationSeverity,
@@ -82,11 +83,7 @@ from docling_eval.cvat_tools.tree import (
     build_global_reading_order,
     find_node_by_element_id,
 )
-from docling_eval.cvat_tools.validator import (
-    Validator,
-    validate_cvat_document,
-    validate_cvat_sample,
-)
+from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
 from docling_eval.utils.utils import classify_cells, sort_cell_ids
 
 _logger = logging.getLogger(__name__)
@@ -2273,24 +2270,53 @@ class CVATFolderConverter:
 
         try:
             validator = Validator()
-            validated_pages = validate_cvat_document(cvat_doc, validator=validator)
             per_page_reports: Dict[str, CVATValidationReport] = {}
             fatal_messages: List[str] = []
 
-            for page_name, validated in validated_pages.items():
-                page_report = validated.report
-                per_page_reports[page_name] = page_report
-
-                if page_report.has_fatal_errors():
-                    page_fatals = [
-                        f"{err.error_type}: {err.message}"
-                        for err in page_report.errors
-                        if err.severity == ValidationSeverity.FATAL
-                    ]
-                    fatal_messages.append(
-                        f"{page_name}: "
-                        + ("; ".join(page_fatals) if page_fatals else "Fatal errors")
+            for page_info in sorted(cvat_doc.pages, key=lambda page: page.page_number):
+                page_name = page_info.image_filename
+                try:
+                    validated = validate_cvat_sample(
+                        page_info.xml_path,
+                        page_name,
+                        validator=validator,
                     )
+                    page_report = validated.report
+                except Exception as exc:  # noqa: BLE001
+                    page_report = CVATValidationReport(
+                        sample_name=page_name,
+                        errors=[
+                            CVATValidationError(
+                                error_type="processing_error",
+                                message=f"Validation failed: {exc}",
+                                severity=ValidationSeverity.FATAL,
+                            )
+                        ],
+                    )
+                    fatal_messages.append(f"{page_name}: Validation failed: {exc}")
+                    _logger.error(
+                        "Validation failed for document %s page %s: %s",
+                        cvat_doc.doc_name,
+                        page_name,
+                        exc,
+                    )
+                else:
+                    if page_report.has_fatal_errors():
+                        page_fatals = [
+                            f"{err.error_type}: {err.message}"
+                            for err in page_report.errors
+                            if err.severity == ValidationSeverity.FATAL
+                        ]
+                        fatal_messages.append(
+                            f"{page_name}: "
+                            + (
+                                "; ".join(page_fatals)
+                                if page_fatals
+                                else "Fatal errors"
+                            )
+                        )
+
+                per_page_reports[page_name] = page_report
 
                 if self.log_validation:
                     _logger.info(
