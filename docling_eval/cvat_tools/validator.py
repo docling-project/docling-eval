@@ -1135,77 +1135,161 @@ class GroupConsecutiveReadingOrderRule(ValidationRule):
 
         id_to_element = {el.id: el for el in doc.elements}
 
-        # Check each group path
+        list_group_elements: Dict[int, Set[int]] = {}
+
         for path_id, group_element_ids in doc.path_mappings.group.items():
             if len(group_element_ids) < 2:
                 continue
 
-            # Only check groups containing list_item elements
-            group_elements_raw = [id_to_element.get(eid) for eid in group_element_ids]
-            group_elements: List[CVATElement] = [
-                el for el in group_elements_raw if el is not None
-            ]
+            resolved_ids = {eid for eid in group_element_ids if eid in id_to_element}
 
-            has_list_items = any(
-                el.label == DocItemLabel.LIST_ITEM for el in group_elements
-            )
-
-            if not has_list_items:
+            if not resolved_ids:
                 continue
 
-            # Get the reading order for this group
-            # We need to check all reading order paths that touch these elements
-            for ro_path_id, ro_element_ids in doc.path_mappings.reading_order.items():
-                # Find positions of grouped elements in this reading order
-                group_positions = []
-                for i, elem_id in enumerate(ro_element_ids):
-                    if elem_id in group_element_ids:
-                        group_positions.append((i, elem_id))
+            if any(
+                id_to_element[eid].label == DocItemLabel.LIST_ITEM
+                for eid in resolved_ids
+            ):
+                list_group_elements[path_id] = resolved_ids
 
-                if len(group_positions) < 2:
-                    # Group elements not in this reading order, or only one element
+        if not list_group_elements:
+            return errors
+
+        element_to_groups: Dict[int, Set[int]] = {}
+        for path_id, element_ids in list_group_elements.items():
+            for element_id in element_ids:
+                element_to_groups.setdefault(element_id, set()).add(path_id)
+
+        group_positions: Dict[int, Dict[int, List[int]]] = {}
+        ro_to_groups: Dict[int, Set[int]] = {}
+
+        for ro_path_id, ro_element_ids in doc.path_mappings.reading_order.items():
+            for index, element_id in enumerate(ro_element_ids):
+                for group_path_id in element_to_groups.get(element_id, ()):
+                    positions = group_positions.setdefault(
+                        group_path_id, {}
+                    ).setdefault(ro_path_id, [])
+                    positions.append(index)
+                    ro_to_groups.setdefault(ro_path_id, set()).add(group_path_id)
+
+        def _ranges_overlap(positions_a: List[int], positions_b: List[int]) -> bool:
+            if not positions_a or not positions_b:
+                return False
+            return min(positions_a) <= max(positions_b) and min(positions_b) <= max(
+                positions_a
+            )
+
+        adjacency: Dict[int, Set[int]] = {
+            path_id: set() for path_id in list_group_elements.keys()
+        }
+
+        for ro_path_id, groups_in_ro in ro_to_groups.items():
+            group_list = list(groups_in_ro)
+            for idx_a in range(len(group_list)):
+                path_a = group_list[idx_a]
+                positions_a = group_positions.get(path_a, {}).get(ro_path_id, [])
+
+                for idx_b in range(idx_a + 1, len(group_list)):
+                    path_b = group_list[idx_b]
+                    positions_b = group_positions.get(path_b, {}).get(ro_path_id, [])
+
+                    if _ranges_overlap(positions_a, positions_b):
+                        adjacency[path_a].add(path_b)
+                        adjacency[path_b].add(path_a)
+
+        unresolved_paths = set(list_group_elements.keys())
+        clusters: List[Tuple[Set[int], Set[int]]] = []
+
+        while unresolved_paths:
+            start_path = unresolved_paths.pop()
+            stack: List[int] = [start_path]
+            cluster_paths: Set[int] = set()
+            cluster_elements: Set[int] = set()
+
+            while stack:
+                current_path = stack.pop()
+                if current_path in cluster_paths:
                     continue
 
-                # Check elements between consecutive group elements
-                group_positions.sort(key=lambda x: x[0])  # Sort by position
+                cluster_paths.add(current_path)
+                cluster_elements.update(list_group_elements[current_path])
 
-                for j in range(len(group_positions) - 1):
-                    start_pos, start_id = group_positions[j]
-                    end_pos, end_id = group_positions[j + 1]
+                for neighbor in adjacency[current_path]:
+                    if neighbor in unresolved_paths:
+                        stack.append(neighbor)
+                        unresolved_paths.remove(neighbor)
 
-                    # Check if there are elements between start and end
-                    sandwiched_elements = []
-                    for pos in range(start_pos + 1, end_pos):
-                        between_id = ro_element_ids[pos]
-                        # If this element is not in the group, it's sandwiched
-                        if between_id not in group_element_ids:
-                            sandwiched_elements.append(between_id)
+            if not cluster_paths:
+                continue
 
-                    if sandwiched_elements:
-                        # Get element details for the error message
-                        sandwiched_labels = [
-                            (
-                                id_to_element[eid].label.value
-                                if id_to_element.get(eid)
-                                else "unknown"
-                            )
-                            for eid in sandwiched_elements
-                        ]
+            clusters.append((cluster_paths, cluster_elements))
 
-                        errors.append(
-                            CVATValidationError(
-                                error_type="list_group_reading_order_impurity",
-                                message=(
-                                    f"Group path {path_id} (list group): Found {len(sandwiched_elements)} "
-                                    f"non-grouped element(s) in reading order between grouped list items "
-                                    f"{start_id} and {end_id}. Sandwiched elements: {sandwiched_elements} "
-                                    f"(labels: {sandwiched_labels}). These elements may not be properly "
-                                    f"nested in the converted document structure."
-                                ),
-                                severity=ValidationSeverity.WARNING,
-                                path_id=path_id,
-                            )
+        for cluster_paths, cluster_elements in clusters:
+            if len(cluster_elements) < 2:
+                continue
+
+            sorted_cluster_paths = sorted(cluster_paths)
+            cluster_content_layers: Set[ContentLayer] = {
+                id_to_element[element_id].content_layer
+                for element_id in cluster_elements
+                if element_id in id_to_element
+            }
+
+            for ro_path_id, ro_element_ids in doc.path_mappings.reading_order.items():
+                cluster_positions: List[Tuple[int, int]] = [
+                    (index, element_id)
+                    for index, element_id in enumerate(ro_element_ids)
+                    if element_id in cluster_elements
+                ]
+
+                if len(cluster_positions) < 2:
+                    continue
+
+                cluster_positions.sort(key=lambda item: item[0])
+
+                for idx in range(len(cluster_positions) - 1):
+                    start_pos, start_id = cluster_positions[idx]
+                    end_pos, end_id = cluster_positions[idx + 1]
+
+                    sandwiched_elements = [
+                        ro_element_ids[position]
+                        for position in range(start_pos + 1, end_pos)
+                        if ro_element_ids[position] not in cluster_elements
+                        # Ignore elements that belong to a different content layer (e.g. furniture)
+                        and (
+                            ro_element_ids[position] not in id_to_element
+                            or id_to_element[ro_element_ids[position]].content_layer
+                            in cluster_content_layers
                         )
+                    ]
+
+                    if not sandwiched_elements:
+                        continue
+
+                    sandwiched_labels = [
+                        (
+                            id_to_element[element_id].label.value
+                            if element_id in id_to_element
+                            else "unknown"
+                        )
+                        for element_id in sandwiched_elements
+                    ]
+
+                    errors.append(
+                        CVATValidationError(
+                            error_type="list_group_reading_order_impurity",
+                            message=(
+                                f"Group cluster {sorted_cluster_paths} (list groups): Found "
+                                f"{len(sandwiched_elements)} non-grouped element(s) in reading order "
+                                f"path {ro_path_id} between grouped list elements {start_id} and {end_id}. "
+                                f"Sandwiched elements: {sandwiched_elements} (labels: {sandwiched_labels}). "
+                                "These elements may not be properly nested in the converted document structure."
+                            ),
+                            severity=ValidationSeverity.WARNING,
+                            path_id=sorted_cluster_paths[0],
+                            path_ids=sorted_cluster_paths,
+                        )
+                    )
 
         return errors
 

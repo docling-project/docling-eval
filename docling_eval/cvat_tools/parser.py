@@ -17,6 +17,10 @@ from docling_eval.cvat_tools.models import (
 
 logger = logging.getLogger("docling_eval.cvat_tools.")
 
+MANUAL_LABEL_MAP: dict[str, DocItemLabel] = {
+    "fillable_field": DocItemLabel.EMPTY_VALUE,
+}
+
 
 def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> BoundingBox:
     """Convert CVAT box coordinates to BoundingBox (TOPLEFT origin)."""
@@ -129,11 +133,14 @@ def _parse_image_element(
 
         # Parse into one of the known enums; skip if unknown
         label_obj: Optional[object] = None
-        try:
-            label_obj = DocItemLabel(label_str)
-        except ValueError:
-            # Handle common CVAT label variations (e.g., "document Index" -> "document_index")
-            normalized_label = label_str.lower().replace(" ", "_")
+        normalized_label = label_str.lower().replace(" ", "_")
+
+        manual_label = MANUAL_LABEL_MAP.get(normalized_label)
+        if manual_label is None:
+            manual_label = MANUAL_LABEL_MAP.get(label_str)
+        if manual_label is not None:
+            label_obj = manual_label
+        else:
             try:
                 label_obj = DocItemLabel(normalized_label)
             except ValueError:
