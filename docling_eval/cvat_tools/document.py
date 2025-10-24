@@ -14,7 +14,7 @@ from docling_core.types.doc.base import BoundingBox
 
 from .folder_models import CVATDocument, CVATFolderStructure
 from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
-from .parser import parse_cvat_xml
+from .parser import ParsedCVATFile, ParsedCVATImage, parse_cvat_file
 from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
@@ -70,9 +70,20 @@ class DocumentStructure:
         Returns:
             DocumentStructure containing all core data structures
         """
-        # Parse XML
-        images = parse_cvat_xml(xml_path, image_filename)
-        elements, paths, image_info = next(iter(images.values()))
+        parsed_file = parse_cvat_file(xml_path)
+        parsed_image = parsed_file.get_image(image_filename)
+        return cls.from_parsed_image(parsed_image, proximity_thresh=proximity_thresh)
+
+    @classmethod
+    def from_parsed_image(
+        cls,
+        parsed_image: ParsedCVATImage,
+        proximity_thresh: float = DEFAULT_PROXIMITY_THRESHOLD,
+    ) -> "DocumentStructure":
+        """Construct a DocumentStructure from a parsed CVAT image."""
+        elements = [element.model_copy(deep=True) for element in parsed_image.elements]
+        paths = [path.model_copy(deep=True) for path in parsed_image.paths]
+        image_info = parsed_image.image_info.model_copy(deep=True)
 
         # Build containment tree
         tree_roots = build_containment_tree(elements)
@@ -110,14 +121,21 @@ class DocumentStructure:
 
         sorted_pages = sorted(cvat_document.pages, key=lambda p: p.page_number)
 
-        for page_info in sorted_pages:
-            images = parse_cvat_xml(page_info.xml_path, page_info.image_filename)
-            if page_info.image_filename not in images:
-                raise ValueError(
-                    f"Image {page_info.image_filename} not found in {page_info.xml_path}"
-                )
+        parsed_cache: Dict[Path, ParsedCVATFile] = {}
 
-            elements, paths, image_info = images[page_info.image_filename]
+        for page_info in sorted_pages:
+            parsed_file = parsed_cache.get(page_info.xml_path)
+            if parsed_file is None:
+                parsed_file = parse_cvat_file(page_info.xml_path)
+                parsed_cache[page_info.xml_path] = parsed_file
+
+            parsed_image = parsed_file.get_image(page_info.image_filename)
+
+            elements = [
+                element.model_copy(deep=True) for element in parsed_image.elements
+            ]
+            paths = [path.model_copy(deep=True) for path in parsed_image.paths]
+            image_info = parsed_image.image_info.model_copy(deep=True)
             image_infos.append(image_info)
 
             element_offset = (

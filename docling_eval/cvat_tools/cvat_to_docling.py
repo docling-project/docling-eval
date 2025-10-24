@@ -76,7 +76,11 @@ from docling_eval.cvat_tools.models import (
     TableStructLabel,
     ValidationSeverity,
 )
-from docling_eval.cvat_tools.parser import MissingImageInCVATXML
+from docling_eval.cvat_tools.parser import (
+    MissingImageInCVATXML,
+    ParsedCVATFile,
+    parse_cvat_file,
+)
 from docling_eval.cvat_tools.tree import (
     TreeNode,
     apply_reading_order_to_tree,
@@ -2273,13 +2277,20 @@ class CVATFolderConverter:
             per_page_reports: Dict[str, CVATValidationReport] = {}
             fatal_messages: List[str] = []
 
+            parsed_cache: Dict[Path, ParsedCVATFile] = {}
+
             for page_info in sorted(cvat_doc.pages, key=lambda page: page.page_number):
                 page_name = page_info.image_filename
                 try:
+                    parsed_file = parsed_cache.get(page_info.xml_path)
+                    if parsed_file is None:
+                        parsed_file = parse_cvat_file(page_info.xml_path)
+                        parsed_cache[page_info.xml_path] = parsed_file
                     validated = validate_cvat_sample(
                         page_info.xml_path,
                         page_name,
                         validator=validator,
+                        parsed_file=parsed_file,
                     )
                     page_report = validated.report
                 except Exception as exc:  # noqa: BLE001
@@ -2447,7 +2458,10 @@ def convert_cvat_to_docling(
         image_name = (
             image_identifier if image_identifier is not None else input_path.name
         )
-        validated_sample = validate_cvat_sample(xml_path, image_name)
+        parsed_file = parse_cvat_file(xml_path)
+        validated_sample = validate_cvat_sample(
+            xml_path, image_name, parsed_file=parsed_file
+        )
         doc_structure = validated_sample.structure
         validation_report = validated_sample.report
 

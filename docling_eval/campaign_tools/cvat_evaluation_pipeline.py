@@ -42,7 +42,7 @@ from docling_eval.cvat_tools.models import (
     CVATValidationRunReport,
     ValidationSeverity,
 )
-from docling_eval.cvat_tools.parser import get_all_images_from_cvat_xml
+from docling_eval.cvat_tools.parser import get_all_images_from_cvat_xml, parse_cvat_file
 from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
 from docling_eval.datamodels.types import (
     BenchMarkNames,
@@ -308,7 +308,8 @@ class CVATEvaluationPipeline:
                     f"Missing merged annotations for {set_label}: {xml_path}"
                 )
 
-            image_names = sorted(get_all_images_from_cvat_xml(xml_path))
+            parsed_file = parse_cvat_file(xml_path)
+            image_names = sorted(parsed_file.image_names)
 
             reports: list[CVATValidationReport] = []
             for image_name in image_names:
@@ -317,6 +318,7 @@ class CVATEvaluationPipeline:
                         xml_path,
                         image_name,
                         validator=validator,
+                        parsed_file=parsed_file,
                     )
                     reports.append(validated.report)
                 except Exception as exc:  # noqa: BLE001
