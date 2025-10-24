@@ -15,6 +15,7 @@ from .models import (
     TableStructLabel,
     ValidationSeverity,
 )
+from .parser import ParsedCVATFile, parse_cvat_file
 from .tree import find_ancestor
 from .utils import DEFAULT_PROXIMITY_THRESHOLD, find_elements_containing_point
 
@@ -1348,12 +1349,17 @@ def validate_cvat_sample(
     image_filename: str,
     *,
     validator: Optional[Validator] = None,
+    parsed_file: Optional[ParsedCVATFile] = None,
     proximity_thresh: float = DEFAULT_PROXIMITY_THRESHOLD,
 ) -> ValidatedSample:
     """Load a CVAT sample, build its structure, and validate it."""
 
-    structure = DocumentStructure.from_cvat_xml(
-        xml_path, image_filename, proximity_thresh
+    active_parsed = (
+        parsed_file if parsed_file is not None else parse_cvat_file(xml_path)
+    )
+    parsed_image = active_parsed.get_image(image_filename)
+    structure = DocumentStructure.from_parsed_image(
+        parsed_image, proximity_thresh=proximity_thresh
     )
     active_validator = validator if validator is not None else Validator()
     report = active_validator.validate_sample(image_filename, structure)
@@ -1372,12 +1378,18 @@ def validate_cvat_document(
 
     active_validator = validator if validator is not None else Validator()
     results: Dict[str, ValidatedSample] = {}
+    parsed_cache: Dict[Path, ParsedCVATFile] = {}
 
     for page_info in sorted(cvat_document.pages, key=lambda page: page.page_number):
+        parsed_file = parsed_cache.get(page_info.xml_path)
+        if parsed_file is None:
+            parsed_file = parse_cvat_file(page_info.xml_path)
+            parsed_cache[page_info.xml_path] = parsed_file
         sample = validate_cvat_sample(
             page_info.xml_path,
             page_info.image_filename,
             validator=active_validator,
+            parsed_file=parsed_file,
             proximity_thresh=proximity_thresh,
         )
         results[page_info.image_filename] = sample

@@ -1,10 +1,15 @@
 import argparse
 import json
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from ..cvat_tools.models import CVATValidationReport, CVATValidationRunReport
-from ..cvat_tools.parser import find_samples_in_directory, get_all_images_from_cvat_xml
+from ..cvat_tools.parser import (
+    ParsedCVATFile,
+    find_samples_in_directory,
+    get_all_images_from_cvat_xml,
+    parse_cvat_file,
+)
 from ..cvat_tools.validator import Validator, validate_cvat_sample
 
 
@@ -12,11 +17,19 @@ def process_samples(samples: List[Tuple[str, Path, str]]) -> CVATValidationRunRe
     """Process a list of samples and return a validation report."""
     validator = Validator()
     reports: List[CVATValidationReport] = []
+    parsed_cache: Dict[Path, ParsedCVATFile] = {}
 
     for sample_name, xml_path, image_filename in samples:
         try:
+            parsed_file = parsed_cache.get(xml_path)
+            if parsed_file is None:
+                parsed_file = parse_cvat_file(xml_path)
+                parsed_cache[xml_path] = parsed_file
             validated = validate_cvat_sample(
-                xml_path, image_filename, validator=validator
+                xml_path,
+                image_filename,
+                validator=validator,
+                parsed_file=parsed_file,
             )
             if validated.report.errors:
                 reports.append(validated.report)

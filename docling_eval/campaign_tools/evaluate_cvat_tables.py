@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from docling_eval.cvat_tools.document import DocumentStructure
 from docling_eval.cvat_tools.models import CVATElement, TableStructLabel
+from docling_eval.cvat_tools.parser import ParsedCVATFile, parse_cvat_file
 
 DEFAULT_TABLE_PAIR_IOU: float = 0.20
 DEFAULT_CONTAINMENT_THRESH: float = 0.50
@@ -296,10 +297,19 @@ def evaluate_image(
     containment_thresh: float,
     table_pair_iou: float,
     sem_match_iou: float,
+    *,
+    parsed_set_a: Optional[ParsedCVATFile] = None,
+    parsed_set_b: Optional[ParsedCVATFile] = None,
 ) -> Optional[ImageTablesEvaluation]:
     try:
-        doc_a = DocumentStructure.from_cvat_xml(set_a_xml, image_name)
-        doc_b = DocumentStructure.from_cvat_xml(set_b_xml, image_name)
+        parsed_a = (
+            parsed_set_a if parsed_set_a is not None else parse_cvat_file(set_a_xml)
+        )
+        parsed_b = (
+            parsed_set_b if parsed_set_b is not None else parse_cvat_file(set_b_xml)
+        )
+        doc_a = DocumentStructure.from_parsed_image(parsed_a.get_image(image_name))
+        doc_b = DocumentStructure.from_parsed_image(parsed_b.get_image(image_name))
     except Exception:
         return None
 
@@ -352,6 +362,8 @@ def evaluate_tables(
     Returns the full evaluation model (no file I/O, no Typer types).
     """
     imgs = sorted(set(list_images_in_xml(set_a)) & set(list_images_in_xml(set_b)))
+    parsed_set_a = parse_cvat_file(set_a)
+    parsed_set_b = parse_cvat_file(set_b)
     evals: list[ImageTablesEvaluation] = []
     for name in imgs:
         res = evaluate_image(
@@ -361,6 +373,8 @@ def evaluate_tables(
             containment_thresh=containment_thresh,
             table_pair_iou=table_pair_iou,
             sem_match_iou=sem_match_iou,
+            parsed_set_a=parsed_set_a,
+            parsed_set_b=parsed_set_b,
         )
         if res is not None:
             evals.append(res)

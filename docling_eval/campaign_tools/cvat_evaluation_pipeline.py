@@ -36,6 +36,14 @@ from docling_eval.cvat_tools.folder_parser import (
     find_xml_files_by_pattern,
     parse_cvat_folder,
 )
+from docling_eval.cvat_tools.models import (
+    CVATValidationError,
+    CVATValidationReport,
+    CVATValidationRunReport,
+    ValidationSeverity,
+)
+from docling_eval.cvat_tools.parser import get_all_images_from_cvat_xml, parse_cvat_file
+from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
 from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
@@ -139,8 +147,6 @@ class CVATEvaluationPipeline:
         Returns:
             List of created JSON file paths
         """
-        from docling_eval.cvat_tools.models import CVATValidationRunReport
-
         folder_structure = self._load_folder_structure(xml_pattern)
 
         if output_json_dir.exists():
@@ -279,6 +285,78 @@ class CVATEvaluationPipeline:
         pred_xml = self._merge_task_xmls(PREDICTION_PATTERN, pred_path)
 
         return gt_xml, pred_xml
+
+    def regenerate_validation_reports_from_merged(
+        self,
+        merged_dir: Optional[Path] = None,
+    ) -> None:
+        """Rebuild validation reports using pre-merged annotation XMLs."""
+
+        if merged_dir is None:
+            merged_dir = self.output_dir / "merged_xml"
+
+        set_to_filename = {
+            "set_A": merged_dir / "combined_set_A.xml",
+            "set_B": merged_dir / "combined_set_B.xml",
+        }
+
+        validator = Validator()
+
+        for set_label, xml_path in set_to_filename.items():
+            if not xml_path.exists():
+                raise FileNotFoundError(
+                    f"Missing merged annotations for {set_label}: {xml_path}"
+                )
+
+            parsed_file = parse_cvat_file(xml_path)
+            image_names = sorted(parsed_file.image_names)
+
+            reports: list[CVATValidationReport] = []
+            for image_name in image_names:
+                try:
+                    validated = validate_cvat_sample(
+                        xml_path,
+                        image_name,
+                        validator=validator,
+                        parsed_file=parsed_file,
+                    )
+                    reports.append(validated.report)
+                except Exception as exc:  # noqa: BLE001
+                    _log.error(
+                        "Validation failed for %s (%s): %s",
+                        set_label,
+                        image_name,
+                        exc,
+                    )
+                    reports.append(
+                        CVATValidationReport(
+                            sample_name=image_name,
+                            errors=[
+                                CVATValidationError(
+                                    error_type="processing_error",
+                                    message=f"Validation failed: {exc}",
+                                    severity=ValidationSeverity.FATAL,
+                                )
+                            ],
+                        )
+                    )
+
+            run_report = CVATValidationRunReport(
+                samples=reports,
+                statistics=CVATValidationRunReport.compute_statistics(reports),
+            )
+
+            output_path = self.output_dir / f"validation_report_{set_label}.json"
+            output_path.write_text(
+                run_report.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+            _log.info(
+                "✓ Regenerated %s validation report with %d sample(s): %s",
+                set_label,
+                len(reports),
+                output_path,
+            )
 
     def create_ground_truth_dataset(self) -> None:
         """

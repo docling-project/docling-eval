@@ -71,22 +71,23 @@ from docling_eval.cvat_tools.geometry import (
 )
 from docling_eval.cvat_tools.models import (
     CVATElement,
+    CVATValidationError,
     CVATValidationReport,
     TableStructLabel,
     ValidationSeverity,
 )
-from docling_eval.cvat_tools.parser import MissingImageInCVATXML
+from docling_eval.cvat_tools.parser import (
+    MissingImageInCVATXML,
+    ParsedCVATFile,
+    parse_cvat_file,
+)
 from docling_eval.cvat_tools.tree import (
     TreeNode,
     apply_reading_order_to_tree,
     build_global_reading_order,
     find_node_by_element_id,
 )
-from docling_eval.cvat_tools.validator import (
-    Validator,
-    validate_cvat_document,
-    validate_cvat_sample,
-)
+from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
 from docling_eval.utils.utils import classify_cells, sort_cell_ids
 
 _logger = logging.getLogger(__name__)
@@ -2273,24 +2274,60 @@ class CVATFolderConverter:
 
         try:
             validator = Validator()
-            validated_pages = validate_cvat_document(cvat_doc, validator=validator)
             per_page_reports: Dict[str, CVATValidationReport] = {}
             fatal_messages: List[str] = []
 
-            for page_name, validated in validated_pages.items():
-                page_report = validated.report
-                per_page_reports[page_name] = page_report
+            parsed_cache: Dict[Path, ParsedCVATFile] = {}
 
-                if page_report.has_fatal_errors():
-                    page_fatals = [
-                        f"{err.error_type}: {err.message}"
-                        for err in page_report.errors
-                        if err.severity == ValidationSeverity.FATAL
-                    ]
-                    fatal_messages.append(
-                        f"{page_name}: "
-                        + ("; ".join(page_fatals) if page_fatals else "Fatal errors")
+            for page_info in sorted(cvat_doc.pages, key=lambda page: page.page_number):
+                page_name = page_info.image_filename
+                try:
+                    parsed_file = parsed_cache.get(page_info.xml_path)
+                    if parsed_file is None:
+                        parsed_file = parse_cvat_file(page_info.xml_path)
+                        parsed_cache[page_info.xml_path] = parsed_file
+                    validated = validate_cvat_sample(
+                        page_info.xml_path,
+                        page_name,
+                        validator=validator,
+                        parsed_file=parsed_file,
                     )
+                    page_report = validated.report
+                except Exception as exc:  # noqa: BLE001
+                    page_report = CVATValidationReport(
+                        sample_name=page_name,
+                        errors=[
+                            CVATValidationError(
+                                error_type="processing_error",
+                                message=f"Validation failed: {exc}",
+                                severity=ValidationSeverity.FATAL,
+                            )
+                        ],
+                    )
+                    fatal_messages.append(f"{page_name}: Validation failed: {exc}")
+                    _logger.error(
+                        "Validation failed for document %s page %s: %s",
+                        cvat_doc.doc_name,
+                        page_name,
+                        exc,
+                    )
+                else:
+                    if page_report.has_fatal_errors():
+                        page_fatals = [
+                            f"{err.error_type}: {err.message}"
+                            for err in page_report.errors
+                            if err.severity == ValidationSeverity.FATAL
+                        ]
+                        fatal_messages.append(
+                            f"{page_name}: "
+                            + (
+                                "; ".join(page_fatals)
+                                if page_fatals
+                                else "Fatal errors"
+                            )
+                        )
+
+                per_page_reports[page_name] = page_report
 
                 if self.log_validation:
                     _logger.info(
@@ -2421,7 +2458,10 @@ def convert_cvat_to_docling(
         image_name = (
             image_identifier if image_identifier is not None else input_path.name
         )
-        validated_sample = validate_cvat_sample(xml_path, image_name)
+        parsed_file = parse_cvat_file(xml_path)
+        validated_sample = validate_cvat_sample(
+            xml_path, image_name, parsed_file=parsed_file
+        )
         doc_structure = validated_sample.structure
         validation_report = validated_sample.report
 
