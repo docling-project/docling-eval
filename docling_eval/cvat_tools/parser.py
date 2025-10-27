@@ -19,6 +19,40 @@ from docling_eval.cvat_tools.models import (
 
 logger = logging.getLogger("docling_eval.cvat_tools.")
 
+MANUAL_LABEL_MAP: dict[str, DocItemLabel] = {
+    "fillable_field": DocItemLabel.EMPTY_VALUE,
+}
+
+
+@dataclass(frozen=True)
+class ParsedCVATImage:
+    """Parsed representation of a single <image> entry in a CVAT XML file."""
+
+    name: str
+    elements: Tuple[CVATElement, ...]
+    paths: Tuple[CVATAnnotationPath, ...]
+    image_info: CVATImageInfo
+
+
+@dataclass(frozen=True)
+class ParsedCVATFile:
+    """Parsed CVAT XML file containing multiple images."""
+
+    xml_path: Path
+    images: Mapping[str, ParsedCVATImage]
+
+    def get_image(self, image_name: str) -> ParsedCVATImage:
+        try:
+            return self.images[image_name]
+        except KeyError as exc:
+            raise MissingImageInCVATXML(
+                f"No <image> element for {image_name} in {self.xml_path}"
+            ) from exc
+
+    @property
+    def image_names(self) -> Tuple[str, ...]:
+        return tuple(self.images.keys())
+
 
 @dataclass(frozen=True)
 class ParsedCVATImage:
@@ -155,11 +189,14 @@ def _parse_image_element(
 
         # Parse into one of the known enums; skip if unknown
         label_obj: Optional[object] = None
-        try:
-            label_obj = DocItemLabel(label_str)
-        except ValueError:
-            # Handle common CVAT label variations (e.g., "document Index" -> "document_index")
-            normalized_label = label_str.lower().replace(" ", "_")
+        normalized_label = label_str.lower().replace(" ", "_")
+
+        manual_label = MANUAL_LABEL_MAP.get(normalized_label)
+        if manual_label is None:
+            manual_label = MANUAL_LABEL_MAP.get(label_str)
+        if manual_label is not None:
+            label_obj = manual_label
+        else:
             try:
                 label_obj = DocItemLabel(normalized_label)
             except ValueError:
