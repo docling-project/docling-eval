@@ -180,6 +180,9 @@ def _execute_job(
     force_ocr: bool,
     ocr_scale: float,
     storage_scale: float,
+    stop_after_json: bool,
+    resume_from_json: bool,
+    reuse_eval_dataset: bool,
 ) -> Optional[pd.DataFrame]:
     """Execute pipeline stages for a single job according to the execution plan.
 
@@ -223,11 +226,30 @@ def _execute_job(
 
     # Stage 2: Create datasets
     if plan.run_dataset_creation:
-        pipeline.create_ground_truth_dataset()
-        pipeline.create_prediction_dataset()
+        if resume_from_json:
+            _LOGGER.info(
+                "  ↳ Resuming from existing JSON exports for %s", job.format_job_id()
+            )
+            pipeline.ensure_json_exports_exist()
+        else:
+            pipeline.create_json_exports(reuse_existing=False)
+
+        if stop_after_json:
+            _LOGGER.info(
+                "  ↳ Stop-after-json requested; skipping dataset join and evaluation."
+            )
+            return None
+
+        pipeline.create_eval_dataset_from_json(
+            reuse_existing=reuse_eval_dataset and not plan.force_rerun,
+            ignore_missing_predictions=True,
+            do_visualization=True,
+        )
+    elif resume_from_json:
+        pipeline.ensure_json_exports_exist()
 
     # Stage 3: Run evaluations
-    if plan.run_evaluation:
+    if plan.run_evaluation and not stop_after_json:
         pipeline.run_table_evaluation(reuse_existing=not plan.force_rerun)
         return pipeline.run_evaluation(
             modalities=plan.modalities,
@@ -380,6 +402,9 @@ def run_jobs(
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
     storage_scale: float = 2.0,
+    stop_after_json: bool = False,
+    resume_from_json: bool = False,
+    reuse_eval_dataset: bool = False,
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
@@ -434,6 +459,9 @@ def run_jobs(
 
             # Check if job should be skipped
             should_skip, skip_reason = plan.should_skip_job(job)
+            if resume_from_json and plan.run_dataset_creation:
+                should_skip = False
+                skip_reason = ""
             if should_skip:
                 _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
                 skipped_jobs.append((job_id, skip_reason))
@@ -460,6 +488,9 @@ def run_jobs(
                     force_ocr=force_ocr,
                     ocr_scale=ocr_scale,
                     storage_scale=storage_scale,
+                    stop_after_json=stop_after_json,
+                    resume_from_json=resume_from_json,
+                    reuse_eval_dataset=reuse_eval_dataset,
                 )
 
                 if subset_df is not None and not subset_df.empty:
@@ -481,7 +512,7 @@ def run_jobs(
                 _LOGGER.debug("Subset failure details", exc_info=True)
 
         # Aggregate validation reports across successfully completed subsets only
-        if plan.should_aggregate_validation():
+        if plan.should_aggregate_validation() and not stop_after_json:
             if completed_jobs:
                 _LOGGER.info(
                     "Aggregating validation reports for submission %s (%d/%d subsets completed)",
@@ -671,6 +702,21 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         default=2.0,
         help="Scale for stored page images and coordinates (default: 2.0 = 144 DPI).",
     )
+    parser.add_argument(
+        "--stop-after-json",
+        action="store_true",
+        help="Stop each job after exporting ground_truth_json and predictions_json.",
+    )
+    parser.add_argument(
+        "--resume-from-json",
+        action="store_true",
+        help="Reuse existing ground_truth_json and predictions_json directories.",
+    )
+    parser.add_argument(
+        "--reuse-eval-dataset",
+        action="store_true",
+        help="Reuse existing eval_dataset parquet shards when present.",
+    )
 
     return parser.parse_args(argv)
 
@@ -700,6 +746,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             force_ocr=args.force_ocr,
             ocr_scale=args.ocr_scale,
             storage_scale=args.storage_scale,
+            stop_after_json=args.stop_after_json,
+            resume_from_json=args.resume_from_json,
+            reuse_eval_dataset=args.reuse_eval_dataset,
         )
     except ValueError as exc:
         _LOGGER.error("%s", exc)

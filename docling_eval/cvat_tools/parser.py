@@ -54,36 +54,6 @@ class ParsedCVATFile:
         return tuple(self.images.keys())
 
 
-@dataclass(frozen=True)
-class ParsedCVATImage:
-    """Parsed representation of a single <image> entry in a CVAT XML file."""
-
-    name: str
-    elements: Tuple[CVATElement, ...]
-    paths: Tuple[CVATAnnotationPath, ...]
-    image_info: CVATImageInfo
-
-
-@dataclass(frozen=True)
-class ParsedCVATFile:
-    """Parsed CVAT XML file containing multiple images."""
-
-    xml_path: Path
-    images: Mapping[str, ParsedCVATImage]
-
-    def get_image(self, image_name: str) -> ParsedCVATImage:
-        try:
-            return self.images[image_name]
-        except KeyError as exc:
-            raise MissingImageInCVATXML(
-                f"No <image> element for {image_name} in {self.xml_path}"
-            ) from exc
-
-    @property
-    def image_names(self) -> Tuple[str, ...]:
-        return tuple(self.images.keys())
-
-
 def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> BoundingBox:
     """Convert CVAT box coordinates to BoundingBox (TOPLEFT origin)."""
     return BoundingBox(l=xtl, t=ytl, r=xbr, b=ybr, coord_origin=CoordOrigin.TOPLEFT)
