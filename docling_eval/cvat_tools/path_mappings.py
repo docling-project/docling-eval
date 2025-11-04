@@ -8,10 +8,18 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Mapping, Optional, Set, Tuple
 
+from docling_core.types.doc.labels import DocItemLabel
+
 from .models import CVATAnnotationPath, CVATElement
-from .tree import TreeNode, closest_common_ancestor, find_node_by_element_id
+from .tree import (
+    TreeNode,
+    closest_common_ancestor,
+    find_node_by_element_id,
+    index_tree_by_element_id,
+)
 from .utils import (
     DEFAULT_PROXIMITY_THRESHOLD,
+    find_elements_containing_point,
     get_deepest_element_at_point,
     is_caption_element,
     is_container_element,
@@ -258,26 +266,34 @@ def _resolve_reading_order_conflicts(
         logger.debug(f"Resolving {len(conflicts)} reading order conflicts")
 
     # Resolve conflicts: assign to deepest level, find containers for emptied paths
-    emptied_paths: Dict[int, List[int]] = {}
+    emptied_paths: Dict[int, List[Tuple[int, int]]] = {}
     for element_id, path_level_pairs in conflicts.items():
         keep_path_id = max(path_level_pairs, key=lambda x: x[1])[0]
         for path_id, _ in path_level_pairs:
             if path_id != keep_path_id:
-                reading_order[path_id].remove(element_id)
-                emptied_paths.setdefault(path_id, []).append(element_id)
+                if element_id in reading_order[path_id]:
+                    removal_index = reading_order[path_id].index(element_id)
+                    reading_order[path_id].pop(removal_index)
+                    emptied_paths.setdefault(path_id, []).append(
+                        (element_id, removal_index)
+                    )
 
     # Add containers for paths that lost elements
-    for path_id, lost_elements in emptied_paths.items():
+    for path_id, lost_entries in emptied_paths.items():
         path = path_by_id.get(path_id)
         if path:
+            lost_element_ids = [element_id for element_id, _ in lost_entries]
             container = _find_container_for_conflicted_path(
-                path, lost_elements, elements
+                path, lost_element_ids, elements
             )
-            if container and container.id not in reading_order[path_id]:
-                reading_order[path_id].append(container.id)
-                logger.debug(
-                    f"Added container element {container.id} ({container.label}) to reading order path {path_id}"
-                )
+            if container:
+                if container.id not in reading_order[path_id]:
+                    insert_at = min(idx for _, idx in lost_entries)
+                    insert_at = min(insert_at, len(reading_order[path_id]))
+                    reading_order[path_id].insert(insert_at, container.id)
+                    logger.debug(
+                        f"Inserted container element {container.id} ({container.label}) into reading order path {path_id} at position {insert_at}"
+                    )
 
     return reading_order
 
@@ -360,3 +376,104 @@ def associate_paths_to_containers(
             path_to_container[path_id] = node
 
     return mappings, path_to_container
+
+
+def promote_table_cross_boundary_reading_order(
+    mappings: PathMappings,
+    paths: List[CVATAnnotationPath],
+    tree_roots: List[TreeNode],
+    tolerance: float = DEFAULT_PROXIMITY_THRESHOLD,
+) -> PathMappings:
+    """Promote table containers for reading-order paths that cross table boundaries.
+
+    When a reading-order path starts or ends outside a table but touches elements inside it,
+    this inserts the table element itself into the mapped order to anchor the container in
+    the global reading order while keeping existing descendants.
+    """
+
+    if not mappings.reading_order:
+        return mappings
+
+    id_to_path = {
+        path.id: path for path in paths if path.label.startswith("reading_order")
+    }
+    id_to_node = index_tree_by_element_id(tree_roots)
+
+    for path_id, touched_ids in list(mappings.reading_order.items()):
+        path = id_to_path.get(path_id)
+        if not path or not touched_ids:
+            continue
+
+        table_states: Dict[int, Tuple[TreeNode, bool]] = {}
+
+        for element_id in touched_ids:
+            node = id_to_node.get(element_id)
+            if node is None:
+                continue
+
+            table_node = _find_table_ancestor(node)
+            if table_node is None:
+                continue
+
+            table_id = table_node.element.id
+            if table_id not in table_states:
+                crosses_boundary = _path_crosses_table_boundary(
+                    path.points, table_node.element, tolerance
+                )
+                table_states[table_id] = (table_node, crosses_boundary)
+
+        if not table_states:
+            continue
+
+        updated_order: List[int] = []
+
+        for element_id in touched_ids:
+            node = id_to_node.get(element_id)
+            table_node = _find_table_ancestor(node) if node else None
+
+            if table_node is not None:
+                table_id = table_node.element.id
+                _, crosses_boundary = table_states.get(table_id, (table_node, False))
+                if crosses_boundary:
+                    _append_unique(updated_order, table_id)
+
+            _append_unique(updated_order, element_id)
+
+        mappings.reading_order[path_id] = updated_order
+
+    return mappings
+
+
+def _find_table_ancestor(node: Optional[TreeNode]) -> Optional[TreeNode]:
+    """Return the closest ancestor whose label is DocItemLabel.TABLE."""
+    current = node
+    while current is not None:
+        label = current.element.label
+        if isinstance(label, DocItemLabel) and label == DocItemLabel.TABLE:
+            return current
+        current = current.parent
+    return None
+
+
+def _append_unique(sequence: List[int], element_id: int) -> None:
+    if element_id not in sequence:
+        sequence.append(element_id)
+
+
+def _path_crosses_table_boundary(
+    points: List[Tuple[float, float]], table_element: CVATElement, tolerance: float
+) -> bool:
+    """Return True when the polyline has at least one point inside and one point outside the table."""
+    if not points:
+        return False
+
+    inside_flags = []
+    for point in points:
+        hits = find_elements_containing_point(
+            point, [table_element], proximity_thresh=tolerance
+        )
+        inside_flags.append(bool(hits))
+
+    any_inside = any(inside_flags)
+    any_outside = any(not flag for flag in inside_flags)
+    return any_inside and any_outside
