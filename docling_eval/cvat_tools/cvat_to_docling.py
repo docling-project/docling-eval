@@ -1848,12 +1848,7 @@ def create_segmented_page_from_ocr(
     """
     from ocrmac import ocrmac
 
-    ocr_results = ocrmac.OCR(
-        image,
-        framework="vision",
-        recognition_level="fast",
-        language_preference=["en-US"],
-    ).recognize(px=True)
+    ocr_results = ocrmac.OCR(image, framework="livetext").recognize(px=True)
 
     # Use provided dimensions or fall back to image dimensions
     page_width = target_width if target_width is not None else image.width

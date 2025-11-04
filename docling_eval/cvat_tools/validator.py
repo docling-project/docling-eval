@@ -214,6 +214,46 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             element, table_ancestor.element, doc, threshold=0.7
         )
 
+    def _get_element_picture_container(
+        self, element: CVATElement, doc: DocumentStructure
+    ) -> Optional[CVATElement]:
+        """Return the picture container for an element, handling merge groups."""
+        node = doc.get_node_by_element_id(element.id)
+        if not node:
+            return None
+
+        picture_ancestor = find_ancestor(
+            node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
+        )
+        if not picture_ancestor:
+            return None
+        picture_element = picture_ancestor.element
+
+        element_ids_to_check = {element.id}
+        for merge_elements in doc.path_mappings.merge.values():
+            if element.id in merge_elements:
+                element_ids_to_check = set(merge_elements)
+                break
+
+        for el_id in element_ids_to_check:
+            if el_id == element.id:
+                continue
+
+            el_node = doc.get_node_by_element_id(el_id)
+            if not el_node:
+                return None
+
+            el_picture_ancestor = find_ancestor(
+                el_node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
+            )
+            if (
+                el_picture_ancestor is None
+                or el_picture_ancestor.element.id != picture_element.id
+            ):
+                return None
+
+        return picture_element
+
     def _is_element_inside_regular_picture(
         self, element: CVATElement, doc: DocumentStructure
     ) -> bool:
@@ -231,53 +271,14 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             return False
 
         # Find if element has a picture ancestor that is NOT chart/infographic/illustration
-        picture_ancestor = find_ancestor(
-            node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
-        )
-
-        if not picture_ancestor:
+        picture_element = self._get_element_picture_container(element, doc)
+        if picture_element is None:
             return False
 
         # Check if the picture is an atomic type (chart/infographic/illustration)
-        picture_type = picture_ancestor.element.type
+        picture_type = picture_element.type
         if picture_type and picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
             return False
-
-        # For merged elements, check that ALL are inside the same regular picture
-        element_ids_to_check = {element.id}
-
-        # Find merge group containing this element
-        for merge_elements in doc.path_mappings.merge.values():
-            if element.id in merge_elements:
-                element_ids_to_check = set(merge_elements)
-                break
-
-        # Check all elements in the merge group
-        for el_id in element_ids_to_check:
-            if el_id == element.id:
-                continue  # Already checked above
-
-            el_node = doc.get_node_by_element_id(el_id)
-            if not el_node:
-                # Element not in tree - treat as outside
-                return False
-
-            # Check if this element has the same picture ancestor
-            el_picture_ancestor = find_ancestor(
-                el_node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
-            )
-
-            # If element has no picture ancestor or different picture, treat group as outside
-            if (
-                not el_picture_ancestor
-                or el_picture_ancestor.element.id != picture_ancestor.element.id
-            ):
-                return False
-
-            # Check if this element's picture is also non-atomic
-            el_picture_type = el_picture_ancestor.element.type
-            if el_picture_type and el_picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
-                return False
 
         return True
 
@@ -446,17 +447,27 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
                 logger.debug(f"Adding error for element {el.id} ({el.label})")
 
                 # Check if element is inside any NON-chart/infographic/illustration picture container
-                is_inside_regular_picture = self._is_element_inside_regular_picture(
-                    el, doc
-                )
+                picture_container = self._get_element_picture_container(el, doc)
 
-                if is_inside_regular_picture:
-                    # WARNING level for elements inside regular picture containers (not chart/infographic/illustration)
+                if picture_container is not None:
+                    picture_type = (
+                        picture_container.type.upper()
+                        if picture_container.type is not None
+                        else None
+                    )
+                    severity = (
+                        ValidationSeverity.ERROR
+                        if picture_type in self.ATOMIC_PICTURE_TYPES
+                        else ValidationSeverity.WARNING
+                    )
                     errors.append(
                         CVATValidationError(
                             error_type="element_not_touched_by_reading_order_inside_picture",
-                            message=f"Element {el.id} ({el.label}) inside picture container not touched by any reading-order path.",
-                            severity=ValidationSeverity.WARNING,
+                            message=(
+                                f"Element {el.id} ({el.label}) inside picture container "
+                                "not touched by any reading-order path."
+                            ),
+                            severity=severity,
                             element_id=el.id,
                         )
                     )
