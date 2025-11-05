@@ -16,6 +16,8 @@ import argparse
 import json
 import logging
 import sys
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -274,8 +276,26 @@ class CVATEvaluationPipeline:
         self, *, reuse_existing: bool = False
     ) -> tuple[List[Path], List[Path]]:
         """Convert both ground truth and prediction annotations to JSON."""
-        gt_files = self.convert_ground_truth_to_json(reuse_existing=reuse_existing)
-        pred_files = self.convert_predictions_to_json(reuse_existing=reuse_existing)
+        with ProcessPoolExecutor(
+            max_workers=2, mp_context=get_context("spawn")
+        ) as pool:
+            gt_future = pool.submit(
+                self._convert_cvat_set_to_json,
+                self.gt_json_dir,
+                GROUND_TRUTH_PATTERN,
+                True,
+                reuse_existing,
+            )
+            pred_future = pool.submit(
+                self._convert_cvat_set_to_json,
+                self.pred_json_dir,
+                PREDICTION_PATTERN,
+                True,
+                reuse_existing,
+            )
+
+            gt_files = gt_future.result()
+            pred_files = pred_future.result()
         return gt_files, pred_files
 
     def ensure_json_exports_exist(self) -> None:

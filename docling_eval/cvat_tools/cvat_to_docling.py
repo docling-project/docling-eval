@@ -87,6 +87,7 @@ from docling_eval.cvat_tools.tree import (
     build_global_reading_order,
     find_node_by_element_id,
 )
+from docling_eval.cvat_tools.utils import is_container_element
 from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
 from docling_eval.utils.utils import classify_cells, sort_cell_ids
 
@@ -1293,13 +1294,29 @@ class CVATToDoclingConverter:
                 path_id, element_ids
             )
 
+            candidate_elements: List[CVATElement] = []
+            skip_container_merge = False
+            for el_id in corrected_ids:
+                element = self.doc_structure.get_element_by_id(el_id)
+                if element is None:
+                    continue
+                if is_container_element(element):
+                    # TODO: Container merges (e.g. table-to-table links) currently collapse multiple containers into
+                    #       a single Docling table, which destroys the second container's structure. We have to skip
+                    #       these merges for now so both tables survive conversion. Revisit once merged containers can
+                    #       be represented without losing their individual cell grids.
+                    skip_container_merge = True
+                    break
+                candidate_elements.append(element)
+
+            if skip_container_merge:
+                return []
+
             # Collect unprocessed elements in corrected order
             merge_elements = []
-            for el_id in corrected_ids:
-                if el_id not in self.processed_elements:
-                    element = self.doc_structure.get_element_by_id(el_id)
-                    if element:
-                        merge_elements.append(element)
+            for element in candidate_elements:
+                if element.id not in self.processed_elements:
+                    merge_elements.append(element)
 
             return merge_elements
 
