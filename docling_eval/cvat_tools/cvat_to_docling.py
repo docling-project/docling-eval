@@ -747,6 +747,33 @@ class CVATToDoclingConverter:
             self.doc_structure.tree_roots,
         )
 
+    def _build_fallback_global_order(self) -> List[int]:
+        """Build a fallback global order when no level-1 reading order is present."""
+
+        def root_sort_key(node: TreeNode) -> tuple[float, float, int]:
+            bbox = node.element.bbox
+            top = min(bbox.t, bbox.b)
+            left = min(bbox.l, bbox.r)
+            return (top, left, node.element.id)
+
+        order: List[int] = []
+        seen: Set[int] = set()
+
+        def traverse(node: TreeNode) -> None:
+            element_id = node.element.id
+            if element_id in seen:
+                return
+            seen.add(element_id)
+            order.append(element_id)
+            for child in node.children:
+                traverse(child)
+
+        sorted_roots = sorted(self.doc_structure.tree_roots, key=root_sort_key)
+        for root in sorted_roots:
+            traverse(root)
+
+        return order
+
     def _get_group_for_element(
         self, element_id: int
     ) -> Optional[Tuple[int, List[int]]]:
@@ -966,8 +993,12 @@ class CVATToDoclingConverter:
 
     def _process_elements_in_order(self, global_order: List[int]):
         """Process elements in reading order."""
+        processing_order = (
+            global_order if global_order else self._build_fallback_global_order()
+        )
+
         # Process elements in global reading order
-        for i, element_id in enumerate(global_order):
+        for i, element_id in enumerate(processing_order):
             # Skip if already processed
             if element_id in self.processed_elements:
                 continue
@@ -979,7 +1010,7 @@ class CVATToDoclingConverter:
                     node,
                     None,
                     parent_item=None,
-                    global_order=global_order,
+                    global_order=processing_order,
                     current_position=i,
                 )
 

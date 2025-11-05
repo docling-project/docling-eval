@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Type
 
 from docling_core.types.doc.document import ContentLayer, DocItemLabel
+from docling_core.types.doc.labels import GraphCellLabel
 
 from .document import DocumentStructure
 from .folder_models import CVATDocument
@@ -16,7 +17,7 @@ from .models import (
     ValidationSeverity,
 )
 from .parser import ParsedCVATFile, parse_cvat_file
-from .tree import find_ancestor
+from .tree import TreeNode, find_ancestor
 from .utils import DEFAULT_PROXIMITY_THRESHOLD, find_elements_containing_point
 
 logger = logging.getLogger("docling_eval.cvat_tools.validator")
@@ -54,6 +55,62 @@ class ValidLabelsRule(ValidationRule):
 class ReadingOrderRule(ValidationRule):
     """Validate reading order requirements - FATAL level."""
 
+    def _is_relevant_element(self, element: CVATElement) -> bool:
+        """Return True when an element should be considered for level-1 reading order."""
+        if element.content_layer not in (
+            ContentLayer.BODY,
+            ContentLayer.FURNITURE,
+        ):
+            return False
+        if isinstance(element.label, GraphCellLabel):
+            return False
+        if isinstance(element.label, TableStructLabel):
+            return False
+        return True
+
+    def _find_top_level_root(
+        self, doc: DocumentStructure, element_id: int
+    ) -> Optional[TreeNode]:
+        """Return the top-level tree node that contains the given element."""
+        node = doc.get_node_by_element_id(element_id)
+        if node is None:
+            return None
+        while node.parent is not None:
+            node = node.parent
+        return node
+
+    def _can_skip_missing_level1(
+        self, doc: DocumentStructure, relevant_elements: List[CVATElement]
+    ) -> bool:
+        """Return True when missing level-1 reading order is acceptable."""
+        if not relevant_elements:
+            return False
+        if len(relevant_elements) <= 1:
+            return True
+
+        root_ids: Set[int] = set()
+        representative_root: Optional[TreeNode] = None
+
+        for element in relevant_elements:
+            root_node = self._find_top_level_root(doc, element.id)
+            if root_node is None:
+                return False
+            root_ids.add(root_node.element.id)
+            if representative_root is None:
+                representative_root = root_node
+            if len(root_ids) > 1:
+                return False
+
+        if representative_root is None:
+            return False
+
+        return representative_root.element.label in (
+            DocItemLabel.TABLE,
+            DocItemLabel.PICTURE,
+            DocItemLabel.FORM,
+            DocItemLabel.CODE,
+        )
+
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         errors: list[CVATValidationError] = []
 
@@ -64,20 +121,18 @@ class ReadingOrderRule(ValidationRule):
             if p.label.startswith("reading_order") and (p.level == 1 or p.level is None)
         ]
 
-        # Skip reading order validation for samples with very few elements
-        # (0 or 1 rectangle elements don't need reading order)
-        if len(doc.elements) <= 1:
-            return errors
+        relevant_elements = [el for el in doc.elements if self._is_relevant_element(el)]
 
         # Check missing first-level reading order
         if len(level1_paths) == 0:
-            errors.append(
-                CVATValidationError(
-                    error_type="missing_first_level_reading_order",
-                    message="No first-level reading-order path found.",
-                    severity=ValidationSeverity.FATAL,
+            if not self._can_skip_missing_level1(doc, relevant_elements):
+                errors.append(
+                    CVATValidationError(
+                        error_type="missing_first_level_reading_order",
+                        message="No first-level reading-order path found.",
+                        severity=ValidationSeverity.FATAL,
+                    )
                 )
-            )
         # Check multiple first-level reading order
         elif len(level1_paths) > 1:
             errors.append(
