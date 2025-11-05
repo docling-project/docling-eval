@@ -126,6 +126,40 @@ pic_classes = {
 }
 
 
+MAX_OCR_IMAGE_DIMENSION: int = 8192
+
+
+class OCRImageDimensionError(RuntimeError):
+    """Raised when an OCR image exceeds the supported Vision framework dimensions."""
+
+    width: int
+    height: int
+    limit: int
+    document_name: str
+    page_number: int
+
+    def __init__(
+        self,
+        *,
+        width: int,
+        height: int,
+        limit: int,
+        document_name: str,
+        page_number: int,
+    ) -> None:
+        self.width = width
+        self.height = height
+        self.limit = limit
+        self.document_name = document_name
+        self.page_number = page_number
+        message = (
+            "OCR image for document "
+            f"{document_name} page {page_number} has dimensions {width}x{height}, "
+            f"exceeding the supported maximum of {limit}"
+        )
+        super().__init__(message)
+
+
 @dataclass(frozen=True)
 class Cell:
     start_row: int
@@ -1829,6 +1863,27 @@ def scale_segmented_pdf_page(
     return seg_page
 
 
+def ensure_ocr_image_within_limit(
+    image: PILImage.Image,
+    document_name: str,
+    page_number: int,
+    max_dimension: int = MAX_OCR_IMAGE_DIMENSION,
+) -> None:
+    """Ensure OCR input image respects the Vision framework maximum dimension."""
+
+    width = int(image.width)
+    height = int(image.height)
+
+    if width > max_dimension or height > max_dimension:
+        raise OCRImageDimensionError(
+            width=width,
+            height=height,
+            limit=max_dimension,
+            document_name=document_name,
+            page_number=page_number,
+        )
+
+
 def create_segmented_page_from_ocr(
     image: PILImage.Image,
     coordinate_scale: float = 1.0,
@@ -2045,6 +2100,7 @@ def load_document_pages(
                     )
                 ocr_image = page.get_page_image(scale=ocr_scale)
                 if ocr_image is not None and page_image is not None:
+                    ensure_ocr_image_within_limit(ocr_image, input_path.name, page_no)
                     coord_scale = cvat_input_scale / ocr_scale
                     seg_page = create_segmented_page_from_ocr(
                         ocr_image,
@@ -2102,6 +2158,7 @@ def load_document_pages(
             cvat_image = page.get_page_image(scale=cvat_input_scale)
 
             if ocr_image is not None and cvat_image is not None:
+                ensure_ocr_image_within_limit(ocr_image, input_path.name, page_no)
                 # Map OCR coordinates from ocr_scale to cvat_input_scale
                 coord_scale = cvat_input_scale / ocr_scale
                 seg_page = create_segmented_page_from_ocr(
@@ -2120,10 +2177,10 @@ def load_document_pages(
     else:
         # Image input
         image = PILImage.open(input_path)
+        page_no = page_numbers[0] if page_numbers else 1
+        ensure_ocr_image_within_limit(image, input_path.name, page_no)
         seg_page = create_segmented_page_from_ocr(image)
 
-        # For images, use page number 1 if not specified
-        page_no = page_numbers[0] if page_numbers else 1
         segmented_pages[page_no] = seg_page
         page_images[page_no] = image
 
@@ -2400,6 +2457,18 @@ class CVATFolderConverter:
                 error=None,
             )
 
+        except OCRImageDimensionError as exc:
+            _logger.warning(
+                "Skipping document %s due to oversized OCR image: %s",
+                cvat_doc.doc_name,
+                exc,
+            )
+            return CVATConversionResult(
+                document=None,
+                validation_report=None,
+                per_page_reports=per_page_reports,
+                error=str(exc),
+            )
         except Exception as exc:  # pragma: no cover - logged error propagation
             _logger.error("Error converting document %s: %s", doc_hash, exc)
             return CVATConversionResult(
@@ -2498,6 +2567,13 @@ def convert_cvat_to_docling(
     except MissingImageInCVATXML:
         # Re-raise so that calling code can handle with appropriate messaging
         raise
+    except OCRImageDimensionError as exc:
+        _logger.warning(
+            "Skipping conversion for %s due to oversized OCR image: %s",
+            input_path.name,
+            exc,
+        )
+        return None
     except Exception as e:
         _logger.error(f"Failed to convert CVAT to DoclingDocument: {e}")
         import traceback
