@@ -991,28 +991,38 @@ class CVATToDoclingConverter:
 
         return children
 
-    def _process_elements_in_order(self, global_order: List[int]):
+    def _process_elements_in_order(self, global_order: List[int]) -> None:
         """Process elements in reading order."""
-        processing_order = (
+        primary_order = (
             global_order if global_order else self._build_fallback_global_order()
         )
+        self._process_order_sequence(primary_order)
 
-        # Process elements in global reading order
-        for i, element_id in enumerate(processing_order):
-            # Skip if already processed
+        if global_order:
+            fallback_order = self._build_fallback_global_order()
+            if any(
+                element_id not in self.processed_elements
+                for element_id in fallback_order
+            ):
+                self._process_order_sequence(fallback_order)
+
+    def _process_order_sequence(self, processing_order: List[int]) -> None:
+        """Process elements according to the supplied order."""
+        for index, element_id in enumerate(processing_order):
             if element_id in self.processed_elements:
                 continue
 
-            # Find the node containing this element
             node = find_node_by_element_id(self.doc_structure.tree_roots, element_id)
-            if node:
-                self._process_node(
-                    node,
-                    None,
-                    parent_item=None,
-                    global_order=processing_order,
-                    current_position=i,
-                )
+            if not node:
+                continue
+
+            self._process_node(
+                node,
+                None,
+                parent_item=None,
+                global_order=processing_order,
+                current_position=index,
+            )
 
     def _process_table_data(self):
         # After all CVAT elements have been processed,
