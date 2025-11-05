@@ -1,6 +1,6 @@
 [project]
 name = "docling-eval"
-version = "0.9.0" # DO NOT EDIT, updated automatically
+version = "0.10.0" # DO NOT EDIT, updated automatically
 description = "Evaluation of Docling"
 license = "MIT"
 keywords= ["docling", "evaluation", "convert", "document", "pdf", "docx", "html", "markdown", "layout model", "segmentation", "table structure", "table former"]

@@ -1,3 +1,26 @@
+## [v0.10.0](https://github.com/docling-project/docling-eval/releases/tag/v0.10.0) - 2025-11-05
+
+### Feature
+
+* Extend the CLI for create-eval to receive the vlm-options and max_new_tokens parameters when the provider is GraniteDocling ([#164](https://github.com/docling-project/docling-eval/issues/164)) ([`8be2e83`](https://github.com/docling-project/docling-eval/commit/8be2e8399b9fdefc3a9997176cc4f6d54024b39b))
+* Harmonizing pic classes for cvat to docling conversion ([#167](https://github.com/docling-project/docling-eval/issues/167)) ([`740157d`](https://github.com/docling-project/docling-eval/commit/740157dba3d5f239e792029d3f2df6cb5b855368))
+* Add more specific validation for reading-order, enhance validation report ([`5e5f2db`](https://github.com/docling-project/docling-eval/commit/5e5f2dbb369957921818042d369815777dcfde1f))
+* Integrate textline_cells based OCR evaluation ([#156](https://github.com/docling-project/docling-eval/issues/156)) ([`3a9543c`](https://github.com/docling-project/docling-eval/commit/3a9543c865e31178306b5552102ab012c72c8583))
+
+### Fix
+
+* Validation fixes for list item impurity check ([#169](https://github.com/docling-project/docling-eval/issues/169)) ([`74e7b3e`](https://github.com/docling-project/docling-eval/commit/74e7b3e7dec671083cae15d98ec46725f03e3894))
+* Don't report content-layer group violation multiple times ([`cb71009`](https://github.com/docling-project/docling-eval/commit/cb71009009aefb4175bb358f68fffdeb67dc34a2))
+* Handle merged elements regarding inclusion, don't flag single element pages ([`c10fdfd`](https://github.com/docling-project/docling-eval/commit/c10fdfd8c46245376f64a792e481f7d9a6400179))
+* Missing transform to storage_scale for some items and table cells ([`1eb6b4e`](https://github.com/docling-project/docling-eval/commit/1eb6b4ea766dfd38479fdc577907132dfbdbdf91))
+* More CVAT validation and docling conversion fixes ([#163](https://github.com/docling-project/docling-eval/issues/163)) ([`6f59c7a`](https://github.com/docling-project/docling-eval/commit/6f59c7a8afadcd51816abdea16b113ee00e86229))
+* Better control over scaling in CVAT transform, fixes for OCR ([#162](https://github.com/docling-project/docling-eval/issues/162)) ([`ef17b5a`](https://github.com/docling-project/docling-eval/commit/ef17b5a30b1727676c915e6d49cd5f28c348b8d8))
+* Fixes for CVAT validation, OCR in CVAT pipeline, logging, and more ([#161](https://github.com/docling-project/docling-eval/issues/161)) ([`80e449d`](https://github.com/docling-project/docling-eval/commit/80e449de7ff0042a79707c9c1f4c59f45cbff269))
+
+### Performance
+
+* Consistenty and perf improvements ([#170](https://github.com/docling-project/docling-eval/issues/170)) ([`d4a0ef6`](https://github.com/docling-project/docling-eval/commit/d4a0ef619e1333163d2041aa811b0ce5d9a24715))
+
 ## [v0.9.0](https://github.com/docling-project/docling-eval/releases/tag/v0.9.0) - 2025-10-01
 
 ### Feature
