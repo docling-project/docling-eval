@@ -208,36 +208,85 @@ def _resolve_to_value_with_merges(
 
 
 def _find_container_for_conflicted_path(
-    path: CVATAnnotationPath, lost_elements: List[int], elements: List[CVATElement]
-) -> Optional[CVATElement]:
-    """Find container element for reading order path using existing spatial utilities."""
+    path: CVATAnnotationPath,
+    lost_entries: List[Tuple[int, int]],
+    elements: List[CVATElement],
+) -> List[Tuple[CVATElement, int]]:
+    """Return container elements to reinsert for a conflicted reading-order path.
+
+    The function groups lost elements by the smallest enclosing container whose
+    boundary is crossed by the reading-order polyline. Containers are never merged
+    across independent regions—each returned container strictly corresponds to the
+    lost elements it contains, unless containers are nested.
+    """
     from .tree import contains
     from .utils import is_container_element
 
-    # Find containers that contain any of the lost elements, but path isn't fully inside
-    container_candidates = []
+    if not lost_entries:
+        return []
+
+    id_to_element: Dict[int, CVATElement] = {
+        element.id: element for element in elements
+    }
+    lost_element_ids = [element_id for element_id, _ in lost_entries]
+
+    def _point_inside(element: CVATElement, point: Tuple[float, float]) -> bool:
+        x, y = point
+        bbox = element.bbox
+        x_min, x_max = (bbox.l, bbox.r) if bbox.l <= bbox.r else (bbox.r, bbox.l)
+        y_min, y_max = (bbox.t, bbox.b) if bbox.t <= bbox.b else (bbox.b, bbox.t)
+        return x_min <= x <= x_max and y_min <= y <= y_max
+
+    container_info: Dict[int, Tuple[CVATElement, Set[int]]] = {}
+
     for element in elements:
-        if is_container_element(element):
-            # Skip if path is fully contained (violates constraint)
-            if all(
-                element.bbox.l <= x <= element.bbox.r
-                and element.bbox.t <= y <= element.bbox.b
-                for x, y in path.points
-            ):
-                continue
+        if not is_container_element(element):
+            continue
 
-            # Check if container holds any lost elements
-            for lost_id in lost_elements:
-                lost_el = next((el for el in elements if el.id == lost_id), None)
-                if lost_el and contains(element, lost_el):
-                    container_candidates.append(element)
-                    break
+        if path.points and all(_point_inside(element, point) for point in path.points):
+            continue
 
-    return (
-        min(container_candidates, key=lambda e: e.bbox.area())
-        if container_candidates
-        else None
-    )
+        covered_ids: Set[int] = set()
+        for lost_id in lost_element_ids:
+            lost_element = id_to_element.get(lost_id)
+            if lost_element and contains(element, lost_element):
+                covered_ids.add(lost_id)
+
+        if covered_ids:
+            container_info[element.id] = (element, covered_ids)
+
+    if not container_info:
+        return []
+
+    container_assignments: Dict[int, Set[int]] = {}
+    for element_id, _ in lost_entries:
+        candidate_ids = [
+            container_id
+            for container_id, (_, covered) in container_info.items()
+            if element_id in covered
+        ]
+        if not candidate_ids:
+            continue
+
+        candidate_ids.sort(
+            key=lambda container_id: container_info[container_id][0].bbox.area()
+        )
+        chosen_id = candidate_ids[0]
+        container_assignments.setdefault(chosen_id, set()).add(element_id)
+
+    if not container_assignments:
+        return []
+
+    lost_index_by_id = {element_id: index for element_id, index in lost_entries}
+
+    containers_to_insert: List[Tuple[CVATElement, int]] = []
+    for container_id, assigned_ids in container_assignments.items():
+        container_element, _ = container_info[container_id]
+        insert_index = min(lost_index_by_id[element_id] for element_id in assigned_ids)
+        containers_to_insert.append((container_element, insert_index))
+
+    containers_to_insert.sort(key=lambda item: item[1])
+    return containers_to_insert
 
 
 def _resolve_reading_order_conflicts(
@@ -281,19 +330,29 @@ def _resolve_reading_order_conflicts(
     # Add containers for paths that lost elements
     for path_id, lost_entries in emptied_paths.items():
         path = path_by_id.get(path_id)
-        if path:
-            lost_element_ids = [element_id for element_id, _ in lost_entries]
-            container = _find_container_for_conflicted_path(
-                path, lost_element_ids, elements
+        if not path:
+            continue
+
+        containers = _find_container_for_conflicted_path(path, lost_entries, elements)
+        if not containers:
+            continue
+
+        inserted_positions: List[int] = []
+        for container_element, insert_idx in containers:
+            if container_element.id in reading_order[path_id]:
+                continue
+
+            offset = sum(1 for position in inserted_positions if position <= insert_idx)
+            insert_at = min(insert_idx + offset, len(reading_order[path_id]))
+            reading_order[path_id].insert(insert_at, container_element.id)
+            inserted_positions.append(insert_idx)
+            logger.debug(
+                "Inserted container element %s (%s) into reading order path %s at position %s",
+                container_element.id,
+                container_element.label,
+                path_id,
+                insert_at,
             )
-            if container:
-                if container.id not in reading_order[path_id]:
-                    insert_at = min(idx for _, idx in lost_entries)
-                    insert_at = min(insert_at, len(reading_order[path_id]))
-                    reading_order[path_id].insert(insert_at, container.id)
-                    logger.debug(
-                        f"Inserted container element {container.id} ({container.label}) into reading order path {path_id} at position {insert_at}"
-                    )
 
     return reading_order
 
