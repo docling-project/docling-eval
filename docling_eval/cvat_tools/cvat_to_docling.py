@@ -85,6 +85,7 @@ from docling_eval.cvat_tools.tree import (
     TreeNode,
     apply_reading_order_to_tree,
     build_global_reading_order,
+    find_ancestor,
     find_node_by_element_id,
 )
 from docling_eval.cvat_tools.utils import is_container_element
@@ -1280,6 +1281,20 @@ class CVATToDoclingConverter:
 
         return False
 
+    def _get_container_ancestor_id(self, element_id: int) -> Optional[int]:
+        """Return the nearest container ancestor for ``element_id`` if present."""
+
+        node = self.doc_structure.get_node_by_element_id(element_id)
+        if node is None:
+            return None
+
+        container_node = find_ancestor(
+            node, lambda candidate: is_container_element(candidate.element)
+        )
+        if container_node is not None:
+            return container_node.element.id
+        return None
+
     def _get_merge_elements(self, element_id: int) -> List[CVATElement]:
         """Get all elements that should be merged with the given element.
 
@@ -1296,6 +1311,7 @@ class CVATToDoclingConverter:
 
             candidate_elements: List[CVATElement] = []
             skip_container_merge = False
+            container_ids: Set[Optional[int]] = set()
             for el_id in corrected_ids:
                 element = self.doc_structure.get_element_by_id(el_id)
                 if element is None:
@@ -1307,6 +1323,23 @@ class CVATToDoclingConverter:
                     #       be represented without losing their individual cell grids.
                     skip_container_merge = True
                     break
+                if isinstance(element.label, TableStructLabel):
+                    skip_container_merge = True
+                    break
+
+                container_id = self._get_container_ancestor_id(element.id)
+                if container_id is None:
+                    if any(cid is not None for cid in container_ids):
+                        skip_container_merge = True
+                        break
+                    container_ids.add(None)
+                else:
+                    non_none = {cid for cid in container_ids if cid is not None}
+                    if non_none and container_id not in non_none:
+                        skip_container_merge = True
+                        break
+                    container_ids.add(container_id)
+
                 candidate_elements.append(element)
 
             if skip_container_merge:

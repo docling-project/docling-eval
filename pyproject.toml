@@ -54,6 +54,7 @@ dependencies = [
     "scipy-stubs>=1.15.3.0",
     "editdistance>=0.8.1",
     "reportlab>=4.4.3",
+    "docling-parse==4.7.1",
 ]
 
 [project.urls]
