@@ -37,12 +37,17 @@ from .models import (
     CVATValidationRunReport,
     ValidationSeverity,
 )
-from .parser import find_samples_in_directory
+from .parser import (
+    ParsedCVATFile,
+    ParsedCVATImage,
+    find_samples_in_directory,
+    get_all_images_from_cvat_xml,
+    parse_cvat_file,
+)
 from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
     map_path_points_to_elements,
-    validate_caption_footnote_paths,
 )
 from .tree import (
     TreeNode,
@@ -90,6 +95,10 @@ __all__ = [
     "ValidationSeverity",
     # Parser
     "find_samples_in_directory",
+    "get_all_images_from_cvat_xml",
+    "parse_cvat_file",
+    "ParsedCVATFile",
+    "ParsedCVATImage",
     # Tree
     "TreeNode",
     "build_containment_tree",
@@ -106,7 +115,6 @@ __all__ = [
     "PathMappings",
     "map_path_points_to_elements",
     "associate_paths_to_containers",
-    "validate_caption_footnote_paths",
     # Validator
     "Validator",
     "ValidationRule",

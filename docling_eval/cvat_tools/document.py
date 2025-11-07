@@ -4,7 +4,9 @@ This module provides the DocumentStructure class which encapsulates all core dat
 (elements, paths, containment tree, and path mappings) and their construction.
 """
 
+import logging
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -12,7 +14,7 @@ from docling_core.types.doc.base import BoundingBox
 
 from .folder_models import CVATDocument, CVATFolderStructure
 from .models import CVATAnnotationPath, CVATElement, CVATImageInfo
-from .parser import parse_cvat_xml
+from .parser import ParsedCVATFile, ParsedCVATImage, parse_cvat_file
 from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
@@ -25,6 +27,8 @@ from .tree import (
     index_tree_by_element_id,
 )
 from .utils import DEFAULT_PROXIMITY_THRESHOLD
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,9 +70,20 @@ class DocumentStructure:
         Returns:
             DocumentStructure containing all core data structures
         """
-        # Parse XML
-        images = parse_cvat_xml(xml_path, image_filename)
-        elements, paths, image_info = next(iter(images.values()))
+        parsed_file = parse_cvat_file(xml_path)
+        parsed_image = parsed_file.get_image(image_filename)
+        return cls.from_parsed_image(parsed_image, proximity_thresh=proximity_thresh)
+
+    @classmethod
+    def from_parsed_image(
+        cls,
+        parsed_image: ParsedCVATImage,
+        proximity_thresh: float = DEFAULT_PROXIMITY_THRESHOLD,
+    ) -> "DocumentStructure":
+        """Construct a DocumentStructure from a parsed CVAT image."""
+        elements = [element.model_copy(deep=True) for element in parsed_image.elements]
+        paths = [path.model_copy(deep=True) for path in parsed_image.paths]
+        image_info = parsed_image.image_info.model_copy(deep=True)
 
         # Build containment tree
         tree_roots = build_containment_tree(elements)
@@ -106,14 +121,21 @@ class DocumentStructure:
 
         sorted_pages = sorted(cvat_document.pages, key=lambda p: p.page_number)
 
-        for page_info in sorted_pages:
-            images = parse_cvat_xml(page_info.xml_path, page_info.image_filename)
-            if page_info.image_filename not in images:
-                raise ValueError(
-                    f"Image {page_info.image_filename} not found in {page_info.xml_path}"
-                )
+        parsed_cache: Dict[Path, ParsedCVATFile] = {}
 
-            elements, paths, image_info = images[page_info.image_filename]
+        for page_info in sorted_pages:
+            parsed_file = parsed_cache.get(page_info.xml_path)
+            if parsed_file is None:
+                parsed_file = parse_cvat_file(page_info.xml_path)
+                parsed_cache[page_info.xml_path] = parsed_file
+
+            parsed_image = parsed_file.get_image(page_info.image_filename)
+
+            elements = [
+                element.model_copy(deep=True) for element in parsed_image.elements
+            ]
+            paths = [path.model_copy(deep=True) for path in parsed_image.paths]
+            image_info = parsed_image.image_info.model_copy(deep=True)
             image_infos.append(image_info)
 
             element_offset = (
@@ -229,3 +251,56 @@ class DocumentStructure:
         if node is not None:
             self._node_index[element_id] = node
         return node
+
+    @cached_property
+    def _global_reading_order_positions(self) -> Dict[int, int]:
+        """Build global reading order position map (element_id -> position).
+
+        Cached for performance since this is used by both validation and conversion.
+        """
+        positions: Dict[int, int] = {}
+        for ro_path_elements in self.path_mappings.reading_order.values():
+            for pos, element_id in enumerate(ro_path_elements):
+                # Use first occurrence if element appears multiple times
+                if element_id not in positions:
+                    positions[element_id] = pos
+        return positions
+
+    def get_corrected_merge_elements(
+        self, merge_path_id: int, element_ids: List[int]
+    ) -> Tuple[List[int], bool]:
+        """Get merge elements in correct reading order.
+
+        Args:
+            merge_path_id: The merge path ID (for logging)
+            element_ids: List of element IDs in the merge path
+
+        Returns:
+            Tuple of (corrected_element_ids, was_corrected)
+        """
+        if len(element_ids) < 2:
+            return element_ids, False
+
+        # Get reading order positions
+        positions = self._global_reading_order_positions
+        elements_with_pos = [
+            (eid, positions.get(eid, float("inf"))) for eid in element_ids
+        ]
+
+        # If at least 2 elements are in reading order, sort by it
+        elements_in_ro = [eid for eid, pos in elements_with_pos if pos != float("inf")]
+        if len(elements_in_ro) < 2:
+            return element_ids, False
+
+        # Sort by reading order position
+        sorted_ids = [eid for eid, _ in sorted(elements_with_pos, key=lambda x: x[1])]
+
+        # Check if order changed
+        if element_ids != sorted_ids:
+            _logger.debug(
+                f"Merge path {merge_path_id}: Auto-correcting backwards merge "
+                f"(was {element_ids}, now {sorted_ids})"
+            )
+            return sorted_ids, True
+
+        return element_ids, False

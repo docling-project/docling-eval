@@ -6,7 +6,7 @@ to elements and validating their relationships.
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Set, Tuple
 
 from .models import CVATAnnotationPath, CVATElement
 from .tree import TreeNode, closest_common_ancestor, find_node_by_element_id
@@ -48,6 +48,8 @@ def map_path_points_to_elements(
     Returns:
         PathMappings object containing all path-to-element mappings
     """
+    from docling_core.types.doc.labels import GraphCellLabel
+
     reading_order: Dict[int, List[int]] = {}
     merge: Dict[int, List[int]] = {}
     group: Dict[int, List[int]] = {}
@@ -56,9 +58,18 @@ def map_path_points_to_elements(
     to_value: Dict[int, Tuple[int, int]] = {}
 
     for path in paths:
+        # For group/merge/reading_order paths, skip GraphCellLabel elements (key/value)
+        # They should never be in groups, merges, or reading order directly
+        # For to_value paths, we need to hit GraphCellLabel elements
+        skip_graph_cells = path.label in ["group", "merge"] or path.label.startswith(
+            "reading_order"
+        )
+
         touched_elements: List[int] = []
         for pt in path.points:
-            deepest = get_deepest_element_at_point(pt, elements, proximity_thresh)
+            deepest = get_deepest_element_at_point(
+                pt, elements, proximity_thresh, skip_graph_cells=skip_graph_cells
+            )
             if deepest:
                 eid = deepest.id
                 # Only add if not a duplicate in sequence
@@ -83,14 +94,14 @@ def map_path_points_to_elements(
             container_el = next((el for el in elements if el.id == container_id), None)
             caption_el = next((el for el in elements if el.id == caption_id), None)
 
-            # Check if the relationship is backwards and auto-correct with warning
+            # Check if the relationship is backwards and auto-correct
             if (
                 container_el
                 and caption_el
                 and is_caption_element(container_el)
                 and is_container_element(caption_el)
             ):
-                logger.warning(
+                logger.debug(
                     f"Caption path {path.id}: Backwards annotation detected, auto-correcting"
                 )
                 container_id, caption_id = caption_id, container_id
@@ -104,25 +115,33 @@ def map_path_points_to_elements(
             container_el = next((el for el in elements if el.id == container_id), None)
             footnote_el = next((el for el in elements if el.id == footnote_id), None)
 
-            # Check if the relationship is backwards and auto-correct with warning
+            # Check if the relationship is backwards and auto-correct
             if (
                 container_el
                 and footnote_el
                 and is_footnote_element(container_el)
                 and is_container_element(footnote_el)
             ):
-                logger.warning(
+                logger.debug(
                     f"Footnote path {path.id}: Backwards annotation detected, auto-correcting"
                 )
                 container_id, footnote_id = footnote_id, container_id
 
             to_footnote[path.id] = (container_id, footnote_id)
-        elif path.label == "to_value" and len(touched_elements) == 2:
-            # First element should be key, second should be value
-            to_value[path.id] = (touched_elements[0], touched_elements[1])
+        elif path.label == "to_value":
+            if len(touched_elements) == 2:
+                # Simple case: exactly 2 elements
+                to_value[path.id] = (touched_elements[0], touched_elements[1])
+            elif len(touched_elements) > 2:
+                # Check if elements can be reduced to 2 logical elements via merges
+                # This will be resolved after all paths are parsed
+                to_value[path.id] = tuple(touched_elements)  # type: ignore[assignment]
 
     # Resolve reading order conflicts before returning
     reading_order = _resolve_reading_order_conflicts(reading_order, paths, elements)
+
+    # Resolve to_value paths that touch more than 2 elements via merges
+    to_value = _resolve_to_value_with_merges(dict(to_value), merge, elements)
 
     return PathMappings(
         reading_order=reading_order,
@@ -132,6 +151,52 @@ def map_path_points_to_elements(
         to_footnote=to_footnote,
         to_value=to_value,
     )
+
+
+def _resolve_to_value_with_merges(
+    to_value: Dict[int, Tuple[int, ...]],
+    merge: Dict[int, List[int]],
+    elements: List[CVATElement],
+) -> Dict[int, Tuple[int, int]]:
+    """Resolve to_value paths by grouping elements via merge relationships."""
+    # Build element-to-merge-group mapping
+    element_to_group: Dict[int, Set[int]] = {}
+    for merge_elements in merge.values():
+        group = set(merge_elements)
+        for el_id in merge_elements:
+            element_to_group[el_id] = group
+
+    resolved: Dict[int, Tuple[int, int]] = {}
+
+    for path_id, element_tuple in to_value.items():
+        if len(element_tuple) == 2:
+            resolved[path_id] = element_tuple  # type: ignore[assignment]
+            continue
+
+        # Group elements by merge relationships
+        groups: List[Set[int]] = []
+        seen = set()
+
+        for el_id in element_tuple:
+            if el_id in seen:
+                continue
+            group = element_to_group.get(el_id, {el_id})
+            groups.append(group)
+            seen.update(group)
+
+        if len(groups) == 2:
+            # Valid: 2 logical elements (use min ID as representative)
+            resolved[path_id] = (min(groups[0]), min(groups[1]))
+            logger.debug(
+                f"to_value path {path_id}: Resolved {len(element_tuple)} elements to 2 groups via merges"
+            )
+        else:
+            # Invalid: will be caught by validation
+            logger.debug(
+                f"to_value path {path_id}: {len(element_tuple)} elements → {len(groups)} groups (expected 2). Ignored."
+            )
+
+    return resolved
 
 
 def _find_container_for_conflicted_path(
@@ -190,7 +255,7 @@ def _resolve_reading_order_conflicts(
         eid: paths for eid, paths in element_to_paths.items() if len(paths) > 1
     }
     if conflicts:
-        logger.info(f"Resolving {len(conflicts)} reading order conflicts")
+        logger.debug(f"Resolving {len(conflicts)} reading order conflicts")
 
     # Resolve conflicts: assign to deepest level, find containers for emptied paths
     emptied_paths: Dict[int, List[int]] = {}
@@ -210,7 +275,7 @@ def _resolve_reading_order_conflicts(
             )
             if container and container.id not in reading_order[path_id]:
                 reading_order[path_id].append(container.id)
-                logger.info(
+                logger.debug(
                     f"Added container element {container.id} ({container.label}) to reading order path {path_id}"
                 )
 
@@ -295,50 +360,3 @@ def associate_paths_to_containers(
             path_to_container[path_id] = node
 
     return mappings, path_to_container
-
-
-def validate_caption_footnote_paths(
-    elements: List[CVATElement],
-    to_caption: Dict[int, Tuple[int, int]],
-    to_footnote: Dict[int, Tuple[int, int]],
-) -> List[str]:
-    """Validate caption and footnote paths.
-
-    Rules:
-    1. Starting point of to_caption and to_footnote paths must be on a container element
-    2. End point must be on a caption or footnote element, respectively
-    3. If container elements are connected by a group path, only one member container of the group must have a to_caption or to_footnote path
-
-    Returns:
-        List of validation error messages
-    """
-    errors = []
-    id_to_element = {el.id: el for el in elements}
-
-    # Validate to_caption paths
-    for path_id, (container_id, caption_id) in to_caption.items():
-        container = id_to_element.get(container_id)
-        caption = id_to_element.get(caption_id)
-
-        if not container or not is_container_element(container):
-            errors.append(
-                f"Caption path {path_id}: Starting point is not a container element"
-            )
-        if not caption or not is_caption_element(caption):
-            errors.append(f"Caption path {path_id}: End point is not a caption element")
-
-    # Validate to_footnote paths
-    for path_id, (container_id, footnote_id) in to_footnote.items():
-        container = id_to_element.get(container_id)
-        footnote = id_to_element.get(footnote_id)
-
-        if not container or not is_container_element(container):
-            errors.append(
-                f"Footnote path {path_id}: Starting point is not a container element"
-            )
-        if not footnote or not is_footnote_element(footnote):
-            errors.append(
-                f"Footnote path {path_id}: End point is not a footnote element"
-            )
-
-    return errors

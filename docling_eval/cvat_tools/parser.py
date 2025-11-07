@@ -1,8 +1,10 @@
 import logging
 import os
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from types import MappingProxyType
+from typing import Dict, List, Mapping, Optional, Tuple
 
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer
@@ -16,6 +18,40 @@ from docling_eval.cvat_tools.models import (
 )
 
 logger = logging.getLogger("docling_eval.cvat_tools.")
+
+MANUAL_LABEL_MAP: dict[str, DocItemLabel] = {
+    "fillable_field": DocItemLabel.EMPTY_VALUE,
+}
+
+
+@dataclass(frozen=True)
+class ParsedCVATImage:
+    """Parsed representation of a single <image> entry in a CVAT XML file."""
+
+    name: str
+    elements: Tuple[CVATElement, ...]
+    paths: Tuple[CVATAnnotationPath, ...]
+    image_info: CVATImageInfo
+
+
+@dataclass(frozen=True)
+class ParsedCVATFile:
+    """Parsed CVAT XML file containing multiple images."""
+
+    xml_path: Path
+    images: Mapping[str, ParsedCVATImage]
+
+    def get_image(self, image_name: str) -> ParsedCVATImage:
+        try:
+            return self.images[image_name]
+        except KeyError as exc:
+            raise MissingImageInCVATXML(
+                f"No <image> element for {image_name} in {self.xml_path}"
+            ) from exc
+
+    @property
+    def image_names(self) -> Tuple[str, ...]:
+        return tuple(self.images.keys())
 
 
 def cvat_box_to_bbox(xtl: float, ytl: float, xbr: float, ybr: float) -> BoundingBox:
@@ -32,14 +68,8 @@ def get_all_images_from_cvat_xml(xml_path: Path) -> List[str]:
     Returns:
         List of image names found in the XML file
     """
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-
-    image_names = []
-    for img in root.findall(".//image"):
-        image_names.append(img.attrib.get("name", ""))
-
-    return image_names
+    parsed_file = parse_cvat_file(xml_path)
+    return list(parsed_file.image_names)
 
 
 class MissingImageInCVATXML(Exception):
@@ -129,11 +159,14 @@ def _parse_image_element(
 
         # Parse into one of the known enums; skip if unknown
         label_obj: Optional[object] = None
-        try:
-            label_obj = DocItemLabel(label_str)
-        except ValueError:
-            # Handle common CVAT label variations (e.g., "document Index" -> "document_index")
-            normalized_label = label_str.lower().replace(" ", "_")
+        normalized_label = label_str.lower().replace(" ", "_")
+
+        manual_label = MANUAL_LABEL_MAP.get(normalized_label)
+        if manual_label is None:
+            manual_label = MANUAL_LABEL_MAP.get(label_str)
+        if manual_label is not None:
+            label_obj = manual_label
+        else:
             try:
                 label_obj = DocItemLabel(normalized_label)
             except ValueError:
@@ -223,28 +256,20 @@ def _parse_image_element(
     return elements, paths, image_info
 
 
-def parse_cvat_xml(
-    xml_path: Path, image_name: Optional[str] = None
-) -> dict[str, tuple[list[CVATElement], list[CVATAnnotationPath], CVATImageInfo]]:
-    """
-    Parse a CVAT annotations.xml file and extract elements and paths for all images or a specific image.
-    Returns a dict mapping image name to (elements, paths, image_info).
-    If image_name is given, only that image is returned (as a single-item dict).
-    """
+def parse_cvat_file(xml_path: Path) -> ParsedCVATFile:
+    """Parse ``xml_path`` once and return all contained images."""
     tree = ET.parse(xml_path)
     root = tree.getroot()
-    result = {}
-    if image_name is not None:
-        image_el = root.find(f".//image[@name='{image_name}']")
-        if image_el is None:
-            raise MissingImageInCVATXML(
-                f"No <image> element for {image_name} in {xml_path}"
-            )
+
+    images: Dict[str, ParsedCVATImage] = {}
+    for image_el in root.findall(".//image"):
+        name = image_el.attrib["name"]
         elements, paths, image_info = _parse_image_element(image_el)
-        result[image_name] = (elements, paths, image_info)
-    else:
-        for image_el in root.findall(".//image"):
-            name = image_el.attrib["name"]
-            elements, paths, image_info = _parse_image_element(image_el)
-            result[name] = (elements, paths, image_info)
-    return result
+        images[name] = ParsedCVATImage(
+            name=name,
+            elements=tuple(elements),
+            paths=tuple(paths),
+            image_info=image_info,
+        )
+
+    return ParsedCVATFile(xml_path=xml_path, images=MappingProxyType(images))

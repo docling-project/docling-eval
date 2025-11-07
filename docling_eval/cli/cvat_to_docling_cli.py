@@ -77,15 +77,18 @@ def process_samples_for_conversion(
     output_dir: Path,
     save_formats: Optional[List[str]] = None,
     verbose: bool = False,
+    force_ocr: bool = False,
+    ocr_scale: float = 1.0,
 ) -> BatchConversionReport:
     """Process a list of samples and convert them to DoclingDocuments.
 
     Args:
         samples: List of (sample_name, xml_path, image_filename) tuples
         output_dir: Directory to save output files
-        ocr_framework: OCR framework to use for conversion
         save_formats: List of formats to save (json, html, md, txt)
         verbose: Whether to print detailed information
+        force_ocr: Force OCR on PDFs instead of using native text layer
+        ocr_scale: Scale factor for rendering PDFs for OCR
 
     Returns:
         BatchConversionReport with conversion results
@@ -129,7 +132,9 @@ def process_samples_for_conversion(
                     )
 
             # Convert to DoclingDocument
-            doc = convert_cvat_to_docling(xml_path, image_path)
+            doc = convert_cvat_to_docling(
+                xml_path, image_path, force_ocr=force_ocr, ocr_scale=ocr_scale
+            )
 
             if doc:
                 # Prepare output files
@@ -203,6 +208,8 @@ def process_cvat_folder(
     verbose: bool = False,
     folder_structure: Optional[CVATFolderStructure] = None,
     log_validation: bool = False,
+    force_ocr: bool = False,
+    ocr_scale: float = 1.0,
 ) -> BatchConversionReport:
     """Process a CVAT export folder for document-level conversion."""
 
@@ -222,6 +229,8 @@ def process_cvat_folder(
             save_formats,
             folder_structure=folder_structure,
             log_validation=log_validation,
+            force_ocr=force_ocr,
+            ocr_scale=ocr_scale,
         )
 
         for doc_hash, outcome in outcomes.items():
@@ -377,6 +386,18 @@ def main():
         default=None,
         help="Path to save conversion report as JSON (default: None)",
     )
+    parser.add_argument(
+        "--force-ocr",
+        action="store_true",
+        default=False,
+        help="Force OCR on PDFs instead of using native text layer (default: False)",
+    )
+    parser.add_argument(
+        "--ocr-scale",
+        type=float,
+        default=1.0,
+        help="Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI). Higher values increase OCR quality but use more memory.",
+    )
 
     args = parser.parse_args()
 
@@ -435,6 +456,8 @@ def main():
             verbose=args.verbose,
             folder_structure=folder_structure,
             log_validation=args.log_validation,
+            force_ocr=args.force_ocr,
+            ocr_scale=args.ocr_scale,
         )
     else:
         if input_path.is_dir():
@@ -467,6 +490,8 @@ def main():
             output_dir=output_dir,
             save_formats=args.formats,
             verbose=args.verbose,
+            force_ocr=args.force_ocr,
+            ocr_scale=args.ocr_scale,
         )
 
     print("\n" + "=" * 60)
