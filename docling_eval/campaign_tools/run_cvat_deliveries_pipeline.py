@@ -96,11 +96,19 @@ class ExecutionPlan:
             ),
         )
 
-    def should_skip_job(self, job: SubmissionSubsetJob) -> tuple[bool, str]:
+    def should_skip_job(
+        self,
+        job: SubmissionSubsetJob,
+        *,
+        resume_from_json: bool,
+        stop_after_json: bool,
+    ) -> tuple[bool, str]:
         """Determine if a job should be skipped.
 
         Args:
             job: The submission subset job to check
+            resume_from_json: Whether the run is resuming from prior JSON exports
+            stop_after_json: Whether the current execution stops after JSON generation
 
         Returns:
             Tuple of (should_skip, reason_message)
@@ -111,6 +119,43 @@ class ExecutionPlan:
             return False, ""
 
         if self.force_rerun:
+            return False, ""
+
+        resume_ready = (
+            resume_from_json
+            and not self.force_rerun
+            and (self.run_dataset_creation or self.run_evaluation)
+        )
+        if resume_ready:
+            required_outputs: list[tuple[Path, str]] = []
+            if stop_after_json:
+                required_outputs.extend(
+                    [
+                        (job.output_dir / "ground_truth_json", "ground_truth_json"),
+                        (job.output_dir / "predictions_json", "predictions_json"),
+                    ]
+                )
+            else:
+                if self.run_dataset_creation:
+                    required_outputs.append(
+                        (job.output_dir / "eval_dataset", "eval_dataset")
+                    )
+                if self.run_evaluation:
+                    required_outputs.append(
+                        (job.output_dir / "evaluation_results", "evaluation_results")
+                    )
+
+            missing_outputs = [
+                label for path, label in required_outputs if not path.exists()
+            ]
+            if not missing_outputs:
+                requirement_names = ", ".join(label for _, label in required_outputs)
+                return (
+                    True,
+                    "resume-from-json: "
+                    f"{requirement_names} already present at {job.output_dir} "
+                    "(use --force to re-run)",
+                )
             return False, ""
 
         merged_dir = job.get_merged_xml_dir()
@@ -458,10 +503,11 @@ def run_jobs(
             _LOGGER.info("→ Processing %s", job_id)
 
             # Check if job should be skipped
-            should_skip, skip_reason = plan.should_skip_job(job)
-            if resume_from_json and plan.run_dataset_creation:
-                should_skip = False
-                skip_reason = ""
+            should_skip, skip_reason = plan.should_skip_job(
+                job,
+                resume_from_json=resume_from_json,
+                stop_after_json=stop_after_json,
+            )
             if should_skip:
                 _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
                 skipped_jobs.append((job_id, skip_reason))

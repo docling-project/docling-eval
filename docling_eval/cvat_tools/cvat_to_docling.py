@@ -45,6 +45,7 @@ from docling_core.types.doc.document import (
     PictureClassificationClass,
     PictureClassificationData,
     ProvenanceItem,
+    RefItem,
     Size,
     TableData,
 )
@@ -645,6 +646,9 @@ class CVATToDoclingConverter:
         # Remove groups left without any children during conversion
         self._prune_empty_groups()
 
+        # Ensure tree invariants hold before scaling
+        self._ensure_tree_parent_consistency()
+
         # Scale document coordinates from cvat_input_scale to storage_scale
         if self.storage_scale != self.cvat_input_scale:
             self._scale_document_to_storage()
@@ -703,6 +707,57 @@ class CVATToDoclingConverter:
                 for cell in table_item.data.table_cells:
                     if isinstance(cell, TableCell) and cell.bbox:
                         cell.bbox = cell.bbox.scaled(scale_factor)
+
+    def _ensure_tree_parent_consistency(self) -> None:
+        """Ensure every child's parent pointer matches the tree structure.
+
+        Table rich-cell rewiring can temporarily detach nodes from their original parents.
+        Running this once per conversion guarantees the exported Docling JSON already passes
+        DoclingDocument.validate_tree without relying on downstream loaders to clean it up.
+        """
+
+        visited: Set[str] = set()
+
+        def _visit(node: NodeItem) -> None:
+            node_ref = node.get_ref()
+            node_cref = node_ref.cref
+            if node_cref in visited:
+                return
+            visited.add(node_cref)
+
+            unique_children: list[RefItem] = []
+            seen_child_refs: Set[str] = set()
+
+            for child_ref in node.children:
+                child_cref = child_ref.cref
+                if child_cref in seen_child_refs:
+                    _logger.debug(
+                        "Removing duplicate child %s under parent %s",
+                        child_cref,
+                        node_cref,
+                    )
+                    continue
+                seen_child_refs.add(child_cref)
+                unique_children.append(child_ref)
+
+                child_item = child_ref.resolve(self.doc)
+                current_parent = child_item.parent.cref if child_item.parent else None
+                if current_parent != node_cref:
+                    _logger.debug(
+                        "Fixing parent pointer for %s (was %s, now %s)",
+                        child_item.self_ref,
+                        current_parent,
+                        node_cref,
+                    )
+                    child_item.parent = node_ref
+
+                _visit(child_item)
+
+            node.children = unique_children
+
+        for root in (self.doc.body, self.doc.furniture):
+            if root.children:
+                _visit(root)
 
     def _reset_list_state(self):
         """Reset list processing state for clean conversion."""
@@ -1049,7 +1104,9 @@ class CVATToDoclingConverter:
 
                 # Define if cell is Rich
                 rich_cell = False
-                provs_in_cell = []
+                provs_in_cell: list[RefItem] = []
+                # Some pages contain repeated prov boxes for the same element; keep only the first hit.
+                seen_refs: set[str] = set()
 
                 # Convert cell bbox to BOTTOM_LEFT once (provs are in BOTTOM_LEFT)
                 cell_bbox_bl = c.bbox.to_bottom_left_origin(page_height)
@@ -1067,6 +1124,10 @@ class CVATToDoclingConverter:
                             # Both are now in BOTTOM_LEFT, no conversion needed
                             if is_bbox_within(cell_bbox_bl, prov.bbox):
                                 # At least one child is inside the cell!
+                                ref = item.get_ref()
+                                if ref.cref in seen_refs:
+                                    continue
+                                seen_refs.add(ref.cref)
                                 rich_cell = True
                                 item_parent = (
                                     item.parent.resolve(self.doc)
@@ -1081,7 +1142,7 @@ class CVATToDoclingConverter:
                                 ):
                                     item_parent.children.remove(item.get_ref())
                                 item.parent = table_item.get_ref()
-                                provs_in_cell.append(item.get_ref())
+                                provs_in_cell.append(ref)
                 if rich_cell:
                     # Get Ref
                     ref_for_rich_cell = provs_in_cell[0]
