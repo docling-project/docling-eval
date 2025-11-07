@@ -2122,13 +2122,27 @@ def create_segmented_page_from_ocr(
     return seg_page
 
 
+@dataclass
+class LoadedDocumentPages:
+    """Container with loaded segmented pages and their text extraction provenance."""
+
+    segmented_pages: Dict[int, SegmentedPage]
+    page_images: Dict[int, PILImage.Image]
+    ocr_pages: Set[int] = field(default_factory=set)
+
+    @property
+    def has_ocr_pages(self) -> bool:
+        """Return True if any page for this document was produced via OCR."""
+        return bool(self.ocr_pages)
+
+
 def load_document_pages(
     input_path: Path,
     page_numbers: Optional[List[int]] = None,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
     cvat_input_scale: float = 2.0,
-) -> Tuple[Dict[int, SegmentedPage], Dict[int, PILImage.Image]]:
+) -> LoadedDocumentPages:
     """Load document pages with text extraction at CVAT input scale.
 
     Args:
@@ -2140,10 +2154,11 @@ def load_document_pages(
                          All returned SegmentedPages and images will be at this scale.
 
     Returns:
-        Tuple of (segmented_pages dict at cvat_input_scale, page_images dict at cvat_input_scale) with 1-indexed page numbers as keys
+        LoadedDocumentPages containing segmented pages, rendered images, and OCR provenance.
     """
     segmented_pages: Dict[int, SegmentedPage] = {}
     page_images: Dict[int, PILImage.Image] = {}
+    ocr_pages: Set[int] = set()
 
     is_pdf = input_path.suffix.lower() == ".pdf"
 
@@ -2261,6 +2276,7 @@ def load_document_pages(
                         target_height=page_image.height,
                     )
                     segmented_pages[page_no] = seg_page
+                    ocr_pages.add(page_no)
 
             if page_image is not None:
                 page_images[page_no] = page_image
@@ -2321,6 +2337,7 @@ def load_document_pages(
                 )
                 segmented_pages[page_no] = seg_page
                 page_images[page_no] = cvat_image
+                ocr_pages.add(page_no)
 
             page.unload()
 
@@ -2335,8 +2352,13 @@ def load_document_pages(
 
         segmented_pages[page_no] = seg_page
         page_images[page_no] = image
+        ocr_pages.add(page_no)
 
-    return segmented_pages, page_images
+    return LoadedDocumentPages(
+        segmented_pages=segmented_pages,
+        page_images=page_images,
+        ocr_pages=ocr_pages,
+    )
 
 
 @dataclass
@@ -2347,6 +2369,7 @@ class CVATConversionResult:
     validation_report: Optional[CVATValidationReport]
     per_page_reports: Dict[str, CVATValidationReport] = field(default_factory=dict)
     error: Optional[str] = None
+    used_ocr: bool = False
 
 
 def convert_cvat_folder_to_docling(
@@ -2402,6 +2425,8 @@ def convert_cvat_folder_to_docling(
     # Convert and write documents one at a time to reduce memory usage
     results: Dict[str, CVATConversionResult] = {}
     total_docs = len(folder_structure.documents)
+    ocr_document_names: Set[str] = set()
+
     for idx, doc_hash in enumerate(folder_structure.documents, start=1):
         cvat_doc = folder_structure.documents[doc_hash]
         _logger.info(f"[{idx}/{total_docs}] Converting {cvat_doc.doc_name}...")
@@ -2440,6 +2465,15 @@ def convert_cvat_folder_to_docling(
 
             # Free memory by discarding the document after writing
             result.document = None
+            if result.used_ocr:
+                ocr_document_names.add(base_filename)
+
+    ocr_manifest_path = output_dir / "ocr_documents.txt"
+    sorted_names = sorted(ocr_document_names)
+    manifest_content = "\n".join(sorted_names)
+    if sorted_names:
+        manifest_content += "\n"
+    ocr_manifest_path.write_text(manifest_content, encoding="utf-8")
 
     return results
 
@@ -2569,28 +2603,34 @@ class CVATFolderConverter:
             actual_storage_scale = self.storage_scale if is_pdf else 1.0
 
             # Use shared function to load document pages (always at cvat_input_scale)
+            document_used_ocr = False
             if is_pdf:
-                segmented_pages, page_images = load_document_pages(
+                load_result = load_document_pages(
                     input_path=cvat_doc.bin_file,
                     page_numbers=annotated_page_numbers,
                     force_ocr=self.force_ocr,
                     ocr_scale=self.ocr_scale,
                     cvat_input_scale=actual_cvat_input_scale,
                 )
+                segmented_pages = load_result.segmented_pages
+                page_images = load_result.page_images
+                document_used_ocr = load_result.has_ocr_pages
             else:
                 # For images, load each page individually (since they may be separate files)
                 segmented_pages = {}
                 page_images = {}
                 for page_info in cvat_doc.pages:
-                    seg_pages, p_images = load_document_pages(
+                    page_result = load_document_pages(
                         input_path=page_info.image_path,
                         page_numbers=[page_info.page_number],
                         force_ocr=False,  # Images always use OCR
                         ocr_scale=1.0,
                         cvat_input_scale=1.0,  # Images always at native resolution
                     )
-                    segmented_pages.update(seg_pages)
-                    page_images.update(p_images)
+                    segmented_pages.update(page_result.segmented_pages)
+                    page_images.update(page_result.page_images)
+                    if page_result.ocr_pages:
+                        document_used_ocr = True
 
             converter = CVATToDoclingConverter(
                 doc_structure,
@@ -2607,6 +2647,7 @@ class CVATFolderConverter:
                 validation_report=None,
                 per_page_reports=per_page_reports,
                 error=None,
+                used_ocr=document_used_ocr,
             )
 
         except OCRImageDimensionError as exc:
@@ -2695,13 +2736,15 @@ def convert_cvat_to_docling(
         actual_storage_scale = storage_scale if is_pdf else 1.0
 
         # Use shared function to load document pages (at cvat_input_scale)
-        segmented_pages, page_images = load_document_pages(
+        load_result = load_document_pages(
             input_path=input_path,
             page_numbers=None,  # Load all pages
             force_ocr=force_ocr,
             ocr_scale=ocr_scale,
             cvat_input_scale=actual_cvat_input_scale,
         )
+        segmented_pages = load_result.segmented_pages
+        page_images = load_result.page_images
 
         # Create converter
         converter = CVATToDoclingConverter(
