@@ -10,6 +10,7 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set
 
 from .geometry import bbox_fraction_inside
 from .models import CVATAnnotationPath, CVATElement
+from .utils import is_container_element
 
 
 @dataclass
@@ -225,7 +226,12 @@ def build_global_reading_order(
     result = []
     processed_paths: set[int] = set()
 
-    def insert_with_ancestors(eid: int, path_container_id: Optional[int]) -> None:
+    def insert_with_ancestors(
+        eid: int,
+        path_container_id: Optional[int],
+        position: Optional[int] = None,
+        elements_in_path: Optional[List[int]] = None,
+    ) -> None:
         node = find_node_by_element_id(tree_roots, eid)
         if not node:
             return
@@ -237,16 +243,46 @@ def build_global_reading_order(
             ancestors.append(current)
             current = current.parent
 
-        # Insert ancestors first
-        for ancestor in reversed(ancestors):
-            if ancestor.element.id not in visited:
-                result.append(ancestor.element.id)
-                visited.add(ancestor.element.id)
+        future_ids: Set[int] = set()
+        if (
+            position is not None
+            and elements_in_path is not None
+            and position + 1 < len(elements_in_path)
+        ):
+            future_ids = set(elements_in_path[position + 1 :])
+
+        before_ancestors: List[TreeNode] = []
+        after_ancestors: List[TreeNode] = []
+
+        for ancestor in reversed(ancestors):  # outermost -> innermost
+            ancestor_id = ancestor.element.id
+            if ancestor_id in visited:
+                continue
+            if future_ids and ancestor_id in future_ids:
+                if not is_container_element(ancestor.element):
+                    # Path will insert this non-container ancestor explicitly later
+                    continue
+            if is_container_element(ancestor.element):
+                before_ancestors.append(ancestor)
+            else:
+                after_ancestors.append(ancestor)
+
+        for ancestor in before_ancestors:
+            ancestor_id = ancestor.element.id
+            if ancestor_id not in visited:
+                result.append(ancestor_id)
+                visited.add(ancestor_id)
 
         # Insert the element itself
         if eid not in visited:
             result.append(eid)
             visited.add(eid)
+
+        for ancestor in reversed(after_ancestors):  # innermost -> outermost
+            ancestor_id = ancestor.element.id
+            if ancestor_id not in visited:
+                result.append(ancestor_id)
+                visited.add(ancestor_id)
 
     def insert_path(path_id: int) -> None:
         if path_id in processed_paths:
@@ -260,7 +296,10 @@ def build_global_reading_order(
             result.append(path_container.element.id)
             visited.add(path_container.element.id)
 
-        for eid in path_to_elements.get(path_id, []):
+        elements_in_path = path_to_elements.get(path_id, [])
+        element_positions = {eid: idx for idx, eid in enumerate(elements_in_path)}
+
+        for idx, eid in enumerate(elements_in_path):
             if eid in visited:
                 continue
 
@@ -281,7 +320,12 @@ def build_global_reading_order(
                         insert_path(pid)
 
             # Insert ancestors and the element itself
-            insert_with_ancestors(eid, path_container_id)
+            insert_with_ancestors(
+                eid,
+                path_container_id,
+                position=idx,
+                elements_in_path=elements_in_path,
+            )
 
             # Also insert all direct children of this container if they are touched by the path
             if node.children:
@@ -291,7 +335,13 @@ def build_global_reading_order(
                         child_id in path_to_elements.get(path_id, [])
                         and child_id not in visited
                     ):
-                        insert_with_ancestors(child_id, path_container_id)
+                        child_position = element_positions.get(child_id)
+                        insert_with_ancestors(
+                            child_id,
+                            path_container_id,
+                            position=child_position,
+                            elements_in_path=elements_in_path,
+                        )
 
     # Process each level-1 reading order path in order of appearance (IDs are stable
     # because we rebuilt them sequentially while merging pages).

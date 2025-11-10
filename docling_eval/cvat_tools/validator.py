@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Type
 
 from docling_core.types.doc.document import ContentLayer, DocItemLabel
+from docling_core.types.doc.labels import GraphCellLabel
 
 from .document import DocumentStructure
 from .folder_models import CVATDocument
@@ -16,7 +17,7 @@ from .models import (
     ValidationSeverity,
 )
 from .parser import ParsedCVATFile, parse_cvat_file
-from .tree import find_ancestor
+from .tree import TreeNode, find_ancestor
 from .utils import DEFAULT_PROXIMITY_THRESHOLD, find_elements_containing_point
 
 logger = logging.getLogger("docling_eval.cvat_tools.validator")
@@ -54,6 +55,62 @@ class ValidLabelsRule(ValidationRule):
 class ReadingOrderRule(ValidationRule):
     """Validate reading order requirements - FATAL level."""
 
+    def _is_relevant_element(self, element: CVATElement) -> bool:
+        """Return True when an element should be considered for level-1 reading order."""
+        if element.content_layer not in (
+            ContentLayer.BODY,
+            ContentLayer.FURNITURE,
+        ):
+            return False
+        if isinstance(element.label, GraphCellLabel):
+            return False
+        if isinstance(element.label, TableStructLabel):
+            return False
+        return True
+
+    def _find_top_level_root(
+        self, doc: DocumentStructure, element_id: int
+    ) -> Optional[TreeNode]:
+        """Return the top-level tree node that contains the given element."""
+        node = doc.get_node_by_element_id(element_id)
+        if node is None:
+            return None
+        while node.parent is not None:
+            node = node.parent
+        return node
+
+    def _can_skip_missing_level1(
+        self, doc: DocumentStructure, relevant_elements: List[CVATElement]
+    ) -> bool:
+        """Return True when missing level-1 reading order is acceptable."""
+        if not relevant_elements:
+            return False
+        if len(relevant_elements) <= 1:
+            return True
+
+        root_ids: Set[int] = set()
+        representative_root: Optional[TreeNode] = None
+
+        for element in relevant_elements:
+            root_node = self._find_top_level_root(doc, element.id)
+            if root_node is None:
+                return False
+            root_ids.add(root_node.element.id)
+            if representative_root is None:
+                representative_root = root_node
+            if len(root_ids) > 1:
+                return False
+
+        if representative_root is None:
+            return False
+
+        return representative_root.element.label in (
+            DocItemLabel.TABLE,
+            DocItemLabel.PICTURE,
+            DocItemLabel.FORM,
+            DocItemLabel.CODE,
+        )
+
     def validate(self, doc: DocumentStructure) -> List[CVATValidationError]:
         errors: list[CVATValidationError] = []
 
@@ -64,20 +121,18 @@ class ReadingOrderRule(ValidationRule):
             if p.label.startswith("reading_order") and (p.level == 1 or p.level is None)
         ]
 
-        # Skip reading order validation for samples with very few elements
-        # (0 or 1 rectangle elements don't need reading order)
-        if len(doc.elements) <= 1:
-            return errors
+        relevant_elements = [el for el in doc.elements if self._is_relevant_element(el)]
 
         # Check missing first-level reading order
         if len(level1_paths) == 0:
-            errors.append(
-                CVATValidationError(
-                    error_type="missing_first_level_reading_order",
-                    message="No first-level reading-order path found.",
-                    severity=ValidationSeverity.FATAL,
+            if not self._can_skip_missing_level1(doc, relevant_elements):
+                errors.append(
+                    CVATValidationError(
+                        error_type="missing_first_level_reading_order",
+                        message="No first-level reading-order path found.",
+                        severity=ValidationSeverity.FATAL,
+                    )
                 )
-            )
         # Check multiple first-level reading order
         elif len(level1_paths) > 1:
             errors.append(
@@ -214,6 +269,46 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             element, table_ancestor.element, doc, threshold=0.7
         )
 
+    def _get_element_picture_container(
+        self, element: CVATElement, doc: DocumentStructure
+    ) -> Optional[CVATElement]:
+        """Return the picture container for an element, handling merge groups."""
+        node = doc.get_node_by_element_id(element.id)
+        if not node:
+            return None
+
+        picture_ancestor = find_ancestor(
+            node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
+        )
+        if not picture_ancestor:
+            return None
+        picture_element = picture_ancestor.element
+
+        element_ids_to_check = {element.id}
+        for merge_elements in doc.path_mappings.merge.values():
+            if element.id in merge_elements:
+                element_ids_to_check = set(merge_elements)
+                break
+
+        for el_id in element_ids_to_check:
+            if el_id == element.id:
+                continue
+
+            el_node = doc.get_node_by_element_id(el_id)
+            if not el_node:
+                return None
+
+            el_picture_ancestor = find_ancestor(
+                el_node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
+            )
+            if (
+                el_picture_ancestor is None
+                or el_picture_ancestor.element.id != picture_element.id
+            ):
+                return None
+
+        return picture_element
+
     def _is_element_inside_regular_picture(
         self, element: CVATElement, doc: DocumentStructure
     ) -> bool:
@@ -231,53 +326,14 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             return False
 
         # Find if element has a picture ancestor that is NOT chart/infographic/illustration
-        picture_ancestor = find_ancestor(
-            node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
-        )
-
-        if not picture_ancestor:
+        picture_element = self._get_element_picture_container(element, doc)
+        if picture_element is None:
             return False
 
         # Check if the picture is an atomic type (chart/infographic/illustration)
-        picture_type = picture_ancestor.element.type
+        picture_type = picture_element.type
         if picture_type and picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
             return False
-
-        # For merged elements, check that ALL are inside the same regular picture
-        element_ids_to_check = {element.id}
-
-        # Find merge group containing this element
-        for merge_elements in doc.path_mappings.merge.values():
-            if element.id in merge_elements:
-                element_ids_to_check = set(merge_elements)
-                break
-
-        # Check all elements in the merge group
-        for el_id in element_ids_to_check:
-            if el_id == element.id:
-                continue  # Already checked above
-
-            el_node = doc.get_node_by_element_id(el_id)
-            if not el_node:
-                # Element not in tree - treat as outside
-                return False
-
-            # Check if this element has the same picture ancestor
-            el_picture_ancestor = find_ancestor(
-                el_node, lambda ancestor: ancestor.element.label == DocItemLabel.PICTURE
-            )
-
-            # If element has no picture ancestor or different picture, treat group as outside
-            if (
-                not el_picture_ancestor
-                or el_picture_ancestor.element.id != picture_ancestor.element.id
-            ):
-                return False
-
-            # Check if this element's picture is also non-atomic
-            el_picture_type = el_picture_ancestor.element.type
-            if el_picture_type and el_picture_type.upper() in self.ATOMIC_PICTURE_TYPES:
-                return False
 
         return True
 
@@ -446,17 +502,27 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
                 logger.debug(f"Adding error for element {el.id} ({el.label})")
 
                 # Check if element is inside any NON-chart/infographic/illustration picture container
-                is_inside_regular_picture = self._is_element_inside_regular_picture(
-                    el, doc
-                )
+                picture_container = self._get_element_picture_container(el, doc)
 
-                if is_inside_regular_picture:
-                    # WARNING level for elements inside regular picture containers (not chart/infographic/illustration)
+                if picture_container is not None:
+                    picture_type = (
+                        picture_container.type.upper()
+                        if picture_container.type is not None
+                        else None
+                    )
+                    severity = (
+                        ValidationSeverity.ERROR
+                        if picture_type in self.ATOMIC_PICTURE_TYPES
+                        else ValidationSeverity.WARNING
+                    )
                     errors.append(
                         CVATValidationError(
                             error_type="element_not_touched_by_reading_order_inside_picture",
-                            message=f"Element {el.id} ({el.label}) inside picture container not touched by any reading-order path.",
-                            severity=ValidationSeverity.WARNING,
+                            message=(
+                                f"Element {el.id} ({el.label}) inside picture container "
+                                "not touched by any reading-order path."
+                            ),
+                            severity=severity,
                             element_id=el.id,
                         )
                     )

@@ -96,11 +96,19 @@ class ExecutionPlan:
             ),
         )
 
-    def should_skip_job(self, job: SubmissionSubsetJob) -> tuple[bool, str]:
+    def should_skip_job(
+        self,
+        job: SubmissionSubsetJob,
+        *,
+        resume_from_json: bool,
+        stop_after_json: bool,
+    ) -> tuple[bool, str]:
         """Determine if a job should be skipped.
 
         Args:
             job: The submission subset job to check
+            resume_from_json: Whether the run is resuming from prior JSON exports
+            stop_after_json: Whether the current execution stops after JSON generation
 
         Returns:
             Tuple of (should_skip, reason_message)
@@ -111,6 +119,43 @@ class ExecutionPlan:
             return False, ""
 
         if self.force_rerun:
+            return False, ""
+
+        resume_ready = (
+            resume_from_json
+            and not self.force_rerun
+            and (self.run_dataset_creation or self.run_evaluation)
+        )
+        if resume_ready:
+            required_outputs: list[tuple[Path, str]] = []
+            if stop_after_json:
+                required_outputs.extend(
+                    [
+                        (job.output_dir / "ground_truth_json", "ground_truth_json"),
+                        (job.output_dir / "predictions_json", "predictions_json"),
+                    ]
+                )
+            else:
+                if self.run_dataset_creation:
+                    required_outputs.append(
+                        (job.output_dir / "eval_dataset", "eval_dataset")
+                    )
+                if self.run_evaluation:
+                    required_outputs.append(
+                        (job.output_dir / "evaluation_results", "evaluation_results")
+                    )
+
+            missing_outputs = [
+                label for path, label in required_outputs if not path.exists()
+            ]
+            if not missing_outputs:
+                requirement_names = ", ".join(label for _, label in required_outputs)
+                return (
+                    True,
+                    "resume-from-json: "
+                    f"{requirement_names} already present at {job.output_dir} "
+                    "(use --force to re-run)",
+                )
             return False, ""
 
         merged_dir = job.get_merged_xml_dir()
@@ -180,6 +225,9 @@ def _execute_job(
     force_ocr: bool,
     ocr_scale: float,
     storage_scale: float,
+    stop_after_json: bool,
+    resume_from_json: bool,
+    reuse_eval_dataset: bool,
 ) -> Optional[pd.DataFrame]:
     """Execute pipeline stages for a single job according to the execution plan.
 
@@ -223,11 +271,30 @@ def _execute_job(
 
     # Stage 2: Create datasets
     if plan.run_dataset_creation:
-        pipeline.create_ground_truth_dataset()
-        pipeline.create_prediction_dataset()
+        if resume_from_json:
+            _LOGGER.info(
+                "  ↳ Resuming from existing JSON exports for %s", job.format_job_id()
+            )
+            pipeline.ensure_json_exports_exist()
+        else:
+            pipeline.create_json_exports(reuse_existing=False)
+
+        if stop_after_json:
+            _LOGGER.info(
+                "  ↳ Stop-after-json requested; skipping dataset join and evaluation."
+            )
+            return None
+
+        pipeline.create_eval_dataset_from_json(
+            reuse_existing=reuse_eval_dataset and not plan.force_rerun,
+            ignore_missing_predictions=True,
+            do_visualization=True,
+        )
+    elif resume_from_json:
+        pipeline.ensure_json_exports_exist()
 
     # Stage 3: Run evaluations
-    if plan.run_evaluation:
+    if plan.run_evaluation and not stop_after_json:
         pipeline.run_table_evaluation(reuse_existing=not plan.force_rerun)
         return pipeline.run_evaluation(
             modalities=plan.modalities,
@@ -380,6 +447,9 @@ def run_jobs(
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
     storage_scale: float = 2.0,
+    stop_after_json: bool = False,
+    resume_from_json: bool = False,
+    reuse_eval_dataset: bool = False,
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
@@ -433,7 +503,11 @@ def run_jobs(
             _LOGGER.info("→ Processing %s", job_id)
 
             # Check if job should be skipped
-            should_skip, skip_reason = plan.should_skip_job(job)
+            should_skip, skip_reason = plan.should_skip_job(
+                job,
+                resume_from_json=resume_from_json,
+                stop_after_json=stop_after_json,
+            )
             if should_skip:
                 _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
                 skipped_jobs.append((job_id, skip_reason))
@@ -460,6 +534,9 @@ def run_jobs(
                     force_ocr=force_ocr,
                     ocr_scale=ocr_scale,
                     storage_scale=storage_scale,
+                    stop_after_json=stop_after_json,
+                    resume_from_json=resume_from_json,
+                    reuse_eval_dataset=reuse_eval_dataset,
                 )
 
                 if subset_df is not None and not subset_df.empty:
@@ -481,7 +558,7 @@ def run_jobs(
                 _LOGGER.debug("Subset failure details", exc_info=True)
 
         # Aggregate validation reports across successfully completed subsets only
-        if plan.should_aggregate_validation():
+        if plan.should_aggregate_validation() and not stop_after_json:
             if completed_jobs:
                 _LOGGER.info(
                     "Aggregating validation reports for submission %s (%d/%d subsets completed)",
@@ -671,6 +748,21 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         default=2.0,
         help="Scale for stored page images and coordinates (default: 2.0 = 144 DPI).",
     )
+    parser.add_argument(
+        "--stop-after-json",
+        action="store_true",
+        help="Stop each job after exporting ground_truth_json and predictions_json.",
+    )
+    parser.add_argument(
+        "--resume-from-json",
+        action="store_true",
+        help="Reuse existing ground_truth_json and predictions_json directories.",
+    )
+    parser.add_argument(
+        "--reuse-eval-dataset",
+        action="store_true",
+        help="Reuse existing eval_dataset parquet shards when present.",
+    )
 
     return parser.parse_args(argv)
 
@@ -700,6 +792,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             force_ocr=args.force_ocr,
             ocr_scale=args.ocr_scale,
             storage_scale=args.storage_scale,
+            stop_after_json=args.stop_after_json,
+            resume_from_json=args.resume_from_json,
+            reuse_eval_dataset=args.reuse_eval_dataset,
         )
     except ValueError as exc:
         _LOGGER.error("%s", exc)

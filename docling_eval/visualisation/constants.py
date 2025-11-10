@@ -166,6 +166,9 @@ img {
   min-width: 300px;
   height: auto;
 }
+.page img {
+  min-width: auto;
+}
 .table-container {
   width: 100%;
   overflow-x: auto; /* Horizontal scrolling for tables */

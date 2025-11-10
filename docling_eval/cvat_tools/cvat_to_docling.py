@@ -45,6 +45,7 @@ from docling_core.types.doc.document import (
     PictureClassificationClass,
     PictureClassificationData,
     ProvenanceItem,
+    RefItem,
     Size,
     TableData,
 )
@@ -85,8 +86,10 @@ from docling_eval.cvat_tools.tree import (
     TreeNode,
     apply_reading_order_to_tree,
     build_global_reading_order,
+    find_ancestor,
     find_node_by_element_id,
 )
+from docling_eval.cvat_tools.utils import is_container_element
 from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
 from docling_eval.utils.utils import classify_cells, sort_cell_ids
 
@@ -124,6 +127,40 @@ pic_classes = {
     "SCREENSHOT": "screenshot",
     "UI_ELEMENT": "ui_element",
 }
+
+
+MAX_OCR_IMAGE_DIMENSION: int = 8192
+
+
+class OCRImageDimensionError(RuntimeError):
+    """Raised when an OCR image exceeds the supported Vision framework dimensions."""
+
+    width: int
+    height: int
+    limit: int
+    document_name: str
+    page_number: int
+
+    def __init__(
+        self,
+        *,
+        width: int,
+        height: int,
+        limit: int,
+        document_name: str,
+        page_number: int,
+    ) -> None:
+        self.width = width
+        self.height = height
+        self.limit = limit
+        self.document_name = document_name
+        self.page_number = page_number
+        message = (
+            "OCR image for document "
+            f"{document_name} page {page_number} has dimensions {width}x{height}, "
+            f"exceeding the supported maximum of {limit}"
+        )
+        super().__init__(message)
 
 
 @dataclass(frozen=True)
@@ -609,6 +646,9 @@ class CVATToDoclingConverter:
         # Remove groups left without any children during conversion
         self._prune_empty_groups()
 
+        # Ensure tree invariants hold before scaling
+        self._ensure_tree_parent_consistency()
+
         # Scale document coordinates from cvat_input_scale to storage_scale
         if self.storage_scale != self.cvat_input_scale:
             self._scale_document_to_storage()
@@ -668,6 +708,57 @@ class CVATToDoclingConverter:
                     if isinstance(cell, TableCell) and cell.bbox:
                         cell.bbox = cell.bbox.scaled(scale_factor)
 
+    def _ensure_tree_parent_consistency(self) -> None:
+        """Ensure every child's parent pointer matches the tree structure.
+
+        Table rich-cell rewiring can temporarily detach nodes from their original parents.
+        Running this once per conversion guarantees the exported Docling JSON already passes
+        DoclingDocument.validate_tree without relying on downstream loaders to clean it up.
+        """
+
+        visited: Set[str] = set()
+
+        def _visit(node: NodeItem) -> None:
+            node_ref = node.get_ref()
+            node_cref = node_ref.cref
+            if node_cref in visited:
+                return
+            visited.add(node_cref)
+
+            unique_children: list[RefItem] = []
+            seen_child_refs: Set[str] = set()
+
+            for child_ref in node.children:
+                child_cref = child_ref.cref
+                if child_cref in seen_child_refs:
+                    _logger.debug(
+                        "Removing duplicate child %s under parent %s",
+                        child_cref,
+                        node_cref,
+                    )
+                    continue
+                seen_child_refs.add(child_cref)
+                unique_children.append(child_ref)
+
+                child_item = child_ref.resolve(self.doc)
+                current_parent = child_item.parent.cref if child_item.parent else None
+                if current_parent != node_cref:
+                    _logger.debug(
+                        "Fixing parent pointer for %s (was %s, now %s)",
+                        child_item.self_ref,
+                        current_parent,
+                        node_cref,
+                    )
+                    child_item.parent = node_ref
+
+                _visit(child_item)
+
+            node.children = unique_children
+
+        for root in (self.doc.body, self.doc.furniture):
+            if root.children:
+                _visit(root)
+
     def _reset_list_state(self):
         """Reset list processing state for clean conversion."""
         self.list_manager.clear()
@@ -712,6 +803,33 @@ class CVATToDoclingConverter:
             self.doc_structure.path_to_container,
             self.doc_structure.tree_roots,
         )
+
+    def _build_fallback_global_order(self) -> List[int]:
+        """Build a fallback global order when no level-1 reading order is present."""
+
+        def root_sort_key(node: TreeNode) -> tuple[float, float, int]:
+            bbox = node.element.bbox
+            top = min(bbox.t, bbox.b)
+            left = min(bbox.l, bbox.r)
+            return (top, left, node.element.id)
+
+        order: List[int] = []
+        seen: Set[int] = set()
+
+        def traverse(node: TreeNode) -> None:
+            element_id = node.element.id
+            if element_id in seen:
+                return
+            seen.add(element_id)
+            order.append(element_id)
+            for child in node.children:
+                traverse(child)
+
+        sorted_roots = sorted(self.doc_structure.tree_roots, key=root_sort_key)
+        for root in sorted_roots:
+            traverse(root)
+
+        return order
 
     def _get_group_for_element(
         self, element_id: int
@@ -930,24 +1048,38 @@ class CVATToDoclingConverter:
 
         return children
 
-    def _process_elements_in_order(self, global_order: List[int]):
+    def _process_elements_in_order(self, global_order: List[int]) -> None:
         """Process elements in reading order."""
-        # Process elements in global reading order
-        for i, element_id in enumerate(global_order):
-            # Skip if already processed
+        primary_order = (
+            global_order if global_order else self._build_fallback_global_order()
+        )
+        self._process_order_sequence(primary_order)
+
+        if global_order:
+            fallback_order = self._build_fallback_global_order()
+            if any(
+                element_id not in self.processed_elements
+                for element_id in fallback_order
+            ):
+                self._process_order_sequence(fallback_order)
+
+    def _process_order_sequence(self, processing_order: List[int]) -> None:
+        """Process elements according to the supplied order."""
+        for index, element_id in enumerate(processing_order):
             if element_id in self.processed_elements:
                 continue
 
-            # Find the node containing this element
             node = find_node_by_element_id(self.doc_structure.tree_roots, element_id)
-            if node:
-                self._process_node(
-                    node,
-                    None,
-                    parent_item=None,
-                    global_order=global_order,
-                    current_position=i,
-                )
+            if not node:
+                continue
+
+            self._process_node(
+                node,
+                None,
+                parent_item=None,
+                global_order=processing_order,
+                current_position=index,
+            )
 
     def _process_table_data(self):
         # After all CVAT elements have been processed,
@@ -972,7 +1104,9 @@ class CVATToDoclingConverter:
 
                 # Define if cell is Rich
                 rich_cell = False
-                provs_in_cell = []
+                provs_in_cell: list[RefItem] = []
+                # Some pages contain repeated prov boxes for the same element; keep only the first hit.
+                seen_refs: set[str] = set()
 
                 # Convert cell bbox to BOTTOM_LEFT once (provs are in BOTTOM_LEFT)
                 cell_bbox_bl = c.bbox.to_bottom_left_origin(page_height)
@@ -990,6 +1124,10 @@ class CVATToDoclingConverter:
                             # Both are now in BOTTOM_LEFT, no conversion needed
                             if is_bbox_within(cell_bbox_bl, prov.bbox):
                                 # At least one child is inside the cell!
+                                ref = item.get_ref()
+                                if ref.cref in seen_refs:
+                                    continue
+                                seen_refs.add(ref.cref)
                                 rich_cell = True
                                 item_parent = (
                                     item.parent.resolve(self.doc)
@@ -1004,7 +1142,7 @@ class CVATToDoclingConverter:
                                 ):
                                     item_parent.children.remove(item.get_ref())
                                 item.parent = table_item.get_ref()
-                                provs_in_cell.append(item.get_ref())
+                                provs_in_cell.append(ref)
                 if rich_cell:
                     # Get Ref
                     ref_for_rich_cell = provs_in_cell[0]
@@ -1204,6 +1342,20 @@ class CVATToDoclingConverter:
 
         return False
 
+    def _get_container_ancestor_id(self, element_id: int) -> Optional[int]:
+        """Return the nearest container ancestor for ``element_id`` if present."""
+
+        node = self.doc_structure.get_node_by_element_id(element_id)
+        if node is None:
+            return None
+
+        container_node = find_ancestor(
+            node, lambda candidate: is_container_element(candidate.element)
+        )
+        if container_node is not None:
+            return container_node.element.id
+        return None
+
     def _get_merge_elements(self, element_id: int) -> List[CVATElement]:
         """Get all elements that should be merged with the given element.
 
@@ -1218,13 +1370,47 @@ class CVATToDoclingConverter:
                 path_id, element_ids
             )
 
+            candidate_elements: List[CVATElement] = []
+            skip_container_merge = False
+            container_ids: Set[Optional[int]] = set()
+            for el_id in corrected_ids:
+                element = self.doc_structure.get_element_by_id(el_id)
+                if element is None:
+                    continue
+                if is_container_element(element):
+                    # TODO: Container merges (e.g. table-to-table links) currently collapse multiple containers into
+                    #       a single Docling table, which destroys the second container's structure. We have to skip
+                    #       these merges for now so both tables survive conversion. Revisit once merged containers can
+                    #       be represented without losing their individual cell grids.
+                    skip_container_merge = True
+                    break
+                if isinstance(element.label, TableStructLabel):
+                    skip_container_merge = True
+                    break
+
+                container_id = self._get_container_ancestor_id(element.id)
+                if container_id is None:
+                    if any(cid is not None for cid in container_ids):
+                        skip_container_merge = True
+                        break
+                    container_ids.add(None)
+                else:
+                    non_none = {cid for cid in container_ids if cid is not None}
+                    if non_none and container_id not in non_none:
+                        skip_container_merge = True
+                        break
+                    container_ids.add(container_id)
+
+                candidate_elements.append(element)
+
+            if skip_container_merge:
+                return []
+
             # Collect unprocessed elements in corrected order
             merge_elements = []
-            for el_id in corrected_ids:
-                if el_id not in self.processed_elements:
-                    element = self.doc_structure.get_element_by_id(el_id)
-                    if element:
-                        merge_elements.append(element)
+            for element in candidate_elements:
+                if element.id not in self.processed_elements:
+                    merge_elements.append(element)
 
             return merge_elements
 
@@ -1829,6 +2015,27 @@ def scale_segmented_pdf_page(
     return seg_page
 
 
+def ensure_ocr_image_within_limit(
+    image: PILImage.Image,
+    document_name: str,
+    page_number: int,
+    max_dimension: int = MAX_OCR_IMAGE_DIMENSION,
+) -> None:
+    """Ensure OCR input image respects the Vision framework maximum dimension."""
+
+    width = int(image.width)
+    height = int(image.height)
+
+    if width > max_dimension or height > max_dimension:
+        raise OCRImageDimensionError(
+            width=width,
+            height=height,
+            limit=max_dimension,
+            document_name=document_name,
+            page_number=page_number,
+        )
+
+
 def create_segmented_page_from_ocr(
     image: PILImage.Image,
     coordinate_scale: float = 1.0,
@@ -1848,12 +2055,7 @@ def create_segmented_page_from_ocr(
     """
     from ocrmac import ocrmac
 
-    ocr_results = ocrmac.OCR(
-        image,
-        framework="vision",
-        recognition_level="fast",
-        language_preference=["en-US"],
-    ).recognize(px=True)
+    ocr_results = ocrmac.OCR(image, framework="livetext").recognize(px=True)
 
     # Use provided dimensions or fall back to image dimensions
     page_width = target_width if target_width is not None else image.width
@@ -1920,13 +2122,27 @@ def create_segmented_page_from_ocr(
     return seg_page
 
 
+@dataclass
+class LoadedDocumentPages:
+    """Container with loaded segmented pages and their text extraction provenance."""
+
+    segmented_pages: Dict[int, SegmentedPage]
+    page_images: Dict[int, PILImage.Image]
+    ocr_pages: Set[int] = field(default_factory=set)
+
+    @property
+    def has_ocr_pages(self) -> bool:
+        """Return True if any page for this document was produced via OCR."""
+        return bool(self.ocr_pages)
+
+
 def load_document_pages(
     input_path: Path,
     page_numbers: Optional[List[int]] = None,
     force_ocr: bool = False,
     ocr_scale: float = 1.0,
     cvat_input_scale: float = 2.0,
-) -> Tuple[Dict[int, SegmentedPage], Dict[int, PILImage.Image]]:
+) -> LoadedDocumentPages:
     """Load document pages with text extraction at CVAT input scale.
 
     Args:
@@ -1938,10 +2154,11 @@ def load_document_pages(
                          All returned SegmentedPages and images will be at this scale.
 
     Returns:
-        Tuple of (segmented_pages dict at cvat_input_scale, page_images dict at cvat_input_scale) with 1-indexed page numbers as keys
+        LoadedDocumentPages containing segmented pages, rendered images, and OCR provenance.
     """
     segmented_pages: Dict[int, SegmentedPage] = {}
     page_images: Dict[int, PILImage.Image] = {}
+    ocr_pages: Set[int] = set()
 
     is_pdf = input_path.suffix.lower() == ".pdf"
 
@@ -2050,6 +2267,7 @@ def load_document_pages(
                     )
                 ocr_image = page.get_page_image(scale=ocr_scale)
                 if ocr_image is not None and page_image is not None:
+                    ensure_ocr_image_within_limit(ocr_image, input_path.name, page_no)
                     coord_scale = cvat_input_scale / ocr_scale
                     seg_page = create_segmented_page_from_ocr(
                         ocr_image,
@@ -2058,6 +2276,7 @@ def load_document_pages(
                         target_height=page_image.height,
                     )
                     segmented_pages[page_no] = seg_page
+                    ocr_pages.add(page_no)
 
             if page_image is not None:
                 page_images[page_no] = page_image
@@ -2107,6 +2326,7 @@ def load_document_pages(
             cvat_image = page.get_page_image(scale=cvat_input_scale)
 
             if ocr_image is not None and cvat_image is not None:
+                ensure_ocr_image_within_limit(ocr_image, input_path.name, page_no)
                 # Map OCR coordinates from ocr_scale to cvat_input_scale
                 coord_scale = cvat_input_scale / ocr_scale
                 seg_page = create_segmented_page_from_ocr(
@@ -2117,6 +2337,7 @@ def load_document_pages(
                 )
                 segmented_pages[page_no] = seg_page
                 page_images[page_no] = cvat_image
+                ocr_pages.add(page_no)
 
             page.unload()
 
@@ -2125,14 +2346,19 @@ def load_document_pages(
     else:
         # Image input
         image = PILImage.open(input_path)
+        page_no = page_numbers[0] if page_numbers else 1
+        ensure_ocr_image_within_limit(image, input_path.name, page_no)
         seg_page = create_segmented_page_from_ocr(image)
 
-        # For images, use page number 1 if not specified
-        page_no = page_numbers[0] if page_numbers else 1
         segmented_pages[page_no] = seg_page
         page_images[page_no] = image
+        ocr_pages.add(page_no)
 
-    return segmented_pages, page_images
+    return LoadedDocumentPages(
+        segmented_pages=segmented_pages,
+        page_images=page_images,
+        ocr_pages=ocr_pages,
+    )
 
 
 @dataclass
@@ -2143,6 +2369,7 @@ class CVATConversionResult:
     validation_report: Optional[CVATValidationReport]
     per_page_reports: Dict[str, CVATValidationReport] = field(default_factory=dict)
     error: Optional[str] = None
+    used_ocr: bool = False
 
 
 def convert_cvat_folder_to_docling(
@@ -2198,6 +2425,8 @@ def convert_cvat_folder_to_docling(
     # Convert and write documents one at a time to reduce memory usage
     results: Dict[str, CVATConversionResult] = {}
     total_docs = len(folder_structure.documents)
+    ocr_document_names: Set[str] = set()
+
     for idx, doc_hash in enumerate(folder_structure.documents, start=1):
         cvat_doc = folder_structure.documents[doc_hash]
         _logger.info(f"[{idx}/{total_docs}] Converting {cvat_doc.doc_name}...")
@@ -2236,6 +2465,15 @@ def convert_cvat_folder_to_docling(
 
             # Free memory by discarding the document after writing
             result.document = None
+            if result.used_ocr:
+                ocr_document_names.add(base_filename)
+
+    ocr_manifest_path = output_dir / "ocr_documents.txt"
+    sorted_names = sorted(ocr_document_names)
+    manifest_content = "\n".join(sorted_names)
+    if sorted_names:
+        manifest_content += "\n"
+    ocr_manifest_path.write_text(manifest_content, encoding="utf-8")
 
     return results
 
@@ -2365,28 +2603,34 @@ class CVATFolderConverter:
             actual_storage_scale = self.storage_scale if is_pdf else 1.0
 
             # Use shared function to load document pages (always at cvat_input_scale)
+            document_used_ocr = False
             if is_pdf:
-                segmented_pages, page_images = load_document_pages(
+                load_result = load_document_pages(
                     input_path=cvat_doc.bin_file,
                     page_numbers=annotated_page_numbers,
                     force_ocr=self.force_ocr,
                     ocr_scale=self.ocr_scale,
                     cvat_input_scale=actual_cvat_input_scale,
                 )
+                segmented_pages = load_result.segmented_pages
+                page_images = load_result.page_images
+                document_used_ocr = load_result.has_ocr_pages
             else:
                 # For images, load each page individually (since they may be separate files)
                 segmented_pages = {}
                 page_images = {}
                 for page_info in cvat_doc.pages:
-                    seg_pages, p_images = load_document_pages(
+                    page_result = load_document_pages(
                         input_path=page_info.image_path,
                         page_numbers=[page_info.page_number],
                         force_ocr=False,  # Images always use OCR
                         ocr_scale=1.0,
                         cvat_input_scale=1.0,  # Images always at native resolution
                     )
-                    segmented_pages.update(seg_pages)
-                    page_images.update(p_images)
+                    segmented_pages.update(page_result.segmented_pages)
+                    page_images.update(page_result.page_images)
+                    if page_result.ocr_pages:
+                        document_used_ocr = True
 
             converter = CVATToDoclingConverter(
                 doc_structure,
@@ -2403,8 +2647,21 @@ class CVATFolderConverter:
                 validation_report=None,
                 per_page_reports=per_page_reports,
                 error=None,
+                used_ocr=document_used_ocr,
             )
 
+        except OCRImageDimensionError as exc:
+            _logger.warning(
+                "Skipping document %s due to oversized OCR image: %s",
+                cvat_doc.doc_name,
+                exc,
+            )
+            return CVATConversionResult(
+                document=None,
+                validation_report=None,
+                per_page_reports=per_page_reports,
+                error=str(exc),
+            )
         except Exception as exc:  # pragma: no cover - logged error propagation
             _logger.error("Error converting document %s: %s", doc_hash, exc)
             return CVATConversionResult(
@@ -2479,13 +2736,15 @@ def convert_cvat_to_docling(
         actual_storage_scale = storage_scale if is_pdf else 1.0
 
         # Use shared function to load document pages (at cvat_input_scale)
-        segmented_pages, page_images = load_document_pages(
+        load_result = load_document_pages(
             input_path=input_path,
             page_numbers=None,  # Load all pages
             force_ocr=force_ocr,
             ocr_scale=ocr_scale,
             cvat_input_scale=actual_cvat_input_scale,
         )
+        segmented_pages = load_result.segmented_pages
+        page_images = load_result.page_images
 
         # Create converter
         converter = CVATToDoclingConverter(
@@ -2503,6 +2762,13 @@ def convert_cvat_to_docling(
     except MissingImageInCVATXML:
         # Re-raise so that calling code can handle with appropriate messaging
         raise
+    except OCRImageDimensionError as exc:
+        _logger.warning(
+            "Skipping conversion for %s due to oversized OCR image: %s",
+            input_path.name,
+            exc,
+        )
+        return None
     except Exception as e:
         _logger.error(f"Failed to convert CVAT to DoclingDocument: {e}")
         import traceback

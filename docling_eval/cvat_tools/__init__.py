@@ -48,6 +48,7 @@ from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
     map_path_points_to_elements,
+    promote_table_cross_boundary_reading_order,
 )
 from .tree import (
     TreeNode,
@@ -115,6 +116,7 @@ __all__ = [
     "PathMappings",
     "map_path_points_to_elements",
     "associate_paths_to_containers",
+    "promote_table_cross_boundary_reading_order",
     # Validator
     "Validator",
     "ValidationRule",

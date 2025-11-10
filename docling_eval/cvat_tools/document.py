@@ -19,6 +19,7 @@ from .path_mappings import (
     PathMappings,
     associate_paths_to_containers,
     map_path_points_to_elements,
+    promote_table_cross_boundary_reading_order,
 )
 from .tree import (
     TreeNode,
@@ -91,6 +92,9 @@ class DocumentStructure:
         # Create path mappings
         path_mappings = map_path_points_to_elements(
             paths, elements, proximity_thresh=proximity_thresh
+        )
+        promote_table_cross_boundary_reading_order(
+            path_mappings, paths, tree_roots, tolerance=proximity_thresh
         )
         path_mappings, path_to_container = associate_paths_to_containers(
             path_mappings, tree_roots, paths
@@ -201,6 +205,9 @@ class DocumentStructure:
 
         path_mappings = map_path_points_to_elements(
             all_paths, all_elements, proximity_thresh=proximity_thresh
+        )
+        promote_table_cross_boundary_reading_order(
+            path_mappings, all_paths, tree_roots, tolerance=proximity_thresh
         )
         path_mappings, path_to_container = associate_paths_to_containers(
             path_mappings, tree_roots, all_paths

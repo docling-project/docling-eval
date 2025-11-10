@@ -16,6 +16,8 @@ import argparse
 import json
 import logging
 import sys
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -49,8 +51,7 @@ from docling_eval.datamodels.types import (
     EvaluationModality,
     PredictionFormats,
 )
-from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
-from docling_eval.prediction_providers.file_provider import FilePredictionProvider
+from docling_eval.utils.json_dataset_joiner import join_docling_json_datasets
 
 # Configure logging
 logging.basicConfig(
@@ -136,6 +137,7 @@ class CVATEvaluationPipeline:
         output_json_dir: Path,
         xml_pattern: str,
         save_validation_report: bool = False,
+        reuse_existing: bool = False,
     ) -> List[Path]:
         """Convert all documents covered by ``xml_pattern`` into Docling JSON files.
 
@@ -143,6 +145,7 @@ class CVATEvaluationPipeline:
             output_json_dir: Directory to save JSON files
             xml_pattern: Pattern to match XML files
             save_validation_report: If True, save validation report to output_dir
+            reuse_existing: When True, reuse existing JSON files if present
 
         Returns:
             List of created JSON file paths
@@ -150,6 +153,14 @@ class CVATEvaluationPipeline:
         folder_structure = self._load_folder_structure(xml_pattern)
 
         if output_json_dir.exists():
+            existing_files = sorted(output_json_dir.glob("*.json"))
+            if reuse_existing and existing_files:
+                _log.info(
+                    "Reusing existing JSON exports in %s (%d files)",
+                    output_json_dir,
+                    len(existing_files),
+                )
+                return existing_files
             for stale_json in output_json_dir.glob("*.json"):
                 stale_json.unlink()
         output_json_dir.mkdir(parents=True, exist_ok=True)
@@ -238,6 +249,108 @@ class CVATEvaluationPipeline:
             )
 
         return json_files
+
+    def convert_ground_truth_to_json(
+        self, *, reuse_existing: bool = False
+    ) -> List[Path]:
+        """Convert ground truth annotations to Docling JSON files."""
+        return self._convert_cvat_set_to_json(
+            self.gt_json_dir,
+            GROUND_TRUTH_PATTERN,
+            save_validation_report=True,
+            reuse_existing=reuse_existing,
+        )
+
+    def convert_predictions_to_json(
+        self, *, reuse_existing: bool = False
+    ) -> List[Path]:
+        """Convert prediction annotations to Docling JSON files."""
+        return self._convert_cvat_set_to_json(
+            self.pred_json_dir,
+            PREDICTION_PATTERN,
+            save_validation_report=True,
+            reuse_existing=reuse_existing,
+        )
+
+    def create_json_exports(
+        self, *, reuse_existing: bool = False
+    ) -> tuple[List[Path], List[Path]]:
+        """Convert both ground truth and prediction annotations to JSON."""
+        with ProcessPoolExecutor(
+            max_workers=2, mp_context=get_context("spawn")
+        ) as pool:
+            gt_future = pool.submit(
+                self._convert_cvat_set_to_json,
+                self.gt_json_dir,
+                GROUND_TRUTH_PATTERN,
+                True,
+                reuse_existing,
+            )
+            pred_future = pool.submit(
+                self._convert_cvat_set_to_json,
+                self.pred_json_dir,
+                PREDICTION_PATTERN,
+                True,
+                reuse_existing,
+            )
+
+            gt_files = gt_future.result()
+            pred_files = pred_future.result()
+        return gt_files, pred_files
+
+    def ensure_json_exports_exist(self) -> None:
+        """Verify that JSON exports for both ground truth and predictions exist."""
+        missing: list[str] = []
+        if not self.gt_json_dir.exists() or not any(self.gt_json_dir.glob("*.json")):
+            missing.append(str(self.gt_json_dir))
+        if not self.pred_json_dir.exists() or not any(
+            self.pred_json_dir.glob("*.json")
+        ):
+            missing.append(str(self.pred_json_dir))
+
+        if missing:
+            raise FileNotFoundError(
+                "Missing JSON exports: "
+                + ", ".join(missing)
+                + ". Run the pipeline without --resume-from-json to generate them."
+            )
+
+    def create_eval_dataset_from_json(
+        self,
+        *,
+        reuse_existing: bool = False,
+        ignore_missing_predictions: bool = True,
+        do_visualization: bool = True,
+    ) -> None:
+        """Join existing JSON exports into a single evaluation dataset."""
+        if reuse_existing and self.eval_dataset_dir.exists():
+            existing_parquet = list((self.eval_dataset_dir / "test").glob("*.parquet"))
+            if existing_parquet:
+                _log.info(
+                    "Reusing existing evaluation dataset at %s (found %d shards)",
+                    self.eval_dataset_dir,
+                    len(existing_parquet),
+                )
+                return
+
+        self.ensure_json_exports_exist()
+        self.eval_dataset_dir.mkdir(parents=True, exist_ok=True)
+
+        join_docling_json_datasets(
+            gt_json_dir=self.gt_json_dir,
+            prediction_json_dir=self.pred_json_dir,
+            target_dataset_dir=self.eval_dataset_dir,
+            name="CVAT_Eval_Dataset",
+            split="test",
+            chunk_size=50,
+            prediction_format=PredictionFormats.JSON,
+            predictor_info={
+                "asset": "cvat_json_joiner",
+                "source_path": str(self.pred_json_dir),
+            },
+            ignore_missing_predictions=ignore_missing_predictions,
+            do_visualization=do_visualization,
+        )
 
     def _merge_task_xmls(
         self,
@@ -358,82 +471,63 @@ class CVATEvaluationPipeline:
                 output_path,
             )
 
-    def create_ground_truth_dataset(self) -> None:
+    def create_ground_truth_dataset(self, *, reuse_existing_json: bool = False) -> None:
         """
-        Step 1: Create ground truth dataset from CVAT folder exports.
+        Step 1: Export ground truth annotations to Docling JSON.
         """
         _log.info("")
         _log.info("╔" + "=" * 58 + "╗")
         _log.info("║" + " STEP 1: CREATE GROUND TRUTH DATASET ".center(58) + "║")
         _log.info("╚" + "=" * 58 + "╝")
 
-        # Convert CVAT XML to JSON
-        gt_json_files = self._convert_cvat_set_to_json(
-            self.gt_json_dir,
-            GROUND_TRUTH_PATTERN,
-            save_validation_report=True,
+        gt_json_files = self.convert_ground_truth_to_json(
+            reuse_existing=reuse_existing_json
         )
-
         if not gt_json_files:
             raise ValueError("No ground truth JSON files were created")
 
-        # Create ground truth dataset
-        _log.info("Building ground truth dataset...")
-        dataset_builder = FileDatasetBuilder(
-            name="CVAT_Ground_Truth_Dataset",
-            dataset_source=self.gt_json_dir,
-            target=self.gt_dataset_dir,
-            split="test",
-            file_extensions=["json"],
+        _log.info(
+            "✓ Ground truth JSON exports available at %s (%d files)",
+            self.gt_json_dir,
+            len(gt_json_files),
         )
 
-        dataset_builder.save_to_disk(chunk_size=50, do_visualization=True)
-        _log.info(f"✓ Ground truth dataset created: {self.gt_dataset_dir}")
-
-    def create_prediction_dataset(self) -> None:
+    def create_prediction_dataset(
+        self,
+        *,
+        reuse_existing_json: bool = False,
+        reuse_existing_eval: bool = False,
+    ) -> None:
         """
-        Step 2: Create prediction dataset from CVAT folder exports using the ground truth dataset.
+        Step 2: Export prediction annotations and build the evaluation dataset.
         """
         _log.info("")
         _log.info("╔" + "=" * 58 + "╗")
         _log.info("║" + " STEP 2: CREATE PREDICTION DATASET ".center(58) + "║")
         _log.info("╚" + "=" * 58 + "╝")
 
-        if not self.gt_dataset_dir.exists():
-            raise ValueError(
-                f"Ground truth dataset not found at {self.gt_dataset_dir}. "
-                "Please run create_ground_truth_dataset first."
-            )
+        if not reuse_existing_json:
+            self.convert_ground_truth_to_json(reuse_existing=True)
 
-        # Convert prediction CVAT XML to JSON
-        pred_json_files = self._convert_cvat_set_to_json(
-            self.pred_json_dir,
-            PREDICTION_PATTERN,
-            save_validation_report=True,
+        pred_json_files = self.convert_predictions_to_json(
+            reuse_existing=reuse_existing_json
         )
-
         if not pred_json_files:
             raise ValueError("No prediction JSON files were created")
 
-        # Create prediction dataset using FilePredictionProvider
-        _log.info("Building prediction dataset...")
-        file_provider = FilePredictionProvider(
-            prediction_format=PredictionFormats.JSON,
-            source_path=self.pred_json_dir,
-            do_visualization=True,
-            ignore_missing_files=True,
-            ignore_missing_predictions=True,
-            use_ground_truth_page_images=True,
+        _log.info(
+            "✓ Prediction JSON exports available at %s (%d files)",
+            self.pred_json_dir,
+            len(pred_json_files),
         )
 
-        file_provider.create_prediction_dataset(
-            name="CVAT_Prediction_Dataset",
-            gt_dataset_dir=self.gt_dataset_dir,
-            target_dataset_dir=self.eval_dataset_dir,
-            split="test",
-            chunk_size=50,
+        _log.info("Building evaluation dataset from JSON exports...")
+        self.create_eval_dataset_from_json(
+            reuse_existing=reuse_existing_eval,
+            ignore_missing_predictions=True,
+            do_visualization=True,
         )
-        _log.info(f"✓ Prediction dataset created: {self.eval_dataset_dir}")
+        _log.info(f"✓ Evaluation dataset created: {self.eval_dataset_dir}")
 
     def run_table_evaluation(
         self,
@@ -601,6 +695,10 @@ class CVATEvaluationPipeline:
         self,
         modalities: Optional[List[str]] = None,
         user_csv: Optional[Path] = None,
+        *,
+        stop_after_json: bool = False,
+        resume_from_json: bool = False,
+        reuse_existing_eval: bool = False,
     ) -> None:
         """
         Run the complete pipeline: create datasets, run evaluation, and combine results.
@@ -608,12 +706,30 @@ class CVATEvaluationPipeline:
         Args:
             modalities: List of evaluation modalities to run
             user_csv: Path to user CSV file for provenance/self-confidence
+            stop_after_json: Stop the pipeline after JSON exports are prepared
+            resume_from_json: Reuse existing JSON exports instead of reconverting
+            reuse_existing_eval: Reuse eval dataset shards when present
         """
         _log.info("=== Running Full CVAT Evaluation Pipeline ===")
 
         try:
-            self.create_ground_truth_dataset()
-            self.create_prediction_dataset()
+            if resume_from_json:
+                _log.info("Resuming from existing JSON exports.")
+                self.ensure_json_exports_exist()
+            else:
+                self.create_json_exports(reuse_existing=False)
+
+            if stop_after_json:
+                _log.info(
+                    "Stop-after-json flag set; skipping dataset join and evaluations."
+                )
+                return
+
+            self.create_eval_dataset_from_json(
+                reuse_existing=reuse_existing_eval,
+                ignore_missing_predictions=True,
+                do_visualization=True,
+            )
             self.run_table_evaluation(reuse_existing=False)
             self.run_evaluation(modalities, user_csv)
 
@@ -657,12 +773,13 @@ def main():
 
     parser.add_argument(
         "--step",
-        choices=["gt", "pred", "tables", "eval", "full"],
+        choices=["gt", "pred", "json", "tables", "eval", "full"],
         default="full",
         help=(
             "Pipeline step to run: "
-            "gt (create ground truth dataset), "
-            "pred (create prediction dataset), "
+            "gt (export ground truth JSON), "
+            "pred (export predictions and build evaluation dataset), "
+            "json (export both ground truth and prediction JSON), "
             "tables (run table evaluation only), "
             "eval (run evaluation only), "
             "full (complete pipeline)"
@@ -708,6 +825,24 @@ def main():
         help="Scale for stored page images and coordinates (default: 2.0 = 144 DPI).",
     )
 
+    parser.add_argument(
+        "--stop-after-json",
+        action="store_true",
+        help="Stop after generating ground_truth_json and predictions_json directories.",
+    )
+
+    parser.add_argument(
+        "--resume-from-json",
+        action="store_true",
+        help="Reuse existing ground_truth_json and predictions_json directories.",
+    )
+
+    parser.add_argument(
+        "--reuse-eval-dataset",
+        action="store_true",
+        help="Reuse the existing eval_dataset parquet shards when present.",
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
@@ -749,17 +884,48 @@ def main():
     )
 
     # Execute requested pipeline step
+    if args.resume_from_json and args.stop_after_json:
+        _log.info(
+            "Resume-from-json and stop-after-json both enabled; no new artefacts will be generated."
+        )
+
     if args.step == "gt":
-        pipeline.create_ground_truth_dataset()
+        pipeline.create_ground_truth_dataset(reuse_existing_json=args.resume_from_json)
+    elif args.step == "json":
+        pipeline.create_json_exports(reuse_existing=args.resume_from_json)
+        return
     elif args.step == "pred":
-        pipeline.create_prediction_dataset()
+        if args.stop_after_json:
+            pipeline.create_json_exports(reuse_existing=args.resume_from_json)
+            return
+        pipeline.create_prediction_dataset(
+            reuse_existing_json=args.resume_from_json,
+            reuse_existing_eval=args.reuse_eval_dataset,
+        )
     elif args.step == "tables":
         pipeline.run_table_evaluation(reuse_existing=False)
     elif args.step == "eval":
+        if args.resume_from_json:
+            pipeline.ensure_json_exports_exist()
+        else:
+            pipeline.create_json_exports(reuse_existing=False)
+        if args.stop_after_json:
+            return
+        pipeline.create_eval_dataset_from_json(
+            reuse_existing=args.reuse_eval_dataset,
+            ignore_missing_predictions=True,
+            do_visualization=True,
+        )
         pipeline.run_table_evaluation(reuse_existing=True)
         pipeline.run_evaluation(args.modalities, user_csv=args.user_csv)
     elif args.step == "full":
-        pipeline.run_full_pipeline(args.modalities, user_csv=args.user_csv)
+        pipeline.run_full_pipeline(
+            args.modalities,
+            user_csv=args.user_csv,
+            stop_after_json=args.stop_after_json,
+            resume_from_json=args.resume_from_json,
+            reuse_existing_eval=args.reuse_eval_dataset,
+        )
 
 
 if __name__ == "__main__":
