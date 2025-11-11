@@ -1871,7 +1871,24 @@ class CVATToDoclingConverter:
         if not cell_by_element:
             return
 
-        graph = GraphData(cells=list(cell_by_element.values()), links=links)
+        # Deduplicate cells by cell_id (multiple elements may map to same cell via merges)
+        unique_cells = {cell.cell_id: cell for cell in cell_by_element.values()}
+
+        # Validate all link references exist before creating GraphData
+        valid_cell_ids = set(unique_cells)
+        for link in links:
+            if link.source_cell_id not in valid_cell_ids:
+                raise RuntimeError(
+                    f"Invalid source_cell_id {link.source_cell_id} in GraphLink. "
+                    f"Valid cell_ids: {sorted(valid_cell_ids)}"
+                )
+            if link.target_cell_id not in valid_cell_ids:
+                raise RuntimeError(
+                    f"Invalid target_cell_id {link.target_cell_id} in GraphLink. "
+                    f"Valid cell_ids: {sorted(valid_cell_ids)}"
+                )
+
+        graph = GraphData(cells=list(unique_cells.values()), links=links)
 
         try:
             classify_cells(graph=graph)
