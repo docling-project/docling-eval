@@ -668,6 +668,8 @@ def evaluate(
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
+        # TODO: Add also the pixel-wise layout evaluation
+
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
         evaluation = table_evaluator(  # type: ignore
