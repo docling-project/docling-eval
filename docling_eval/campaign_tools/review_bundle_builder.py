@@ -205,7 +205,7 @@ def build_review_bundle(
         )
     dataframe = _read_analysis_sheet(analysis_path, review_column)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    bundle_dir = submission_dir / f"review_bundle_{timestamp}"
+    bundle_dir = submission_dir / f"_review_bundle_{timestamp}"
     bundle_dir.mkdir(parents=True, exist_ok=False)
     asset_dir = Path(__file__).with_name("review_bundle_assets")
     shutil.copytree(asset_dir, bundle_dir, dirs_exist_ok=True)

@@ -18,6 +18,7 @@ const elements = {
   queueList: document.getElementById("queueList"),
   searchInput: document.getElementById("searchInput"),
   statusFilter: document.getElementById("statusFilter"),
+  vizFilter: document.getElementById("vizFilter"),
   entryTitle: document.getElementById("entryTitle"),
   vizTabs: document.getElementById("vizTabs"),
   vizFrame: document.getElementById("vizFrame"),
@@ -276,6 +277,9 @@ function attachEvents() {
   elements.statusFilter.addEventListener("change", () => {
     applyFilters();
   });
+  elements.vizFilter.addEventListener("change", () => {
+    applyFilters();
+  });
   elements.prevEntry.addEventListener("click", () => navigate(-1));
   elements.nextEntry.addEventListener("click", () => navigate(1));
   elements.decisionButtons.forEach((button) => {
@@ -302,9 +306,10 @@ function applyFilters() {
   }
   const term = elements.searchInput.value.trim().toLowerCase();
   const statusFilter = elements.statusFilter.value;
+  const vizFilter = elements.vizFilter.value;
   state.visibleEntryIds = state.entries
     .map((entry, index) => ({ entry, index }))
-    .filter(({ entry }) => filterEntry(entry, term, statusFilter))
+    .filter(({ entry }) => filterEntry(entry, term, statusFilter, vizFilter))
     .map(({ index }) => index);
   const nextIndex = Math.min(state.currentVisibleIndex, state.visibleEntryIds.length - 1);
   state.currentVisibleIndex = Math.max(0, nextIndex);
@@ -314,11 +319,14 @@ function applyFilters() {
   }
 }
 
-function filterEntry(entry, term, statusFilter) {
+function filterEntry(entry, term, statusFilter, vizFilter) {
   const matchesTerm = !term
     || entry.doc_name.toLowerCase().includes(term)
     || entry.image_name.toLowerCase().includes(term);
   if (!matchesTerm) {
+    return false;
+  }
+  if (!entryMatchesVisualizationFilter(entry, vizFilter)) {
     return false;
   }
   if (statusFilter === "all") {
@@ -432,6 +440,20 @@ function formatPriority(value) {
     return Number.isInteger(value) ? value.toString() : value.toFixed(2);
   }
   return value;
+}
+
+function entryMatchesVisualizationFilter(entry, filterValue) {
+  if (filterValue === "all") {
+    return true;
+  }
+  const visuals = entry.visualizations ?? [];
+  if (!visuals.length) {
+    return false;
+  }
+  return visuals.some((visual) => {
+    const target = (visual.label ?? visual.relative_path ?? "").toLowerCase();
+    return target.includes(filterValue);
+  });
 }
 
 function renderVisualization(entry) {
