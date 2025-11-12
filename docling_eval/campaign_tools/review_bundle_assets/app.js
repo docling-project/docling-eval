@@ -11,6 +11,9 @@ const state = {
   hasUnsavedChanges: false,
   persistenceMode: "local",
   lastImportSource: null,
+  priorityColumns: [],
+  activePriorityColumn: "need_review",
+  sortedEntryIds: null,
 };
 
 const elements = {
@@ -19,6 +22,7 @@ const elements = {
   searchInput: document.getElementById("searchInput"),
   statusFilter: document.getElementById("statusFilter"),
   vizFilter: document.getElementById("vizFilter"),
+  priorityColumnSelect: document.getElementById("priorityColumnSelect"),
   entryTitle: document.getElementById("entryTitle"),
   vizTabs: document.getElementById("vizTabs"),
   vizFrame: document.getElementById("vizFrame"),
@@ -66,6 +70,71 @@ function setStorageTarget(mode, description) {
   elements.storageTarget.textContent = `Saving to: ${description}`;
 }
 
+function derivePriorityColumns(manifest) {
+  if (Array.isArray(manifest.review_columns) && manifest.review_columns.length) {
+    return manifest.review_columns;
+  }
+  if (manifest.review_column) {
+    return [manifest.review_column];
+  }
+  return ["need_review"];
+}
+
+function populatePrioritySelect() {
+  const options = state.priorityColumns
+    .map(
+      (column) => `<option value="${column}">Priority: ${column}</option>`,
+    )
+    .join("");
+  elements.priorityColumnSelect.innerHTML = options;
+  elements.priorityColumnSelect.value = state.activePriorityColumn;
+}
+
+function getReviewValue(entry, column) {
+  if (!entry || !column) {
+    return null;
+  }
+  if (entry.review_values && Object.prototype.hasOwnProperty.call(entry.review_values, column)) {
+    return entry.review_values[column];
+  }
+  if (entry.metadata && Object.prototype.hasOwnProperty.call(entry.metadata, column)) {
+    return entry.metadata[column];
+  }
+  if (column === state.manifest.review_column && Object.prototype.hasOwnProperty.call(entry, "review_value")) {
+    return entry.review_value;
+  }
+  return null;
+}
+
+function normalizeSortValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return Number.NEGATIVE_INFINITY;
+  }
+  if (typeof value === "number") {
+    return value;
+  }
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) {
+    return numeric;
+  }
+  return Number.NEGATIVE_INFINITY;
+}
+
+function computeSortedEntryIds(column) {
+  return state.entries
+    .map((entry, index) => ({
+      index,
+      value: normalizeSortValue(getReviewValue(entry, column)),
+    }))
+    .sort((a, b) => {
+      if (b.value !== a.value) {
+        return b.value - a.value;
+      }
+      return a.index - b.index;
+    })
+    .map((item) => item.index);
+}
+
 const STATUS_LABELS = {
   correct: "Correct",
   need_changes: "Need changes",
@@ -102,7 +171,12 @@ function setupManifest(manifest) {
     elements.headerTitle.textContent = `Docling Review Bundle — ${submissionName}`;
   }
   setStorageTarget("local", "Browser storage (connect a bundle to persist review_state.json)");
-  elements.globalCounts.textContent = `${manifest.total_entries} frames queued (sorted by ${manifest.review_column})`;
+  state.priorityColumns = derivePriorityColumns(manifest);
+  state.activePriorityColumn = state.priorityColumns[0];
+  elements.priorityLabel.textContent = state.activePriorityColumn;
+  populatePrioritySelect();
+  state.sortedEntryIds = computeSortedEntryIds(state.activePriorityColumn);
+  elements.globalCounts.textContent = `${manifest.total_entries} frames queued (sorted by ${state.activePriorityColumn})`;
 }
 
 async function hydrateDecisions() {
@@ -280,6 +354,17 @@ function attachEvents() {
   elements.vizFilter.addEventListener("change", () => {
     applyFilters();
   });
+  elements.priorityColumnSelect.addEventListener("change", () => {
+    state.activePriorityColumn = elements.priorityColumnSelect.value;
+    elements.priorityLabel.textContent = state.activePriorityColumn;
+    state.sortedEntryIds = computeSortedEntryIds(state.activePriorityColumn);
+    const entry = getCurrentEntry();
+    if (entry) {
+      renderCurrentEntry(entry);
+    }
+    elements.globalCounts.textContent = `${state.entries.length} frames queued (sorted by ${state.activePriorityColumn})`;
+    applyFilters();
+  });
   elements.prevEntry.addEventListener("click", () => navigate(-1));
   elements.nextEntry.addEventListener("click", () => navigate(1));
   elements.decisionButtons.forEach((button) => {
@@ -307,8 +392,11 @@ function applyFilters() {
   const term = elements.searchInput.value.trim().toLowerCase();
   const statusFilter = elements.statusFilter.value;
   const vizFilter = elements.vizFilter.value;
-  state.visibleEntryIds = state.entries
-    .map((entry, index) => ({ entry, index }))
+  if (!state.sortedEntryIds || !state.sortedEntryIds.length) {
+    state.sortedEntryIds = computeSortedEntryIds(state.activePriorityColumn);
+  }
+  state.visibleEntryIds = state.sortedEntryIds
+    .map((index) => ({ entry: state.entries[index], index }))
     .filter(({ entry }) => filterEntry(entry, term, statusFilter, vizFilter))
     .map(({ index }) => index);
   const nextIndex = Math.min(state.currentVisibleIndex, state.visibleEntryIds.length - 1);
@@ -362,7 +450,9 @@ function renderQueue() {
     }
     const decision = state.decisions.get(entry.entry_id);
     const summary = summarizeDecision(decision);
-    const reviewMetric = formatPriority(entry.review_value);
+    const reviewMetric = formatPriority(
+      getReviewValue(entry, state.activePriorityColumn),
+    );
     const userSummary = USERS.map((user) => {
       const userStatus = summary.statuses[user.key];
       const label = userStatus ? STATUS_LABELS[userStatus] : "Pending";
@@ -373,7 +463,7 @@ function renderQueue() {
       <p class="title">${entry.doc_name}</p>
       <p class="subtitle">${entry.image_name}</p>
       <div class="queue-meta">
-        <span class="review-chip">${state.manifest.review_column}: ${reviewMetric}</span>
+        <span class="review-chip">${state.activePriorityColumn}: ${reviewMetric}</span>
         <span class="badge ${summary.className}">${summary.label}</span>
       </div>
       <div class="user-summary">${userSummary}</div>
@@ -429,7 +519,9 @@ function renderEntryInfo(entry) {
   const subset = entry.metadata?.subset ?? "—";
   elements.subsetValue.textContent = subset || "—";
   elements.imageValue.textContent = entry.image_name ?? "—";
-  elements.priorityValue.textContent = formatPriority(entry.review_value);
+  const value = getReviewValue(entry, state.activePriorityColumn);
+  elements.priorityLabel.textContent = state.activePriorityColumn;
+  elements.priorityValue.textContent = formatPriority(value);
 }
 
 function formatPriority(value) {

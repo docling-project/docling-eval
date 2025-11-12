@@ -1761,20 +1761,73 @@ class CVATToDoclingConverter:
         links: list[GraphLink] = []
         cell_id_seq: int = 0
 
-        def _get_merge_group_for_element(element_id: int) -> List[CVATElement]:
-            """Get all elements in the merge group for a given element, if any."""
-            for path_id, element_ids in self.doc_structure.path_mappings.merge.items():
-                if element_id not in element_ids:
-                    continue
-                corrected_ids, _ = self.doc_structure.get_corrected_merge_elements(
-                    path_id, element_ids
+        # Build key/value merge group mapping: only merge key/value elements that share same parent
+        from docling_core.types.doc.labels import DocItemLabel, GraphCellLabel
+
+        from docling_eval.cvat_tools.utils import (
+            DEFAULT_PROXIMITY_THRESHOLD,
+            get_deepest_element_at_point,
+        )
+
+        element_to_keyvalue_merge_group: Dict[int, Set[int]] = {}
+
+        for path_id, _ in self.doc_structure.path_mappings.merge.items():
+            merge_path = next(
+                (p for p in self.doc_structure.paths if p.id == path_id), None
+            )
+            if not merge_path:
+                continue
+
+            # Find touched elements (including GraphCellLabel)
+            touched = {
+                el.id: el
+                for pt in merge_path.points
+                if (
+                    el := get_deepest_element_at_point(
+                        pt,
+                        self.doc_structure.elements,
+                        DEFAULT_PROXIMITY_THRESHOLD,
+                        skip_graph_cells=False,
+                    )
                 )
-                return [
-                    e
-                    for el_id in corrected_ids
-                    if (e := self.doc_structure.get_element_by_id(el_id)) is not None
-                ]
-            return []
+            }
+            touched_elements = list(touched.values())
+
+            # Must be same GraphCellLabel type (all KEY or all VALUE) and share same parent
+            if (
+                len(touched_elements) > 1
+                and all(isinstance(el.label, GraphCellLabel) for el in touched_elements)
+                and len({el.label for el in touched_elements}) == 1
+            ):
+                # Find parent IDs
+                parent_ids = {
+                    next(
+                        (
+                            p.id
+                            for p in self.doc_structure.elements
+                            if p.label in [DocItemLabel.LIST_ITEM, DocItemLabel.TEXT]
+                            and bbox_contains(el.bbox, p.bbox, threshold=0.5)
+                        ),
+                        None,
+                    )
+                    for el in touched_elements
+                }
+
+                if len(parent_ids) == 1 and None not in parent_ids:
+                    touched_group = set(touched.keys())
+                    for el_id in touched_group:
+                        element_to_keyvalue_merge_group[el_id] = touched_group
+
+        def _get_merge_group_for_element(element_id: int) -> List[CVATElement]:
+            merge_group_ids = element_to_keyvalue_merge_group.get(element_id)
+            if not merge_group_ids:
+                return []
+            merge_elements = [
+                e
+                for el_id in merge_group_ids
+                if (e := self.doc_structure.get_element_by_id(el_id)) is not None
+            ]
+            return merge_elements if len(merge_elements) > 1 else []
 
         def _process_merged_bbox(
             elements: List[CVATElement],
@@ -1829,11 +1882,25 @@ class CVATToDoclingConverter:
             # Process bbox and text (merged or single)
             if merge_elements:
                 _, text, prov = _process_merged_bbox(merge_elements)
+                _logger.debug(
+                    f"Processing merged cell for element {element_id} with {len(merge_elements)} "
+                    f"merged elements: {[e.id for e in merge_elements]}"
+                )
             else:
                 _, text, prov = self._process_element_bbox(element)
 
             # Create cell
-            node_item = self.element_to_item.get(element_id)
+            # For merged elements, try to get node_item from any merged element
+            node_item = None
+            if merge_elements:
+                # Try to find node_item from any merged element
+                for merged_el in merge_elements:
+                    node_item = self.element_to_item.get(merged_el.id)
+                    if node_item is not None:
+                        break
+            else:
+                node_item = self.element_to_item.get(element_id)
+
             cell = GraphCell(
                 cell_id=cell_id_seq,
                 label=cell_label,

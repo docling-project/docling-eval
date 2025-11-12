@@ -12,6 +12,8 @@ from typing import Any, Iterable
 import pandas as pd
 from pandas.api import types as pd_types
 
+DEFAULT_EXTRA_REVIEW_COLUMNS = ["need_task2_review"]
+
 
 @dataclass
 class VisualizationFile:
@@ -29,6 +31,7 @@ class ManifestEntry:
     doc_name: str
     image_name: str
     review_value: Any
+    review_values: dict[str, Any]
     metadata: dict[str, Any]
     visualizations: list[VisualizationFile]
 
@@ -69,6 +72,25 @@ def _read_analysis_sheet(analysis_path: Path, review_column: str) -> pd.DataFram
             by=review_column, ascending=False, kind="stable"
         )
     return sorted_frame.reset_index(drop=True)
+
+
+def _resolve_priority_columns(
+    dataframe: pd.DataFrame,
+    primary_column: str,
+    extra_columns: list[str] | None = None,
+) -> list[str]:
+    if primary_column not in dataframe.columns:
+        available = ", ".join(str(column) for column in dataframe.columns)
+        raise ValueError(
+            f"Column '{primary_column}' not present in analysis data. Available columns: {available}."
+        )
+    columns: list[str] = [primary_column]
+    for column in extra_columns or []:
+        if not column or column in columns:
+            continue
+        if column in dataframe.columns:
+            columns.append(column)
+    return columns
 
 
 def _stringify_value(value: Any) -> Any:
@@ -127,7 +149,7 @@ def _build_manifest_entries(
     submission_dir: Path,
     bundle_dir: Path,
     stage_visualizations: bool,
-    review_column: str,
+    review_columns: list[str],
 ) -> list[ManifestEntry]:
     entries: list[ManifestEntry] = []
     staged_paths: dict[Path, str] = {}
@@ -148,7 +170,12 @@ def _build_manifest_entries(
                     "before running the review bundle builder."
                 )
             )
-        review_value = _stringify_value(row.get(review_column))
+        review_values = {
+            column: _stringify_value(row.get(column))
+            for column in review_columns
+            if column in dataframe.columns
+        }
+        primary_value = review_values.get(review_columns[0])
         metadata = {
             str(column): _stringify_value(row[column]) for column in dataframe.columns
         }
@@ -175,7 +202,8 @@ def _build_manifest_entries(
             entry_id=f"entry_{row_index:05d}",
             doc_name=doc_name,
             image_name=image_name,
-            review_value=review_value,
+            review_value=primary_value,
+            review_values=review_values,
             metadata=metadata,
             visualizations=relative_matches,
         )
@@ -192,6 +220,8 @@ def build_review_bundle(
     review_column: str = "need_review",
     analysis_filename: str = "combined_evaluation.csv",
     stage_visualizations: bool = False,
+    extra_review_columns: list[str] | None = None,
+    bundle_dir: Path | None = None,
 ) -> Path:
     submission_dir = submission_dir.resolve()
     if not submission_dir.exists():
@@ -204,9 +234,23 @@ def build_review_bundle(
             f"Analysis file {analysis_path} not found inside {submission_dir}."
         )
     dataframe = _read_analysis_sheet(analysis_path, review_column)
+    extra_review_columns = (
+        DEFAULT_EXTRA_REVIEW_COLUMNS
+        if extra_review_columns is None
+        else extra_review_columns
+    )
+    priority_columns = _resolve_priority_columns(
+        dataframe=dataframe,
+        primary_column=review_column,
+        extra_columns=extra_review_columns,
+    )
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    bundle_dir = submission_dir / f"_review_bundle_{timestamp}"
-    bundle_dir.mkdir(parents=True, exist_ok=False)
+    if bundle_dir is None:
+        bundle_dir = submission_dir / f"_review_bundle_{timestamp}"
+        bundle_dir.mkdir(parents=True, exist_ok=False)
+    else:
+        bundle_dir = bundle_dir.resolve()
+        bundle_dir.mkdir(parents=True, exist_ok=True)
     asset_dir = Path(__file__).with_name("review_bundle_assets")
     shutil.copytree(asset_dir, bundle_dir, dirs_exist_ok=True)
     html_files = _collect_visualizations(submission_dir)
@@ -216,18 +260,21 @@ def build_review_bundle(
         submission_dir=submission_dir,
         bundle_dir=bundle_dir,
         stage_visualizations=stage_visualizations,
-        review_column=review_column,
+        review_columns=priority_columns,
     )
     manifest = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "submission_dir": str(submission_dir),
         "review_column": review_column,
+        "review_columns": priority_columns,
         "analysis_file": str(analysis_path),
         "total_entries": len(entries),
         "entries": [asdict(entry) for entry in entries],
     }
     _write_json(bundle_dir / "manifest.json", manifest)
-    _write_json(bundle_dir / "review_state.json", {"decisions": []})
+    review_state_path = bundle_dir / "review_state.json"
+    if not review_state_path.exists():
+        _write_json(review_state_path, {"decisions": []})
     return bundle_dir
 
 
@@ -236,7 +283,10 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Build a static review bundle.")
     parser.add_argument(
-        "submission_dir", type=Path, help="Path to the submission folder"
+        "submission_dir",
+        type=Path,
+        nargs="?",
+        help="Path to the submission folder (optional when --bundle-dir is provided)",
     )
     parser.add_argument(
         "--review-column",
@@ -253,12 +303,24 @@ def main() -> None:
         action="store_true",
         help="Copy matching visualization HTML files into the bundle (useful when hosting the bundle alone).",
     )
+    parser.add_argument(
+        "--bundle-dir",
+        type=Path,
+        help="Optional existing bundle directory to update in place.",
+    )
     args = parser.parse_args()
+    submission_dir = args.submission_dir
+    bundle_dir = args.bundle_dir
+    if submission_dir is None:
+        if bundle_dir is None:
+            parser.error("You must provide either submission_dir or --bundle-dir.")
+        submission_dir = bundle_dir.resolve().parent
     bundle_path = build_review_bundle(
-        submission_dir=args.submission_dir,
+        submission_dir=submission_dir,
         review_column=args.review_column,
         analysis_filename=args.analysis_filename,
         stage_visualizations=args.stage_visualizations,
+        bundle_dir=bundle_dir,
     )
     print(f"Review bundle created at {bundle_path}")
 
