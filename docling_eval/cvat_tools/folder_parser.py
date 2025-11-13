@@ -85,9 +85,13 @@ def parse_pages_from_xml(
 
     for image_el in root.findall(".//image"):
         image_name = image_el.attrib["name"]
+
+        # Extract hash and page number from filename
+        # Expected format: doc_{hash}_page_{number}.{ext}
         doc_hash = extract_doc_hash_from_filename(image_name)
         page_number = extract_page_number_from_filename(image_name)
 
+        # Find the actual file path
         # Prefer cvat_tasks/ over page_imgs/ to eliminate redundancy
         # (images are identical, cvat_tasks/ is always created for CVAT upload)
         image_path: Optional[Path] = None

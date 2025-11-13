@@ -77,7 +77,17 @@ class CvatPreannotationBuilder:
         )
 
     def _relative_to_target(self, path: Union[Path, str]) -> Path:
-        """Return a path relative to the target directory when possible."""
+        """
+        Return a path relative to the target directory.
+
+        This ensures paths stored in cvat_overview.json are always relative,
+        preventing issues when the dataset is moved or used on different machines.
+
+        Handles both:
+        - Absolute paths under current target: uses relative_to()
+        - Absolute paths from moved datasets: finds target directory in path parents and uses relative_to()
+        - Relative paths: returns as-is (or extracts if starts with target name)
+        """
 
         if path is None:
             return Path("")
@@ -86,19 +96,45 @@ class CvatPreannotationBuilder:
         if not str(path_obj):
             return path_obj
 
-        base = self.benchmark_dirs.target_dir
+        base = self.benchmark_dirs.target_dir.resolve()
+        base_name = base.name
 
+        # For absolute paths, try relative_to() first (normal case)
         if path_obj.is_absolute():
+            path_obj = path_obj.resolve()
             try:
                 return path_obj.relative_to(base)
             except ValueError:
-                base_name = base.name
-                if base_name in path_obj.parts:
-                    idx = path_obj.parts.index(base_name)
-                    rel_parts = path_obj.parts[idx + 1 :]
-                    if rel_parts:
-                        return Path(*rel_parts)
-                    return Path("")
+                # Path is not under current base - dataset may have been moved
+                # Use Pathlib to find target directory in path's parent chain
+                for parent in path_obj.parents:
+                    if parent.name == base_name:
+                        # Found target directory in parent chain, extract relative portion
+                        try:
+                            return path_obj.relative_to(parent)
+                        except ValueError:
+                            # Shouldn't happen, but handle gracefully
+                            continue
+                # If we can't find target directory in parents, return as-is
+                # (will be handled by _absolute_from_target when loading)
+                _log.debug(
+                    f"Path {path_obj} is not under target directory {base} "
+                    f"and target name '{base_name}' not found in parent chain. Keeping as absolute path."
+                )
+                return path_obj
+
+        # For non-absolute paths, check if they contain target directory name
+        # (handles cases where path was stored with target name in middle, e.g., moved datasets)
+        path_parts = path_obj.parts
+        if path_parts and base_name in path_parts:
+            # Find target directory name in path and extract relative portion after it
+            idx = path_parts.index(base_name)
+            rel_parts = path_parts[idx + 1 :]
+            if rel_parts:
+                return Path(*rel_parts)
+            return Path("")
+
+        # Path is already relative (doesn't contain target directory name)
         return path_obj
 
     def _store_image_annotation(
@@ -122,7 +158,13 @@ class CvatPreannotationBuilder:
         self.overview.img_annotations[filename] = annotated_image
 
     def _absolute_from_target(self, path: Union[Path, str]) -> Path:
-        """Return an absolute path rooted at the target directory when needed."""
+        """
+        Return an absolute path rooted at the target directory when needed.
+
+        This method handles both:
+        - Relative paths (stored in new cvat_overview.json files): prepends target_dir
+        - Absolute paths (from old cvat_overview.json files): returns as-is for backward compatibility
+        """
 
         if path is None:
             return Path("")
@@ -131,10 +173,14 @@ class CvatPreannotationBuilder:
         if not str(path_obj):
             return path_obj
 
+        # If path is already absolute (from old overview files), return as-is
+        # This maintains backward compatibility with existing datasets
         if path_obj.is_absolute():
             return path_obj
 
-        return self.benchmark_dirs.target_dir / path_obj
+        # For relative paths, prepend target directory (ensure target_dir is resolved to absolute)
+        target_dir = self.benchmark_dirs.target_dir.resolve()
+        return target_dir / path_obj
 
     def _export_from_dataset(self) -> AnnotationOverview:
         """
