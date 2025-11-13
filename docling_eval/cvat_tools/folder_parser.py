@@ -88,22 +88,27 @@ def parse_pages_from_xml(
         doc_hash = extract_doc_hash_from_filename(image_name)
         page_number = extract_page_number_from_filename(image_name)
 
-        page_imgs_path = assets_root / "page_imgs" / image_name
-
+        # Prefer cvat_tasks/ over page_imgs/ to eliminate redundancy
+        # (images are identical, cvat_tasks/ is always created for CVAT upload)
         image_path: Optional[Path] = None
-        if page_imgs_path.exists():
-            image_path = page_imgs_path
-        else:
-            task_dir_candidates = [
-                tasks_dir / f"task_{task_id:02d}",
-                assets_root / "cvat_tasks" / f"task_{task_id:02d}",
-                xml_path.parent,
-            ]
-            for candidate_dir in task_dir_candidates:
-                candidate_file = candidate_dir / image_name
-                if candidate_file.exists():
-                    image_path = candidate_file
-                    break
+
+        # First, check cvat_tasks/ directories
+        task_dir_candidates = [
+            tasks_dir / f"task_{task_id:02d}",
+            assets_root / "cvat_tasks" / f"task_{task_id:02d}",
+            xml_path.parent,
+        ]
+        for candidate_dir in task_dir_candidates:
+            candidate_file = candidate_dir / image_name
+            if candidate_file.exists():
+                image_path = candidate_file
+                break
+
+        # Fallback to page_imgs/ for backward compatibility with existing datasets
+        if image_path is None:
+            page_imgs_path = assets_root / "page_imgs" / image_name
+            if page_imgs_path.exists():
+                image_path = page_imgs_path
 
         if image_path is None:
             raise FileNotFoundError(f"Image file not found for {image_name}")

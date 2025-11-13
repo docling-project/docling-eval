@@ -2,6 +2,7 @@ import glob
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, List, Union
 
@@ -48,6 +49,7 @@ class CvatPreannotationBuilder:
         bucket_size: int = 200,
         use_predictions: bool = False,
         sliding_window: int = 2,
+        cleanup_json_groundtruth_after_creation: bool = True,
     ):
         """
         Initialize the CvatPreannotationBuilder.
@@ -58,6 +60,7 @@ class CvatPreannotationBuilder:
             bucket_size: Number of documents per bucket for CVAT tasks
             use_predictions: Whether to use predictions instead of ground truth
             sliding_window: Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)
+            cleanup_json_groundtruth_after_creation: Whether to delete json_groundtruth/ after preannotation XML generation (default True)
         """
         self.source_dir = dataset_source
         self.target_dir = target
@@ -69,6 +72,9 @@ class CvatPreannotationBuilder:
         )
         self.overview = AnnotationOverview()
         self.use_predictions = use_predictions
+        self.cleanup_json_groundtruth_after_creation = (
+            cleanup_json_groundtruth_after_creation
+        )
 
     def _relative_to_target(self, path: Union[Path, str]) -> Path:
         """Return a path relative to the target directory when possible."""
@@ -544,6 +550,16 @@ class CvatPreannotationBuilder:
         for bucket_id, annotations in bucket_annotations.items():
             self._write_preannotation_file(bucket_id, annotations)
 
+        # Cleanup json_groundtruth/ after preannotation XML generation completes
+        # (it's only needed during creation, not for evaluation or CVAT upload)
+        if self.cleanup_json_groundtruth_after_creation:
+            json_groundtruth_dir = self.benchmark_dirs.json_true_dir
+            if json_groundtruth_dir.exists():
+                shutil.rmtree(json_groundtruth_dir)
+                _log.info(
+                    f"Cleaned up {json_groundtruth_dir} after preannotation creation"
+                )
+
         # Save overview with all the properly set file paths
         self.overview.save_as_json(self.benchmark_dirs.overview_file)
         _log.info(
@@ -667,14 +683,15 @@ class CvatPreannotationBuilder:
                 page_no for page_no in range(page_start, page_end)
             ]
 
-            # Save individual page images
+            # Save individual page images to cvat_tasks/ in PNG format (needed for CVAT uploader)
+            # This eliminates redundancy with page_imgs/ directory
             annotated_image.page_img_files = []
             for page_no in range(page_start, page_end):
                 # Create unique filename for the page image
                 page_filename = f"doc_{doc_hash}_page_{page_no:06}.png"
 
-                # Save page image to both task directory and page images directory
-                page_img_file = self.benchmark_dirs.page_imgs_dir / page_filename
+                # Save page image to task directory
+                page_img_file = bucket_dir / page_filename
                 annotated_image.page_img_files.append(page_img_file)
 
                 _log.info(f"saving {page_img_file}")
@@ -749,18 +766,19 @@ class CvatPreannotationBuilder:
                 img_file=bucket_dir / filename,
             )
 
-            # Save page image to both task directory and page images directory
-            page_img_file = self.benchmark_dirs.page_imgs_dir / filename
-            annotated_image.page_img_files = [page_img_file]
-
             # Extract and save page image
             page_image_ref = page.image
             if page_image_ref is not None:
                 page_image = page_image_ref.pil_image
 
                 if page_image is not None:
+                    # Always save images to cvat_tasks/ in PNG format (needed for CVAT uploader)
+                    # This applies to both PDF and image inputs
                     page_image.save(str(annotated_image.img_file))
-                    page_image.save(str(annotated_image.page_img_files[0]))
+
+                    # Point page_img_files to cvat_tasks location (same as img_file)
+                    # This eliminates redundancy with page_imgs/ directory
+                    annotated_image.page_img_files = [annotated_image.img_file]
 
                     annotated_image.img_w = page_image.width
                     annotated_image.img_h = page_image.height
