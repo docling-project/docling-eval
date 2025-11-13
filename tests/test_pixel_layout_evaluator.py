@@ -7,13 +7,11 @@ from docling_core.types.doc.labels import DocItemLabel
 
 from docling_eval.datamodels.types import BenchMarkNames, PredictionFormats
 from docling_eval.evaluators.markdown_text_evaluator import MarkdownTextEvaluator
-from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
+from docling_eval.evaluators.pixel.pixel_types import (
+    DatasetPixelLayoutEvaluation,
     MultiLabelMatrixEvaluation,
 )
-from docling_eval.evaluators.pixel_layout_evaluator import (
-    DatasetPixelLayoutEvaluation,
-    PixelLayoutEvaluator,
-)
+from docling_eval.evaluators.pixel_layout_evaluator import PixelLayoutEvaluator
 
 
 @pytest.mark.dependency(

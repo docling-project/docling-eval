@@ -12,7 +12,6 @@ from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
 from docling_core.types.doc.labels import DocItemLabel
 from docling_ibm_models.layoutmodel.labels import LayoutLabels
-from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
@@ -31,26 +30,16 @@ from docling_eval.evaluators.pixel.confusion_matrix_exporter import (
     ConfusionMatrixExporter,
 )
 from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
-    LayoutResolution,
     MultiLabelConfusionMatrix,
+)
+from docling_eval.evaluators.pixel.pixel_types import (
+    DatasetPixelLayoutEvaluation,
+    LayoutResolution,
     MultiLabelMatrixEvaluation,
+    PagePixelLayoutEvaluation,
 )
 
 _log = logging.getLogger(__name__)
-
-
-class PagePixelLayoutEvaluation(BaseModel):
-    doc_id: str
-    page_no: int
-    matrix_evaluation: MultiLabelMatrixEvaluation
-
-
-class DatasetPixelLayoutEvaluation(BaseModel):
-    num_pages: int
-    num_pixels: int
-    rejected_samples: Dict[EvaluationRejectionType, int]
-    matrix_evaluation: MultiLabelMatrixEvaluation
-    page_evaluations: Dict[str, PagePixelLayoutEvaluation]
 
 
 def category_name_to_docitemlabel(category_name: str) -> DocItemLabel:
