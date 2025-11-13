@@ -1761,34 +1761,160 @@ class CVATToDoclingConverter:
         links: list[GraphLink] = []
         cell_id_seq: int = 0
 
-        def _make_cell(element_id: int, label: GraphCellLabel) -> GraphCell:
+        # Build key/value merge group mapping: only merge key/value elements that share same parent
+        from docling_core.types.doc.labels import DocItemLabel, GraphCellLabel
+
+        from docling_eval.cvat_tools.utils import (
+            DEFAULT_PROXIMITY_THRESHOLD,
+            get_deepest_element_at_point,
+        )
+
+        element_to_keyvalue_merge_group: Dict[int, Set[int]] = {}
+
+        for path_id, _ in self.doc_structure.path_mappings.merge.items():
+            merge_path = next(
+                (p for p in self.doc_structure.paths if p.id == path_id), None
+            )
+            if not merge_path:
+                continue
+
+            # Find touched elements (including GraphCellLabel)
+            touched = {
+                el.id: el
+                for pt in merge_path.points
+                if (
+                    el := get_deepest_element_at_point(
+                        pt,
+                        self.doc_structure.elements,
+                        DEFAULT_PROXIMITY_THRESHOLD,
+                        skip_graph_cells=False,
+                    )
+                )
+            }
+            touched_elements = list(touched.values())
+
+            # Must be same GraphCellLabel type (all KEY or all VALUE) and share same parent
+            if (
+                len(touched_elements) > 1
+                and all(isinstance(el.label, GraphCellLabel) for el in touched_elements)
+                and len({el.label for el in touched_elements}) == 1
+            ):
+                # Find parent IDs
+                parent_ids = {
+                    next(
+                        (
+                            p.id
+                            for p in self.doc_structure.elements
+                            if p.label in [DocItemLabel.LIST_ITEM, DocItemLabel.TEXT]
+                            and bbox_contains(el.bbox, p.bbox, threshold=0.5)
+                        ),
+                        None,
+                    )
+                    for el in touched_elements
+                }
+
+                if len(parent_ids) == 1 and None not in parent_ids:
+                    touched_group = set(touched.keys())
+                    for el_id in touched_group:
+                        element_to_keyvalue_merge_group[el_id] = touched_group
+
+        def _get_merge_group_for_element(element_id: int) -> List[CVATElement]:
+            merge_group_ids = element_to_keyvalue_merge_group.get(element_id)
+            if not merge_group_ids:
+                return []
+            merge_elements = [
+                e
+                for el_id in merge_group_ids
+                if (e := self.doc_structure.get_element_by_id(el_id)) is not None
+            ]
+            return merge_elements if len(merge_elements) > 1 else []
+
+        def _process_merged_bbox(
+            elements: List[CVATElement],
+        ) -> Tuple[int, str, ProvenanceItem]:
+            """Process merged elements to get union bbox, text, and provenance."""
+            union_bbox = BoundingBox.enclosing_bbox([e.bbox for e in elements])
+            page_no = self._get_page_number_from_bbox(union_bbox)
+            text = self._extract_text_from_bbox(union_bbox, page_no)
+            adjusted_bbox = self._adjust_bbox_for_page(union_bbox, page_no)
+            seg_page = self.segmented_pages[page_no]
+            prov_bbox = adjusted_bbox.to_bottom_left_origin(seg_page.dimension.height)
+            return (
+                page_no,
+                text,
+                ProvenanceItem(
+                    page_no=page_no, bbox=prov_bbox, charspan=(0, len(text))
+                ),
+            )
+
+        def _make_cell(element_id: int, default_label: GraphCellLabel) -> GraphCell:
             nonlocal cell_id_seq
 
-            if element_id in cell_by_element:
+            # Check for existing cell (including merge group members)
+            merge_elements = _get_merge_group_for_element(element_id)
+            if merge_elements:
+                for el in merge_elements:
+                    if el.id in cell_by_element:
+                        cell_by_element[element_id] = cell_by_element[el.id]
+                        return cell_by_element[el.id]
+            elif element_id in cell_by_element:
                 return cell_by_element[element_id]
 
-            element = self.doc_structure.get_element_by_id(element_id)
+            # Get element (if not already in merge_elements)
+            element = (
+                merge_elements[0]
+                if merge_elements
+                else self.doc_structure.get_element_by_id(element_id)
+            )
             if element is None:
                 raise RuntimeError(
                     f"Element {element_id} referenced in to_value path is missing."
                 )
 
-            _, text, prov = self._process_element_bbox(element)
+            # Determine label: preserve GraphCellLabel from CVAT or use default
+            label_source = merge_elements[0] if merge_elements else element
+            cell_label = (
+                label_source.label
+                if isinstance(label_source.label, GraphCellLabel)
+                else default_label
+            )
 
-            item_ref = None
-            node_item = self.element_to_item.get(element_id)
-            if node_item is not None:
-                item_ref = node_item.get_ref()
+            # Process bbox and text (merged or single)
+            if merge_elements:
+                _, text, prov = _process_merged_bbox(merge_elements)
+                _logger.debug(
+                    f"Processing merged cell for element {element_id} with {len(merge_elements)} "
+                    f"merged elements: {[e.id for e in merge_elements]}"
+                )
+            else:
+                _, text, prov = self._process_element_bbox(element)
+
+            # Create cell
+            # For merged elements, try to get node_item from any merged element
+            node_item = None
+            if merge_elements:
+                # Try to find node_item from any merged element
+                for merged_el in merge_elements:
+                    node_item = self.element_to_item.get(merged_el.id)
+                    if node_item is not None:
+                        break
+            else:
+                node_item = self.element_to_item.get(element_id)
 
             cell = GraphCell(
                 cell_id=cell_id_seq,
-                label=label,
+                label=cell_label,
                 text=text,
                 orig=text,
                 prov=prov,
-                item_ref=item_ref,
+                item_ref=node_item.get_ref() if node_item else None,
             )
-            cell_by_element[element_id] = cell
+
+            # Map all merge group members to same cell, or just this element
+            for el_id in (
+                [e.id for e in merge_elements] if merge_elements else [element_id]
+            ):
+                cell_by_element[el_id] = cell
             cell_id_seq += 1
             return cell
 
@@ -1812,7 +1938,24 @@ class CVATToDoclingConverter:
         if not cell_by_element:
             return
 
-        graph = GraphData(cells=list(cell_by_element.values()), links=links)
+        # Deduplicate cells by cell_id (multiple elements may map to same cell via merges)
+        unique_cells = {cell.cell_id: cell for cell in cell_by_element.values()}
+
+        # Validate all link references exist before creating GraphData
+        valid_cell_ids = set(unique_cells)
+        for link in links:
+            if link.source_cell_id not in valid_cell_ids:
+                raise RuntimeError(
+                    f"Invalid source_cell_id {link.source_cell_id} in GraphLink. "
+                    f"Valid cell_ids: {sorted(valid_cell_ids)}"
+                )
+            if link.target_cell_id not in valid_cell_ids:
+                raise RuntimeError(
+                    f"Invalid target_cell_id {link.target_cell_id} in GraphLink. "
+                    f"Valid cell_ids: {sorted(valid_cell_ids)}"
+                )
+
+        graph = GraphData(cells=list(unique_cells.values()), links=links)
 
         try:
             classify_cells(graph=graph)
