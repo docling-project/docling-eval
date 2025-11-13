@@ -28,6 +28,7 @@ class MultiLabelMatrixAggMetrics(BaseModel):
 class MultiLabelMatrixMetrics(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
+    class_names: Dict[int, str]
     confusion_matrix: np.ndarray
     precision_matrix: np.ndarray
     recall_matrix: np.ndarray

@@ -407,6 +407,7 @@ class MultiLabelConfusionMatrix:
         )
 
         metrics = MultiLabelMatrixMetrics(
+            class_names=class_names,
             confusion_matrix=confusion_matrix,
             precision_matrix=precision_matrix,
             recall_matrix=recall_matrix,
