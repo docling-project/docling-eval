@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def _load_prediction_json(
     prediction_record: DatasetRecord,
-) -> tuple[DoclingDocument, list, list, Optional[str]]:
+) -> tuple[DoclingDocument, list, list]:
     document = prediction_record.ground_truth_doc.model_copy(deep=True)
     prediction_doc, pictures, page_images = extract_images(
         document=document,
@@ -36,30 +36,7 @@ def _load_prediction_json(
         page_images_column=BenchMarkColumns.PREDICTION_PAGE_IMAGES.value,
     )
 
-    prediction_text: Optional[str] = None
-    original = prediction_record.original
-    if original is not None:
-        try:
-            raw_bytes: bytes
-            if isinstance(original, DocumentStream):
-                stream = original.stream
-                stream.seek(0)
-                raw_bytes = stream.read()
-                stream.seek(0)
-            elif isinstance(original, Path):
-                raw_bytes = original.read_bytes()
-            else:  # pragma: no cover
-                raise TypeError(f"Unsupported prediction source: {type(original)!r}")
-
-            prediction_text = raw_bytes.decode("utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
-            _LOGGER.debug(
-                "Failed to decode prediction JSON for %s: %s",
-                prediction_record.doc_id,
-                exc,
-            )
-
-    return prediction_doc, pictures, page_images, prediction_text
+    return prediction_doc, pictures, page_images
 
 
 def _build_prediction_record(
@@ -70,10 +47,11 @@ def _build_prediction_record(
     *,
     prediction_format: PredictionFormats,
     predictor_info: Dict,
-    original_prediction: Optional[str],
 ) -> DatasetRecordWithPrediction:
     record_data = gt_record.model_dump()
-    record_data["original"] = gt_record.original
+    # Set 'original' to None - it's redundant since we have ground_truth_doc and images extracted
+    # The original JSON file with base64 images is not needed when we have the parsed document
+    record_data["original"] = None
     record_data["ground_truth_doc"] = gt_record.ground_truth_doc
     record_data["ground_truth_pictures"] = gt_record.ground_truth_pictures
     record_data["ground_truth_page_images"] = gt_record.ground_truth_page_images
@@ -86,7 +64,8 @@ def _build_prediction_record(
             "prediction_format": prediction_format,
             "predictor_info": predictor_info,
             "prediction_timings": None,
-            "original_prediction": original_prediction,
+            # Don't store original_prediction - it's redundant since we have predicted_doc and images extracted
+            "original_prediction": None,
             "status": ConversionStatus.SUCCESS,
         }
     )
@@ -164,8 +143,8 @@ def join_docling_json_datasets(
                     continue
                 raise ValueError(message)
 
-            prediction_doc, pictures, page_images, original_prediction = (
-                _load_prediction_json(prediction_record)
+            prediction_doc, pictures, page_images = _load_prediction_json(
+                prediction_record
             )
 
             joined = _build_prediction_record(
@@ -175,7 +154,6 @@ def join_docling_json_datasets(
                 page_images,
                 prediction_format=prediction_format,
                 predictor_info=predictor_info,
-                original_prediction=original_prediction,
             )
 
             if do_visualization and visualizations_dir is not None:
