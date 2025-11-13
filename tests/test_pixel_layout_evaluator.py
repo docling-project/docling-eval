@@ -20,8 +20,8 @@ def test_layout_evaluator():
 
     # Default evaluator
     eval1 = PixelLayoutEvaluator()
-    # v1 = eval1(test_dataset_dir)
-    # assert v1 is not None
+    v1 = eval1(test_dataset_dir)
+    assert v1 is not None
 
     # Custom label mappings
     label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = {

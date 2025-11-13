@@ -17,6 +17,34 @@ class LayoutResolution(BaseModel):
     bbox: list[float]
 
 
+class MultiLabelMatrixAggMetrics(BaseModel):
+    classes_precision: dict[str, float]
+    classes_recall: dict[str, float]
+    classes_f1: dict[str, float]
+
+    classes_precision_mean: float
+    classes_recall_mean: float
+    classes_f1_mean: float
+
+
+class MultiLabelMatrixMetrics(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
+    confusion_matrix: np.ndarray
+
+    precision_matrix: np.ndarray
+    recall_matrix: np.ndarray
+    f1_matrix: np.ndarray
+
+    agg_metrics: MultiLabelMatrixAggMetrics
+
+
+class MultiLabelMatrixEvaluation(BaseModel):
+    detailed_metrics: MultiLabelMatrixMetrics
+    colapsed_metrics: Optional[MultiLabelMatrixMetrics] = None
+
+
 def unpackbits(x: np.ndarray, num_bits: int):
     r"""
     Unpack num_bits bits of each element of the numpy array x
@@ -312,21 +340,21 @@ class MultiLabelConfusionMatrix:
         confusion_matrix: np.ndarray,
         class_names: dict[int, str],
         colapse_non_bg: bool = False,
-    ) -> dict:
+    ) -> MultiLabelMatrixEvaluation:
         r"""
         Parameters:
         -----------
         confusion_matrix: np.ndarray[num_categories + 1, num_categories + 1]
         class_names: Mapping from class_id to class_names
         colapse_non_bg: Colapse all classes except of the first one that is assumed to be the BG
+
+        Returns
+        --------
+
         """
         # Compute metrics on the full confusion matrix
-        all_classes_metrics = self._compute_metrics_on_confusion(
-            confusion_matrix, class_names
-        )
-        metrics = {
-            MultiLabelConfusionMatrix.DETAILED_METRICS_KEY: all_classes_metrics,
-        }
+        detailed_metrics = self._compute_matrix_metrics(confusion_matrix, class_names)
+        evaluation = MultiLabelMatrixEvaluation(detailed_metrics=detailed_metrics)
 
         if colapse_non_bg:
             # Colapse the classes except the background and compute metrics again
@@ -340,19 +368,20 @@ class MultiLabelConfusionMatrix:
                 0: class_names[0],
                 1: MultiLabelConfusionMatrix.ALL_COLAPSED_CLASSES_NAME,
             }
-            colapsed_metrics = self._compute_metrics_on_confusion(
+            colapsed_metrics = self._compute_matrix_metrics(
                 colapsed_confusion_matrix,
                 colapsed_class_names,
             )
-            metrics[MultiLabelConfusionMatrix.COLAPSED_METRICS_KEY] = colapsed_metrics
+            evaluation.colapsed_metrics = colapsed_metrics
 
-        return metrics
+        return evaluation
 
-    def _compute_metrics_on_confusion(
+    def _compute_matrix_metrics(
         self,
         confusion_matrix: np.ndarray,
         class_names: dict[int, str],
-    ):
+    ) -> MultiLabelMatrixMetrics:
+        r""" """
         col_sums = np.sum(confusion_matrix, axis=0)
         row_sums = np.sum(confusion_matrix, axis=1)
 
@@ -399,17 +428,22 @@ class MultiLabelConfusionMatrix:
         recall_dict = array_to_dict(recall)
         f1_dict = array_to_dict(f1)
 
-        metrics = {
-            "precision_matrix": precision_matrix,
-            "recall_matrix": recall_matrix,
-            "f1_matrix": f1_matrix,
-            "classes_precision": precision_dict,
-            "classes_recall": recall_dict,
-            "classes_f1": f1_dict,
-            "classes_precision_mean": float(precision_mean),
-            "classes_recall_mean": float(recall_mean),
-            "classes_f1_mean": float(f1_mean),
-        }
+        agg_metrics = MultiLabelMatrixAggMetrics(
+            classes_precision=precision_dict,
+            classes_recall=recall_dict,
+            classes_f1=f1_dict,
+            classes_precision_mean=float(precision_mean),
+            classes_recall_mean=float(recall_mean),
+            classes_f1_mean=float(f1_mean),
+        )
+
+        metrics = MultiLabelMatrixMetrics(
+            confusion_matrix=confusion_matrix,
+            precision_matrix=precision_matrix,
+            recall_matrix=recall_matrix,
+            f1_matrix=f1_matrix,
+            agg_metrics=agg_metrics,
+        )
         return metrics
 
     def _validate_contributions(

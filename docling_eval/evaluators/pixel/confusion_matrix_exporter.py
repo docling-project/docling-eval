@@ -63,28 +63,6 @@ class ConfusionMatrixExporter:
             bottom=Side(border_style=border_style, color=border_color),
         )
 
-    def export_excel_from_json(
-        self,
-        save_path: Path,
-        pixel_evaluations_fn: Path,
-    ):
-        r""" """
-        with open(pixel_evaluations_fn, "r") as fd:
-            pixel_evaluations = json.load(fd)
-
-        # Reconsturct the confusion matrix
-        confusion_matrix_as_list = pixel_evaluations["confusion_matrix"]
-        confusion_matrix = np.asarray(confusion_matrix_as_list, dtype=np.float32)
-
-        # Reconstruct the headers
-        class_names: dict[int, str] = pixel_evaluations["classes_names"]
-        headers = list(class_names.values())
-        save_path.mkdir(parents=True, exist_ok=True)
-        excel_fn = save_path / f"{pixel_evaluations_fn.stem}.xlsx"
-
-        # TODO:
-        # self._export_matrix_to_excel(confusion_matrix, headers, excel_fn)
-
     def build_ds_report(
         self,
         model_name: str,
@@ -508,40 +486,3 @@ class ConfusionMatrixExporter:
                 val = str(cell.value)
                 max_length = max(max_length, len(val))
             ws.column_dimensions[col_letter].width = max_length + 2
-
-
-def main():
-    r""" """
-    # Parse CLI arguments
-    parser = argparse.ArgumentParser(
-        description="Run the PixelLayoutEvaluator with the GT in COCO-format and the predictions in COCO-tools format"
-    )
-    parser.add_argument(
-        "-s",
-        "--save_dir",
-        type=Path,
-        required=True,
-        help="Root save directory to save the exported files",
-    )
-    parser.add_argument(
-        "-p",
-        "--pixel_evaluations",
-        type=Path,
-        required=True,
-        help="Json with the pixel evaluations",
-    )
-    args = parser.parse_args()
-    save_dir = args.save_dir
-    pixel_eval_fn = args.pixel_evaluations
-
-    # Configure logger
-    log_format = "%(asctime)s - %(levelname)s - %(message)s"
-    logging.basicConfig(level=logging.INFO, format=log_format)
-
-    # Initialize the exporter
-    exporter = ConfusionMatrixExporter()
-    exporter.export_excel_from_json(save_dir, pixel_eval_fn)
-
-
-if __name__ == "__main__":
-    main()
