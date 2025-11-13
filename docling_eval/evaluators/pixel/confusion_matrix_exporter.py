@@ -17,6 +17,7 @@ from pandas import ExcelWriter
 from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
     MultiLabelConfusionMatrix,
 )
+from docling_eval.evaluators.pixel.pixel_types import MultiLabelMatrixEvaluation
 
 _log = logging.getLogger(__name__)
 
@@ -37,6 +38,47 @@ def power_norm(x, x_min, x_max, p=0.3):
     d = x_max - x_min
     x = (x - x_min) / (x_max - x_min) if d != 0 else 0
     return x**p
+
+
+def discover_filename_prefix(
+    root: Path, filename_extension: str, scan_depth: int = 10
+) -> Optional[str]:
+    r"""
+    Discover the common prefix used in the filenames of the prediction visualisations
+    Check up to scan_depth files in the dir
+
+    Return
+    -------
+    empty string: There is no common prefix
+    None: Cannot reach consensus in any common prefix
+    """
+
+    def common_prefix(a: str, b: str, stop_char="_"):
+        r"""String common prefix with stop char"""
+        prefix: list[str] = []
+        for c1, c2 in zip(a, b):
+            if c1 != c2:
+                break
+            prefix.append(c1)
+            if c1 == stop_char:
+                break
+        return "".join(prefix)
+
+    prev_image_filename = None
+    prefix = ""
+    for i, image_fn in enumerate(root.glob(f"*.{filename_extension}")):
+        if i >= scan_depth:
+            break
+        image_filename = image_fn.name
+        if prev_image_filename:
+            # new_prefix will be the empty string if there is nothing in common
+            new_prefix = common_prefix(image_filename, prev_image_filename)
+            if prefix == "":
+                prefix = new_prefix
+            elif new_prefix != "" and prefix != new_prefix:
+                return None
+        prev_image_filename = image_filename
+    return prefix
 
 
 class ConfusionMatrixExporter:
@@ -69,14 +111,12 @@ class ConfusionMatrixExporter:
         num_images: int,
         num_pixels: int,
         headers: list[str],
-        confusion_matrix: np.ndarray,
-        ds_metrics: dict,
+        matrix_evaluation: MultiLabelMatrixEvaluation,
         colapsed_headers: list[str],
         image_colaped_aggs: dict[str, np.ndarray],
         excel_fn: Path,
-        visualisations_root: Optional[Path],
+        visualisations_root: Optional[Path] = None,
     ):
-        # TODO: The new design produces pydantic objects for metrics instead of dicts
         r"""
         Generate excel report for the full dataset
         """
@@ -102,8 +142,7 @@ class ConfusionMatrixExporter:
                 writer,
                 ConfusionMatrixExporter.DATASET_WORKSHEET_NAME,
                 headers,
-                confusion_matrix,
-                ds_metrics,
+                matrix_evaluation,
                 4,
             )
 
@@ -126,8 +165,7 @@ class ConfusionMatrixExporter:
     def build_image_report(
         self,
         headers: list[str],
-        confusion_matrix: np.ndarray,
-        metrics: dict,
+        matrix_evaluation: MultiLabelMatrixEvaluation,
         excel_fn: Path,
     ):
         with pd.ExcelWriter(excel_fn, engine="openpyxl") as writer:
@@ -135,8 +173,7 @@ class ConfusionMatrixExporter:
                 writer,
                 ConfusionMatrixExporter.DATASET_WORKSHEET_NAME,
                 headers,
-                confusion_matrix,
-                metrics,
+                matrix_evaluation,
             )
 
             # Adjust column widths
@@ -180,22 +217,22 @@ class ConfusionMatrixExporter:
         ws: Worksheet = wb[worksheet_name]
 
         # Set the prediction visualisations as hyperlinks in the image filenames
-        # if visualisations_root:
-        #     viz_prefix = discover_filename_prefix(visualisations_root, "png")
-        #     if viz_prefix:
-        #         col = startcol + 1
-        #         for i, image_filename in enumerate(image_colapsed_aggs.keys()):
-        #             row = i + startrow + 2
-        #             cell = ws.cell(row=row, column=col)
-        #             viz_fn = visualisations_root / f"{viz_prefix}{image_filename}"
-        #             if not viz_fn.is_file():
-        #                 continue
-        #             cell.hyperlink = str(viz_fn)
-        #             cell.style = "Hyperlink"
-        #     else:
-        #         _log.error(
-        #             "Cannot the visualisation prefix in: %s", str(visualisations_root)
-        #         )
+        if visualisations_root:
+            viz_prefix = discover_filename_prefix(visualisations_root, "png")
+            if viz_prefix:
+                col = startcol + 1
+                for i, image_filename in enumerate(image_colapsed_aggs.keys()):
+                    row = i + startrow + 2
+                    cell = ws.cell(row=row, column=col)
+                    viz_fn = visualisations_root / f"{viz_prefix}{image_filename}"
+                    if not viz_fn.is_file():
+                        continue
+                    cell.hyperlink = str(viz_fn)
+                    cell.style = "Hyperlink"
+            else:
+                _log.error(
+                    "Cannot the visualisation prefix in: %s", str(visualisations_root)
+                )
 
         # Set the subtitle
         subtitle_cell = ws.cell(
@@ -237,9 +274,7 @@ class ConfusionMatrixExporter:
         writer: ExcelWriter,
         worksheet_name: str,
         headers: list[str],
-        confusion_matrix: np.ndarray,
-        metrics: dict,
-        # matrix_metrics:  MultiLabelMatrixEvaluation,
+        matrix_evaluation: MultiLabelMatrixEvaluation,
         startrow: int = 0,
         hide_zero_rows: bool = True,
         hide_zero_cols: bool = True,
@@ -260,7 +295,7 @@ class ConfusionMatrixExporter:
             writer,
             worksheet_name,
             "Confusion Matrix",
-            confusion_matrix,
+            matrix_evaluation.detailed.confusion_matrix,
             headers,
             decimal_digits=3,
             origin_cell=(startrow, 0),
@@ -272,14 +307,11 @@ class ConfusionMatrixExporter:
         # Add the precision matrix with detailed classes
         detailed_precision_row = max_row + detailed_spacing
         colapsed_precision_row = max_row + colapsed_spacing
-        detailed_precision_matrix: np.ndarray = metrics[
-            MultiLabelConfusionMatrix.DETAILED_METRICS_KEY
-        ]["precision_matrix"]
         max_row, max_col = self._export_matrix_to_excel(
             writer,
             worksheet_name,
             "Precision Matrix",
-            detailed_precision_matrix,
+            matrix_evaluation.detailed.precision_matrix,
             headers,
             decimal_digits=3,
             origin_cell=(detailed_precision_row, 0),
@@ -292,14 +324,11 @@ class ConfusionMatrixExporter:
         colapsed_col = max_col + 1
 
         # Add the precision matrix with colapsed classes
-        colapsed_precision_matrix: np.ndarray = metrics[
-            MultiLabelConfusionMatrix.COLAPSED_METRICS_KEY
-        ]["precision_matrix"]
         self._export_matrix_to_excel(
             writer,
             worksheet_name,
             "Colapsed Precision Matrix",
-            colapsed_precision_matrix,
+            matrix_evaluation.colapsed.precision_matrix,
             colapsed_headers,
             decimal_digits=3,
             origin_cell=(colapsed_precision_row, colapsed_col),
@@ -309,14 +338,11 @@ class ConfusionMatrixExporter:
         )
 
         # Add the recall matrix with detailed classes
-        detailed_recall_matrix: np.ndarray = metrics[
-            MultiLabelConfusionMatrix.DETAILED_METRICS_KEY
-        ]["recall_matrix"]
         max_row, max_col = self._export_matrix_to_excel(
             writer,
             worksheet_name,
             "Recall matrix",
-            detailed_recall_matrix,
+            matrix_evaluation.detailed.recall_matrix,
             headers,
             decimal_digits=3,
             origin_cell=(detailed_recall_row, 0),
@@ -326,14 +352,11 @@ class ConfusionMatrixExporter:
         )
 
         # Add the recall matrix with colapsed classes
-        colapsed_recall_matrix: np.ndarray = metrics[
-            MultiLabelConfusionMatrix.COLAPSED_METRICS_KEY
-        ]["recall_matrix"]
         self._export_matrix_to_excel(
             writer,
             worksheet_name,
             "Colapsed Recall Matrix",
-            colapsed_recall_matrix,
+            matrix_evaluation.colapsed.recall_matrix,
             colapsed_headers,
             decimal_digits=3,
             origin_cell=(colapsed_recall_row, colapsed_col),

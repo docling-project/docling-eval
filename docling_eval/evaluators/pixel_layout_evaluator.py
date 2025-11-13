@@ -234,7 +234,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     self._mlcm.compute_metrics(
                         page_confusion_matrix,
                         self._matrix_id_to_name,
-                        True,
                     )
                 )
                 page_evaluation = PagePixelLayoutEvaluation(
@@ -251,7 +250,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
         ds_matrix_evaluation: MultiLabelMatrixEvaluation = self._mlcm.compute_metrics(
             ds_confusion_matrix,
             self._matrix_id_to_name,
-            True,
         )
 
         ds_evaluation = DatasetPixelLayoutEvaluation(
@@ -290,9 +288,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
         headers = list(
             self._matrix_id_to_name.values()
         )  # TODO: Duplicate values may appear due to label_mappings
-        ds_confusion_matrix = (
-            ds_evaluation.matrix_evaluation.detailed_metrics.confusion_matrix
-        )
         colapsed_headers: list[str] = [
             f"{metric}: {cell}"
             for metric in ["Precision(GT/Pred)", "Recall(GT/Pred)", "F1(GT/Pred)"]
@@ -304,9 +299,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
             ]
         ]
         image_colapsed_aggs: Dict[str, np.ndarray] = {}
-        bg_cls_name = self._matrix_id_to_name[0]
         for doc_page_id, page_evaluations in ds_evaluation.page_evaluations.items():
-            pm = page_evaluations.matrix_evaluation.colapsed_metrics
+            pm = page_evaluations.matrix_evaluation.colapsed
             if not pm:
                 continue
             # [12,]
@@ -322,15 +316,16 @@ class PixelLayoutEvaluator(BaseEvaluator):
 
         excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_layout.xlsx"
 
-        # excel_exporter.build_ds_report(
-        #     model_name,
-        #     ds_evaluation.num_pages,
-        #     ds_evaluation.num_pixels,
-        #     headers,
-        #     ds_confusion_matrix,
-        #     colapsed_headers,
-        #     excel_fn,
-        # )
+        excel_exporter.build_ds_report(
+            model_name,
+            ds_evaluation.num_pages,
+            ds_evaluation.num_pixels,
+            headers,
+            ds_evaluation.matrix_evaluation,
+            colapsed_headers,
+            image_colapsed_aggs,
+            excel_fn,
+        )
 
     def _compute_document_confusion_matrix(
         self,

@@ -308,7 +308,6 @@ class MultiLabelConfusionMatrix:
         self,
         confusion_matrix: np.ndarray,
         class_names: dict[int, str],
-        colapse_non_bg: bool = False,
     ) -> MultiLabelMatrixEvaluation:
         r"""
         Parameters:
@@ -323,25 +322,26 @@ class MultiLabelConfusionMatrix:
         """
         # Compute metrics on the full confusion matrix
         detailed_metrics = self._compute_matrix_metrics(confusion_matrix, class_names)
-        evaluation = MultiLabelMatrixEvaluation(detailed_metrics=detailed_metrics)
 
-        if colapse_non_bg:
-            # Colapse the classes except the background and compute metrics again
-            colapsed_confusion_matrix = np.asarray(
-                [
-                    [confusion_matrix[0, 0], np.sum(confusion_matrix[0, 1:])],
-                    [np.sum(confusion_matrix[1:, 0]), np.sum(confusion_matrix[1:, 1:])],
-                ]
-            )
-            colapsed_class_names = {
-                0: class_names[0],
-                1: MultiLabelConfusionMatrix.ALL_COLAPSED_CLASSES_NAME,
-            }
-            colapsed_metrics = self._compute_matrix_metrics(
-                colapsed_confusion_matrix,
-                colapsed_class_names,
-            )
-            evaluation.colapsed_metrics = colapsed_metrics
+        # Colapse the classes except the background and compute metrics again
+        colapsed_confusion_matrix = np.asarray(
+            [
+                [confusion_matrix[0, 0], np.sum(confusion_matrix[0, 1:])],
+                [np.sum(confusion_matrix[1:, 0]), np.sum(confusion_matrix[1:, 1:])],
+            ]
+        )
+        colapsed_class_names = {
+            0: class_names[0],
+            1: MultiLabelConfusionMatrix.ALL_COLAPSED_CLASSES_NAME,
+        }
+        colapsed_metrics = self._compute_matrix_metrics(
+            colapsed_confusion_matrix,
+            colapsed_class_names,
+        )
+
+        evaluation = MultiLabelMatrixEvaluation(
+            detailed=detailed_metrics, colapsed=colapsed_metrics
+        )
 
         return evaluation
 

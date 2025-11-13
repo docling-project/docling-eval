@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
 from pydantic import BaseModel, model_serializer
@@ -45,8 +45,8 @@ class MultiLabelMatrixMetrics(BaseModel):
 
 
 class MultiLabelMatrixEvaluation(BaseModel):
-    detailed_metrics: MultiLabelMatrixMetrics
-    colapsed_metrics: Optional[MultiLabelMatrixMetrics] = None
+    detailed: MultiLabelMatrixMetrics
+    colapsed: MultiLabelMatrixMetrics
 
 
 class PagePixelLayoutEvaluation(BaseModel):
