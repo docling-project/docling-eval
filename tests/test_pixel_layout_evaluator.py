@@ -5,9 +5,15 @@ import pytest
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.labels import DocItemLabel
 
-from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.datamodels.types import BenchMarkNames, PredictionFormats
 from docling_eval.evaluators.markdown_text_evaluator import MarkdownTextEvaluator
-from docling_eval.evaluators.pixel_layout_evaluator import PixelLayoutEvaluator
+from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
+    MultiLabelMatrixEvaluation,
+)
+from docling_eval.evaluators.pixel_layout_evaluator import (
+    DatasetPixelLayoutEvaluation,
+    PixelLayoutEvaluator,
+)
 
 
 @pytest.mark.dependency(
@@ -18,10 +24,8 @@ def test_layout_evaluator():
     r""" """
     test_dataset_dir = Path("scratch/DPBench/eval_dataset_e2e")
 
-    # Default evaluator
+    # Initialize default evaluator
     eval1 = PixelLayoutEvaluator()
-    v1 = eval1(test_dataset_dir)
-    assert v1 is not None
 
     # Custom label mappings
     label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = {
@@ -29,8 +33,15 @@ def test_layout_evaluator():
         DocItemLabel.DOCUMENT_INDEX: None,
     }
     eval2 = PixelLayoutEvaluator(label_mapping=label_mapping)
-    # v2 = eval2(test_dataset_dir)
-    # assert v2 is not None
+
+    # Save the evaluations
+    pixel_ds_evaluation: DatasetPixelLayoutEvaluation = eval1(test_dataset_dir)
+    pixel_save_root: Path = test_dataset_dir / "pixel_layout_evaluations"
+    eval1.save_evaluations(
+        BenchMarkNames.DPBENCH,
+        pixel_ds_evaluation,
+        pixel_save_root,
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import glob
+import json
 import logging
 import math
 from collections import defaultdict
@@ -15,17 +16,23 @@ from pydantic import BaseModel
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
-from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
+from docling_eval.datamodels.types import (
+    BenchMarkColumns,
+    BenchMarkNames,
+    PredictionFormats,
+)
 from docling_eval.evaluators.base_evaluator import (
     BaseEvaluator,
     EvaluationRejectionType,
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.layout_evaluator import MissingPredictionStrategy
+from docling_eval.evaluators.pixel.confusion_matrix_exporter import (
+    ConfusionMatrixExporter,
+)
 from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
     LayoutResolution,
     MultiLabelConfusionMatrix,
-    MultiLabelMatrixAggMetrics,
     MultiLabelMatrixEvaluation,
 )
 
@@ -35,17 +42,15 @@ _log = logging.getLogger(__name__)
 class PagePixelLayoutEvaluation(BaseModel):
     doc_id: str
     page_no: int
-    detailed_metrics: MultiLabelMatrixAggMetrics
-    colapsed_metrics: Optional[MultiLabelMatrixAggMetrics] = None
+    matrix_evaluation: MultiLabelMatrixEvaluation
 
 
 class DatasetPixelLayoutEvaluation(BaseModel):
     num_pages: int
     num_pixels: int
     rejected_samples: Dict[EvaluationRejectionType, int]
-    detailed_metrics: MultiLabelMatrixAggMetrics
-    colapsed_metrics: Optional[MultiLabelMatrixAggMetrics] = None
-    page_evaluations: List[PagePixelLayoutEvaluation]
+    matrix_evaluation: MultiLabelMatrixEvaluation
+    page_evaluations: Dict[str, PagePixelLayoutEvaluation]
 
 
 def category_name_to_docitemlabel(category_name: str) -> DocItemLabel:
@@ -175,7 +180,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-    ) -> Tuple[DatasetPixelLayoutEvaluation, MultiLabelMatrixEvaluation]:
+    ) -> DatasetPixelLayoutEvaluation:
         _log.info("Loading the split '%s' from: '%s'", split, ds_path)
 
         # Load the dataset
@@ -197,12 +202,14 @@ class PixelLayoutEvaluator(BaseEvaluator):
         matrix_categories_ids: List[int] = list(self._matrix_id_to_name.keys())
         num_categories = len(matrix_categories_ids)
         ds_confusion_matrix = np.zeros((num_categories, num_categories))
-        all_pages_evaluations: List[PagePixelLayoutEvaluation] = []
+        all_pages_evaluations: Dict[str, PagePixelLayoutEvaluation] = (
+            {}
+        )  # Key is doc_id-page-no
         ds_num_pixels = 0
 
         for i, data in tqdm(
             enumerate(ds_selection),
-            desc="Layout evaluations",
+            desc="Multi-label Matrix Layout evaluations",
             ncols=120,
             total=len(ds_selection),
         ):
@@ -223,25 +230,31 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 continue
 
             # Compute confusion matrices
+            pages_confusion_matrices: Dict[int, np.ndarray]
             pages_confusion_matrices, num_pixels = (
                 self._compute_document_confusion_matrix(true_doc, pred_doc)
             )
 
             # Compute metrics per page
             for page_no, page_confusion_matrix in pages_confusion_matrices.items():
+                # Contribute to the dataset's confusion matrix
                 ds_confusion_matrix += page_confusion_matrix
-                page_metrics = self._mlcm.compute_metrics(
-                    page_confusion_matrix,
-                    self._matrix_id_to_name,
-                    True,
+
+                # Compute page metrics
+                page_matrix_evaluation: MultiLabelMatrixEvaluation = (
+                    self._mlcm.compute_metrics(
+                        page_confusion_matrix,
+                        self._matrix_id_to_name,
+                        True,
+                    )
                 )
                 page_evaluation = PagePixelLayoutEvaluation(
                     doc_id=doc_id,
                     page_no=page_no,
-                    detailed_metrics=page_metrics.detailed_metrics,
-                    colapsed_metrics=page_metrics.colapsed_metrics,
+                    matrix_evaluation=page_matrix_evaluation,
                 )
-                all_pages_evaluations.append(page_evaluation)
+                doc_page_id = f"{doc_id}-{page_no}"
+                all_pages_evaluations[doc_page_id] = page_evaluation
 
             ds_num_pixels += num_pixels
 
@@ -256,24 +269,79 @@ class PixelLayoutEvaluator(BaseEvaluator):
             num_pages=len(all_pages_evaluations),
             num_pixels=num_pixels,
             rejected_samples=rejected_samples,
-            detailed_metrics=ds_matrix_evaluation.detailed_metrics,
-            colapsed_metrics=ds_matrix_evaluation.colapsed_metrics,
+            matrix_evaluation=ds_matrix_evaluation,
             page_evaluations=all_pages_evaluations,
         )
 
-        return ds_evaluation, ds_matrix_evaluation
+        return ds_evaluation
 
     def save_evaluations(
         self,
+        benchmark: BenchMarkNames,
         ds_evaluation: DatasetPixelLayoutEvaluation,
-        ds_matrix_evaluation: MultiLabelMatrixEvaluation,
         save_root: Path,
-        excel_reports: bool = True,
+        export_excel_reports: bool = True,
     ):
         r"""
         Save all evaluations as jsons and excel reports
         """
-        pass
+        save_root.mkdir(parents=True, exist_ok=True)
+
+        # Save the dataset evaluation as a json
+        json_fn = save_root / f"evaluation_{benchmark.value}_pixel_layout.json"
+        with open(json_fn, "w") as fd:
+            json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+
+        # Export excel reports
+        if not export_excel_reports:
+            return
+
+        excel_exporter = ConfusionMatrixExporter()
+        model_name = ""  # TODO: Check if it is possible to find the layout model used in predictions
+        headers = list(
+            self._matrix_id_to_name.values()
+        )  # TODO: Duplicate values may appear due to label_mappings
+        ds_confusion_matrix = (
+            ds_evaluation.matrix_evaluation.detailed_metrics.confusion_matrix
+        )
+        colapsed_headers: list[str] = [
+            f"{metric}: {cell}"
+            for metric in ["Precision(GT/Pred)", "Recall(GT/Pred)", "F1(GT/Pred)"]
+            for cell in [
+                "BG/BG",
+                "BG/cls",
+                "cls/BG",
+                "cls/cls",
+            ]
+        ]
+        image_colapsed_aggs: Dict[str, np.ndarray] = {}
+        bg_cls_name = self._matrix_id_to_name[0]
+        for doc_page_id, page_evaluations in ds_evaluation.page_evaluations.items():
+            pm = page_evaluations.matrix_evaluation.colapsed_metrics
+            if not pm:
+                continue
+            # [12,]
+            image_colapsed_vector = np.stack(
+                [
+                    pm.precision_matrix.flatten(),
+                    pm.recall_matrix.flatten(),
+                    pm.f1_matrix.flatten(),
+                ],
+                axis=0,
+            ).flatten()
+            image_colapsed_aggs[doc_page_id] = image_colapsed_vector
+
+        excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_layout.xlsx"
+
+        # excel_exporter.build_ds_report(
+        #     model_name,
+        #     ds_evaluation.num_pages,
+        #     ds_evaluation.num_pixels,
+        #     headers,
+        #     ds_confusion_matrix,
+        #     colapsed_headers,
+        #     excel_fn,
+        # )
 
     def _compute_document_confusion_matrix(
         self,

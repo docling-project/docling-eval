@@ -76,6 +76,7 @@ class ConfusionMatrixExporter:
         excel_fn: Path,
         visualisations_root: Optional[Path],
     ):
+        # TODO: The new design produces pydantic objects for metrics instead of dicts
         r"""
         Generate excel report for the full dataset
         """
@@ -238,6 +239,7 @@ class ConfusionMatrixExporter:
         headers: list[str],
         confusion_matrix: np.ndarray,
         metrics: dict,
+        # matrix_metrics:  MultiLabelMatrixEvaluation,
         startrow: int = 0,
         hide_zero_rows: bool = True,
         hide_zero_cols: bool = True,

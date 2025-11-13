@@ -96,6 +96,13 @@ from docling_eval.evaluators.ocr_evaluator import (
     OCREvaluator,
     OCRVisualizer,
 )
+from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
+    MultiLabelMatrixEvaluation,
+)
+from docling_eval.evaluators.pixel_layout_evaluator import (
+    DatasetPixelLayoutEvaluation,
+    PixelLayoutEvaluator,
+)
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -668,7 +675,17 @@ def evaluate(
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
-        # TODO: Add also the pixel-wise layout evaluation
+        # Evaluate with the pixel-wise layout evaluation
+        pixel_layout_evaluator = PixelLayoutEvaluator()
+        pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
+            idir, split=split
+        )
+        pixel_save_root: Path = save_fn.parent / "pixel_layout_evaluations"
+        pixel_layout_evaluator.save_evaluations(
+            benchmark,
+            pixel_ds_evaluation,
+            pixel_save_root,
+        )
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()

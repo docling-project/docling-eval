@@ -1,9 +1,9 @@
 import logging
 import math
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, model_serializer
 
 _log = logging.getLogger(__name__)
 
@@ -28,16 +28,22 @@ class MultiLabelMatrixAggMetrics(BaseModel):
 
 
 class MultiLabelMatrixMetrics(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
     confusion_matrix: np.ndarray
-
     precision_matrix: np.ndarray
     recall_matrix: np.ndarray
     f1_matrix: np.ndarray
 
     agg_metrics: MultiLabelMatrixAggMetrics
+
+    @model_serializer(mode="wrap")
+    def serialize_model(self, serializer: Any) -> dict:
+        data = serializer(self)
+        for field_name, field_value in self.__dict__.items():
+            if isinstance(field_value, np.ndarray):
+                data[field_name] = field_value.tolist()
+        return data
 
 
 class MultiLabelMatrixEvaluation(BaseModel):
