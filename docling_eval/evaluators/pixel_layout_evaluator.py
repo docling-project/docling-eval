@@ -14,6 +14,7 @@ from docling_core.types.doc.document import (
     DoclingDocument,
 )
 from docling_core.types.doc.labels import DocItemLabel
+from docling_ibm_models.layoutmodel.labels import LayoutLabels
 from tqdm import tqdm  # type: ignore
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
@@ -30,6 +31,12 @@ from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
 )
 
 _log = logging.getLogger(__name__)
+
+
+def category_name_to_docitemlabel(category_name: str) -> DocItemLabel:
+    r""" """
+    label = DocItemLabel(category_name.lower().replace(" ", "_").replace("-", "_"))
+    return label
 
 
 class PixelLayoutEvaluator(BaseEvaluator):
@@ -71,35 +78,83 @@ class PixelLayoutEvaluator(BaseEvaluator):
         # Initialize the multi label confusion matrix calculator
         self._mlcm = MultiLabelConfusionMatrix(validation_mode="disabled")
 
-        self._set_categories(label_mapping)
+        # Initialize the mappings between DocItemLabel <-> category_id <-> category_name
+        self._matrix_doclabelitem_to_id: Dict[
+            DocItemLabel, int
+        ]  # DocLabelItem to cat_id (shifted to make space for Background)
+        self._matrix_id_to_name: Dict[
+            int, str
+        ]  # shifted cat_id to string (to include Background)
+        self._matrix_doclabelitem_to_id, self._matrix_id_to_name = (
+            self._build_matrix_categories(label_mapping)
+        )
 
-    def _set_categories(
+    def _build_matrix_categories(
         self,
         label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = None,
-    ):
+    ) -> Tuple[
+        Dict[DocItemLabel, int],
+        Dict[int, str],
+    ]:
         r"""
-        Set the categories index and reversed index
+        Create mappings for the matrix categories including the background (shifted) while taking
+        into account the label_mappings:
+
+        Returns:
+        --------
+        matrix_doclabelitem_to_id: Dict[DocItemLabel, int]
+            From DocItemLabel to shifted category_id (the values do NOT contain zero)
+            If the label_mapping maps to None, this entry is omitted
+
+        matrix_id_to_name: Dict[int, str]
+            From shifted_category_id to string.
+            For key==0 the value is Background, otherwise the value of the corresponding DocItemLabel
+            taking into account any label mapping
+            If the label_mapping maps to None, this entry is omitted
+
         """
-        label_to_id: dict[str, int] = {
-            label: i for i, label in enumerate(DEFAULT_EXPORT_LABELS)
+        layout_labels = LayoutLabels()
+
+        # Auxiliary mapping: DocItemLabel -> canonical_category_id
+        canonical_to_id: Dict[str, int] = layout_labels.canonical_to_int()
+        label_to_id: Dict[DocItemLabel, int] = {
+            DocItemLabel(cat_name.lower().replace(" ", "_").replace("-", "_")): cat_id
+            for cat_name, cat_id in canonical_to_id.items()
         }
 
-        self._category_name_to_id: Dict[str, int] = {}
-        if label_mapping:
-            for label in DEFAULT_EXPORT_LABELS:
-                if label in label_mapping:
-                    mapped_label = label_mapping.get(label)
-                    if not mapped_label:  # Skip a label that maps to None
+        # Populate the matrix_doclabelitem_to_id
+        matrix_doclabelitem_to_id: Dict[DocItemLabel, int] = (
+            {}
+        )  # The values are shifted (not including zero)
+        label_id_offset = 1
+
+        # TODO: If label_mappings are provided, we end up having more than one DocItemLabel with the same cat_id
+        for label, canonical_cat_id in label_to_id.items():
+            effective_label = label
+            if label_mapping and label in label_mapping:
+                effective_label = label_mapping.get(label)
+                if not effective_label:  # Skip labels that map to None
+                    continue
+            matrix_doclabelitem_to_id[label] = (
+                label_to_id[effective_label] + label_id_offset
+            )
+
+        # Populate the matrix_id_to_name
+        matrix_id_to_name: Dict[int, str] = {}  # The keys start from 0 to include BG
+        shifted_canonical: Dict[int, str] = layout_labels.shifted_canonical_categories()
+
+        # TODO: If label_mappings are provided we end up having more than 1 cat_id with the same name
+        for shifted_cat_id, cat_name in shifted_canonical.items():
+            label = None
+            if cat_name != shifted_canonical[0]:
+                label = category_name_to_docitemlabel(cat_name)
+                if label_mapping and label in label_mapping:
+                    label = label_mapping.get(label)
+                    if not label:  # Skip labels that map to None
                         continue
-                    self._category_name_to_id[label] = label_to_id[mapped_label]
-                else:
-                    self._category_name_to_id[label] = label_to_id[label]
-        else:
-            self._category_name_to_id = label_to_id
+            matrix_id_to_name[shifted_cat_id] = label.value if label else cat_name
 
-        self._category_id_to_name: Dict[int, str] = {
-            cat_id: cat_name for cat_name, cat_id in self._category_name_to_id.items()
-        }
+        return matrix_doclabelitem_to_id, matrix_id_to_name
 
     def __call__(
         self,
@@ -126,7 +181,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         }
         doc_stats: Dict[str, Dict[str, int]] = {}
 
-        matrix_categories_ids: List[int] = list(self._category_id_to_name.keys())
+        matrix_categories_ids: List[int] = list(self._matrix_id_to_name.keys())
         num_categories = len(matrix_categories_ids)
         confusion_matrix_sum = np.zeros((num_categories, num_categories))
 
@@ -161,7 +216,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         # TODO: Compute metrics
         ds_metrics = self._mlcm.compute_metrics(
             confusion_matrix_sum,
-            self._category_id_to_name,
+            self._matrix_id_to_name,
             True,
         )
 
@@ -184,7 +239,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         pred_pages = set(pred_pages_to_objects.keys())
         _log.debug(f"GT pages: {sorted(gt_pages)}, Pred pages: {sorted(pred_pages)}")
 
-        matrix_categories_ids: List[int] = list(self._category_id_to_name.keys())
+        matrix_categories_ids: List[int] = list(self._matrix_id_to_name.keys())
         num_categories = len(matrix_categories_ids)
         off_diagonal_cells = num_categories * num_categories - num_categories
         confusion_matrix_sum = np.zeros((num_categories, num_categories))
@@ -229,7 +284,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     self._missing_prediction_strategy
                     == MissingPredictionStrategy.PENALIZE
                 ):
-                    # Create a penalty confusion matrix
+                    # Create a penalty confusion matrix by distributing all pixels outside of diagonal
                     image_pixels = pg_width * pg_height
                     penalty_value = image_pixels / off_diagonal_cells
                     confusion_matrix_sum += penalty_value * (
@@ -268,7 +323,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     # Only process provenances for this specific page
                     continue
 
-                category_id = self._category_name_to_id[item.label]
+                category_id = self._matrix_doclabelitem_to_id[item.label]
                 bbox: List[int] = list(
                     prov.bbox.to_top_left_origin(page_height=page_height).as_tuple()
                 )
