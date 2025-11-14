@@ -75,7 +75,7 @@ class PagePixelLayoutEvaluation(BaseModel):
 class DatasetPixelLayoutEvaluation(BaseModel):
     layout_model_name: Optional[str]
     num_pages: int
-    num_pixels: int
+    num_pixels: np.uint64
     rejected_samples: Dict[EvaluationRejectionType, int]
     matrix_evaluation: MultiLabelMatrixEvaluation
     page_evaluations: Dict[str, PagePixelLayoutEvaluation]

@@ -199,7 +199,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         all_pages_evaluations: Dict[str, PagePixelLayoutEvaluation] = (
             {}
         )  # Key is doc_id-page-no
-        ds_num_pixels = 0
+        ds_num_pixels: np.uint64 = np.uint64(0)
         self._layout_model_name = None
         pages_detailed_f1: list[float] = (
             []
@@ -388,7 +388,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         pred_doc: DoclingDocument,
     ) -> Tuple[
         Dict[int, np.ndarray],  # page_no -> page confusion matrix
-        int,  # num_pixels
+        np.uint64,  # num_pixels
     ]:
         r"""
         Compute the confusion matrix for the given documents.
@@ -408,7 +408,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         num_categories = len(matrix_categories_ids)
         off_diagonal_cells = num_categories * num_categories - num_categories
         page_confusion_matrices: Dict[int, np.ndarray] = {}
-        num_pixels = 0
+        num_pixels: np.uint64 = np.uint64(0)
 
         for page_no in sorted(gt_pages):
             page_size = true_doc.pages[page_no].size

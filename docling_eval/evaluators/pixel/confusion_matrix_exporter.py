@@ -107,7 +107,7 @@ class ConfusionMatrixExporter:
     def build_ds_report(
         self,
         num_images: int,
-        num_pixels: int,
+        num_pixels: np.uint64,
         headers: list[str],
         matrix_evaluation: MultiLabelMatrixEvaluation,
         colapsed_headers: list[str],
@@ -137,7 +137,7 @@ class ConfusionMatrixExporter:
             ds_ws.cell(row=header_row, column=2).value = num_images
             header_row += 1
             ds_ws.cell(row=header_row, column=1).value = "#pixels"
-            ds_ws.cell(row=header_row, column=2).value = num_pixels
+            ds_ws.cell(row=header_row, column=2).value = str(num_pixels)
             ds_ws.cell(row=header_row, column=2).number_format = f"#,##0"
 
             # Build the basic report
