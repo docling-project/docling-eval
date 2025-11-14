@@ -107,7 +107,7 @@ class ConfusionMatrixExporter:
     def build_ds_report(
         self,
         num_images: int,
-        num_pixels: np.uint64,
+        num_pixels: int,
         headers: list[str],
         matrix_evaluation: MultiLabelMatrixEvaluation,
         collapsed_headers: list[str],
