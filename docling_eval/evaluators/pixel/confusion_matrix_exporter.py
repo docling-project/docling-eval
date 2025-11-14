@@ -13,7 +13,6 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from pandas import ExcelWriter
 
-# from src.utils.utils import discover_filename_prefix
 from docling_eval.evaluators.pixel.multi_label_confusion_matrix import (
     MultiLabelConfusionMatrix,
 )

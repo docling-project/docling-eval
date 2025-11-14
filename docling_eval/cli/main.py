@@ -675,7 +675,7 @@ def evaluate(
         pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
             idir, split=split
         )
-        pixel_save_root: Path = save_fn.parent / "pixel_layout_evaluations"
+        pixel_save_root: Path = save_fn.parent
         pixel_layout_evaluator.save_evaluations(
             benchmark,
             pixel_ds_evaluation,
@@ -905,6 +905,29 @@ def visualize(
             _log.info(content)
             with open(log_filename, "a") as fd:
                 fd.write(content)
+
+            #######################################################################################
+            # TODO: Process stats from the pixel_layout_evaluator
+            pixel_eval_fns = PixelLayoutEvaluator.evaluation_filenames(benchmark, odir)
+            pixel_json_fn = pixel_eval_fns["json"]
+            with open(pixel_json_fn, "r") as fd:
+                pixel_layout_evaluation = (
+                    DatasetPixelLayoutEvaluation.model_validate_json(fd.read())
+                )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "pixel_all_classes_f1",
+                pixel_layout_evaluation.f1_all_classes_stats,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "pixel_colapsed_classes_f1",
+                pixel_layout_evaluation.f1_colapsed_classes_stats,
+            )
         except Exception as e:
             _log.error(f"Error processing layout evaluation: {str(e)}")
 

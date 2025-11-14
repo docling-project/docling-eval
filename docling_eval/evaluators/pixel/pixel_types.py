@@ -1,9 +1,10 @@
 from typing import Any, Dict, Optional
 
 import numpy as np
-from pydantic import BaseModel, model_serializer
+from pydantic import BaseModel, model_serializer, model_validator
 
 from docling_eval.evaluators.base_evaluator import EvaluationRejectionType
+from docling_eval.evaluators.stats import DatasetStatistics
 
 
 class LayoutResolution(BaseModel):
@@ -44,6 +45,21 @@ class MultiLabelMatrixMetrics(BaseModel):
                 data[field_name] = field_value.tolist()
         return data
 
+    @model_validator(mode="before")
+    @classmethod
+    def deserialize_arrays(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            array_fields = [
+                "confusion_matrix",
+                "precision_matrix",
+                "recall_matrix",
+                "f1_matrix",
+            ]
+            for field_name in array_fields:
+                if field_name in data:
+                    data[field_name] = np.asarray(data[field_name])
+        return data
+
 
 class MultiLabelMatrixEvaluation(BaseModel):
     detailed: MultiLabelMatrixMetrics
@@ -63,3 +79,7 @@ class DatasetPixelLayoutEvaluation(BaseModel):
     rejected_samples: Dict[EvaluationRejectionType, int]
     matrix_evaluation: MultiLabelMatrixEvaluation
     page_evaluations: Dict[str, PagePixelLayoutEvaluation]
+
+    # Statistics across all images for f1 on all classes and on the colapsed classes
+    f1_all_classes_stats: DatasetStatistics
+    f1_colapsed_classes_stats: DatasetStatistics

@@ -16,8 +16,8 @@ from tqdm import tqdm  # type: ignore
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import (
-    BenchMarkColumns,
     BenchMarkNames,
+    EvaluationModality,
     PredictionFormats,
 )
 from docling_eval.evaluators.base_evaluator import (
@@ -38,6 +38,7 @@ from docling_eval.evaluators.pixel.pixel_types import (
     MultiLabelMatrixEvaluation,
     PagePixelLayoutEvaluation,
 )
+from docling_eval.evaluators.stats import compute_stats
 from docling_eval.utils.utils import dict_get
 
 _log = logging.getLogger(__name__)
@@ -54,6 +55,9 @@ class PixelLayoutEvaluator(BaseEvaluator):
     Evaluate the document layout by computing a pixel-level confusion matrix and derivative matrices
     (precision, recall, f1).
     """
+
+    # TODO: Expose a low level API/CLI that allows to evaluate outside of DoclingDocuments with models
+    # that have totally different classes than GT, described as strings instead of DocItemLabel
 
     def __init__(
         self,
@@ -138,7 +142,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         )  # The values are shifted (not including zero)
         label_id_offset = 1
 
-        # TODO: If label_mappings are provided, we end up having more than one DocItemLabel with the same cat_id
+        # Notice: If label_mappings are provided, we end up having more than one DocItemLabel with the same cat_id
         for label, canonical_cat_id in label_to_id.items():
             effective_label = label
             if label_mapping and label in label_mapping:
@@ -153,7 +157,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         matrix_id_to_name: Dict[int, str] = {}  # The keys start from 0 to include BG
         shifted_canonical: Dict[int, str] = layout_labels.shifted_canonical_categories()
 
-        # TODO: If label_mappings are provided we end up having more than 1 cat_id with the same name
+        # Notice: If label_mappings are provided we end up having more than 1 cat_id with the same name
         for shifted_cat_id, cat_name in shifted_canonical.items():
             label = None
             if cat_name != shifted_canonical[0]:
@@ -197,6 +201,12 @@ class PixelLayoutEvaluator(BaseEvaluator):
         )  # Key is doc_id-page-no
         ds_num_pixels = 0
         self._layout_model_name = None
+        pages_detailed_f1: list[float] = (
+            []
+        )  # Gather f1 score/image when evaluated on all classes
+        pages_colapsed_f1: list[float] = (
+            []
+        )  # Gather f1 score/image when evaluated on colapsed classes
 
         for i, data in tqdm(
             enumerate(ds_selection),
@@ -261,6 +271,14 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 doc_page_id = f"{doc_id}-{page_no}"
                 all_pages_evaluations[doc_page_id] = page_evaluation
 
+                # Update f1 lists
+                pages_detailed_f1.append(
+                    page_matrix_evaluation.detailed.agg_metrics.classes_f1_mean
+                )
+                pages_colapsed_f1.append(
+                    page_matrix_evaluation.colapsed.agg_metrics.classes_f1_mean
+                )
+
             ds_num_pixels += num_pixels
 
         # Compute metrics for the dataset and each document
@@ -276,9 +294,28 @@ class PixelLayoutEvaluator(BaseEvaluator):
             rejected_samples=rejected_samples,
             matrix_evaluation=ds_matrix_evaluation,
             page_evaluations=all_pages_evaluations,
+            f1_all_classes_stats=compute_stats(pages_detailed_f1),
+            f1_colapsed_classes_stats=compute_stats(pages_colapsed_f1),
         )
 
         return ds_evaluation
+
+    @staticmethod
+    def evaluation_filenames(
+        benchmark: BenchMarkNames, save_root: Path
+    ) -> dict[str, Path]:
+        r"""
+        Generate the expected filenames for the produced evaluation files
+        """
+        modality: str = EvaluationModality.LAYOUT.value
+        json_fn = save_root / f"evaluation_{benchmark.value}_pixel_{modality}.json"
+        excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_{modality}.xlsx"
+
+        eval_filenames: dict[str, Path] = {
+            "json": json_fn,
+            "excel": excel_fn,
+        }
+        return eval_filenames
 
     def save_evaluations(
         self,
@@ -292,8 +329,11 @@ class PixelLayoutEvaluator(BaseEvaluator):
         """
         save_root.mkdir(parents=True, exist_ok=True)
 
+        # Get the evaluation filenames
+        eval_fns = PixelLayoutEvaluator.evaluation_filenames(benchmark, save_root)
+
         # Save the dataset evaluation as a json
-        json_fn = save_root / f"evaluation_{benchmark.value}_pixel_layout.json"
+        json_fn = eval_fns["json"]
         with open(json_fn, "w") as fd:
             json.dump(ds_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
@@ -329,7 +369,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
             ).flatten()
             image_colapsed_aggs[doc_page_id] = image_colapsed_vector
 
-        excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_layout.xlsx"
+        excel_fn = eval_fns["excel"]
 
         excel_exporter.build_ds_report(
             ds_evaluation.num_pages,
