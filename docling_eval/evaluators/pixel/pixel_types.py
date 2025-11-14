@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 from pydantic import BaseModel, model_serializer
@@ -57,6 +57,7 @@ class PagePixelLayoutEvaluation(BaseModel):
 
 
 class DatasetPixelLayoutEvaluation(BaseModel):
+    layout_model_name: Optional[str]
     num_pages: int
     num_pixels: int
     rejected_samples: Dict[EvaluationRejectionType, int]

@@ -96,10 +96,7 @@ from docling_eval.evaluators.ocr_evaluator import (
     OCREvaluator,
     OCRVisualizer,
 )
-from docling_eval.evaluators.pixel.pixel_types import (
-    DatasetPixelLayoutEvaluation,
-    MultiLabelMatrixEvaluation,
-)
+from docling_eval.evaluators.pixel.pixel_types import DatasetPixelLayoutEvaluation
 from docling_eval.evaluators.pixel_layout_evaluator import PixelLayoutEvaluator
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,

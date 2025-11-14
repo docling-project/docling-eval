@@ -107,7 +107,6 @@ class ConfusionMatrixExporter:
 
     def build_ds_report(
         self,
-        model_name: str,
         num_images: int,
         num_pixels: int,
         headers: list[str],
@@ -115,6 +114,7 @@ class ConfusionMatrixExporter:
         colapsed_headers: list[str],
         image_colaped_aggs: dict[str, np.ndarray],
         excel_fn: Path,
+        model_name: Optional[str] = None,
         visualisations_root: Optional[Path] = None,
     ):
         r"""
@@ -127,15 +127,19 @@ class ConfusionMatrixExporter:
                 wb.create_sheet(ConfusionMatrixExporter.DATASET_WORKSHEET_NAME)
                 wb.active = 0
             ds_ws: Worksheet = wb.active  # type: ignore
-            ds_ws.cell(row=1, column=1).value = model_name
-            ds_ws.cell(row=1, column=1).font = Font(
-                bold=True, size=ConfusionMatrixExporter.TITLE_FONT_SIZE
-            )
-            ds_ws.cell(row=2, column=1).value = "#images"
-            ds_ws.cell(row=2, column=2).value = num_images
-            ds_ws.cell(row=3, column=1).value = "#pixels"
-            ds_ws.cell(row=3, column=2).value = num_pixels
-            ds_ws.cell(row=3, column=2).number_format = f"#,##0"
+            header_row = 1
+            if model_name:
+                ds_ws.cell(row=header_row, column=1).value = model_name
+                ds_ws.cell(row=header_row, column=1).font = Font(
+                    bold=True, size=ConfusionMatrixExporter.TITLE_FONT_SIZE
+                )
+                header_row += 1
+            ds_ws.cell(row=header_row, column=1).value = "#images"
+            ds_ws.cell(row=header_row, column=2).value = num_images
+            header_row += 1
+            ds_ws.cell(row=header_row, column=1).value = "#pixels"
+            ds_ws.cell(row=header_row, column=2).value = num_pixels
+            ds_ws.cell(row=header_row, column=2).number_format = f"#,##0"
 
             # Build the basic report
             self._build_base_report(

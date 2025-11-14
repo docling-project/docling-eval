@@ -38,6 +38,7 @@ from docling_eval.evaluators.pixel.pixel_types import (
     MultiLabelMatrixEvaluation,
     PagePixelLayoutEvaluation,
 )
+from docling_eval.utils.utils import dict_get
 
 _log = logging.getLogger(__name__)
 
@@ -195,6 +196,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
             {}
         )  # Key is doc_id-page-no
         ds_num_pixels = 0
+        self._layout_model_name = None
 
         for i, data in tqdm(
             enumerate(ds_selection),
@@ -203,6 +205,21 @@ class PixelLayoutEvaluator(BaseEvaluator):
             total=len(ds_selection),
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
+
+            # Try to extract the layout model name
+            if not self._layout_model_name:
+                self._layout_model_name = dict_get(
+                    data_record.predictor_info,
+                    [
+                        "options",
+                        "pdf",
+                        "pipeline_options",
+                        "layout_options",
+                        "model_spec",
+                        "name",
+                    ],
+                )
+
             doc_id: str = data_record.doc_id
             if data_record.status not in self._accepted_status:
                 _log.error(
@@ -253,6 +270,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         )
 
         ds_evaluation = DatasetPixelLayoutEvaluation(
+            layout_model_name=self._layout_model_name,
             num_pages=len(all_pages_evaluations),
             num_pixels=num_pixels,
             rejected_samples=rejected_samples,
@@ -284,10 +302,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
             return
 
         excel_exporter = ConfusionMatrixExporter()
-        model_name = ""  # TODO: Check if it is possible to find the layout model used in predictions
-        headers = list(
-            self._matrix_id_to_name.values()
-        )  # TODO: Duplicate values may appear due to label_mappings
+        headers = list(self._matrix_id_to_name.values())
         colapsed_headers: list[str] = [
             f"{metric}: {cell}"
             for metric in ["Precision(GT/Pred)", "Recall(GT/Pred)", "F1(GT/Pred)"]
@@ -317,7 +332,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
         excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_layout.xlsx"
 
         excel_exporter.build_ds_report(
-            model_name,
             ds_evaluation.num_pages,
             ds_evaluation.num_pixels,
             headers,
@@ -325,6 +339,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
             colapsed_headers,
             image_colapsed_aggs,
             excel_fn,
+            self._layout_model_name,
         )
 
     def _compute_document_confusion_matrix(
@@ -476,7 +491,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
         r"""
         Get the predicted DoclingDocument
         """
-        # TODO: Duplicated code from LayoutEvaluator
         pred_doc = None
         for prediction_format in self._prediction_sources:
             if prediction_format == PredictionFormats.DOCLING_DOCUMENT:
