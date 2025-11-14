@@ -110,8 +110,8 @@ class ConfusionMatrixExporter:
         num_pixels: np.uint64,
         headers: list[str],
         matrix_evaluation: MultiLabelMatrixEvaluation,
-        colapsed_headers: list[str],
-        image_colaped_aggs: dict[str, np.ndarray],
+        collapsed_headers: list[str],
+        image_collaped_aggs: dict[str, np.ndarray],
         excel_fn: Path,
         model_name: Optional[str] = None,
         visualisations_root: Optional[Path] = None,
@@ -149,12 +149,12 @@ class ConfusionMatrixExporter:
                 4,
             )
 
-            # Add the colapsed image metrics in a separate worksheet
-            self._aggregate_colapsed_image_metrics(
+            # Add the collapsed image metrics in a separate worksheet
+            self._aggregate_collapsed_image_metrics(
                 writer,
                 ConfusionMatrixExporter.IMAGES_WORKSHEET_NAME,
-                colapsed_headers,
-                image_colaped_aggs,
+                collapsed_headers,
+                image_collaped_aggs,
                 visualisations_root=visualisations_root,
             )
 
@@ -185,25 +185,25 @@ class ConfusionMatrixExporter:
 
         _log.info("Image report: %s", str(excel_fn))
 
-    def _aggregate_colapsed_image_metrics(
+    def _aggregate_collapsed_image_metrics(
         self,
         writer: ExcelWriter,
         worksheet_name: str,
         headers: list[str],
-        image_colapsed_aggs: dict[str, np.ndarray],
+        image_collapsed_aggs: dict[str, np.ndarray],
         origin_cell: tuple[int, int] = (0, 0),
         decimal_digits: int = 3,
         visualisations_root: Optional[Path] = None,
     ):
         r"""
-        Aggregate all colapsed image metrics
+        Aggregate all collapsed image metrics
         """
         startrow = origin_cell[0] + 1
         startcol = origin_cell[1]
 
         # Build the dataframe
-        index = list(image_colapsed_aggs.keys())
-        data = np.stack(list(image_colapsed_aggs.values()), axis=0)  # [num_images, 12]
+        index = list(image_collapsed_aggs.keys())
+        data = np.stack(list(image_collapsed_aggs.values()), axis=0)  # [num_images, 12]
         data = np.round(data, decimals=3)
         df = pd.DataFrame(data, index=index, columns=headers)
 
@@ -224,7 +224,7 @@ class ConfusionMatrixExporter:
             viz_prefix = discover_filename_prefix(visualisations_root, "png")
             if viz_prefix:
                 col = startcol + 1
-                for i, image_filename in enumerate(image_colapsed_aggs.keys()):
+                for i, image_filename in enumerate(image_collapsed_aggs.keys()):
                     row = i + startrow + 2
                     cell = ws.cell(row=row, column=col)
                     viz_fn = visualisations_root / f"{viz_prefix}{image_filename}"
@@ -241,7 +241,7 @@ class ConfusionMatrixExporter:
         subtitle_cell = ws.cell(
             row=origin_cell[0] + 1, column=origin_cell[1] + 1
         )  # start from 1
-        subtitle_cell.value = "Image colapsed classes metrics"
+        subtitle_cell.value = "Image collapsed classes metrics"
         subtitle_cell.font = Font(
             bold=True, size=ConfusionMatrixExporter.SUBTITLE_FONT_SIZE
         )
@@ -286,11 +286,13 @@ class ConfusionMatrixExporter:
         Generate excel report for a single image
         """
         detailed_spacing = 4  # spacing between the detailed matrices
-        colapsed_spacing = 2  # spacing between a detailed and the next colapsed matrix
+        collapsed_spacing = (
+            2  # spacing between a detailed and the next collapsed matrix
+        )
 
-        colapsed_headers = [
+        collapsed_headers = [
             headers[0],
-            MultiLabelConfusionMatrix.ALL_COLAPSED_CLASSES_NAME,
+            MultiLabelConfusionMatrix.ALL_COLLAPSED_CLASSES_NAME,
         ]
 
         # Add the confusion matrix
@@ -309,7 +311,7 @@ class ConfusionMatrixExporter:
 
         # Add the precision matrix with detailed classes
         detailed_precision_row = max_row + detailed_spacing
-        colapsed_precision_row = max_row + colapsed_spacing
+        collapsed_precision_row = max_row + collapsed_spacing
         max_row, max_col = self._export_matrix_to_excel(
             writer,
             worksheet_name,
@@ -323,18 +325,18 @@ class ConfusionMatrixExporter:
             hide_zero_cols=hide_zero_cols,
         )
         detailed_recall_row = max_row + detailed_spacing
-        colapsed_recall_row = max_row + colapsed_spacing
-        colapsed_col = max_col + 1
+        collapsed_recall_row = max_row + collapsed_spacing
+        collapsed_col = max_col + 1
 
-        # Add the precision matrix with colapsed classes
+        # Add the precision matrix with collapsed classes
         self._export_matrix_to_excel(
             writer,
             worksheet_name,
-            "Colapsed Precision Matrix",
-            matrix_evaluation.colapsed.precision_matrix,
-            colapsed_headers,
+            "Collapsed Precision Matrix",
+            matrix_evaluation.collapsed.precision_matrix,
+            collapsed_headers,
             decimal_digits=3,
-            origin_cell=(colapsed_precision_row, colapsed_col),
+            origin_cell=(collapsed_precision_row, collapsed_col),
             normalization_func="linear",
             hide_zero_rows=hide_zero_rows,
             hide_zero_cols=hide_zero_cols,
@@ -354,15 +356,15 @@ class ConfusionMatrixExporter:
             hide_zero_cols=hide_zero_cols,
         )
 
-        # Add the recall matrix with colapsed classes
+        # Add the recall matrix with collapsed classes
         self._export_matrix_to_excel(
             writer,
             worksheet_name,
-            "Colapsed Recall Matrix",
-            matrix_evaluation.colapsed.recall_matrix,
-            colapsed_headers,
+            "Collapsed Recall Matrix",
+            matrix_evaluation.collapsed.recall_matrix,
+            collapsed_headers,
             decimal_digits=3,
-            origin_cell=(colapsed_recall_row, colapsed_col),
+            origin_cell=(collapsed_recall_row, collapsed_col),
             normalization_func="linear",
             hide_zero_rows=hide_zero_rows,
             hide_zero_cols=hide_zero_cols,

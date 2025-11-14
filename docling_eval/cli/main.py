@@ -906,8 +906,7 @@ def visualize(
             with open(log_filename, "a") as fd:
                 fd.write(content)
 
-            #######################################################################################
-            # TODO: Process stats from the pixel_layout_evaluator
+            # Process stats from the pixel_layout_evaluator
             pixel_eval_fns = PixelLayoutEvaluator.evaluation_filenames(benchmark, odir)
             pixel_json_fn = pixel_eval_fns["json"]
             with open(pixel_json_fn, "r") as fd:
@@ -925,8 +924,8 @@ def visualize(
                 odir,
                 benchmark,
                 modality,
-                "pixel_colapsed_classes_f1",
-                pixel_layout_evaluation.f1_colapsed_classes_stats,
+                "pixel_collapsed_classes_f1",
+                pixel_layout_evaluation.f1_collapsed_classes_stats,
             )
         except Exception as e:
             _log.error(f"Error processing layout evaluation: {str(e)}")

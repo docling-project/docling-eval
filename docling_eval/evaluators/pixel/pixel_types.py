@@ -62,8 +62,8 @@ class MultiLabelMatrixMetrics(BaseModel):
 
 
 class MultiLabelMatrixEvaluation(BaseModel):
-    detailed: MultiLabelMatrixMetrics
-    colapsed: MultiLabelMatrixMetrics
+    detailed: MultiLabelMatrixMetrics  # All classes included
+    collapsed: MultiLabelMatrixMetrics  # Only the background the other classes summed up together
 
 
 class PagePixelLayoutEvaluation(BaseModel):
@@ -80,6 +80,6 @@ class DatasetPixelLayoutEvaluation(BaseModel):
     matrix_evaluation: MultiLabelMatrixEvaluation
     page_evaluations: Dict[str, PagePixelLayoutEvaluation]
 
-    # Statistics across all images for f1 on all classes and on the colapsed classes
+    # Statistics across all images for f1 on all classes and on the collapsed classes
     f1_all_classes_stats: DatasetStatistics
-    f1_colapsed_classes_stats: DatasetStatistics
+    f1_collapsed_classes_stats: DatasetStatistics

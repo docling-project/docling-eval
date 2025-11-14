@@ -29,8 +29,8 @@ class MultiLabelConfusionMatrix:
     r""" """
 
     DETAILED_METRICS_KEY = "detailed_classes"
-    COLAPSED_METRICS_KEY = "colapsed_classes"
-    ALL_COLAPSED_CLASSES_NAME = "all_classes"
+    COLLAPSED_METRICS_KEY = "collapsed_classes"
+    ALL_COLLAPSED_CLASSES_NAME = "all_classes"
 
     def __init__(
         self,
@@ -314,7 +314,6 @@ class MultiLabelConfusionMatrix:
         -----------
         confusion_matrix: np.ndarray[num_categories + 1, num_categories + 1]
         class_names: Mapping from class_id to class_names
-        colapse_non_bg: Colapse all classes except of the first one that is assumed to be the BG
 
         Returns
         --------
@@ -323,24 +322,24 @@ class MultiLabelConfusionMatrix:
         # Compute metrics on the full confusion matrix
         detailed_metrics = self._compute_matrix_metrics(confusion_matrix, class_names)
 
-        # Colapse the classes except the background and compute metrics again
-        colapsed_confusion_matrix = np.asarray(
+        # Collapse the classes except the background and compute metrics again
+        collapsed_confusion_matrix = np.asarray(
             [
                 [confusion_matrix[0, 0], np.sum(confusion_matrix[0, 1:])],
                 [np.sum(confusion_matrix[1:, 0]), np.sum(confusion_matrix[1:, 1:])],
             ]
         )
-        colapsed_class_names = {
+        collapsed_class_names = {
             0: class_names[0],
-            1: MultiLabelConfusionMatrix.ALL_COLAPSED_CLASSES_NAME,
+            1: MultiLabelConfusionMatrix.ALL_COLLAPSED_CLASSES_NAME,
         }
-        colapsed_metrics = self._compute_matrix_metrics(
-            colapsed_confusion_matrix,
-            colapsed_class_names,
+        collapsed_metrics = self._compute_matrix_metrics(
+            collapsed_confusion_matrix,
+            collapsed_class_names,
         )
 
         evaluation = MultiLabelMatrixEvaluation(
-            detailed=detailed_metrics, colapsed=colapsed_metrics
+            detailed=detailed_metrics, collapsed=collapsed_metrics
         )
 
         return evaluation

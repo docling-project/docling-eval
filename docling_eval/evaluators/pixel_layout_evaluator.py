@@ -56,9 +56,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
     (precision, recall, f1).
     """
 
-    # TODO: Expose a low level API/CLI that allows to evaluate outside of DoclingDocuments with models
-    # that have totally different classes than GT, described as strings instead of DocItemLabel
-
     def __init__(
         self,
         label_mapping: Optional[Dict[DocItemLabel, Optional[DocItemLabel]]] = None,
@@ -204,9 +201,9 @@ class PixelLayoutEvaluator(BaseEvaluator):
         pages_detailed_f1: list[float] = (
             []
         )  # Gather f1 score/image when evaluated on all classes
-        pages_colapsed_f1: list[float] = (
+        pages_collapsed_f1: list[float] = (
             []
-        )  # Gather f1 score/image when evaluated on colapsed classes
+        )  # Gather f1 score/image when evaluated on collapsed classes
 
         for i, data in tqdm(
             enumerate(ds_selection),
@@ -275,8 +272,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 pages_detailed_f1.append(
                     page_matrix_evaluation.detailed.agg_metrics.classes_f1_mean
                 )
-                pages_colapsed_f1.append(
-                    page_matrix_evaluation.colapsed.agg_metrics.classes_f1_mean
+                pages_collapsed_f1.append(
+                    page_matrix_evaluation.collapsed.agg_metrics.classes_f1_mean
                 )
 
             ds_num_pixels += num_pixels
@@ -295,7 +292,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
             matrix_evaluation=ds_matrix_evaluation,
             page_evaluations=all_pages_evaluations,
             f1_all_classes_stats=compute_stats(pages_detailed_f1),
-            f1_colapsed_classes_stats=compute_stats(pages_colapsed_f1),
+            f1_collapsed_classes_stats=compute_stats(pages_collapsed_f1),
         )
 
         return ds_evaluation
@@ -343,7 +340,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
 
         excel_exporter = ConfusionMatrixExporter()
         headers = list(self._matrix_id_to_name.values())
-        colapsed_headers: list[str] = [
+        collapsed_headers: list[str] = [
             f"{metric}: {cell}"
             for metric in ["Precision(GT/Pred)", "Recall(GT/Pred)", "F1(GT/Pred)"]
             for cell in [
@@ -353,13 +350,13 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 "cls/cls",
             ]
         ]
-        image_colapsed_aggs: Dict[str, np.ndarray] = {}
+        image_collapsed_aggs: Dict[str, np.ndarray] = {}
         for doc_page_id, page_evaluations in ds_evaluation.page_evaluations.items():
-            pm = page_evaluations.matrix_evaluation.colapsed
+            pm = page_evaluations.matrix_evaluation.collapsed
             if not pm:
                 continue
             # [12,]
-            image_colapsed_vector = np.stack(
+            image_collapsed_vector = np.stack(
                 [
                     pm.precision_matrix.flatten(),
                     pm.recall_matrix.flatten(),
@@ -367,7 +364,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 ],
                 axis=0,
             ).flatten()
-            image_colapsed_aggs[doc_page_id] = image_colapsed_vector
+            image_collapsed_aggs[doc_page_id] = image_collapsed_vector
 
         excel_fn = eval_fns["excel"]
 
@@ -376,8 +373,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
             ds_evaluation.num_pixels,
             headers,
             ds_evaluation.matrix_evaluation,
-            colapsed_headers,
-            image_colapsed_aggs,
+            collapsed_headers,
+            image_collapsed_aggs,
             excel_fn,
             self._layout_model_name,
         )
