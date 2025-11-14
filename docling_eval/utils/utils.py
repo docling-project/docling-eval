@@ -162,12 +162,19 @@ def yield_cells_from_html_table(
 
         num_cols = 0
         for cell in row.find_all(["td", "th"]):
-            num_cols += int(cell.get("colspan", 1))
+            colspan_attr = cell.get("colspan")
+            if isinstance(colspan_attr, str):
+                colspan_val = int(colspan_attr)
+            else:
+                colspan_val = 1
+            num_cols += colspan_val
 
         max_cols = max(max_cols, num_cols)  # Determine maximum columns
 
     # Create grid to track cell positions
-    grid = [[None for _ in range(max_cols)] for _ in range(len(rows))]
+    grid: list[list[Optional[str]]] = [
+        [None for _ in range(max_cols)] for _ in range(len(rows))
+    ]
 
     text_cell_id = 0
     for row_idx, row in enumerate(rows):
@@ -198,8 +205,16 @@ def yield_cells_from_html_table(
                     coord_origin=CoordOrigin.BOTTOMLEFT,
                 )
 
-            rowspan = int(cell.get("rowspan", 1))
-            colspan = int(cell.get("colspan", 1))
+            rowspan_attr = cell.get("rowspan")
+            if isinstance(rowspan_attr, str):
+                rowspan = int(rowspan_attr)
+            else:
+                rowspan = 1
+            colspan_attr = cell.get("colspan")
+            if isinstance(colspan_attr, str):
+                colspan = int(colspan_attr)
+            else:
+                colspan = 1
 
             # Fill grid positions and yield (row, column, text)
             for r in range(rowspan):
