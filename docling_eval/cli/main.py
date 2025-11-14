@@ -96,6 +96,8 @@ from docling_eval.evaluators.ocr_evaluator import (
     OCREvaluator,
     OCRVisualizer,
 )
+from docling_eval.evaluators.pixel.pixel_types import DatasetPixelLayoutEvaluation
+from docling_eval.evaluators.pixel_layout_evaluator import PixelLayoutEvaluator
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -668,6 +670,18 @@ def evaluate(
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
+        # Evaluate with the pixel-wise layout evaluation
+        pixel_layout_evaluator = PixelLayoutEvaluator()
+        pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
+            idir, split=split
+        )
+        pixel_save_root: Path = save_fn.parent
+        pixel_layout_evaluator.save_evaluations(
+            benchmark,
+            pixel_ds_evaluation,
+            pixel_save_root,
+        )
+
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
         evaluation = table_evaluator(  # type: ignore
@@ -891,6 +905,28 @@ def visualize(
             _log.info(content)
             with open(log_filename, "a") as fd:
                 fd.write(content)
+
+            # Process stats from the pixel_layout_evaluator
+            pixel_eval_fns = PixelLayoutEvaluator.evaluation_filenames(benchmark, odir)
+            pixel_json_fn = pixel_eval_fns["json"]
+            with open(pixel_json_fn, "r") as fd:
+                pixel_layout_evaluation = (
+                    DatasetPixelLayoutEvaluation.model_validate_json(fd.read())
+                )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "pixel_all_classes_f1",
+                pixel_layout_evaluation.f1_all_classes_stats,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "pixel_collapsed_classes_f1",
+                pixel_layout_evaluation.f1_collapsed_classes_stats,
+            )
         except Exception as e:
             _log.error(f"Error processing layout evaluation: {str(e)}")
 

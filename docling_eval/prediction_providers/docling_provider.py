@@ -136,7 +136,7 @@ class DoclingPredictionProvider(BasePredictionProvider):
                     "pipeline_class": v.pipeline_cls.__name__,
                     "pipeline_options": (
                         v.pipeline_options.model_dump(
-                            mode="json", exclude_defaults=True
+                            mode="json", exclude_defaults=False
                         )
                         if v.pipeline_options is not None
                         else None  # Parquet might not like empty dicts!
