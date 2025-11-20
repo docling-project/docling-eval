@@ -791,3 +791,17 @@ def does_intersection_area_exceed_threshold(
         if first_bbox_area > 0
         else False
     )
+
+
+def dict_get(data: dict, keys: list[str], default=None):
+    r"""
+    Traverse the given path of keys and return the value of dict
+    If the path is broken return the default value
+    """
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
