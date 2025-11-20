@@ -269,6 +269,12 @@ class CvatPreannotationBuilder:
                     bin_ext = ".png"
                 elif mime_type in ["image/jpg", "image/jpeg"]:
                     bin_ext = ".jpg"
+                elif mime_type in ["image/tiff", "image/tif"]:
+                    bin_ext = ".tiff"
+                elif mime_type == "image/bmp":
+                    bin_ext = ".bmp"
+                elif mime_type == "image/gif":
+                    bin_ext = ".gif"
                 else:
                     _log.warning(
                         f"Unsupported mime-type {mime_type}, using .bin extension"

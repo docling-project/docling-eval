@@ -84,6 +84,8 @@ class CVATEvaluationPipeline:
         force_ocr: bool = False,
         ocr_scale: float = 1.0,
         storage_scale: float = 2.0,
+        gt_json_dirname: str = "ground_truth_json",
+        pred_json_dirname: str = "predictions_json",
     ):
         """
         Initialize the pipeline.
@@ -97,6 +99,8 @@ class CVATEvaluationPipeline:
             ocr_scale: Scale factor for rendering PDFs for OCR (default: 1.0 = 72 DPI).
                       Higher values increase OCR resolution. Coordinates are mapped back to storage_scale.
             storage_scale: Scale for stored page images and coordinates (default: 2.0 for 144 DPI).
+            gt_json_dirname: Name of the subdirectory for ground truth JSON exports (default: "ground_truth_json")
+            pred_json_dirname: Name of the subdirectory for prediction JSON exports (default: "predictions_json")
         """
         self.cvat_root = Path(cvat_root)
         self.output_dir = Path(output_dir)
@@ -108,8 +112,8 @@ class CVATEvaluationPipeline:
         self._folder_cache: Dict[str, CVATFolderStructure] = {}
 
         # Create subdirectories
-        self.gt_json_dir = self.output_dir / "ground_truth_json"
-        self.pred_json_dir = self.output_dir / "predictions_json"
+        self.gt_json_dir = self.output_dir / gt_json_dirname
+        self.pred_json_dir = self.output_dir / pred_json_dirname
         self.gt_dataset_dir = self.output_dir / "gt_dataset"
         self.eval_dataset_dir = self.output_dir / "eval_dataset"
         self.evaluation_results_dir = self.output_dir / "evaluation_results"
@@ -843,6 +847,20 @@ def main():
         help="Reuse the existing eval_dataset parquet shards when present.",
     )
 
+    parser.add_argument(
+        "--gt-json-dirname",
+        type=str,
+        default="ground_truth_json",
+        help="Directory name for ground truth JSON exports (default: ground_truth_json).",
+    )
+
+    parser.add_argument(
+        "--pred-json-dirname",
+        type=str,
+        default="predictions_json",
+        help="Directory name for prediction JSON exports (default: predictions_json).",
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
@@ -881,6 +899,8 @@ def main():
         force_ocr=args.force_ocr,
         ocr_scale=args.ocr_scale,
         storage_scale=args.storage_scale,
+        gt_json_dirname=args.gt_json_dirname,
+        pred_json_dirname=args.pred_json_dirname,
     )
 
     # Execute requested pipeline step
