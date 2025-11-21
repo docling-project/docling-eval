@@ -939,6 +939,11 @@ class LayoutEvaluator(BaseEvaluator):
         _log.debug(f"GT pages: {sorted(gt_pages)}, Pred pages: {sorted(pred_pages)}")
 
         # Process pages in sorted order to ensure consistent alignment
+        # List[Tuple[page_no, Dict[str, torch.Tensor]]]. The dict has tensors with bboxes, labels:
+        #    "boxes": torch.tensor(bboxes, dtype=torch.float32),
+        #    "labels": torch.tensor(labels, dtype=torch.long),
+        #    "scores": torch.tensor(scores, dtype=torch.float32)  # Only for the predictions
+        # The bboxes are in top-left origin, in x1y1x2y2 format, normalized and scaled to 100
         ground_truths: List[Tuple[int, Dict[str, torch.Tensor]]] = []
         predictions: List[Tuple[int, Dict[str, torch.Tensor]]] = []
 
