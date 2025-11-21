@@ -114,22 +114,78 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
                     pdf_path=filename, true_doc=true_doc, image_scale=2.0
                 )
             elif mime_type is not None and mime_type.startswith("image/"):
-                image: Image.Image = Image.open(filename)
-                image = image.convert("RGB")
-                image_ref = ImageRef(
-                    mimetype="image/png",
-                    dpi=72,
-                    size=Size(width=image.width, height=image.height),
-                    uri=from_pil_to_base64uri(image),
-                )
-                page_item = PageItem(
-                    page_no=1,
-                    size=Size(width=float(image.width), height=float(image.height)),
-                    image=image_ref,
-                )
+                # Handle multipage TIFF files
+                if filename.suffix.lower() in [".tif", ".tiff"]:
+                    # Process all pages/frames in multipage TIFF
+                    page_no = 1
+                    try:
+                        img = Image.open(filename)
+                        while True:
+                            img.seek(page_no - 1)
+                            image = img.convert("RGB")
+                            image_ref = ImageRef(
+                                mimetype="image/png",
+                                dpi=72,
+                                size=Size(width=image.width, height=image.height),
+                                uri=from_pil_to_base64uri(image),
+                            )
+                            page_item = PageItem(
+                                page_no=page_no,
+                                size=Size(
+                                    width=float(image.width),
+                                    height=float(image.height),
+                                ),
+                                image=image_ref,
+                            )
+                            true_doc.pages[page_no] = page_item
+                            page_no += 1
+                            # Try to seek to next frame
+                            try:
+                                img.seek(page_no - 1)
+                            except EOFError:
+                                # No more frames
+                                break
+                        img.close()
+                    except Exception as e:
+                        _log.warning(
+                            f"Failed to process multipage TIFF {filename}: {e}. "
+                            "Falling back to single-page processing."
+                        )
+                        # Fallback to single-page processing
+                        image = Image.open(filename)
+                        image = image.convert("RGB")
+                        image_ref = ImageRef(
+                            mimetype="image/png",
+                            dpi=72,
+                            size=Size(width=image.width, height=image.height),
+                            uri=from_pil_to_base64uri(image),
+                        )
+                        page_item = PageItem(
+                            page_no=1,
+                            size=Size(
+                                width=float(image.width), height=float(image.height)
+                            ),
+                            image=image_ref,
+                        )
+                        true_doc.pages[1] = page_item
+                else:
+                    # Single-page image formats
+                    image = Image.open(filename)
+                    image = image.convert("RGB")
+                    image_ref = ImageRef(
+                        mimetype="image/png",
+                        dpi=72,
+                        size=Size(width=image.width, height=image.height),
+                        uri=from_pil_to_base64uri(image),
+                    )
+                    page_item = PageItem(
+                        page_no=1,
+                        size=Size(width=float(image.width), height=float(image.height)),
+                        image=image_ref,
+                    )
 
-                # _log.debug(f"add_pages_to_true_doc: {filename}")
-                true_doc.pages[1] = page_item
+                    # _log.debug(f"add_pages_to_true_doc: {filename}")
+                    true_doc.pages[1] = page_item
             elif mime_type == "application/json":
                 # .. support DoclingDocument json files
                 try:

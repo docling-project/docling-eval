@@ -51,6 +51,57 @@ def get_binhash(binary_data: bytes) -> str:
     return hash_hex
 
 
+def count_pages_in_file(file_path: Path) -> int:
+    """
+    Count the number of pages in a file.
+
+    For PDFs, counts actual pages. For multipage TIFFs, counts frames/pages.
+    For single-page images and other files, returns 1.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Number of pages/frames in the file
+    """
+    import mimetypes
+
+    mime_type, _ = mimetypes.guess_type(file_path)
+
+    if mime_type == "application/pdf":
+        try:
+            in_doc = get_input_document(file_path, backend_t=PyPdfiumDocumentBackend)
+            if in_doc.valid:
+                return in_doc.page_count
+            return 1
+        except Exception as e:
+            logging.warning(f"Failed to count pages in PDF {file_path}: {e}")
+            return 1
+    elif mime_type is not None and mime_type.startswith("image/"):
+        # Check if it's a TIFF file (which can be multipage)
+        if file_path.suffix.lower() in [".tif", ".tiff"]:
+            try:
+                with Image.open(file_path) as img:
+                    # Try to get the number of frames/pages
+                    page_count = 0
+                    try:
+                        while True:
+                            img.seek(page_count)
+                            page_count += 1
+                    except EOFError:
+                        pass
+                    return max(1, page_count)  # At least 1 page
+            except Exception as e:
+                logging.warning(f"Failed to count pages in TIFF {file_path}: {e}")
+                return 1
+        else:
+            # Single-page image formats
+            return 1
+    else:
+        # Other file types (JSON, etc.) are treated as single-page
+        return 1
+
+
 def write_datasets_info(
     name: str,
     output_dir: Path,

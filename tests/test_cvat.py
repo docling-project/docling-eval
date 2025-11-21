@@ -136,10 +136,13 @@ def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
     )
     assert os.path.exists(odir / "cvat_dataset_preannotated")
 
-    # Stage 3: copy the manual annotations
-    shutil.copy(
-        annotation_xmlfile, odir / "cvat_dataset_preannotated/cvat_annotations/xmls"
-    )
+    # Stage 3: copy the manual annotations to cvat_tasks directory with correct naming
+    # The modern parser expects XML files in cvat_tasks/ with pattern task_{xx}_set_A.xml
+    # Note: create_cvat creates images in task_00 (bucket 0) when bucket_size=10 and we have 4 PDFs
+    tasks_dir = odir / "cvat_dataset_preannotated" / "cvat_tasks"
+    tasks_dir.mkdir(parents=True, exist_ok=True)
+    # Copy to task_00_set_A.xml to match where images are actually created
+    shutil.copy(annotation_xmlfile, tasks_dir / "task_00_set_A.xml")
 
     # Stage 4: Create the dataset
     create_gt(

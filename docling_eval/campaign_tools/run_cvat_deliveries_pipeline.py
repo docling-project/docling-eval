@@ -102,6 +102,8 @@ class ExecutionPlan:
         *,
         resume_from_json: bool,
         stop_after_json: bool,
+        gt_json_dirname: str,
+        pred_json_dirname: str,
     ) -> tuple[bool, str]:
         """Determine if a job should be skipped.
 
@@ -109,6 +111,8 @@ class ExecutionPlan:
             job: The submission subset job to check
             resume_from_json: Whether the run is resuming from prior JSON exports
             stop_after_json: Whether the current execution stops after JSON generation
+            gt_json_dirname: Directory name for ground truth JSON exports
+            pred_json_dirname: Directory name for prediction JSON exports
 
         Returns:
             Tuple of (should_skip, reason_message)
@@ -131,8 +135,8 @@ class ExecutionPlan:
             if stop_after_json:
                 required_outputs.extend(
                     [
-                        (job.output_dir / "ground_truth_json", "ground_truth_json"),
-                        (job.output_dir / "predictions_json", "predictions_json"),
+                        (job.output_dir / gt_json_dirname, gt_json_dirname),
+                        (job.output_dir / pred_json_dirname, pred_json_dirname),
                     ]
                 )
             else:
@@ -228,6 +232,8 @@ def _execute_job(
     stop_after_json: bool,
     resume_from_json: bool,
     reuse_eval_dataset: bool,
+    gt_json_dirname: str,
+    pred_json_dirname: str,
 ) -> Optional[pd.DataFrame]:
     """Execute pipeline stages for a single job according to the execution plan.
 
@@ -239,6 +245,8 @@ def _execute_job(
         force_ocr: Force OCR on PDF pages
         ocr_scale: Scale factor for OCR rendering
         storage_scale: Scale for stored page images and coordinates
+        gt_json_dirname: Directory name for ground truth JSON exports
+        pred_json_dirname: Directory name for prediction JSON exports
 
     Returns:
         DataFrame with evaluation results, or None if no evaluation was run
@@ -251,6 +259,8 @@ def _execute_job(
         force_ocr=force_ocr,
         ocr_scale=ocr_scale,
         storage_scale=storage_scale,
+        gt_json_dirname=gt_json_dirname,
+        pred_json_dirname=pred_json_dirname,
     )
 
     job.output_dir.mkdir(parents=True, exist_ok=True)
@@ -450,6 +460,8 @@ def run_jobs(
     stop_after_json: bool = False,
     resume_from_json: bool = False,
     reuse_eval_dataset: bool = False,
+    gt_json_dirname: str = "ground_truth_json",
+    pred_json_dirname: str = "predictions_json",
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
@@ -507,6 +519,8 @@ def run_jobs(
                 job,
                 resume_from_json=resume_from_json,
                 stop_after_json=stop_after_json,
+                gt_json_dirname=gt_json_dirname,
+                pred_json_dirname=pred_json_dirname,
             )
             if should_skip:
                 _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
@@ -537,6 +551,8 @@ def run_jobs(
                     stop_after_json=stop_after_json,
                     resume_from_json=resume_from_json,
                     reuse_eval_dataset=reuse_eval_dataset,
+                    gt_json_dirname=gt_json_dirname,
+                    pred_json_dirname=pred_json_dirname,
                 )
 
                 if subset_df is not None and not subset_df.empty:
@@ -763,6 +779,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Reuse existing eval_dataset parquet shards when present.",
     )
+    parser.add_argument(
+        "--gt-json-dirname",
+        type=str,
+        default="ground_truth_json",
+        help="Directory name for ground truth JSON exports (default: ground_truth_json).",
+    )
+    parser.add_argument(
+        "--pred-json-dirname",
+        type=str,
+        default="predictions_json",
+        help="Directory name for prediction JSON exports (default: predictions_json).",
+    )
 
     return parser.parse_args(argv)
 
@@ -795,6 +823,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             stop_after_json=args.stop_after_json,
             resume_from_json=args.resume_from_json,
             reuse_eval_dataset=args.reuse_eval_dataset,
+            gt_json_dirname=args.gt_json_dirname,
+            pred_json_dirname=args.pred_json_dirname,
         )
     except ValueError as exc:
         _LOGGER.error("%s", exc)

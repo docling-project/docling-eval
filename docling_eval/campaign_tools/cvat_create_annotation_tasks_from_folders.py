@@ -32,6 +32,7 @@ import typer
 
 from docling_eval.cli.main import create_cvat, create_eval, create_gt
 from docling_eval.datamodels.types import BenchMarkNames, PredictionProviderType
+from docling_eval.utils.utils import count_pages_in_file
 
 app = typer.Typer(add_completion=False)
 
@@ -67,14 +68,19 @@ def process_subdirectories(
     for subdir in subdirs:
         subdir_name = subdir.name
 
-        # Count total files in subdirectory
-        total_files = 0
+        # Collect all files and count pages
+        all_files: list[Path] = []
         for ext in ["pdf", "tif", "tiff", "jpg", "jpeg", "png", "bmp", "gif", "json"]:
-            total_files += len(list(subdir.glob(f"*.{ext}")))
-            total_files += len(list(subdir.glob(f"*.{ext.upper()}")))
+            all_files.extend(subdir.glob(f"*.{ext}"))
+            all_files.extend(subdir.glob(f"*.{ext.upper()}"))
+        all_files.sort()
+
+        total_files = len(all_files)
+        total_pages = sum(count_pages_in_file(f) for f in all_files)
 
         typer.echo(f"\nProcessing: {subdir_name}")
         typer.echo(f"  Total files found: {total_files}")
+        typer.echo(f"  Total pages found: {total_pages}")
 
         # Calculate number of chunks needed
         num_chunks = (total_files + max_files_per_chunk - 1) // max_files_per_chunk
