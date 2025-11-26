@@ -25,6 +25,37 @@ def unpackbits(x: np.ndarray, num_bits: int):
     return (x & mask).astype(bool).astype(int).reshape(xshape + [num_bits])
 
 
+def compress_binary_representations(
+    gt: np.ndarray,
+    preds: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    r"""
+    1. Combine element-wise pairs from gt and preds (G, P)
+    2. Find the unique pairs and the counts c of each pair.
+    3. Decouple the unique pairs into 2 flattened arrays g and p.
+    4. Return the g, p, c
+
+    Parameters:
+    -----------
+    gt: [num_cat, num_cat]
+    preds: [num_cat, num_cat]
+
+    Returns:
+    --------
+    g: [u,]: The flattened values from gt that come from a unique pair (g, p)
+    p: [u,]: The flattened values from preds that come from a unique pair (g, p)
+    c: [u,]: The counts for each unique pair (g, p)
+    """
+    # Build a structured array to keep the pairs (g, p)
+    pairs = np.zeros(gt.shape, dtype=[("gt", gt.dtype), ("preds", preds.dtype)])
+    pairs["gt"] = gt
+    pairs["preds"] = preds
+    u, counts = np.unique(pairs, return_counts=True)
+    g = u["gt"]
+    p = u["preds"]
+    return g, p, counts
+
+
 class MultiLabelConfusionMatrix:
     r""" """
 
@@ -93,7 +124,7 @@ class MultiLabelConfusionMatrix:
         self,
         gt: np.ndarray,
         preds: np.ndarray,
-        canonical_categories: list[int],
+        categories: list[int],
     ) -> np.ndarray:
         r"""
         Create the confusion matrix for multi-label predictions.
@@ -106,12 +137,40 @@ class MultiLabelConfusionMatrix:
         Inspired by "Multi-label classifier performance evaluation with confusion matrix"
         https://csitcp.org/paper/10/108csit01.pdf
 
+        Parameters:
+        -----------
+        gt: GT binary data representation. Each value is the bit-encoding of the classes per pixel
+        preds: Preds binary data representation. Each value is the bit-encoding of the classes per pixel
+        categories: list[category_id]
+
         Returns
         -------
         np.ndarray [num_categories + 1, num_categories + 1]. The +1 is for the background class
         """
-        img_height, img_width = gt.shape
-        num_categories = len(canonical_categories)
+        # Compress the binary representations pair-wise
+        comp_gt, comp_preds, counts = compress_binary_representations(gt, preds)
+        print(f"Original dims: {gt.shape}, compressed dims: {comp_gt.shape}")
+
+        # Compute the confusion matrix
+        confusion_matrix = self._compute_confusion_matrix(
+            comp_gt,
+            comp_preds,
+            categories,
+            weights=counts,
+        )
+        return confusion_matrix
+
+    def _compute_confusion_matrix(
+        self,
+        gt: np.ndarray,
+        preds: np.ndarray,
+        categories: list[int],
+        weights: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        r"""
+        gt, preds, weights must have exactly the same dimensions, no matter what that dimension is
+        """
+        num_categories = len(categories)
 
         # confusion_matrix: [num_categories, num_categories]
         confusion_matrix = np.zeros((num_categories, num_categories), dtype=float)
@@ -123,6 +182,7 @@ class MultiLabelConfusionMatrix:
 
         # [img_height, img_width]
         selections_case1 = gt == preds
+        case1_gt_pixels = gt[selections_case1]
 
         # 1. I = np.eye(num_categories): [num_categories, num_categories]
         # 2. U = unpackbits(gt[selections_case1], num_categories)]: [k, num_categories]
@@ -132,16 +192,17 @@ class MultiLabelConfusionMatrix:
 
         # case1_contributions: [num_pixels_with_perfect_preds, num_categories, num_categories]
         case1_contributions = (
-            unpackbits(gt[selections_case1], num_categories)[:, None, :]
-            * eye[None, :, :]
+            unpackbits(case1_gt_pixels, num_categories)[:, None, :] * eye[None, :, :]
         )
-
         # print("Case1 contributions:")
         # print(case1_contributions)
 
         # Validate the contributions
-        self._validate_contributions(gt[selections_case1], case1_contributions, "Case1")
+        self._validate_contributions(case1_gt_pixels, case1_contributions, "Case1")
 
+        if weights is not None:
+            case1_weights = weights[selections_case1]
+            case1_contributions = case1_contributions * case1_weights[:, None, None]
         confusion_matrix += np.sum(case1_contributions, axis=0)
 
         ############################################################################################
@@ -155,18 +216,20 @@ class MultiLabelConfusionMatrix:
             gt[selections_case2] & preds[selections_case2] == gt[selections_case2]
         )
 
+        # [num_pixels_with_extra_preds,]
+        case2_preds_pixels = preds[selections_case2]
+        case2_gt_pixels = gt[selections_case2]
+
         # [num_pixels_with_extra_preds, num_categories]
-        case2_preds_gt_intersection = preds[selections_case2] & gt[selections_case2]
+        case2_preds_gt_intersection = case2_preds_pixels & case2_gt_pixels
         case2_preds_gt_intersection = unpackbits(
             case2_preds_gt_intersection, num_categories
         )
 
-        # [num_pixels_with_extra_preds,]
-        case2_preds_pixels = preds[selections_case2]
         if len(case2_preds_pixels) > 0:
             # [num_pixels_with_extra_preds, num_categories]
             case2_preds_gt_diff = (
-                case2_preds_pixels ^ gt[selections_case2]
+                case2_preds_pixels ^ case2_gt_pixels
             ) & case2_preds_pixels
             case2_preds_gt_diff = unpackbits(case2_preds_gt_diff, num_categories)
 
@@ -178,12 +241,12 @@ class MultiLabelConfusionMatrix:
 
             # [num_pixels_with_extra_preds, num_categories, num_categories]
             case2_gt_diagonals = (
-                unpackbits(gt[selections_case2], num_categories)[:, None, :]
+                unpackbits(case2_gt_pixels, num_categories)[:, None, :]
                 * eye[None, :, :]
             )
 
             # [num_pixels_with_extra_preds,]
-            case2_gt_multiplier = np.bitwise_count(gt[selections_case2])
+            case2_gt_multiplier = np.bitwise_count(case2_gt_pixels)
 
             # [num_pixels_with_extra_preds,]
             case2_preds_divider = np.bitwise_count(case2_preds_pixels)
@@ -199,10 +262,11 @@ class MultiLabelConfusionMatrix:
             # print(case2_contributions)
 
             # Validate the contributions
-            self._validate_contributions(
-                gt[selections_case2], case2_contributions, "Case2"
-            )
+            self._validate_contributions(case2_gt_pixels, case2_contributions, "Case2")
 
+            if weights is not None:
+                case2_weights = weights[selections_case2]
+                case2_contributions = case2_contributions * case2_weights[:, None, None]
             confusion_matrix += np.sum(case2_contributions, axis=0)
 
         ############################################################################################
@@ -219,8 +283,10 @@ class MultiLabelConfusionMatrix:
         # [num_pixels_with_additional_gt_labels,]
         case3_preds_pixels = preds[selections_case3]
         if len(case3_preds_pixels) > 0:
+            case3_gt_pixels = gt[selections_case3]
+
             # [num_pixels_with_additional_gt_labels, num_categories]
-            case3_gt_preds_diff = (case3_preds_pixels ^ gt[selections_case3]) & gt[
+            case3_gt_preds_diff = (case3_preds_pixels ^ case3_gt_pixels) & gt[
                 selections_case3
             ]
             case3_gt_preds_diff = unpackbits(case3_gt_preds_diff, num_categories)
@@ -248,10 +314,11 @@ class MultiLabelConfusionMatrix:
             # print(case3_contributions)
 
             # Validate the contributions
-            self._validate_contributions(
-                gt[selections_case3], case3_contributions, "Case3"
-            )
+            self._validate_contributions(case3_gt_pixels, case3_contributions, "Case3")
 
+            if weights is not None:
+                case3_weights = weights[selections_case3]
+                case3_contributions = case3_contributions * case3_weights[:, None, None]
             confusion_matrix += np.sum(case3_contributions, axis=0)
 
         ############################################################################################
@@ -263,23 +330,23 @@ class MultiLabelConfusionMatrix:
         selections_case4 = np.logical_and(
             (general_diff & gt) > 0, (general_diff & preds) > 0
         )
+        case4_preds_pixels = preds[selections_case4]
+        case4_gt_pixels = gt[selections_case4]
 
         # [num_pixels_with_mutual_gt_pred_deltas, num_categories]
-        case4_gt_preds_diff = (preds[selections_case4] ^ gt[selections_case4]) & gt[
-            selections_case4
-        ]
+        case4_gt_preds_diff = (case4_preds_pixels ^ case4_gt_pixels) & case4_gt_pixels
         case4_gt_preds_diff = unpackbits(case4_gt_preds_diff, num_categories)
 
         # [num_pixels_with_mutual_gt_pred_deltas, num_categories]
-        case4_preds_gt_diff = (preds[selections_case4] ^ gt[selections_case4]) & preds[
-            selections_case4
-        ]
+        case4_preds_gt_diff = (
+            case4_preds_pixels ^ case4_gt_pixels
+        ) & case4_preds_pixels
         if len(case4_preds_gt_diff) > 0:
             case4_divider = np.bitwise_count(case4_preds_gt_diff)
             case4_preds_gt_diff = unpackbits(case4_preds_gt_diff, num_categories)
 
             # [num_pixels_with_mutual_gt_pred_deltas, num_categories]
-            case4_preds_gt_intersection = preds[selections_case4] & gt[selections_case4]
+            case4_preds_gt_intersection = case4_preds_pixels & case4_gt_pixels
 
             # [num_pixels_with_mutual_gt_pred_deltas, num_categories, num_categories]
             case4_preds_gt_intersection_diagonals = (
@@ -296,10 +363,11 @@ class MultiLabelConfusionMatrix:
             # print(case4_contributions)
 
             # Validate the contributions
-            self._validate_contributions(
-                gt[selections_case4], case4_contributions, "Case4"
-            )
+            self._validate_contributions(case4_gt_pixels, case4_contributions, "Case4")
 
+            if weights is not None:
+                case4_weights = weights[selections_case4]
+                case4_contributions = case4_contributions * case4_weights[:, None, None]
             confusion_matrix += np.sum(case4_contributions, axis=0)
 
         return confusion_matrix

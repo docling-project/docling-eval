@@ -368,7 +368,9 @@ class PixelLayoutEvaluator(BaseEvaluator):
 
         excel_fn = eval_fns["excel"]
 
+        title = self._layout_model_name if self._layout_model_name else ""
         excel_exporter.build_ds_report(
+            title,
             ds_evaluation.num_pages,
             ds_evaluation.num_pixels,
             headers,
@@ -376,7 +378,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
             collapsed_headers,
             image_collapsed_aggs,
             excel_fn,
-            self._layout_model_name,
         )
 
     def _compute_document_confusion_matrix(
@@ -428,6 +429,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     doc=pred_doc,
                 )
 
+                # TODO: Parallelize the confusion matrix over the pages
                 # Compute the confusion matrix
                 gt_binary = self._mlcm.make_binary_representation(
                     pg_width, pg_height, gt_layouts
