@@ -44,6 +44,39 @@ terminal %> docling-eval --help
 
 ```
 
+## Installation
+
+Follow the path that best matches your environment. The project targets Python 3.10–3.12; using 3.13 currently requires building native extensions from source.
+
+### Quick start with `uv`
+
+1. Install [uv](https://github.com/astral-sh/uv) (recommended):
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # or: brew install uv
+  ```
+  Restart your shell so `uv` is on `PATH`, then confirm with `uv --version`.
+2. Sync all dependencies (runtime + dev tooling) into the project-managed `.venv`:
+  ```bash
+  uv sync --all-groups
+  ```
+3. (Optional) Install extras as needed:
+  ```bash
+  uv sync --group hyperscalers   # AWS, Azure, Google providers
+  uv sync --group cvat_tools     # CVAT automation utilities
+  ```
+4. Run tools through `uv run` (no manual activation needed):
+   ```bash
+   uv run docling-eval --help
+   ```
+
+### Verify the installation
+
+```bash
+uv run docling-eval --help
+uv run pytest -k layout  # optional smoke test
+```
+
 ## Benchmarks
 
 - General
