@@ -484,6 +484,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
 
         resolutions: List[LayoutResolution] = []
         for item in items:
+            if item.label not in self._matrix_doclabelitem_to_id:
+                continue
             for prov in item.prov:
                 if prov.page_no != page_no:
                     # Only process provenances for this specific page
@@ -519,6 +521,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
             with_groups=True,
         ):
             if isinstance(item, DocItem):
+                if item.label not in self._matrix_doclabelitem_to_id:
+                    continue
                 for prov in item.prov:
                     pages_to_objects[prov.page_no].append(item)
 

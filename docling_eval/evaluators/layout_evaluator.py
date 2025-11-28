@@ -243,6 +243,11 @@ class LayoutEvaluator(BaseEvaluator):
                 f"Unknown label filtering strategy: {self.label_filtering_strategy}"
             )
 
+        # Filter out any labels not in DEFAULT_EXPORT_LABELS as a safeguard
+        filter_labels = [
+            label for label in filter_labels if label in DEFAULT_EXPORT_LABELS
+        ]
+
         filter_labels_str = ", ".join(sorted([label.value for label in filter_labels]))
         logging.info(f"Filter labels for evaluation: {filter_labels_str}")
 
@@ -307,24 +312,22 @@ class LayoutEvaluator(BaseEvaluator):
                 included_content_layers={c for c in ContentLayer},
                 traverse_pictures=True,
             ):
-                if (
-                    isinstance(item, DocItem)
-                    and self.label_mapping[item.label] in filter_labels
-                ):
-                    for prov in item.prov:
-                        true_pages.add(prov.page_no)
+                if isinstance(item, DocItem):
+                    mapped_label = self.label_mapping.get(item.label)
+                    if mapped_label is not None and mapped_label in filter_labels:
+                        for prov in item.prov:
+                            true_pages.add(prov.page_no)
 
             pred_pages = set()
             for item, level in pred_doc.iterate_items(
                 included_content_layers={c for c in ContentLayer},
                 traverse_pictures=True,
             ):
-                if (
-                    isinstance(item, DocItem)
-                    and self.label_mapping[item.label] in filter_labels
-                ):
-                    for prov in item.prov:
-                        pred_pages.add(prov.page_no)
+                if isinstance(item, DocItem):
+                    mapped_label = self.label_mapping.get(item.label)
+                    if mapped_label is not None and mapped_label in filter_labels:
+                        for prov in item.prov:
+                            pred_pages.add(prov.page_no)
 
             if (
                 self.missing_prediction_strategy == MissingPredictionStrategy.PENALIZE
@@ -863,14 +866,27 @@ class LayoutEvaluator(BaseEvaluator):
         intersection_labels: List[DocItemLabel] = []
         union_labels: List[DocItemLabel] = []
         for label, count in true_labels.items():
-            union_labels.append(DocItemLabel(label))
-
-            if label in pred_labels:
-                intersection_labels.append(DocItemLabel(label))
+            # Handle both string and DocItemLabel enum keys
+            if isinstance(label, str):
+                label_enum = DocItemLabel(label)
+            else:
+                label_enum = label
+            # Only include labels that are in DEFAULT_EXPORT_LABELS
+            if label_enum in DEFAULT_EXPORT_LABELS:
+                union_labels.append(label_enum)
+                if label in pred_labels:
+                    intersection_labels.append(label_enum)
 
         for label, count in pred_labels.items():
             if label not in true_labels:
-                union_labels.append(DocItemLabel(label))
+                # Handle both string and DocItemLabel enum keys
+                if isinstance(label, str):
+                    label_enum = DocItemLabel(label)
+                else:
+                    label_enum = label
+                # Only include labels that are in DEFAULT_EXPORT_LABELS
+                if label_enum in DEFAULT_EXPORT_LABELS:
+                    union_labels.append(label_enum)
 
         return true_labels, pred_labels, intersection_labels, union_labels
 
@@ -898,12 +914,11 @@ class LayoutEvaluator(BaseEvaluator):
             traverse_pictures=True,
             with_groups=True,
         ):
-            if (
-                isinstance(item, DocItem)
-                and self.label_mapping[item.label] in filter_labels
-            ):
-                for prov in item.prov:
-                    pages_to_objects[prov.page_no].append(item)
+            if isinstance(item, DocItem):
+                mapped_label = self.label_mapping.get(item.label)
+                if mapped_label is not None and mapped_label in filter_labels:
+                    for prov in item.prov:
+                        pages_to_objects[prov.page_no].append(item)
 
         return pages_to_objects
 
@@ -1029,6 +1044,9 @@ class LayoutEvaluator(BaseEvaluator):
             scores = []
 
         for item in items:
+            mapped_label = self.label_mapping.get(item.label)
+            if mapped_label is None or mapped_label not in filter_labels:
+                continue
             for prov in item.prov:
                 if (
                     prov.page_no == page_no
@@ -1038,7 +1056,7 @@ class LayoutEvaluator(BaseEvaluator):
                     bbox = bbox.scaled(100.0)
 
                     bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
-                    labels.append(filter_labels.index(self.label_mapping[item.label]))  # type: ignore
+                    labels.append(filter_labels.index(mapped_label))  # type: ignore
                     if is_prediction:
                         scores.append(1.0)  # FIXME: Use actual confidence scores
 
