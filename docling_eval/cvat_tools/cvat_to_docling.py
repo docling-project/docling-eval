@@ -1318,18 +1318,34 @@ class CVATToDoclingConverter:
     def _is_caption_or_footnote_target(self, element_id: int) -> bool:
         """Check if element is a target of a VALID caption/footnote relationship.
 
-        Only returns True if the element is a target AND at least one side of the
-        relationship is a container element. This prevents non-container elements
-        from being skipped when they're part of invalid caption/footnote paths.
+        Only returns True if:
+        1. The element is in the target position (caption/footnote side)
+        2. AND the container position element is actually a container
+        3. AND the target element is NOT itself a container
+
+        This prevents containers from being skipped when they're incorrectly placed
+        in the target position of invalid caption/footnote paths.
         """
+        from .utils import is_caption_element, is_container_element, is_footnote_element
+
         # Check captions
         for path_id, (
             container_id,
             caption_id,
         ) in self.doc_structure.path_mappings.to_caption.items():
             if caption_id == element_id:
-                if self._has_valid_container_relationship(container_id, caption_id):
-                    return True
+                # Get the actual elements
+                container_el = self.doc_structure.get_element_by_id(container_id)
+                caption_el = self.doc_structure.get_element_by_id(caption_id)
+
+                if container_el and caption_el:
+                    # Only skip if:
+                    # 1. Container position has an actual container
+                    # 2. Caption position is NOT a container (would be invalid)
+                    if is_container_element(container_el) and not is_container_element(
+                        caption_el
+                    ):
+                        return True
 
         # Check footnotes
         for path_id, (
@@ -1337,8 +1353,18 @@ class CVATToDoclingConverter:
             footnote_id,
         ) in self.doc_structure.path_mappings.to_footnote.items():
             if footnote_id == element_id:
-                if self._has_valid_container_relationship(container_id, footnote_id):
-                    return True
+                # Get the actual elements
+                container_el = self.doc_structure.get_element_by_id(container_id)
+                footnote_el = self.doc_structure.get_element_by_id(footnote_id)
+
+                if container_el and footnote_el:
+                    # Only skip if:
+                    # 1. Container position has an actual container
+                    # 2. Footnote position is NOT a container (would be invalid)
+                    if is_container_element(container_el) and not is_container_element(
+                        footnote_el
+                    ):
+                        return True
 
         return False
 
