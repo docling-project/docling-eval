@@ -61,6 +61,8 @@ class BenchMarkNames(str, Enum):
     DOCLING_DPBENCH = "DoclingDPBench"
     OMNIDOCBENCH = "OmniDocBench"
     WORDSCAPE = "WordScape"
+    CANVA_A = "canva_a"
+    CANVA_B = "canva_b"
 
     # Layout
     PUBLAYNET = "PubLayNet"
