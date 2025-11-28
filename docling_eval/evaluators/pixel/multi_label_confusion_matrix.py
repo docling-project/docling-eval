@@ -149,7 +149,7 @@ class MultiLabelConfusionMatrix:
         """
         # Compress the binary representations pair-wise
         comp_gt, comp_preds, counts = compress_binary_representations(gt, preds)
-        print(f"Original dims: {gt.shape}, compressed dims: {comp_gt.shape}")
+        _log.debug("Original dims: %s, compressed dims: %s", gt.shape, comp_gt.shape)
 
         # Compute the confusion matrix
         confusion_matrix = self._compute_confusion_matrix(
