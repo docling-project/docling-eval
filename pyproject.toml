@@ -108,7 +108,6 @@ dev = [
 package = true
 
 [tool.uv.sources]
-docling-core = { git = "https://github.com/docling-project/docling-core.git", rev = "robustify-page-filtering" }
 
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]
