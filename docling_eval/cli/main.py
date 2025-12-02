@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # --- DoclingLayoutOptionsManager definition moved here ---
-from typing import Annotated, Dict, List, Optional, Tuple
+from typing import Annotated, Dict, List, Optional, Tuple, Union
 
 import typer
 from docling.datamodel.accelerator_options import AcceleratorOptions
@@ -26,6 +26,12 @@ from docling.datamodel.pipeline_options import (
     PaginatedPipelineOptions,
     PdfPipelineOptions,
     VlmPipelineOptions,
+)
+from docling.datamodel.pipeline_options_vlm_model import InlineVlmOptions
+from docling.datamodel.vlm_model_specs import (
+    GRANITEDOCLING_MLX,
+    GRANITEDOCLING_TRANSFORMERS,
+    GRANITEDOCLING_VLLM,
 )
 from docling.datamodel.vlm_model_specs import (
     SMOLDOCLING_MLX as smoldocling_vlm_mlx_conversion_options,
@@ -84,11 +90,14 @@ from docling_eval.evaluators.markdown_text_evaluator import (
     DatasetMarkdownEvaluation,
     MarkdownTextEvaluator,
 )
+from docling_eval.evaluators.ocr.evaluation_models import TextCellUnit
 from docling_eval.evaluators.ocr_evaluator import (
     OcrDatasetEvaluationResult,
     OCREvaluator,
     OCRVisualizer,
 )
+from docling_eval.evaluators.pixel.pixel_types import DatasetPixelLayoutEvaluation
+from docling_eval.evaluators.pixel_layout_evaluator import PixelLayoutEvaluator
 from docling_eval.evaluators.readingorder_evaluator import (
     DatasetReadingOrderEvaluation,
     ReadingOrderEvaluator,
@@ -136,6 +145,34 @@ class DoclingLayoutOptionsManager:
     @staticmethod
     def get_layout_model_config_names() -> List[str]:
         return list(DoclingLayoutOptionsManager.layout_model_configs.keys())
+
+
+class GraniteDoclingVlmOptionsManager:
+    vlm_options_configs = {
+        "granitedocling_mlx": GRANITEDOCLING_MLX,
+        "granitedocling_transformers": GRANITEDOCLING_TRANSFORMERS,
+        "granitedocling_vllm": GRANITEDOCLING_VLLM,
+    }
+
+    @staticmethod
+    def get_granitedocling_vlm_config(vlm_spec: str) -> InlineVlmOptions:
+        return GraniteDoclingVlmOptionsManager.vlm_options_configs[vlm_spec]
+
+    @staticmethod
+    def get_granitedocling_vlm_config_names() -> List[str]:
+        return list(GraniteDoclingVlmOptionsManager.vlm_options_configs.keys())
+
+    @staticmethod
+    def get_granitedocling_vlm_config_name(
+        vlm_options: InlineVlmOptions,
+    ) -> Optional[str]:
+        for (
+            config_name,
+            vlm_opt,
+        ) in GraniteDoclingVlmOptionsManager.vlm_options_configs.items():
+            if vlm_options == vlm_opt:
+                return config_name
+        return None
 
 
 # Configure logging
@@ -323,6 +360,11 @@ def get_prediction_provider(
     docling_layout_model_spec: Optional[LayoutModelConfig] = None,
     docling_layout_create_orphan_clusters: Optional[bool] = None,
     docling_layout_keep_empty_clusters: Optional[bool] = None,
+    # Controls orphan text cells only for the programmatic Docling pipeline (PDF_DOCLING)
+    docling_programmatic_add_orphan_text_cells: Optional[bool] = None,
+    docling_force_full_page_ocr: Optional[bool] = None,
+    granite_docling_vlm_options: Optional[InlineVlmOptions] = None,
+    max_new_tokens: Optional[int] = None,
 ):
     pipeline_options: PaginatedPipelineOptions
     """Get the appropriate prediction provider with default settings."""
@@ -335,6 +377,7 @@ def get_prediction_provider(
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
             kind="easyocr",
+            force_full_page_ocr=docling_force_full_page_ocr,
         )
         # Use all CPU cores
         accelerator_options = AcceleratorOptions(
@@ -382,6 +425,7 @@ def get_prediction_provider(
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
             kind="ocrmac",
+            force_full_page_ocr=docling_force_full_page_ocr,
         )
 
         pipeline_options = PdfPipelineOptions(
@@ -411,6 +455,7 @@ def get_prediction_provider(
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
             kind="easyocr",
+            force_full_page_ocr=docling_force_full_page_ocr,
         )
 
         pdf_pipeline_options = PdfPipelineOptions(
@@ -422,6 +467,14 @@ def get_prediction_provider(
         pdf_pipeline_options.images_scale = image_scale_factor or 2.0
         pdf_pipeline_options.generate_page_images = True
         pdf_pipeline_options.generate_picture_images = True
+
+        # Only for programmatic Docling (PDF), optionally control orphan text cells
+        if docling_programmatic_add_orphan_text_cells is not None:
+            layout_options_prog = LayoutOptions()
+            layout_options_prog.create_orphan_clusters = (
+                docling_programmatic_add_orphan_text_cells
+            )
+            pdf_pipeline_options.layout_options = layout_options_prog
 
         ocr_pipeline_options = PdfPipelineOptions(
             do_ocr=True,
@@ -464,7 +517,7 @@ def get_prediction_provider(
                 import mlx_vlm  # type: ignore
 
                 pipeline_options.vlm_options = smoldocling_vlm_mlx_conversion_options
-
+                _log.info("running SmolDocling on MLX!")
             except ImportError:
                 _log.warning(
                     "To run SmolDocling faster, please install mlx-vlm:\n"
@@ -475,17 +528,61 @@ def get_prediction_provider(
             pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
         )
 
-        format_options: Dict[InputFormat, FormatOption] = {
-            InputFormat.PDF: pdf_format_option,
-            InputFormat.IMAGE: pdf_format_option,
-        }
-
         return DoclingPredictionProvider(
-            format_options=format_options,
+            format_options={
+                InputFormat.PDF: pdf_format_option,
+                InputFormat.IMAGE: pdf_format_option,
+            },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
         )
+    elif provider_type == PredictionProviderType.GRANITEDOCLING:
+        pipeline_options = VlmPipelineOptions()
 
+        pipeline_options.images_scale = image_scale_factor or 2.0
+        pipeline_options.generate_page_images = True
+        pipeline_options.generate_picture_images = True
+        pipeline_options.vlm_options = GRANITEDOCLING_TRANSFORMERS
+
+        if max_new_tokens:
+            pipeline_options.vlm_options.max_new_tokens = max_new_tokens
+
+        if artifacts_path is not None:
+            pipeline_options.artifacts_path = artifacts_path
+
+        if granite_docling_vlm_options:
+            pipeline_options.vlm_options = granite_docling_vlm_options
+            vlm_option_name = (
+                GraniteDoclingVlmOptionsManager.get_granitedocling_vlm_config_name(
+                    granite_docling_vlm_options
+                )
+            )
+            if vlm_option_name:
+                _log.info("running GraniteDocling on %s", granite_docling_vlm_options)
+        elif sys.platform == "darwin":
+            try:
+                import mlx_vlm  # type: ignore
+
+                pipeline_options.vlm_options = GRANITEDOCLING_MLX
+                _log.info("running GraniteDocling on MLX!")
+            except ImportError:
+                _log.warning(
+                    "To run SmolDocling faster, please install mlx-vlm:\n"
+                    "pip install mlx-vlm"
+                )
+
+        pdf_format_option = PdfFormatOption(
+            pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
+        )
+
+        return DoclingPredictionProvider(
+            format_options={
+                InputFormat.PDF: pdf_format_option,
+                InputFormat.IMAGE: pdf_format_option,
+            },
+            do_visualization=do_visualization,
+            ignore_missing_predictions=True,
+        )
     elif provider_type == PredictionProviderType.TABLEFORMER:
         return TableFormerPredictionProvider(
             do_visualization=do_visualization,
@@ -533,19 +630,9 @@ def evaluate(
     idir: Path,
     odir: Path,
     split: str = "test",
+    cvat_overview_path: Optional[Path] = None,
 ) -> Optional[DatasetEvaluationType]:
-    """
-    Evaluate predictions against ground truth.
-
-    Args:
-        modality: Evaluation modality
-        benchmark: Benchmark name
-        idir: Input directory with dataset
-        odir: Output directory for results
-        split: Dataset split
-        begin_index: Begin index
-        end_index: End index
-    """
+    """Evaluate predictions against ground truth."""
     if not os.path.exists(idir):
         _log.error(f"Benchmark directory not found: {idir}")
         return None
@@ -573,6 +660,7 @@ def evaluate(
         layout_evaluator = LayoutEvaluator(
             # missing_prediction_strategy=MissingPredictionStrategy.PENALIZE,
             # label_filtering_strategy=LabelFilteringStrategy.INTERSECTION,
+            page_mapping_path=cvat_overview_path,
         )
         evaluation = layout_evaluator(  # type: ignore
             idir,
@@ -581,6 +669,18 @@ def evaluate(
 
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+
+        # Evaluate with the pixel-wise layout evaluation
+        pixel_layout_evaluator = PixelLayoutEvaluator()
+        pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
+            idir, split=split
+        )
+        pixel_save_root: Path = save_fn.parent
+        pixel_layout_evaluator.save_evaluations(
+            benchmark,
+            pixel_ds_evaluation,
+            pixel_save_root,
+        )
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
@@ -593,7 +693,9 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.DOCUMENT_STRUCTURE:
-        doc_struct_evaluator = DocStructureEvaluator()
+        doc_struct_evaluator = DocStructureEvaluator(
+            page_mapping_path=cvat_overview_path
+        )
         evaluation = doc_struct_evaluator(  # type: ignore
             idir,
             split=split,
@@ -603,7 +705,17 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.OCR:
-        ocr_evaluator = OCREvaluator()
+        if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
+            text_unit = TextCellUnit.LINE
+        else:
+            text_unit = TextCellUnit.WORD
+
+        logging.info(f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})")
+        logging.info(f"Text unit set to {text_unit}")
+
+        ocr_evaluator = OCREvaluator(
+            intermediate_evaluations_path=odir, text_unit=text_unit
+        )
         evaluation = ocr_evaluator(  # type: ignore
             idir,
             split=split,
@@ -660,7 +772,7 @@ def evaluate(
             )
 
     elif modality == EvaluationModality.KEY_VALUE:
-        keyvalue_evaluator = KeyValueEvaluator()
+        keyvalue_evaluator = KeyValueEvaluator(page_mapping_path=cvat_overview_path)
         evaluation = keyvalue_evaluator(  # type: ignore
             idir,
             split=split,
@@ -793,6 +905,28 @@ def visualize(
             _log.info(content)
             with open(log_filename, "a") as fd:
                 fd.write(content)
+
+            # Process stats from the pixel_layout_evaluator
+            pixel_eval_fns = PixelLayoutEvaluator.evaluation_filenames(benchmark, odir)
+            pixel_json_fn = pixel_eval_fns["json"]
+            with open(pixel_json_fn, "r") as fd:
+                pixel_layout_evaluation = (
+                    DatasetPixelLayoutEvaluation.model_validate_json(fd.read())
+                )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "pixel_all_classes_f1",
+                pixel_layout_evaluation.f1_all_classes_stats,
+            )
+            log_and_save_stats(
+                odir,
+                benchmark,
+                modality,
+                "pixel_collapsed_classes_f1",
+                pixel_layout_evaluation.f1_collapsed_classes_stats,
+            )
         except Exception as e:
             _log.error(f"Error processing layout evaluation: {str(e)}")
 
@@ -1129,6 +1263,15 @@ def create_eval(
         Optional[bool],
         typer.Option(help="Keep the empty clusters in Docling layout post-processing"),
     ] = False,
+    programmatic_add_orphan_text_cells: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "Add orphan text cells for programmatic Docling pipeline (PDF_DOCLING). "
+                "Defaults to False."
+            )
+        ),
+    ] = False,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
@@ -1139,6 +1282,21 @@ def create_eval(
     do_table_structure: Annotated[
         bool, typer.Option(help="Include table structure predictions (only Docling)")
     ] = True,
+    docling_force_full_page_ocr: Annotated[
+        bool,
+        typer.Option(help="Force OCR on entire page (only Docling OCR providers)"),
+    ] = False,
+    granite_docling_vlm_options: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Vlm options for GraniteDocling. Supported values: {}".format(
+                GraniteDoclingVlmOptionsManager.get_granitedocling_vlm_config_names()
+            )
+        ),
+    ] = "granitedocling_transformers",
+    max_new_tokens: Annotated[
+        Optional[int], typer.Option(help="Override the default value of max_new_tokens")
+    ] = None,
 ):
     """Create evaluation dataset from existing ground truth."""
     gt_dir = gt_dir or output_dir / "gt_dataset"
@@ -1169,6 +1327,14 @@ def create_eval(
             else None
         )
 
+        granitedocling_vlm_options_obj = (
+            GraniteDoclingVlmOptionsManager.get_granitedocling_vlm_config(
+                granite_docling_vlm_options
+            )
+            if granite_docling_vlm_options
+            else None
+        )
+
         provider = get_prediction_provider(
             provider_type=prediction_provider,
             file_source_path=file_source_path,
@@ -1182,6 +1348,10 @@ def create_eval(
             docling_layout_model_spec=docling_layout_model_spec_obj,
             docling_layout_create_orphan_clusters=docling_layout_create_orphan_clusters,
             docling_layout_keep_empty_clusters=docling_layout_keep_empty_clusters,
+            docling_programmatic_add_orphan_text_cells=programmatic_add_orphan_text_cells,
+            docling_force_full_page_ocr=docling_force_full_page_ocr,
+            granite_docling_vlm_options=granitedocling_vlm_options_obj,
+            max_new_tokens=max_new_tokens,
         )
 
         # Get the dataset name from the benchmark
@@ -1236,6 +1406,19 @@ def create(
     do_table_structure: Annotated[
         bool, typer.Option(help="Include table structure predictions (only Docling)")
     ] = True,
+    docling_force_full_page_ocr: Annotated[
+        bool,
+        typer.Option(help="Force OCR on entire page (only Docling OCR providers)"),
+    ] = False,
+    programmatic_add_orphan_text_cells: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "Add orphan text cells for programmatic Docling pipeline (PDF_DOCLING). "
+                "Defaults to False."
+            )
+        ),
+    ] = False,
 ):
     """Create both ground truth and evaluation datasets in one step."""
     # First create ground truth
@@ -1265,6 +1448,8 @@ def create(
             do_visualization=do_visualization,
             image_scale_factor=image_scale_factor,
             do_table_structure=do_table_structure,
+            docling_force_full_page_ocr=docling_force_full_page_ocr,
+            programmatic_add_orphan_text_cells=programmatic_add_orphan_text_cells,
         )
     else:
         _log.info(

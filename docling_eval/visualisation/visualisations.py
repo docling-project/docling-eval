@@ -2,7 +2,7 @@ import copy
 import logging
 import re
 from pathlib import Path
-from typing import Optional, Set
+from typing import Literal, Optional
 
 from docling.datamodel.base_models import BoundingBox, Cluster
 from docling.utils.visualization import draw_clusters
@@ -16,6 +16,7 @@ from docling_core.types.doc.document import (
     DocItem,
     DoclingDocument,
     ImageRefMode,
+    KeyValueItem,
 )
 from docling_core.types.doc.labels import DocItemLabel
 from PIL import Image, ImageDraw, ImageFont
@@ -28,6 +29,33 @@ from docling_eval.visualisation.constants import (
     HTML_INSPECTION,
     HTML_DEFAULT_HEAD_FOR_COMP_v2,
 )
+
+VizMode = Literal["reading_order", "key_value"]
+ALL_CONTENT_LAYERS: set[ContentLayer] = {layer for layer in ContentLayer}
+
+
+def _document_has_key_value_items(doc: DoclingDocument) -> bool:
+    """Return True when the document includes at least one key-value annotation."""
+    for item, _ in doc.iterate_items(
+        traverse_pictures=True,
+        included_content_layers=ALL_CONTENT_LAYERS,
+    ):
+        if isinstance(item, KeyValueItem):
+            return True
+    return False
+
+
+def _visualization_filename_for_mode(base_filename: Path, viz_mode: VizMode) -> Path:
+    """Derive the output filename for a visualization mode."""
+    if viz_mode == "reading_order":
+        return base_filename.with_name(
+            f"{base_filename.stem}_layout{base_filename.suffix}"
+        )
+    if viz_mode == "key_value":
+        return base_filename.with_name(
+            f"{base_filename.stem}_key_value{base_filename.suffix}"
+        )
+    raise ValueError(f"Unsupported visualization mode: {viz_mode}")
 
 
 def draw_arrow(
@@ -126,7 +154,8 @@ def get_missing_pageimg(
 def _get_document_visualization_data(
     doc: DoclingDocument,
     page_no: int,
-    pattern: re.Pattern,
+    pattern: re.Pattern[str],
+    viz_mode: VizMode,
 ) -> tuple[str, str]:
     """Get visualization data for a document page.
 
@@ -138,23 +167,42 @@ def _get_document_visualization_data(
     Returns:
         Tuple of (base64_image, html_content)
     """
-    page_imgs = doc.get_visualization(
-        show_label=False
-    )  # TODO: addvisualizer="reading_order" | visualizer="key_value"
+    visualization_error: Optional[str] = None
+
+    try:
+        page_imgs = doc.get_visualization(show_label=False, viz_mode=viz_mode)
+    except (IndexError, ValueError) as exc:
+        visualization_error = str(exc)
+        logging.error(
+            "Could not render visualization for page %s due to geometry issue: %s",
+            page_no,
+            exc,
+        )
+        page_imgs = {}
 
     if page_no in page_imgs:
         doc_img_b64 = from_pil_to_base64(page_imgs[page_no])
     else:
-        logging.error(f"{page_no} not in page_imgs, get default image.")
+        if visualization_error is None:
+            logging.error(f"{page_no} not in page_imgs, get default image.")
         doc_img_b64 = from_pil_to_base64(get_missing_pageimg())
 
     try:
-        doc_page = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED, page_no=page_no)
-    except ValueError as e:
-        logging.error(
-            f"Could not export page {page_no} to HTML due to a ValueError: {e}"
+        doc_page = doc.export_to_html(
+            image_mode=ImageRefMode.EMBEDDED,
+            page_no=page_no,
+            included_content_layers={ContentLayer.BODY, ContentLayer.FURNITURE},
         )
-        doc_page_body = f"<p>ERROR: Could not render page HTML due to invalid coordinates. Details: {e}</p>"
+    except (IndexError, ValueError) as exc:
+        logging.error(
+            "Could not export page %s to HTML due to serialization error: %s",
+            page_no,
+            exc,
+        )
+        doc_page_body = (
+            "<p>ERROR: Could not render page HTML due to serialization issues. "
+            f"Details: {exc}</p>"
+        )
         return doc_img_b64, doc_page_body
 
     # Search for the pattern in the HTML string
@@ -168,6 +216,12 @@ def _get_document_visualization_data(
     if len(doc_page_body) == 0:
         doc_page_body = "<p>Nothing Found</p>"
 
+    if visualization_error is not None:
+        doc_page_body = (
+            "<p>WARNING: Page visualization unavailable due to geometry issues. "
+            f"Details: {visualization_error}</p>\n" + doc_page_body
+        )
+
     return doc_img_b64, doc_page_body
 
 
@@ -177,6 +231,7 @@ def _create_visualization_html(
     template: str,
     pred_doc: Optional[DoclingDocument] = None,
     draw_reading_order: bool = True,
+    viz_mode: VizMode = "reading_order",
 ) -> None:
     """Create and save HTML visualization.
 
@@ -229,7 +284,10 @@ def _create_visualization_html(
 
         # Process true document
         true_img_b64, true_html = _get_document_visualization_data(
-            true_doc, page_no, pattern
+            true_doc,
+            page_no,
+            pattern,
+            viz_mode,
         )
         html_parts.append("<td>")
         html_parts.append(f'<img src="data:image/png;base64,{true_img_b64}">')
@@ -241,7 +299,7 @@ def _create_visualization_html(
         # Process predicted document if present
         if pred_doc is not None:
             pred_img_b64, pred_html = _get_document_visualization_data(
-                pred_doc, page_no, pattern
+                pred_doc, page_no, pattern, viz_mode
             )
             html_parts.append("<td>")
             html_parts.append(f'<img src="data:image/png;base64,{pred_img_b64}">')
@@ -265,19 +323,31 @@ def save_single_document_html(
     doc: DoclingDocument,
     draw_reading_order: bool = True,
 ) -> None:
-    """Save single document visualization with its HTML content.
+    """Save single document visualizations with their HTML content.
 
     Args:
-        filename: Path to save the visualization
+        filename: Path used as the base visualization filename
         doc: Document to visualize
         draw_reading_order: Whether to draw reading order
+
+    Always produces the default reading order visualization. The output is written
+    to the provided base filename with an added ``_layout`` suffix. When the
+    document holds key-value annotations, a second visualization is saved alongside
+    it using a ``_key_value`` suffix.
     """
-    _create_visualization_html(
-        filename=filename,
-        true_doc=doc,
-        template=HTML_DEFAULT_HEAD_FOR_COMP_v2,
-        draw_reading_order=draw_reading_order,
-    )
+    viz_modes: list[VizMode] = ["reading_order"]
+    if _document_has_key_value_items(doc):
+        viz_modes.append("key_value")
+
+    for viz_mode in viz_modes:
+        viz_filename = _visualization_filename_for_mode(filename, viz_mode)
+        _create_visualization_html(
+            filename=viz_filename,
+            true_doc=doc,
+            template=HTML_DEFAULT_HEAD_FOR_COMP_v2,
+            draw_reading_order=draw_reading_order,
+            viz_mode=viz_mode,
+        )
 
 
 def save_comparison_html_with_clusters(
@@ -286,18 +356,32 @@ def save_comparison_html_with_clusters(
     pred_doc: DoclingDocument,
     draw_reading_order: bool = True,
 ) -> None:
-    """Save comparison html with clusters.
+    """Save comparison visualizations with clusters for multiple modes.
 
     Args:
-        filename: Path to save the visualization
+        filename: Path used as the base visualization filename
         true_doc: Ground truth document
         pred_doc: Predicted document
         draw_reading_order: Whether to draw reading order
+
+    Always produces the default reading order visualization. The output is written
+    to the provided base filename with an added ``_layout`` suffix. When either
+    document holds key-value annotations, a second visualization is saved alongside
+    it using a ``_key_value`` suffix.
     """
-    _create_visualization_html(
-        filename=filename,
-        true_doc=true_doc,
-        template=HTML_DEFAULT_HEAD_FOR_COMP_v2,
-        pred_doc=pred_doc,
-        draw_reading_order=draw_reading_order,
-    )
+    viz_modes: list[VizMode] = ["reading_order"]
+    if _document_has_key_value_items(true_doc) or _document_has_key_value_items(
+        pred_doc
+    ):
+        viz_modes.append("key_value")
+
+    for viz_mode in viz_modes:
+        viz_filename = _visualization_filename_for_mode(filename, viz_mode)
+        _create_visualization_html(
+            filename=viz_filename,
+            true_doc=true_doc,
+            template=HTML_DEFAULT_HEAD_FOR_COMP_v2,
+            pred_doc=pred_doc,
+            draw_reading_order=draw_reading_order,
+            viz_mode=viz_mode,
+        )

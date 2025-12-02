@@ -100,6 +100,7 @@ class DatasetRecord(
 
     mime_type: str = Field(default="application/pdf")
     modalities: List[EvaluationModality] = Field(default=[])
+    tags: List[str] = Field(alias="tags", default_factory=list)
 
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
@@ -121,6 +122,7 @@ class DatasetRecord(
             cls.get_field_alias("original"): FieldType.BINARY,
             cls.get_field_alias("mime_type"): FieldType.STRING,
             cls.get_field_alias("modalities"): FieldType.STRING_LIST,
+            cls.get_field_alias("tags"): FieldType.STRING_LIST,
         }
 
     @classmethod
@@ -167,6 +169,7 @@ class DatasetRecord(
             self.get_field_alias("modalities"): list(
                 [m.value for m in self.modalities]
             ),
+            self.get_field_alias("tags"): self.tags,
         }
         if isinstance(self.original, Path):
             with self.original.open("rb") as f:
@@ -236,6 +239,11 @@ class DatasetRecord(
                 data[gt_binary].save(img_buffer, format="PNG")
                 img_buffer.seek(0)
                 data[gt_binary] = DocumentStream(name="image.png", stream=img_buffer)
+
+        # Backward compatibility: ensure tags field exists for old datasets
+        tags_alias = cls.get_field_alias("tags")
+        if tags_alias not in data:
+            data[tags_alias] = []
 
         return data
 

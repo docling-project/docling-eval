@@ -7,7 +7,12 @@ from typing import Dict, List, Optional, Tuple
 
 from datasets import Dataset, load_dataset
 from docling_core.types.doc.base import BoundingBox, Size
-from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
+from docling_core.types.doc.document import (
+    ContentLayer,
+    DocItem,
+    DoclingDocument,
+    PageItem,
+)
 from docling_core.types.doc.labels import DocItemLabel
 from PIL import Image
 from pycocotools.coco import COCO
@@ -103,6 +108,9 @@ class DoclingEvalCOCOExporter:
         r""" """
         self._docling_eval_ds_path = docling_eval_ds_path
 
+        # Tolerance in size diff between page size and page image size measured in pixels
+        self._page_image_pixels_tolerance = 2
+
     def export_COCO_and_predictions(
         self,
         split: str,
@@ -126,6 +134,8 @@ class DoclingEvalCOCOExporter:
         use_pred_doc: bool = False,  # If True the gt_doc is used, otherwise the pred_doc
     ):
         r"""
+        Export COCO dataset
+
         Parameters
         ----------
         save_dir: Location to save the exported COCO dataset
@@ -221,6 +231,8 @@ class DoclingEvalCOCOExporter:
         annotation_id_offset: int,
     ) -> Tuple[List[Dict], List[Dict], int, int]:
         r"""
+        Extract layout information from DoclingDocument into coco-tools format
+
         Returns
         -------
         images: List of dict in COCO format with the images in the document
@@ -264,9 +276,10 @@ class DoclingEvalCOCOExporter:
             if page.image is not None and page_no > len(doc_images):
                 img: Image.Image = page.image.pil_image  # type: ignore
                 if img:
-                    assert (
-                        img.width == page_size.width and img.height == page_size.height
-                    )
+                    # Check the tolerance for the page/image size mismatch
+                    page_size = self._check_page_image_size(page)
+                    if not page_size:
+                        continue
 
                     image_filename = (
                         f"{doc_id}.png"
@@ -527,6 +540,31 @@ class DoclingEvalCOCOExporter:
                 scores.append(1.0)
                 category_ids.append(category_id)
         return category_ids, scores, bboxes
+
+    def _check_page_image_size(self, page: PageItem) -> Optional[Size]:
+        r"""
+        Check if the page size and page image size are within the allowed tolerance
+        If the tolerance is respected, return the smaller size, otherwise return None
+        """
+        page_size = page.size
+        img: Image.Image = page.image.pil_image  # type: ignore
+        if (
+            abs(img.width - page_size.width) > self._page_image_pixels_tolerance
+            or abs(img.height - page_size.height) > self._page_image_pixels_tolerance
+        ):
+            _log.error(
+                "Page/image size diff exceeds tolerance (%f): (%d, %d) vs (%d, %d)",
+                self._page_image_pixels_tolerance,
+                page_size.width,
+                page_size.height,
+                img.width,
+                img.height,
+            )
+            return None
+        return Size(
+            width=min(page_size.width, img.width),
+            height=min(page_size.height, img.height),
+        )
 
 
 def main():

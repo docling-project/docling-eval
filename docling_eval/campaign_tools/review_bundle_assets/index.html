@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Docling Review Bundle</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1 id="headerTitle">Docling Review Bundle</h1>
+      <div class="counts" id="globalCounts">Loading manifest…</div>
+    </header>
+    <div class="app-shell">
+      <aside class="queue-panel">
+        <div class="queue-controls">
+          <input id="searchInput" type="search" placeholder="Search doc or image name" />
+          <select id="statusFilter">
+            <option value="all">All rows</option>
+            <option value="pending">Pending only</option>
+            <option value="correct">Correct</option>
+            <option value="need_changes">Need changes</option>
+          </select>
+          <select id="vizFilter">
+            <option value="all">All visualization types</option>
+            <option value="layout">Layout only</option>
+            <option value="key_value">Key-value only</option>
+          </select>
+          <select id="priorityColumnSelect">
+            <option value="need_review">Priority: need_review</option>
+          </select>
+        </div>
+        <div class="queue-list" id="queueList"></div>
+      </aside>
+      <main class="viewer-panel">
+        <section class="entry-header">
+          <div>
+            <h2 id="entryTitle">Select a document to begin</h2>
+          </div>
+          <div class="entry-actions">
+            <button id="prevEntry" class="ghost">⟵ Prev</button>
+            <button id="nextEntry" class="ghost">Next ⟶</button>
+          </div>
+        </section>
+        <section class="entry-info">
+          <div class="info-chip">
+            <span class="label">Subset</span>
+            <strong id="subsetValue">—</strong>
+          </div>
+          <div class="info-chip">
+            <span class="label">Image</span>
+            <strong id="imageValue">—</strong>
+          </div>
+          <div class="info-chip">
+            <span class="label" id="priorityLabel">Priority</span>
+            <strong id="priorityValue">—</strong>
+          </div>
+          <div class="persistence-buttons top">
+            <button id="connectBundle">Connect bundle for saving</button>
+            <button id="importDecisions" class="ghost">Import log</button>
+            <button id="exportCsv" class="ghost">Export CSV</button>
+          </div>
+        </section>
+        <section class="visualization">
+          <div class="viz-tabs" id="vizTabs"></div>
+          <iframe id="vizFrame" title="Visualization preview" loading="lazy"></iframe>
+        </section>
+        <section class="decision-panel">
+          <div class="user-decision-groups">
+            <div class="user-group" data-user="user_a">
+              <div class="user-heading">User A</div>
+              <div class="decision-buttons">
+                <button data-user="user_a" data-status="correct" class="status-btn success">Correct</button>
+                <button data-user="user_a" data-status="need_changes" class="status-btn warn">Need changes</button>
+              </div>
+            </div>
+            <div class="user-group" data-user="user_b">
+              <div class="user-heading">User B</div>
+              <div class="decision-buttons">
+                <button data-user="user_b" data-status="correct" class="status-btn success">Correct</button>
+                <button data-user="user_b" data-status="need_changes" class="status-btn warn">Need changes</button>
+              </div>
+            </div>
+            <button id="clearDecision" class="ghost">Clear both</button>
+          </div>
+          <label class="comment-field">
+            <span>Comment</span>
+            <textarea id="commentInput" rows="3" placeholder="Add context for this frame"></textarea>
+          </label>
+          <div class="decision-actions">
+            <div class="action-buttons">
+              <button id="saveDecision" class="primary" disabled>Save decision</button>
+              <button id="discardChanges" class="ghost" disabled>Discard changes</button>
+            </div>
+            <p class="unsaved-notice" id="unsavedNotice" hidden>
+              Unsaved changes — save or discard before moving to another sample.
+            </p>
+            <p class="save-status" id="saveStatusMessage" hidden></p>
+          </div>
+        </section>
+        <section class="progress" id="reviewCounts">No review decisions yet.</section>
+        <section class="persistence-panel">
+          <div class="storage-status">
+            <div id="storageTarget"></div>
+            <div id="storageStatus"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <input id="importInput" type="file" accept="application/json,text/csv" hidden />
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

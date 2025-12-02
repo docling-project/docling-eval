@@ -1,5 +1,6 @@
 import glob
 import logging
+import re
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from tqdm import tqdm  # type: ignore
 
+from docling_eval.datamodels.cvat_page_mapping import CvatPageMapping, PageRef
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import (
@@ -65,6 +67,9 @@ class ImageLayoutEvaluation(UnitEvaluation):
     """
 
     name: str
+    doc_name: str
+    image_name: str
+    page_no: int
     value: float  # Area weighted average IoU for label-matched GT/pred bboxes for IoU thres = 0.5
 
     map_val: float  # AP at IoU thres=0.50
@@ -153,6 +158,7 @@ class LayoutEvaluator(BaseEvaluator):
         prediction_sources: List[PredictionFormats] = [],
         missing_prediction_strategy: MissingPredictionStrategy = MissingPredictionStrategy.PENALIZE,
         label_filtering_strategy: LabelFilteringStrategy = LabelFilteringStrategy.INTERSECTION,
+        page_mapping_path: Optional[Path] = None,
     ):
         supported_prediction_formats: List[PredictionFormats] = [
             PredictionFormats.DOCLING_DOCUMENT,
@@ -173,6 +179,8 @@ class LayoutEvaluator(BaseEvaluator):
         self.label_mapping = label_mapping or {v: v for v in DocItemLabel}
         self.missing_prediction_strategy = missing_prediction_strategy
         self.label_filtering_strategy = label_filtering_strategy
+        self._page_mapping_path = page_mapping_path
+        self._page_mapping: Optional[CvatPageMapping] = None
 
         for i, _ in enumerate(DEFAULT_EXPORT_LABELS):
             self.filter_labels.append(_)
@@ -235,12 +243,20 @@ class LayoutEvaluator(BaseEvaluator):
                 f"Unknown label filtering strategy: {self.label_filtering_strategy}"
             )
 
+        # Filter out any labels not in DEFAULT_EXPORT_LABELS as a safeguard
+        filter_labels = [
+            label for label in filter_labels if label in DEFAULT_EXPORT_LABELS
+        ]
+
         filter_labels_str = ", ".join(sorted([label.value for label in filter_labels]))
         logging.info(f"Filter labels for evaluation: {filter_labels_str}")
+
+        page_mapping = self._get_page_mapping()
 
         doc_ids = []
         ground_truths = []
         predictions = []
+        per_page_meta: List[Tuple[str, str, str, int]] = []
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
@@ -296,24 +312,22 @@ class LayoutEvaluator(BaseEvaluator):
                 included_content_layers={c for c in ContentLayer},
                 traverse_pictures=True,
             ):
-                if (
-                    isinstance(item, DocItem)
-                    and self.label_mapping[item.label] in filter_labels
-                ):
-                    for prov in item.prov:
-                        true_pages.add(prov.page_no)
+                if isinstance(item, DocItem):
+                    mapped_label = self.label_mapping.get(item.label)
+                    if mapped_label is not None and mapped_label in filter_labels:
+                        for prov in item.prov:
+                            true_pages.add(prov.page_no)
 
             pred_pages = set()
             for item, level in pred_doc.iterate_items(
                 included_content_layers={c for c in ContentLayer},
                 traverse_pictures=True,
             ):
-                if (
-                    isinstance(item, DocItem)
-                    and self.label_mapping[item.label] in filter_labels
-                ):
-                    for prov in item.prov:
-                        pred_pages.add(prov.page_no)
+                if isinstance(item, DocItem):
+                    mapped_label = self.label_mapping.get(item.label)
+                    if mapped_label is not None and mapped_label in filter_labels:
+                        for prov in item.prov:
+                            pred_pages.add(prov.page_no)
 
             if (
                 self.missing_prediction_strategy == MissingPredictionStrategy.PENALIZE
@@ -324,21 +338,32 @@ class LayoutEvaluator(BaseEvaluator):
             # The new _extract_layout_data method ensures proper alignment
             # gts and preds are guaranteed to have the same length and corresponding indices
             if len(gts) > 0:
-                for i, (page_no, _) in enumerate(gts):
-                    doc_ids.append(data_record.doc_id + f"-page-{page_no}")
-
-                # Extract the tensor dictionaries from tuples
-                gt_tensors = [tensor_dict for _, tensor_dict in gts]
-                pred_tensors = [tensor_dict for _, tensor_dict in preds]
-
-                ground_truths.extend(gt_tensors)
-                predictions.extend(pred_tensors)
+                for (page_no, gt_tensor), (pred_page_no, pred_tensor) in zip(
+                    gts, preds
+                ):
+                    assert (
+                        page_no == pred_page_no
+                    ), "Layout evaluator misaligned ground-truth and prediction pages"
+                    page_doc_id = f"{data_record.doc_id}-page-{page_no}"
+                    doc_name, image_name = self._resolve_page_metadata(
+                        page_mapping=page_mapping,
+                        data_record=data_record,
+                        base_doc_id=data_record.doc_id,
+                        page_no=page_no,
+                    )
+                    doc_ids.append(page_doc_id)
+                    per_page_meta.append(
+                        (data_record.doc_id, doc_name, image_name, page_no)
+                    )
+                    ground_truths.append(gt_tensor)
+                    predictions.append(pred_tensor)
 
         # Note: We no longer need to check for mismatched documents since
         # _extract_layout_data ensures proper alignment based on missing_prediction_strategy
 
         assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
         assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
+        assert len(doc_ids) == len(per_page_meta), "metadata alignment failure"
 
         # Initialize metric for the bboxes of the entire document
         metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
@@ -373,11 +398,24 @@ class LayoutEvaluator(BaseEvaluator):
         weighted_map_95_values = []
 
         evaluations_per_image: List[ImageLayoutEvaluation] = []
-        for i, (doc_id, pred, gt) in enumerate(
-            zip(doc_ids, predictions, ground_truths)
+        for i, (doc_id_page, meta, pred, gt) in enumerate(
+            zip(doc_ids, per_page_meta, predictions, ground_truths)
         ):
             # logging.info(f"gt: {gt}")
             # logging.info(f"pred: {pred}")
+
+            base_doc_id, doc_name, image_name, page_no = meta
+            statistics = doc_stats.get(
+                base_doc_id,
+                {
+                    "true_element_count": 0,
+                    "pred_element_count": 0,
+                    "true_table_count": 0,
+                    "pred_table_count": 0,
+                    "true_picture_count": 0,
+                    "pred_picture_count": 0,
+                },
+            )
 
             precision, recall, f1 = self._compute_area_level_metrics_for_tensors(
                 gt_boxes=gt["boxes"],
@@ -437,13 +475,31 @@ class LayoutEvaluator(BaseEvaluator):
             weighted_map_90_values.append(average_iou_90)
             weighted_map_95_values.append(average_iou_95)
 
-            logging.info(
-                f"doc: {doc_id}\tprecision: {precision:.2f}, recall: {recall:.2f}, f1: {f1:.2f}, map_50: {map_50:.2f}, "
-                f"precision_no_pics: {precision_no_pics:.2f}, recall_no_pics: {recall_no_pics:.2f}, f1_no_pics: {f1_no_pics:.2f}"
+            _log.info(
+                "doc: %s\tprecision: %.2f, recall: %.2f, f1: %.2f, map_50: %.2f, "
+                "precision_no_pics: %.2f, recall_no_pics: %.2f, f1_no_pics: %.2f",
+                doc_id_page,
+                precision,
+                recall,
+                f1,
+                map_50,
+                precision_no_pics,
+                recall_no_pics,
+                f1_no_pics,
             )
 
+            true_element_count = int(statistics["true_element_count"])
+            pred_element_count = int(statistics["pred_element_count"])
+            true_table_count = int(statistics["true_table_count"])
+            pred_table_count = int(statistics["pred_table_count"])
+            true_picture_count = int(statistics["true_picture_count"])
+            pred_picture_count = int(statistics["pred_picture_count"])
+
             image_evaluation = ImageLayoutEvaluation(
-                name=doc_id,
+                name=doc_id_page,
+                doc_name=doc_name,
+                image_name=image_name,
+                page_no=page_no,
                 value=average_iou_50,
                 map_val=map_value,
                 map_50=map_50,
@@ -459,42 +515,21 @@ class LayoutEvaluator(BaseEvaluator):
                 segmentation_recall_no_pictures=recall_no_pics,
                 segmentation_f1_no_pictures=f1_no_pics,
                 # New per-sample element count metrics
-                true_element_count=0,
-                pred_element_count=0,
-                true_table_count=0,
-                pred_table_count=0,
-                true_picture_count=0,
-                pred_picture_count=0,
-                table_count_diff=0,
-                picture_count_diff=0,
-                element_count_diff=0,
+                true_element_count=true_element_count,
+                pred_element_count=pred_element_count,
+                true_table_count=true_table_count,
+                pred_table_count=pred_table_count,
+                true_picture_count=true_picture_count,
+                pred_picture_count=pred_picture_count,
+                table_count_diff=abs(true_table_count - pred_table_count),
+                picture_count_diff=abs(true_picture_count - pred_picture_count),
+                element_count_diff=abs(true_element_count - pred_element_count),
             )
             evaluations_per_image.append(image_evaluation)
             if self._intermediate_evaluations_path:
                 self.save_intermediate_evaluations(
-                    "Layout_image", i, doc_id, evaluations_per_image
+                    "Layout_image", i, doc_id_page, evaluations_per_image
                 )
-
-        for image_eval in evaluations_per_image:
-            doc_id = image_eval.name.split("-page-")[0]
-            image_eval.true_element_count = doc_stats[doc_id]["true_element_count"]
-            image_eval.pred_element_count = doc_stats[doc_id]["pred_element_count"]
-            image_eval.true_table_count = doc_stats[doc_id]["true_table_count"]
-            image_eval.pred_table_count = doc_stats[doc_id]["pred_table_count"]
-            image_eval.true_picture_count = doc_stats[doc_id]["true_picture_count"]
-            image_eval.pred_picture_count = doc_stats[doc_id]["pred_picture_count"]
-            image_eval.table_count_diff = abs(
-                doc_stats[doc_id]["true_table_count"]
-                - doc_stats[doc_id]["pred_table_count"]
-            )
-            image_eval.picture_count_diff = abs(
-                doc_stats[doc_id]["true_picture_count"]
-                - doc_stats[doc_id]["pred_picture_count"]
-            )
-            image_eval.element_count_diff = abs(
-                doc_stats[doc_id]["true_element_count"]
-                - doc_stats[doc_id]["pred_element_count"]
-            )
 
         evaluations_per_class = sorted(evaluations_per_class, key=lambda x: -x.value)
         evaluations_per_image = sorted(evaluations_per_image, key=lambda x: -x.value)
@@ -574,6 +609,95 @@ class LayoutEvaluator(BaseEvaluator):
                 break
 
         return pred_doc
+
+    def _get_page_mapping(self) -> Optional[CvatPageMapping]:
+        if self._page_mapping_path is None:
+            return None
+        if self._page_mapping is None:
+            self._page_mapping = CvatPageMapping.from_overview_path(
+                self._page_mapping_path
+            )
+        return self._page_mapping
+
+    def _resolve_page_metadata(
+        self,
+        *,
+        page_mapping: Optional[CvatPageMapping],
+        data_record: DatasetRecordWithPrediction,
+        base_doc_id: str,
+        page_no: int,
+    ) -> Tuple[str, str]:
+        doc_name = data_record.ground_truth_doc.name or base_doc_id
+        doc_hash = data_record.doc_hash or self._extract_hash_from_doc_id(base_doc_id)
+        default_image_name = (
+            f"doc_{doc_hash}_page_{page_no:06d}.png"
+            if doc_hash
+            else f"{base_doc_id}-page-{page_no}"
+        )
+
+        if page_mapping is None:
+            return doc_name, default_image_name
+
+        ref = self._find_page_ref(
+            page_mapping=page_mapping,
+            data_record=data_record,
+            base_doc_id=base_doc_id,
+            page_no=page_no,
+        )
+        if ref is not None:
+            return ref.doc_name, ref.image_name
+        return doc_name, default_image_name
+
+    @staticmethod
+    def _extract_hash_from_doc_id(doc_id: str) -> Optional[str]:
+        match = re.match(r"doc_([0-9a-f]{64})_page_", doc_id)
+        if match:
+            return match.group(1)
+        return None
+
+    def _find_page_ref(
+        self,
+        *,
+        page_mapping: CvatPageMapping,
+        data_record: DatasetRecordWithPrediction,
+        base_doc_id: str,
+        page_no: int,
+    ) -> Optional[PageRef]:
+        hash_candidates: List[str] = []
+        if data_record.doc_hash:
+            hash_candidates.append(data_record.doc_hash)
+        extracted_hash = self._extract_hash_from_doc_id(base_doc_id)
+        if extracted_hash:
+            hash_candidates.append(extracted_hash)
+
+        for candidate_hash in hash_candidates:
+            for ref in page_mapping.pages_for_doc_hash(candidate_hash):
+                if ref.page_no == page_no:
+                    return ref
+
+        doc_name_candidates: List[str] = []
+        if data_record.doc_path is not None:
+            doc_path_str = str(data_record.doc_path)
+            doc_name_candidates.append(doc_path_str)
+            doc_name_candidates.append(Path(doc_path_str).stem)
+        gt_name = data_record.ground_truth_doc.name
+        if gt_name:
+            doc_name_candidates.append(gt_name)
+            doc_name_candidates.append(Path(gt_name).stem)
+        doc_name_candidates.append(base_doc_id)
+
+        seen: set[str] = set()
+        for candidate in doc_name_candidates:
+            if not candidate:
+                continue
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            for ref in page_mapping.pages_for_doc_name(candidate):
+                if ref.page_no == page_no:
+                    return ref
+
+        return None
 
     def _compute_iou(self, box1, box2):
         """Compute IoU between two bounding boxes."""
@@ -742,14 +866,27 @@ class LayoutEvaluator(BaseEvaluator):
         intersection_labels: List[DocItemLabel] = []
         union_labels: List[DocItemLabel] = []
         for label, count in true_labels.items():
-            union_labels.append(DocItemLabel(label))
-
-            if label in pred_labels:
-                intersection_labels.append(DocItemLabel(label))
+            # Handle both string and DocItemLabel enum keys
+            if isinstance(label, str):
+                label_enum = DocItemLabel(label)
+            else:
+                label_enum = label
+            # Only include labels that are in DEFAULT_EXPORT_LABELS
+            if label_enum in DEFAULT_EXPORT_LABELS:
+                union_labels.append(label_enum)
+                if label in pred_labels:
+                    intersection_labels.append(label_enum)
 
         for label, count in pred_labels.items():
             if label not in true_labels:
-                union_labels.append(DocItemLabel(label))
+                # Handle both string and DocItemLabel enum keys
+                if isinstance(label, str):
+                    label_enum = DocItemLabel(label)
+                else:
+                    label_enum = label
+                # Only include labels that are in DEFAULT_EXPORT_LABELS
+                if label_enum in DEFAULT_EXPORT_LABELS:
+                    union_labels.append(label_enum)
 
         return true_labels, pred_labels, intersection_labels, union_labels
 
@@ -777,12 +914,11 @@ class LayoutEvaluator(BaseEvaluator):
             traverse_pictures=True,
             with_groups=True,
         ):
-            if (
-                isinstance(item, DocItem)
-                and self.label_mapping[item.label] in filter_labels
-            ):
-                for prov in item.prov:
-                    pages_to_objects[prov.page_no].append(item)
+            if isinstance(item, DocItem):
+                mapped_label = self.label_mapping.get(item.label)
+                if mapped_label is not None and mapped_label in filter_labels:
+                    for prov in item.prov:
+                        pages_to_objects[prov.page_no].append(item)
 
         return pages_to_objects
 
@@ -818,6 +954,11 @@ class LayoutEvaluator(BaseEvaluator):
         _log.debug(f"GT pages: {sorted(gt_pages)}, Pred pages: {sorted(pred_pages)}")
 
         # Process pages in sorted order to ensure consistent alignment
+        # List[Tuple[page_no, Dict[str, torch.Tensor]]]. The dict has tensors with bboxes, labels:
+        #    "boxes": torch.tensor(bboxes, dtype=torch.float32),
+        #    "labels": torch.tensor(labels, dtype=torch.long),
+        #    "scores": torch.tensor(scores, dtype=torch.float32)  # Only for the predictions
+        # The bboxes are in top-left origin, in x1y1x2y2 format, normalized and scaled to 100
         ground_truths: List[Tuple[int, Dict[str, torch.Tensor]]] = []
         predictions: List[Tuple[int, Dict[str, torch.Tensor]]] = []
 
@@ -903,6 +1044,9 @@ class LayoutEvaluator(BaseEvaluator):
             scores = []
 
         for item in items:
+            mapped_label = self.label_mapping.get(item.label)
+            if mapped_label is None or mapped_label not in filter_labels:
+                continue
             for prov in item.prov:
                 if (
                     prov.page_no == page_no
@@ -912,7 +1056,7 @@ class LayoutEvaluator(BaseEvaluator):
                     bbox = bbox.scaled(100.0)
 
                     bboxes.append([bbox.l, bbox.t, bbox.r, bbox.b])
-                    labels.append(filter_labels.index(self.label_mapping[item.label]))  # type: ignore
+                    labels.append(filter_labels.index(mapped_label))  # type: ignore
                     if is_prediction:
                         scores.append(1.0)  # FIXME: Use actual confidence scores
 

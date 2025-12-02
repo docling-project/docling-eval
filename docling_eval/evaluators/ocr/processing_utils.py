@@ -3,6 +3,7 @@ import logging
 import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
+import edit_distance
 from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_core.types.doc.page import (
     BoundingRectangle,
@@ -17,7 +18,9 @@ from docling_eval.evaluators.ocr.geometry_utils import create_polygon_from_bbox
 _log = logging.getLogger(__name__)
 
 
-def extract_word_from_text_cell(text_cell: TextCell, page_height: float) -> Word:
+def extract_word_from_text_cell(
+    text_cell: TextCell, page_height: float, is_ground_truth: bool = False
+) -> Word:
     rect_to_process = text_cell.rect
     if rect_to_process.coord_origin != CoordOrigin.TOPLEFT:
         rect_to_process = rect_to_process.to_top_left_origin(page_height=page_height)
@@ -42,10 +45,13 @@ def extract_word_from_text_cell(text_cell: TextCell, page_height: float) -> Word
     ):
         is_vertical_flag = True
 
+    # For GT: set orig to the GT text; for predictions: prefer provided orig, fallback to text
+    orig_val = text_cell.text if is_ground_truth else (text_cell.orig or text_cell.text)
+
     return Word(
         rect=rect_to_process,
         text=text_cell.text,
-        orig=text_cell.orig,
+        orig=orig_val,
         text_direction=text_cell.text_direction,
         confidence=text_cell.confidence,
         from_ocr=text_cell.from_ocr,
@@ -94,10 +100,12 @@ def merge_words_into_one(
             text_direction=TextDirection.LEFT_TO_RIGHT,
             vertical=False,
             polygon=create_polygon_from_bbox(default_bbox),
+            word_weight=1,
         )
 
     separator: str = " " if add_space_between_words else ""
-    merged_text_parts = []
+    merged_text_parts: List[str] = []
+    merged_orig_parts: List[str] = []
 
     min_left: float = float("inf")
     min_top: float = float("inf")
@@ -110,6 +118,7 @@ def merge_words_into_one(
 
     for word_item in sorted_words:
         merged_text_parts.append(word_item.text)
+        merged_orig_parts.append(word_item.orig)
         current_bbox = word_item.bbox
         min_left = min(min_left, current_bbox.l)
         min_top = min(min_top, current_bbox.t)
@@ -117,6 +126,7 @@ def merge_words_into_one(
         max_bottom = max(max_bottom, current_bbox.b)
 
     merged_text: str = separator.join(merged_text_parts)
+    merged_orig: str = separator.join(merged_orig_parts)
 
     merged_bbox = BoundingBox(
         l=min_left,
@@ -129,15 +139,18 @@ def merge_words_into_one(
     merged_polygon: List[List[float]] = create_polygon_from_bbox(merged_bbox)
     merged_rect = BoundingRectangle.from_bounding_box(merged_bbox)
 
+    total_weight = sum(getattr(w, "word_weight", 1) for w in sorted_words)
+
     return Word(
         text=merged_text,
         rect=merged_rect,
-        orig=merged_text,
+        orig=merged_orig,
         confidence=first_word_for_metadata.confidence,
         from_ocr=any(w.from_ocr for w in sorted_words),
         text_direction=first_word_for_metadata.text_direction,
         vertical=first_word_for_metadata.vertical,
         polygon=merged_polygon,
+        word_weight=total_weight,
     )
 
 
@@ -194,6 +207,53 @@ class _IgnoreZoneFilter:
             return False
         else:
             return True
+
+
+class _IgnoreZoneFilterHWR(_IgnoreZoneFilter):
+    def filter_words_in_ignore_zones(
+        self, prediction_words: List[Word], ground_truth_words: List[Word]
+    ) -> Tuple[List[Word], List[Word], List[Word]]:
+        ignore_zones: List[Word] = []
+
+        # Identify ignore zones from GT and mark them for removal from GT
+        for gt_word in ground_truth_words:
+            if gt_word.ignore_zone is True:
+                ignore_zones.append(gt_word)
+                gt_word.to_remove = True
+
+        # Remove predictions that intersect the ignore zones sufficiently (IoU-based)
+        for zone in ignore_zones:
+            zone_bbox = zone.bbox
+            for pred_word in prediction_words:
+                if self._intersect_by_iou(pred_word.bbox, zone_bbox):
+                    pred_word.to_remove = True
+
+        filtered_ground_truth_words: List[Word] = [
+            w for w in ground_truth_words if not w.to_remove
+        ]
+        filtered_prediction_words: List[Word] = [
+            w for w in prediction_words if not w.to_remove
+        ]
+
+        return filtered_ground_truth_words, filtered_prediction_words, ignore_zones
+
+    def _intersect_by_iou(
+        self, bbox1: BoundingBox, bbox2: BoundingBox, iou_threshold: float = 0.3
+    ) -> bool:
+        # Ratio overlaps relative to bbox1 (prediction)
+        x_overlap = bbox1.x_overlap_with(bbox2)
+        y_overlap = bbox1.y_overlap_with(bbox2)
+        x_overlap_ratio = 0.0 if bbox1.width == 0 else x_overlap / bbox1.width
+        y_overlap_ratio = 0.0 if bbox1.height == 0 else y_overlap / bbox1.height
+
+        # Near-contained special-case
+        if x_overlap_ratio > 0.95 and y_overlap_ratio > 0.95:
+            return True
+
+        intersection_area = bbox1.intersection_area_with(bbox2)
+        union_area = bbox1.union_area_with(bbox2)
+        iou = (intersection_area / union_area) if union_area > 0 else 0.0
+        return iou >= iou_threshold
 
 
 def parse_segmented_pages(
@@ -254,3 +314,25 @@ def parse_segmented_pages(
             traceback.print_exc()
             continue
     return segmented_pages_map if segmented_pages_map else None
+
+
+def replace_chars_by_map(text: str, char_map: Dict[str, str]) -> str:
+    """Replaces characters in a string based on a provided mapping."""
+    if not char_map:
+        return text
+    return "".join(char_map.get(char, char) for char in text)
+
+
+def calculate_edit_distance(
+    str1: str, str2: str, normalize_map: Optional[Dict[str, str]] = None
+) -> int:
+    """Calculates the Levenshtein edit distance between two strings after optional normalization."""
+    str1_stripped = str1.strip()
+    str2_stripped = str2.strip()
+
+    map_to_use = normalize_map or {}
+    str1_normalized = replace_chars_by_map(str1_stripped, map_to_use)
+    str2_normalized = replace_chars_by_map(str2_stripped, map_to_use)
+
+    sm = edit_distance.SequenceMatcher(str1_normalized, str2_normalized)
+    return sm.distance()

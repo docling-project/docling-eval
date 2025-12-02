@@ -2,8 +2,9 @@ import glob
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from datasets import load_dataset
 from docling_core.types.doc import DocItemLabel
@@ -48,6 +49,7 @@ class CvatPreannotationBuilder:
         bucket_size: int = 200,
         use_predictions: bool = False,
         sliding_window: int = 2,
+        cleanup_json_groundtruth_after_creation: bool = True,
     ):
         """
         Initialize the CvatPreannotationBuilder.
@@ -58,6 +60,7 @@ class CvatPreannotationBuilder:
             bucket_size: Number of documents per bucket for CVAT tasks
             use_predictions: Whether to use predictions instead of ground truth
             sliding_window: Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)
+            cleanup_json_groundtruth_after_creation: Whether to delete json_groundtruth/ after preannotation XML generation (default True)
         """
         self.source_dir = dataset_source
         self.target_dir = target
@@ -69,6 +72,115 @@ class CvatPreannotationBuilder:
         )
         self.overview = AnnotationOverview()
         self.use_predictions = use_predictions
+        self.cleanup_json_groundtruth_after_creation = (
+            cleanup_json_groundtruth_after_creation
+        )
+
+    def _relative_to_target(self, path: Union[Path, str]) -> Path:
+        """
+        Return a path relative to the target directory.
+
+        This ensures paths stored in cvat_overview.json are always relative,
+        preventing issues when the dataset is moved or used on different machines.
+
+        Handles both:
+        - Absolute paths under current target: uses relative_to()
+        - Absolute paths from moved datasets: finds target directory in path parents and uses relative_to()
+        - Relative paths: returns as-is (or extracts if starts with target name)
+        """
+
+        if path is None:
+            return Path("")
+
+        path_obj = Path(path)
+        if not str(path_obj):
+            return path_obj
+
+        base = self.benchmark_dirs.target_dir.resolve()
+        base_name = base.name
+
+        # For absolute paths, try relative_to() first (normal case)
+        if path_obj.is_absolute():
+            path_obj = path_obj.resolve()
+            try:
+                return path_obj.relative_to(base)
+            except ValueError:
+                # Path is not under current base - dataset may have been moved
+                # Use Pathlib to find target directory in path's parent chain
+                for parent in path_obj.parents:
+                    if parent.name == base_name:
+                        # Found target directory in parent chain, extract relative portion
+                        try:
+                            return path_obj.relative_to(parent)
+                        except ValueError:
+                            # Shouldn't happen, but handle gracefully
+                            continue
+                # If we can't find target directory in parents, return as-is
+                # (will be handled by _absolute_from_target when loading)
+                _log.debug(
+                    f"Path {path_obj} is not under target directory {base} "
+                    f"and target name '{base_name}' not found in parent chain. Keeping as absolute path."
+                )
+                return path_obj
+
+        # For non-absolute paths, check if they contain target directory name
+        # (handles cases where path was stored with target name in middle, e.g., moved datasets)
+        path_parts = path_obj.parts
+        if path_parts and base_name in path_parts:
+            # Find target directory name in path and extract relative portion after it
+            idx = path_parts.index(base_name)
+            rel_parts = path_parts[idx + 1 :]
+            if rel_parts:
+                return Path(*rel_parts)
+            return Path("")
+
+        # Path is already relative (doesn't contain target directory name)
+        return path_obj
+
+    def _store_image_annotation(
+        self, filename: str, annotated_image: AnnotatedImage
+    ) -> None:
+        """Store an image annotation using paths relative to the target directory."""
+
+        annotated_image.document_file = self._relative_to_target(
+            annotated_image.document_file
+        )
+        annotated_image.bin_file = self._relative_to_target(annotated_image.bin_file)
+        annotated_image.bucket_dir = self._relative_to_target(
+            annotated_image.bucket_dir
+        )
+        annotated_image.img_file = self._relative_to_target(annotated_image.img_file)
+        annotated_image.page_img_files = [
+            self._relative_to_target(page_file)
+            for page_file in annotated_image.page_img_files
+        ]
+
+        self.overview.img_annotations[filename] = annotated_image
+
+    def _absolute_from_target(self, path: Union[Path, str]) -> Path:
+        """
+        Return an absolute path rooted at the target directory when needed.
+
+        This method handles both:
+        - Relative paths (stored in new cvat_overview.json files): prepends target_dir
+        - Absolute paths (from old cvat_overview.json files): returns as-is for backward compatibility
+        """
+
+        if path is None:
+            return Path("")
+
+        path_obj = Path(path)
+        if not str(path_obj):
+            return path_obj
+
+        # If path is already absolute (from old overview files), return as-is
+        # This maintains backward compatibility with existing datasets
+        if path_obj.is_absolute():
+            return path_obj
+
+        # For relative paths, prepend target directory (ensure target_dir is resolved to absolute)
+        target_dir = self.benchmark_dirs.target_dir.resolve()
+        return target_dir / path_obj
 
     def _export_from_dataset(self) -> AnnotationOverview:
         """
@@ -157,6 +269,12 @@ class CvatPreannotationBuilder:
                     bin_ext = ".png"
                 elif mime_type in ["image/jpg", "image/jpeg"]:
                     bin_ext = ".jpg"
+                elif mime_type in ["image/tiff", "image/tif"]:
+                    bin_ext = ".tiff"
+                elif mime_type == "image/bmp":
+                    bin_ext = ".bmp"
+                elif mime_type == "image/gif":
+                    bin_ext = ".gif"
                 else:
                     _log.warning(
                         f"Unsupported mime-type {mime_type}, using .bin extension"
@@ -181,8 +299,8 @@ class CvatPreannotationBuilder:
                 overview.doc_annotations.append(
                     AnnotatedDoc(
                         mime_type=mime_type,
-                        document_file=json_file,  # The one and only JSON file
-                        bin_file=bin_file,
+                        document_file=self._relative_to_target(json_file),
+                        bin_file=self._relative_to_target(bin_file),
                         doc_hash=doc_hash,
                         doc_name=doc_name,
                     )
@@ -376,7 +494,8 @@ class CvatPreannotationBuilder:
             # try:
             if True:
                 # Load document from the saved JSON file
-                doc = DoclingDocument.load_from_json(doc_overview.document_file)
+                doc_path = self._absolute_from_target(doc_overview.document_file)
+                doc = DoclingDocument.load_from_json(doc_path)
 
                 if sliding_window == 1 or doc_overview.mime_type != "application/pdf":
                     img_id = self._process_each_page_in_the_document(
@@ -482,6 +601,16 @@ class CvatPreannotationBuilder:
         # Write preannotation XML files for each bucket
         for bucket_id, annotations in bucket_annotations.items():
             self._write_preannotation_file(bucket_id, annotations)
+
+        # Cleanup json_groundtruth/ after preannotation XML generation completes
+        # (it's only needed during creation, not for evaluation or CVAT upload)
+        if self.cleanup_json_groundtruth_after_creation:
+            json_groundtruth_dir = self.benchmark_dirs.json_true_dir
+            if json_groundtruth_dir.exists():
+                shutil.rmtree(json_groundtruth_dir)
+                _log.info(
+                    f"Cleaned up {json_groundtruth_dir} after preannotation creation"
+                )
 
         # Save overview with all the properly set file paths
         self.overview.save_as_json(self.benchmark_dirs.overview_file)
@@ -606,14 +735,15 @@ class CvatPreannotationBuilder:
                 page_no for page_no in range(page_start, page_end)
             ]
 
-            # Save individual page images
+            # Save individual page images to cvat_tasks/ in PNG format (needed for CVAT uploader)
+            # This eliminates redundancy with page_imgs/ directory
             annotated_image.page_img_files = []
             for page_no in range(page_start, page_end):
                 # Create unique filename for the page image
                 page_filename = f"doc_{doc_hash}_page_{page_no:06}.png"
 
-                # Save page image to both task directory and page images directory
-                page_img_file = self.benchmark_dirs.page_imgs_dir / page_filename
+                # Save page image to task directory
+                page_img_file = bucket_dir / page_filename
                 annotated_image.page_img_files.append(page_img_file)
 
                 _log.info(f"saving {page_img_file}")
@@ -645,7 +775,7 @@ class CvatPreannotationBuilder:
             bucket_annotations[bucket_id].append(annotated_image.to_cvat())
 
             # Add to overview using filename as key
-            self.overview.img_annotations[filename] = annotated_image
+            self._store_image_annotation(filename, annotated_image)
 
         return img_id
 
@@ -688,25 +818,23 @@ class CvatPreannotationBuilder:
                 img_file=bucket_dir / filename,
             )
 
-            # Save page image to both task directory and page images directory
-            page_img_file = self.benchmark_dirs.page_imgs_dir / filename
-            annotated_image.page_img_files = [page_img_file]
-
             # Extract and save page image
             page_image_ref = page.image
             if page_image_ref is not None:
                 page_image = page_image_ref.pil_image
 
                 if page_image is not None:
+                    # Always save images to cvat_tasks/ in PNG format (needed for CVAT uploader)
+                    # This applies to both PDF and image inputs
                     page_image.save(str(annotated_image.img_file))
-                    page_image.save(str(annotated_image.page_img_files[0]))
+
+                    # Point page_img_files to cvat_tasks location (same as img_file)
+                    # This eliminates redundancy with page_imgs/ directory
+                    annotated_image.page_img_files = [annotated_image.img_file]
 
                     annotated_image.img_w = page_image.width
                     annotated_image.img_h = page_image.height
                     annotated_image.page_nos = [page_no]
-
-                    # Add to overview using filename as key
-                    self.overview.img_annotations[filename] = annotated_image
                 else:
                     _log.warning(
                         f"Missing pillow image for page {page_no}, skipping..."
@@ -723,6 +851,7 @@ class CvatPreannotationBuilder:
 
             annotated_image.bbox_annotations = page_bboxes
             bucket_annotations[bucket_id].append(annotated_image.to_cvat())
+            self._store_image_annotation(filename, annotated_image)
 
         return img_id
 

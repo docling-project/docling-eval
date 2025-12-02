@@ -6,9 +6,11 @@ import numpy as np
 from datasets import load_dataset
 from docling_core.types.doc.document import DoclingDocument, KeyValueItem
 from editdistance import eval as _edit_distance_eval
+from pydantic import Field
 from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm  # type: ignore
 
+from docling_eval.datamodels.cvat_page_mapping import CvatPageMapping, PageRef
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import PredictionFormats
 from docling_eval.evaluators.base_evaluator import (
@@ -303,6 +305,45 @@ class KeyValueEvaluation(UnitEvaluation):
     num_link_diff_normalized: float
 
 
+class KeyValuePageEvaluation(UnitEvaluation):
+    doc_id: str
+    page_no: int
+    image_name: str
+
+    entity_tp: int
+    entity_fp: int
+    entity_fn: int
+    entity_precision: float
+    entity_recall: float
+    entity_f1: float
+
+    entity_tp_bbox: int
+    entity_fp_bbox: int
+    entity_fn_bbox: int
+    entity_precision_bbox: float
+    entity_recall_bbox: float
+    entity_f1_bbox: float
+
+    relation_tp: int
+    relation_fp: int
+    relation_fn: int
+    relation_precision: float
+    relation_recall: float
+    relation_f1: float
+
+    relation_tp_bbox: int
+    relation_fp_bbox: int
+    relation_fn_bbox: int
+    relation_precision_bbox: float
+    relation_recall_bbox: float
+    relation_f1_bbox: float
+
+    num_entity_diff: int
+    num_link_diff: int
+    num_entity_diff_normalized: float
+    num_link_diff_normalized: float
+
+
 # --------------------------------------------------------------------------- #
 # Dataset-level evaluation
 # --------------------------------------------------------------------------- #
@@ -332,6 +373,8 @@ class DatasetKeyValueEvaluation(DatasetEvaluation):
     num_entity_diff_normalized_stats: DatasetStatistics
     num_link_diff_normalized_stats: DatasetStatistics
 
+    evaluations_per_page: List[KeyValuePageEvaluation] = Field(default_factory=list)
+
 
 # --------------------------------------------------------------------------- #
 # Main evaluator
@@ -348,6 +391,7 @@ class KeyValueEvaluator(BaseEvaluator):
         intermediate_evaluations_path: Optional[Path] = None,
         prediction_sources: List[PredictionFormats] | None = None,
         strict_matching: bool = False,
+        page_mapping_path: Optional[Path] = None,
     ):
         supported_prediction_formats = [
             PredictionFormats.DOCLING_DOCUMENT,
@@ -365,6 +409,8 @@ class KeyValueEvaluator(BaseEvaluator):
         )
 
         self._strict = strict_matching
+        self._page_mapping_path = page_mapping_path
+        self._page_mapping: Optional[CvatPageMapping] = None
 
     # --------------------------------------------------------------------- #
     # Public API
@@ -403,6 +449,7 @@ class KeyValueEvaluator(BaseEvaluator):
         }
 
         all_evals: List[KeyValueEvaluation] = []
+        page_evaluations: List[KeyValuePageEvaluation] = []
 
         for i, data in tqdm(
             enumerate(ds[split]),
@@ -530,6 +577,16 @@ class KeyValueEvaluator(BaseEvaluator):
             )
             all_evals.append(evaluation)
 
+            page_mapping = self._get_page_mapping()
+            if page_mapping is not None:
+                page_evals = self._evaluate_per_page(
+                    doc_id,
+                    gt_doc,
+                    pred_doc,
+                    page_mapping,
+                )
+                page_evaluations.extend(page_evals)
+
             # optional: dump intermediate JSON
             if self._intermediate_evaluations_path is not None:
                 self.save_intermediate_evaluations("KeyValue", i, doc_id, [evaluation])
@@ -570,6 +627,7 @@ class KeyValueEvaluator(BaseEvaluator):
             num_link_diff_normalized_stats=compute_stats(
                 ds_metrics["num_link_diff_normalized"]
             ),
+            evaluations_per_page=page_evaluations,
         )
         return dataset_eval
 
@@ -600,3 +658,134 @@ class KeyValueEvaluator(BaseEvaluator):
                 break
 
         return pred_doc
+
+    def _get_page_mapping(self) -> Optional[CvatPageMapping]:
+        if self._page_mapping_path is None:
+            return None
+        if self._page_mapping is None:
+            self._page_mapping = CvatPageMapping.from_overview_path(
+                self._page_mapping_path
+            )
+        return self._page_mapping
+
+    def _evaluate_per_page(
+        self,
+        doc_id: str,
+        gt_doc: DoclingDocument,
+        pred_doc: DoclingDocument,
+        page_mapping: CvatPageMapping,
+    ) -> List[KeyValuePageEvaluation]:
+        results: List[KeyValuePageEvaluation] = []
+
+        page_refs: List[PageRef] = page_mapping.pages_for_doc_name(doc_id)
+        if not page_refs:
+            return results
+
+        for ref in page_refs:
+            gt_page_doc = self._filter_doc_to_page(gt_doc, ref.page_no)
+            pred_page_doc = self._filter_doc_to_page(pred_doc, ref.page_no)
+
+            (
+                ent_tp,
+                ent_fp,
+                ent_fn,
+                ent_prec,
+                ent_rec,
+                ent_f1,
+            ) = evaluate_entity_recognition(
+                gt_page_doc, pred_page_doc, is_strict=self._strict
+            )
+            (
+                ent_tp_b,
+                ent_fp_b,
+                ent_fn_b,
+                ent_prec_b,
+                ent_rec_b,
+                ent_f1_b,
+            ) = evaluate_entity_extraction_with_bbox(
+                gt_page_doc, pred_page_doc, is_strict=self._strict
+            )
+
+            (
+                rel_tp,
+                rel_fp,
+                rel_fn,
+                rel_prec,
+                rel_rec,
+                rel_f1,
+            ) = evaluate_relation_extraction(
+                gt_page_doc, pred_page_doc, is_strict=self._strict
+            )
+            (
+                rel_tp_b,
+                rel_fp_b,
+                rel_fn_b,
+                rel_prec_b,
+                rel_rec_b,
+                rel_f1_b,
+            ) = evaluate_relation_extraction_with_bbox(
+                gt_page_doc, pred_page_doc, is_strict=self._strict
+            )
+
+            gt_entity_count = count_entities(gt_page_doc)
+            pred_entity_count = count_entities(pred_page_doc)
+            entity_diff = abs(gt_entity_count - pred_entity_count)
+            max_entity_count = max(gt_entity_count, pred_entity_count)
+            entity_diff_normalized = (
+                (entity_diff / max_entity_count) if max_entity_count > 0 else 0.0
+            )
+
+            gt_link_count = count_links(gt_page_doc)
+            pred_link_count = count_links(pred_page_doc)
+            link_diff = abs(gt_link_count - pred_link_count)
+            max_link_count = max(gt_link_count, pred_link_count)
+            link_diff_normalized = (
+                (link_diff / max_link_count) if max_link_count > 0 else 0.0
+            )
+
+            results.append(
+                KeyValuePageEvaluation(
+                    doc_id=doc_id,
+                    page_no=ref.page_no,
+                    image_name=ref.image_name,
+                    entity_tp=ent_tp,
+                    entity_fp=ent_fp,
+                    entity_fn=ent_fn,
+                    entity_precision=ent_prec,
+                    entity_recall=ent_rec,
+                    entity_f1=ent_f1,
+                    entity_tp_bbox=ent_tp_b,
+                    entity_fp_bbox=ent_fp_b,
+                    entity_fn_bbox=ent_fn_b,
+                    entity_precision_bbox=ent_prec_b,
+                    entity_recall_bbox=ent_rec_b,
+                    entity_f1_bbox=ent_f1_b,
+                    relation_tp=rel_tp,
+                    relation_fp=rel_fp,
+                    relation_fn=rel_fn,
+                    relation_precision=rel_prec,
+                    relation_recall=rel_rec,
+                    relation_f1=rel_f1,
+                    relation_tp_bbox=rel_tp_b,
+                    relation_fp_bbox=rel_fp_b,
+                    relation_fn_bbox=rel_fn_b,
+                    relation_precision_bbox=rel_prec_b,
+                    relation_recall_bbox=rel_rec_b,
+                    relation_f1_bbox=rel_f1_b,
+                    num_entity_diff=entity_diff,
+                    num_link_diff=link_diff,
+                    num_entity_diff_normalized=entity_diff_normalized,
+                    num_link_diff_normalized=link_diff_normalized,
+                )
+            )
+
+        return results
+
+    @staticmethod
+    def _filter_doc_to_page(doc: DoclingDocument, page_no: int) -> DoclingDocument:
+        if doc.pages and page_no in doc.pages:
+            page_doc = doc.filter(page_nrs={page_no})
+            page_doc.name = doc.name
+            return page_doc
+
+        return DoclingDocument(name=doc.name)

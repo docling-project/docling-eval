@@ -51,6 +51,57 @@ def get_binhash(binary_data: bytes) -> str:
     return hash_hex
 
 
+def count_pages_in_file(file_path: Path) -> int:
+    """
+    Count the number of pages in a file.
+
+    For PDFs, counts actual pages. For multipage TIFFs, counts frames/pages.
+    For single-page images and other files, returns 1.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        Number of pages/frames in the file
+    """
+    import mimetypes
+
+    mime_type, _ = mimetypes.guess_type(file_path)
+
+    if mime_type == "application/pdf":
+        try:
+            in_doc = get_input_document(file_path, backend_t=PyPdfiumDocumentBackend)
+            if in_doc.valid:
+                return in_doc.page_count
+            return 1
+        except Exception as e:
+            logging.warning(f"Failed to count pages in PDF {file_path}: {e}")
+            return 1
+    elif mime_type is not None and mime_type.startswith("image/"):
+        # Check if it's a TIFF file (which can be multipage)
+        if file_path.suffix.lower() in [".tif", ".tiff"]:
+            try:
+                with Image.open(file_path) as img:
+                    # Try to get the number of frames/pages
+                    page_count = 0
+                    try:
+                        while True:
+                            img.seek(page_count)
+                            page_count += 1
+                    except EOFError:
+                        pass
+                    return max(1, page_count)  # At least 1 page
+            except Exception as e:
+                logging.warning(f"Failed to count pages in TIFF {file_path}: {e}")
+                return 1
+        else:
+            # Single-page image formats
+            return 1
+    else:
+        # Other file types (JSON, etc.) are treated as single-page
+        return 1
+
+
 def write_datasets_info(
     name: str,
     output_dir: Path,
@@ -162,12 +213,19 @@ def yield_cells_from_html_table(
 
         num_cols = 0
         for cell in row.find_all(["td", "th"]):
-            num_cols += int(cell.get("colspan", 1))
+            colspan_attr = cell.get("colspan")
+            if isinstance(colspan_attr, str):
+                colspan_val = int(colspan_attr)
+            else:
+                colspan_val = 1
+            num_cols += colspan_val
 
         max_cols = max(max_cols, num_cols)  # Determine maximum columns
 
     # Create grid to track cell positions
-    grid = [[None for _ in range(max_cols)] for _ in range(len(rows))]
+    grid: list[list[Optional[str]]] = [
+        [None for _ in range(max_cols)] for _ in range(len(rows))
+    ]
 
     text_cell_id = 0
     for row_idx, row in enumerate(rows):
@@ -198,8 +256,16 @@ def yield_cells_from_html_table(
                     coord_origin=CoordOrigin.BOTTOMLEFT,
                 )
 
-            rowspan = int(cell.get("rowspan", 1))
-            colspan = int(cell.get("colspan", 1))
+            rowspan_attr = cell.get("rowspan")
+            if isinstance(rowspan_attr, str):
+                rowspan = int(rowspan_attr)
+            else:
+                rowspan = 1
+            colspan_attr = cell.get("colspan")
+            if isinstance(colspan_attr, str):
+                colspan = int(colspan_attr)
+            else:
+                colspan = 1
 
             # Fill grid positions and yield (row, column, text)
             for r in range(rowspan):
@@ -776,3 +842,17 @@ def does_intersection_area_exceed_threshold(
         if first_bbox_area > 0
         else False
     )
+
+
+def dict_get(data: dict, keys: list[str], default=None):
+    r"""
+    Traverse the given path of keys and return the value of dict
+    If the path is broken return the default value
+    """
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
