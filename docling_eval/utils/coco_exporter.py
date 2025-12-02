@@ -131,7 +131,7 @@ class DoclingEvalCOCOExporter:
         extra_doc_label_to_valid_label_mapping: dict[
             DocItemLabel, Optional[DocItemLabel]
         ],
-        source_doc_column: str = "GT",
+        use_pred_doc: bool = False,  # If True the gt_doc is used, otherwise the pred_doc
     ):
         r"""
         Export COCO dataset
@@ -181,7 +181,7 @@ class DoclingEvalCOCOExporter:
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
 
-            if data_record.predicted_doc is not None and source_doc_column == "pred":
+            if data_record.predicted_doc is not None and use_pred_doc:
                 doc = data_record.predicted_doc
                 _log.info("Dataset document to export: 'predicted_doc'")
             else:
@@ -576,7 +576,7 @@ def main():
         "--operation",
         required=True,
         type=str,
-        help="Operation to perform. One of ['coco']",
+        help="Operation to perform. One of ['coco_gt_doc', 'coco_pred_doc', 'predictions']",
     )
     parser.add_argument(
         "-s",
@@ -614,7 +614,8 @@ def main():
     exporter = DoclingEvalCOCOExporter(args.docling_eval_dir)
 
     # Run the operation
-    if args.operation.upper() == "COCO":
+    op = args.operation.lower()
+    if op in ["coco_gt_doc", "coco_pred_doc"]:
         # Mapping from the parquet document label to the valid docling labels
         doc_label_to_valid_label_mapping: dict[DocItemLabel, DocItemLabel] = {
             DocItemLabel.PAGE_FOOTER: DocItemLabel.TEXT,
@@ -629,8 +630,9 @@ def main():
             "test",
             args.save_dir,
             doc_label_to_valid_label_mapping,
+            use_pred_doc="coco_pred_doc" == op,
         )
-    elif args.operation.upper() == "PREDICTIONS":
+    elif op == "predictions":
         exporter.export_predictions_wrt_original_COCO(
             "test",
             args.save_dir,
