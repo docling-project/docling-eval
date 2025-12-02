@@ -156,7 +156,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
             true_md = self._docling_document_to_md(true_doc)
             pred_md = self._get_pred_md(data_record)
 
-            if pred_md is None:
+            if not pred_md:
                 _log.error("There is no markdown prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
