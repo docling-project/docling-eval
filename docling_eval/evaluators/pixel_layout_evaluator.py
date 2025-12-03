@@ -244,7 +244,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
 
             # Compute confusion matrices
             pages_confusion_matrices: Dict[int, np.ndarray]
-            pages_confusion_matrices, num_pixels = (
+            pages_pixels: Dict[int, int]
+            pages_confusion_matrices, doc_num_pixels, pages_pixels = (
                 self._compute_document_confusion_matrix(true_doc, pred_doc)
             )
 
@@ -263,6 +264,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 page_evaluation = PagePixelLayoutEvaluation(
                     doc_id=doc_id,
                     page_no=page_no,
+                    num_pixels=pages_pixels[page_no],
                     matrix_evaluation=page_matrix_evaluation,
                 )
                 doc_page_id = f"{doc_id}-{page_no}"
@@ -276,7 +278,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     page_matrix_evaluation.collapsed.agg_metrics.classes_f1_mean
                 )
 
-            ds_num_pixels += num_pixels
+            ds_num_pixels += doc_num_pixels
 
         # Compute metrics for the dataset and each document
         ds_matrix_evaluation: MultiLabelMatrixEvaluation = self._mlcm.compute_metrics(
@@ -287,7 +289,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         ds_evaluation = DatasetPixelLayoutEvaluation(
             layout_model_name=self._layout_model_name,
             num_pages=len(all_pages_evaluations),
-            num_pixels=num_pixels,
+            num_pixels=ds_num_pixels,
             rejected_samples=rejected_samples,
             matrix_evaluation=ds_matrix_evaluation,
             page_evaluations=all_pages_evaluations,
@@ -386,7 +388,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
         pred_doc: DoclingDocument,
     ) -> Tuple[
         Dict[int, np.ndarray],  # page_no -> page confusion matrix
-        int,  # num_pixels
+        int,  # document num_pixels
+        Dict[int, int],  # page_no -> page num_pixels
     ]:
         r"""
         Compute the confusion matrix for the given documents.
@@ -403,10 +406,11 @@ class PixelLayoutEvaluator(BaseEvaluator):
         _log.debug(f"GT pages: {sorted(gt_pages)}, Pred pages: {sorted(pred_pages)}")
 
         matrix_categories_ids: List[int] = list(self._matrix_id_to_name.keys())
-        num_categories = len(matrix_categories_ids)
-        off_diagonal_cells = num_categories * num_categories - num_categories
-        page_confusion_matrices: Dict[int, np.ndarray] = {}
-        num_pixels = 0
+        page_confusion_matrices: Dict[int, np.ndarray] = (
+            {}
+        )  # page_no -> page confusion_matrix
+        all_pages_pixels: Dict[int, int] = {}  # page_no -> page num_pixels
+        doc_pixels = 0
 
         for page_no in sorted(gt_pages):
             page_size = true_doc.pages[page_no].size
@@ -440,7 +444,9 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 page_confusion_matrix = self._mlcm.generate_confusion_matrix(
                     gt_binary, preds_binary, matrix_categories_ids
                 )
-                num_pixels += pg_width * pg_height
+                page_pixels = pg_width * pg_height
+                doc_pixels += page_pixels
+                all_pages_pixels[page_no] = page_pixels
                 page_confusion_matrices[page_no] = page_confusion_matrix
             else:
                 # No prediction data for this page
@@ -448,23 +454,19 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     self._missing_prediction_strategy
                     == MissingPredictionStrategy.PENALIZE
                 ):
-                    image_pixels = pg_width * pg_height
-
-                    # # Create a penalty confusion matrix by distributing all pixels outside of diagonal
-                    # penalty_value = image_pixels / off_diagonal_cells
-                    # page_confusion_matrix = penalty_value * (
-                    #     np.ones((num_categories, num_categories))
-                    #     - np.eye(num_categories)
-                    # )
-
-                    # Create a penalty confusion matrix
-                    page_confusion_matrix = (
-                        self._create_missing_pred_penalty_page_confusion_matrix(
-                            pg_width, pg_height, num_categories
-                        )
+                    gt_binary = self._mlcm.make_binary_representation(
+                        pg_width, pg_height, gt_layouts
                     )
 
-                    num_pixels += image_pixels
+                    # Make an all-one binary representation for the prediction and evaluate as usual
+                    preds_binary = np.ones((pg_height, pg_width), dtype=np.uint64)
+                    page_confusion_matrix = self._mlcm.generate_confusion_matrix(
+                        gt_binary, preds_binary, matrix_categories_ids
+                    )
+
+                    page_pixels = pg_width * pg_height
+                    doc_pixels += page_pixels
+                    all_pages_pixels[page_no] = page_pixels
                     page_confusion_matrices[page_no] = page_confusion_matrix
                 elif (
                     self._missing_prediction_strategy
@@ -476,27 +478,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     raise ValueError(
                         f"Unknown missing prediction strategy: {self._missing_prediction_strategy}"
                     )
-        return page_confusion_matrices, num_pixels
-
-    def _create_missing_pred_penalty_page_confusion_matrix(
-        self,
-        pg_width,
-        pg_height,
-        num_categories,
-    ) -> np.ndarray:
-        r"""
-        Create a penalty confusion matrix for a page without any prediction
-
-        Create a penalty confusion matrix by distributing all pixels in the off-diagonal of the
-        first column (background column)
-        """
-        image_pixels = pg_width * pg_height
-        penalty_value = image_pixels / (num_categories - 1)
-        page_confusion_matrix = np.zeros((num_categories, num_categories))
-
-        # Make the off-diagonal elements of the first column equal to penalty_value
-        page_confusion_matrix[1:, 0] = penalty_value
-        return page_confusion_matrix
+        return page_confusion_matrices, doc_pixels, all_pages_pixels
 
     def _get_page_layout_resolution(
         self,
