@@ -448,13 +448,22 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     self._missing_prediction_strategy
                     == MissingPredictionStrategy.PENALIZE
                 ):
-                    # Create a penalty confusion matrix by distributing all pixels outside of diagonal
                     image_pixels = pg_width * pg_height
-                    penalty_value = image_pixels / off_diagonal_cells
-                    page_confusion_matrix = penalty_value * (
-                        np.ones((num_categories, num_categories))
-                        - np.eye(num_categories)
+
+                    # # Create a penalty confusion matrix by distributing all pixels outside of diagonal
+                    # penalty_value = image_pixels / off_diagonal_cells
+                    # page_confusion_matrix = penalty_value * (
+                    #     np.ones((num_categories, num_categories))
+                    #     - np.eye(num_categories)
+                    # )
+
+                    # Create a penalty confusion matrix
+                    page_confusion_matrix = (
+                        self._create_missing_pred_penalty_page_confusion_matrix(
+                            pg_width, pg_height, num_categories
+                        )
                     )
+
                     num_pixels += image_pixels
                     page_confusion_matrices[page_no] = page_confusion_matrix
                 elif (
@@ -468,6 +477,26 @@ class PixelLayoutEvaluator(BaseEvaluator):
                         f"Unknown missing prediction strategy: {self._missing_prediction_strategy}"
                     )
         return page_confusion_matrices, num_pixels
+
+    def _create_missing_pred_penalty_page_confusion_matrix(
+        self,
+        pg_width,
+        pg_height,
+        num_categories,
+    ) -> np.ndarray:
+        r"""
+        Create a penalty confusion matrix for a page without any prediction
+
+        Create a penalty confusion matrix by distributing all pixels in the off-diagonal of the
+        first column (background column)
+        """
+        image_pixels = pg_width * pg_height
+        penalty_value = image_pixels / (num_categories - 1)
+        page_confusion_matrix = np.zeros((num_categories, num_categories))
+
+        # Make the off-diagonal elements of the first column equal to penalty_value
+        page_confusion_matrix[1:, 0] = penalty_value
+        return page_confusion_matrix
 
     def _get_page_layout_resolution(
         self,
