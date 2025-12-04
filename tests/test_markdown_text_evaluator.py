@@ -34,6 +34,10 @@ def test_markdown_text_evaluator():
     assert is_exception
 
 
+@pytest.mark.dependency(
+    depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
+    scope="session",
+)
 def test_markdown_text_evaluator_external_predictions():
     r"""Testing the evaluator with external predictions"""
     eval = MarkdownTextEvaluator()

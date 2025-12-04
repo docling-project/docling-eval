@@ -54,6 +54,10 @@ def test_failed_conversions():
     assert len(v1.evaluations_per_image) == 0
 
 
+@pytest.mark.dependency(
+    depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
+    scope="session",
+)
 def test_layout_evaluator_external_predictions():
     r"""Testing the evaluator with external predictions"""
     eval = LayoutEvaluator()
