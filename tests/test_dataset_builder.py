@@ -2,8 +2,11 @@ import os
 from pathlib import Path
 
 import pytest
+from datasets import load_dataset
+from docling_core.types.doc.document import DoclingDocument
 
 from docling_eval.cli.main import evaluate, get_prediction_provider, visualize
+from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
@@ -34,6 +37,42 @@ from docling_eval.prediction_providers.tableformer_provider import (
 IS_CI = bool(os.getenv("CI"))
 
 
+def export_predictions(
+    ds_path: Path,
+    save_path: Path,
+    split: str = "test",
+):
+    r"""Export the predicted document in the save path in various formats"""
+    parquet_files = str(ds_path / split / "*.parquet")
+    ds = load_dataset("parquet", data_files={split: parquet_files})
+
+    for data in ds[split]:
+        data_record = DatasetRecordWithPrediction.model_validate(data)
+        doc_id = data_record.doc_id
+        pred_doc: DoclingDocument = data_record.predicted_doc
+
+        if pred_doc is None:
+            continue
+
+        # Save as JSON
+        json_dir = save_path / "json"
+        json_dir.mkdir(parents=True, exist_ok=True)
+        json_fn = json_dir / f"{doc_id}.json"
+        pred_doc.save_as_json(json_fn)
+
+        # Save as doctags (.doctags)
+        doctags_dir = save_path / "doctag"
+        doctags_dir.mkdir(parents=True, exist_ok=True)
+        doctags_fn = doctags_dir / f"{doc_id}.doctags"
+        pred_doc.save_as_doctags(doctags_fn)
+
+        # Save as YAML
+        yaml_dir = save_path / "yaml"
+        yaml_dir.mkdir(parents=True, exist_ok=True)
+        yaml_fn = yaml_dir / f"{doc_id}.yaml"
+        pred_doc.save_as_yaml(yaml_fn)
+
+
 @pytest.mark.dependency()
 def test_run_dpbench_e2e():
     target_path = Path(f"./scratch/{BenchMarkNames.DPBENCH.value}/")
@@ -53,6 +92,11 @@ def test_run_dpbench_e2e():
         gt_dataset_dir=target_path / "gt_dataset",
         target_dataset_dir=target_path / "eval_dataset_e2e",
     )
+
+    # Export predictions
+    pred_path = target_path / "eval_dataset_e2e"
+    save_path = target_path / "predicted_documents"
+    export_predictions(pred_path, save_path)
 
     ## Evaluate Layout
     evaluate(
@@ -602,3 +646,7 @@ def test_file_dataset_builder():
     )
 
     dataset_builder.save_to_disk(do_visualization=True)
+
+
+if __name__ == "__main__":
+    test_run_dpbench_e2e()
