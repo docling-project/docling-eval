@@ -18,6 +18,7 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
 
 _log = logging.getLogger(__name__)
 
@@ -79,6 +80,10 @@ class DocStructureEvaluator(BaseEvaluator):
         ds_path: Path to load the parquet files of the dataset
         split: Split of the dataset to load
         """
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"Overview of the dataset: {ds}")
@@ -107,7 +112,10 @@ class DocStructureEvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
-            if data_record.status not in self._accepted_status:
+            if (
+                ext_docdoc_loader is None
+                and data_record.status not in self._accepted_status
+            ):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
@@ -115,7 +123,10 @@ class DocStructureEvaluator(BaseEvaluator):
                 continue
 
             true_doc = data_record.ground_truth_doc
-            pred_doc = data_record.predicted_doc
+            if ext_docdoc_loader:
+                pred_doc = ext_docdoc_loader(doc_id)
+            else:
+                pred_doc = data_record.predicted_doc
 
             if pred_doc is None:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
