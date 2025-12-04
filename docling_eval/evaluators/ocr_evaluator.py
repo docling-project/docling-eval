@@ -62,6 +62,7 @@ class OCREvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> OcrDatasetEvaluationResult:
         dataset_path = ds_path
         data_split_name = split

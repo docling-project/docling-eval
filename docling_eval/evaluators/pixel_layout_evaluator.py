@@ -171,6 +171,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetPixelLayoutEvaluation:
         _log.info("Loading the split '%s' from: '%s'", split, ds_path)
 

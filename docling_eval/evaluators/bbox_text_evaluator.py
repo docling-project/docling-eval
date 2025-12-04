@@ -94,7 +94,10 @@ class BboxTextEvaluator(BaseEvaluator):
         nltk.download("popular", quiet=True)
 
     def __call__(
-        self, ds_path: Path, split: str = "test"
+        self,
+        ds_path: Path,
+        split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetBoxesTextEvaluation:
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})

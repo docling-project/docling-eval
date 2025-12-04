@@ -100,6 +100,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetEvaluationType:
         r"""
         Perform the evaluation

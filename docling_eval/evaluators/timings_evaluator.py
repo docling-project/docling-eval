@@ -50,6 +50,7 @@ class TimingsEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetTimingsEvaluation:
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 

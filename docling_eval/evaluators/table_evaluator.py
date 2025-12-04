@@ -132,6 +132,7 @@ class TableEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments

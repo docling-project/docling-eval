@@ -415,7 +415,12 @@ class KeyValueEvaluator(BaseEvaluator):
     # --------------------------------------------------------------------- #
     # Public API
     # --------------------------------------------------------------------- #
-    def __call__(self, ds_path: Path, split: str = "test") -> DatasetKeyValueEvaluation:
+    def __call__(
+        self,
+        ds_path: Path,
+        split: str = "test",
+        external_predictions_path: Optional[Path] = None,
+    ) -> DatasetKeyValueEvaluation:
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
         _log.info("Loaded split '%s' – %d samples", split, len(ds[split]))

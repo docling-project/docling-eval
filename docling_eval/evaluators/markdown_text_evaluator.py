@@ -108,6 +108,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetMarkdownEvaluation:
         r"""
         Parameters
