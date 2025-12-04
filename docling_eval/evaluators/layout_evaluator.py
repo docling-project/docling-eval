@@ -30,6 +30,7 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
 from docling_eval.utils.utils import tensor_to_float
 
 _log = logging.getLogger(__name__)
@@ -194,6 +195,10 @@ class LayoutEvaluator(BaseEvaluator):
     ) -> DatasetLayoutEvaluation:
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
         split_files = glob.glob(split_path)
@@ -209,7 +214,7 @@ class LayoutEvaluator(BaseEvaluator):
             pred_labels,
             intersection_labels,
             union_labels,
-        ) = self._find_intersecting_labels(ds_selection)
+        ) = self._find_intersecting_labels(ds_selection, ext_docdoc_loader)
         true_labels_str = ", ".join(sorted(true_labels))
         logging.info(f"True labels: {true_labels_str}")
 
@@ -282,7 +287,9 @@ class LayoutEvaluator(BaseEvaluator):
                 continue
 
             true_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record)
+
+            # Get the predicted document
+            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -585,12 +592,19 @@ class LayoutEvaluator(BaseEvaluator):
         return dataset_layout_evaluation
 
     def _get_pred_doc(
-        self, data_record: DatasetRecordWithPrediction
+        self,
+        data_record: DatasetRecordWithPrediction,
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
+        if ext_docdoc_loader is not None:
+            doc_id = data_record.doc_id
+            pred_doc = ext_docdoc_loader(doc_id)
+            return pred_doc
+
         for prediction_format in self._prediction_sources:
             if prediction_format == PredictionFormats.DOCLING_DOCUMENT:
                 pred_doc = data_record.predicted_doc
@@ -802,6 +816,7 @@ class LayoutEvaluator(BaseEvaluator):
     def _find_intersecting_labels(
         self,
         ds: Dataset,
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
     ) -> tuple[dict[str, int], dict[str, int], list[DocItemLabel], list[DocItemLabel]]:
         r"""
         Compute counters per labels for the groundtruth, prediciton and their intersections
@@ -821,7 +836,7 @@ class LayoutEvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             true_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record)
+            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
 
             for item, level in true_doc.iterate_items(
                 included_content_layers={
