@@ -5,7 +5,6 @@ from docling.datamodel.base_models import ConversionStatus
 
 from docling_eval.datamodels.types import PredictionFormats
 from docling_eval.evaluators.layout_evaluator import LayoutEvaluator
-from docling_eval.evaluators.markdown_text_evaluator import MarkdownTextEvaluator
 
 
 @pytest.mark.dependency(
