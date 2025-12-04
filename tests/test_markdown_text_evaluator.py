@@ -34,5 +34,16 @@ def test_markdown_text_evaluator():
     assert is_exception
 
 
-# if __name__ == "__main__":
-#     test_markdown_text_evaluator()
+def test_markdown_text_evaluator_external_predictions():
+    r"""Testing the evaluator with external predictions"""
+    eval = MarkdownTextEvaluator()
+    gt_path = Path("scratch/DPBench/gt_dataset")
+    preds_path = Path("scratch/DPBench/predicted_documents/json")
+
+    v = eval(gt_path, external_predictions_path=preds_path)
+    assert v is not None
+
+
+if __name__ == "__main__":
+    # test_markdown_text_evaluator()
+    test_markdown_text_evaluator_external_predictions()
