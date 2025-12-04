@@ -23,6 +23,7 @@ from docling_eval.evaluators.base_evaluator import (
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 from docling_eval.evaluators.table.teds import TEDScorer
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
 
 _log = logging.getLogger(__name__)
 
@@ -141,6 +142,10 @@ class TableEvaluator(BaseEvaluator):
         """
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
         split_files = glob.glob(split_path)
@@ -167,7 +172,7 @@ class TableEvaluator(BaseEvaluator):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
             gt_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record)
+            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -310,12 +315,19 @@ class TableEvaluator(BaseEvaluator):
         return table_evaluations
 
     def _get_pred_doc(
-        self, data_record: DatasetRecordWithPrediction
+        self,
+        data_record: DatasetRecordWithPrediction,
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
+        if ext_docdoc_loader is not None:
+            doc_id = data_record.doc_id
+            pred_doc = ext_docdoc_loader(doc_id)
+            return pred_doc
+
         for prediction_format in self._prediction_sources:
             if prediction_format == PredictionFormats.DOCLING_DOCUMENT:
                 pred_doc = data_record.predicted_doc
