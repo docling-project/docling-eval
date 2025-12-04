@@ -69,6 +69,7 @@ class MultiLabelMatrixEvaluation(BaseModel):
 class PagePixelLayoutEvaluation(BaseModel):
     doc_id: str
     page_no: int
+    num_pixels: int
     matrix_evaluation: MultiLabelMatrixEvaluation
 
 
