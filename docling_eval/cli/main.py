@@ -652,6 +652,7 @@ def evaluate(
         evaluation = timings_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
