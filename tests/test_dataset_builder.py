@@ -63,7 +63,7 @@ def export_predictions(
         # Save as doctags (.doctags)
         doctags_dir = save_path / "doctag"
         doctags_dir.mkdir(parents=True, exist_ok=True)
-        doctags_fn = doctags_dir / f"{doc_id}.doctags"
+        doctags_fn = doctags_dir / f"{doc_id}.dt"
         pred_doc.save_as_doctags(doctags_fn)
 
         # Save as YAML
