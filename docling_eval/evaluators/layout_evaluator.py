@@ -30,7 +30,9 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 from docling_eval.utils.utils import tensor_to_float
 
 _log = logging.getLogger(__name__)

@@ -23,7 +23,9 @@ from docling_eval.evaluators.base_evaluator import (
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
 from docling_eval.evaluators.table.teds import TEDScorer
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 

@@ -39,7 +39,9 @@ from docling_eval.evaluators.pixel.pixel_types import (
     PagePixelLayoutEvaluation,
 )
 from docling_eval.evaluators.stats import compute_stats
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 from docling_eval.utils.utils import dict_get
 
 _log = logging.getLogger(__name__)
