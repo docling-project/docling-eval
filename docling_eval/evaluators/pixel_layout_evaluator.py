@@ -39,6 +39,7 @@ from docling_eval.evaluators.pixel.pixel_types import (
     PagePixelLayoutEvaluation,
 )
 from docling_eval.evaluators.stats import compute_stats
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
 from docling_eval.utils.utils import dict_get
 
 _log = logging.getLogger(__name__)
@@ -175,6 +176,10 @@ class PixelLayoutEvaluator(BaseEvaluator):
     ) -> DatasetPixelLayoutEvaluation:
         _log.info("Loading the split '%s' from: '%s'", split, ds_path)
 
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
         split_files = glob.glob(split_path)
@@ -229,7 +234,10 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 )
 
             doc_id: str = data_record.doc_id
-            if data_record.status not in self._accepted_status:
+            if (
+                ext_docdoc_loader is None
+                and data_record.status not in self._accepted_status
+            ):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
@@ -237,7 +245,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 continue
 
             true_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record)
+            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -541,12 +549,19 @@ class PixelLayoutEvaluator(BaseEvaluator):
         return pages_to_objects
 
     def _get_pred_doc(
-        self, data_record: DatasetRecordWithPrediction
+        self,
+        data_record: DatasetRecordWithPrediction,
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
+        if ext_docdoc_loader is not None:
+            doc_id = data_record.doc_id
+            pred_doc = ext_docdoc_loader(doc_id)
+            return pred_doc
+
         for prediction_format in self._prediction_sources:
             if prediction_format == PredictionFormats.DOCLING_DOCUMENT:
                 pred_doc = data_record.predicted_doc
