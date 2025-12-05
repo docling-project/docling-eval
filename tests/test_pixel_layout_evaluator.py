@@ -19,7 +19,7 @@ from docling_eval.evaluators.pixel_layout_evaluator import PixelLayoutEvaluator
     depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
     scope="session",
 )
-def test_layout_evaluator():
+def test_pixel_layout_evaluator():
     r""" """
     test_dataset_dir = Path("scratch/DPBench/eval_dataset_e2e")
 
@@ -87,5 +87,19 @@ def test_layout_evaluator():
     ), "Wrong label mapping in _matrix_id_to_name"
 
 
-# if __name__ == "__main__":
-#     test_layout_evaluator()
+@pytest.mark.dependency(
+    depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
+    scope="session",
+)
+def test_pixel_layout_evaluator_external_predictions():
+    r"""Testing the evaluator with external predictions"""
+    eval = PixelLayoutEvaluator()
+    gt_path = Path("scratch/DPBench/gt_dataset")
+    preds_path = Path("scratch/DPBench/predicted_documents/json")
+
+    v = eval(gt_path, external_predictions_path=preds_path)
+    assert v is not None
+
+
+if __name__ == "__main__":
+    test_pixel_layout_evaluator_external_predictions()

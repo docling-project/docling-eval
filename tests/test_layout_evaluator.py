@@ -5,7 +5,6 @@ from docling.datamodel.base_models import ConversionStatus
 
 from docling_eval.datamodels.types import PredictionFormats
 from docling_eval.evaluators.layout_evaluator import LayoutEvaluator
-from docling_eval.evaluators.markdown_text_evaluator import MarkdownTextEvaluator
 
 
 @pytest.mark.dependency(
@@ -54,6 +53,26 @@ def test_failed_conversions():
     assert len(v1.evaluations_per_image) == 0
 
 
-# if __name__ == "__main__":
-#     # test_layout_evaluator()
-#     test_failed_conversions()
+@pytest.mark.dependency(
+    depends=["tests/test_dataset_builder.py::test_run_dpbench_e2e"],
+    scope="session",
+)
+def test_layout_evaluator_external_predictions():
+    r"""Testing the evaluator with external predictions"""
+    eval = LayoutEvaluator()
+    gt_path = Path("scratch/DPBench/gt_dataset")
+
+    preds_path = [
+        Path("scratch/DPBench/predicted_documents/json"),
+        Path("scratch/DPBench/predicted_documents/doctag"),
+        Path("scratch/DPBench/predicted_documents/yaml"),
+    ]
+    for pred_path in preds_path:
+        v = eval(gt_path, external_predictions_path=pred_path)
+        assert v is not None
+
+
+if __name__ == "__main__":
+    #     # test_layout_evaluator()
+    #     test_failed_conversions()
+    test_layout_evaluator_external_predictions()

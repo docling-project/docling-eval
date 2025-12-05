@@ -4,11 +4,7 @@ from typing import Dict, Optional, Set
 
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc import DocItemLabel
-from docling_core.types.doc.document import (
-    DoclingDocument,
-    DocTagsDocument,
-    DocTagsPage,
-)
+from docling_core.types.doc.document import DoclingDocument
 from PIL import Image
 
 from docling_eval.datamodels.dataset_record import (
@@ -22,6 +18,9 @@ from docling_eval.datamodels.types import (
 )
 from docling_eval.prediction_providers.base_prediction_provider import (
     BasePredictionProvider,
+)
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
 )
 
 _log = logging.getLogger(__name__)
@@ -164,58 +163,22 @@ class FilePredictionProvider(BasePredictionProvider):
         return self._prediction_format
 
     def _load_doctags_doc(self, record: DatasetRecord) -> Optional[DoclingDocument]:
+        r"""
+        Load the DoclingDocument from doctags + image.
+        Check ExternalDoclingDocLoader for details on the loading alrogithm.
         """
-        Load doctags file into DoclingDocument.
-
-        Args:
-            record: Groundtruth dataset record
-
-        Returns:
-            DoclingDocument or None if file not found
-        """
-        # Read the doctags file
-        doctags_fn = self._prediction_source_path / f"{record.doc_id}.dt"
-        if self._ignore_missing_files and not doctags_fn.is_file():
-            return None
-
-        try:
-            with open(doctags_fn, "r") as fd:
-                doctags = fd.read()
-
-            page_image: Optional[Image.Image] = None
-
-            # Try to get an image file for the predictions:
-            # 1. Check the pred_images_path.
-            # 2. Use the GT page image if the corresponding flag is set.
-            # 3. Look inside the same dir as the doctag files.
-            if self._prediction_images_path:
-                page_image_fn = self._prediction_images_path / f"{record.doc_id}.png"
-                if page_image_fn.is_file():
-                    page_image = Image.open(page_image_fn)
-                else:
-                    _log.warning("Failed to load pred image: %s", page_image_fn)
-            elif self._use_ground_truth_page_images:
-                page_image = record.ground_truth_page_images[0]
-            else:
-                page_image_fn = self._prediction_source_path / f"{record.doc_id}.png"
-                if page_image_fn.is_file():
-                    page_image = Image.open(page_image_fn)
-                else:
-                    _log.warning("Failed to load pred image: %s", page_image_fn)
-
-            # Build DoclingDocument
-            doctags_page = DocTagsPage(tokens=doctags, image=page_image)
-            doctags_doc = DocTagsDocument(pages=[doctags_page])
-            doc = DoclingDocument.load_from_doctags(
-                doctags_doc, document_name=record.doc_id
-            )
-
-            return doc
-        except Exception as e:
-            _log.error(f"Error loading doctags document {record.doc_id}: {str(e)}")
-            if not self._ignore_missing_files:
-                raise
-            return None
+        doc_id = record.doc_id
+        gt_page_images = record.ground_truth_page_images
+        gt_page_image = gt_page_images[0] if len(gt_page_images) > 0 else None
+        doc = ExternalDoclingDocumentLoader.load_doctags(
+            doc_id,
+            self._prediction_source_path,
+            page_images_root=self._prediction_images_path,
+            gt_page_image=gt_page_image,
+        )
+        if not self._ignore_missing_files:
+            raise ValueError(f"Missing missing document {doc_id}")
+        return doc
 
     def _load_json_doc(self, record: DatasetRecord) -> Optional[DoclingDocument]:
         """

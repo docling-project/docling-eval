@@ -26,6 +26,9 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -108,6 +111,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetMarkdownEvaluation:
         r"""
         Parameters
@@ -115,6 +119,11 @@ class MarkdownTextEvaluator(BaseEvaluator):
         ds_path: Path to load the parquet files of the dataset
         split: Split of the dataset to load
         """
+        if external_predictions_path is not None:
+            external_docling_doc_loader = ExternalDoclingDocumentLoader(
+                external_predictions_path
+            )
+
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"Overview of the dataset: {ds}")
@@ -145,16 +154,28 @@ class MarkdownTextEvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
-            if data_record.status not in self._accepted_status:
-                _log.error(
-                    "Skipping record without successfull conversion status: %s", doc_id
-                )
-                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
-                continue
-
             true_doc = data_record.ground_truth_doc
             true_md = self._docling_document_to_md(true_doc)
-            pred_md = self._get_pred_md(data_record)
+
+            # Get the predicted markdown from the external predictions path
+            if external_predictions_path is not None:
+                pred_doc = external_docling_doc_loader(data_record)
+                if pred_doc is None:
+                    _log.error("No external prediction found for doc_id=%s", doc_id)
+                    rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
+                    continue
+                pred_md = self._docling_document_to_md(pred_doc)
+            else:
+                if data_record.status not in self._accepted_status:
+                    _log.error(
+                        "Skipping record without successfull conversion status: %s",
+                        doc_id,
+                    )
+                    rejected_samples[
+                        EvaluationRejectionType.INVALID_CONVERSION_STATUS
+                    ] += 1
+                    continue
+                pred_md = self._get_pred_md(data_record)  # type: ignore
 
             if not pred_md:
                 _log.error("There is no markdown prediction for doc_id=%s", doc_id)

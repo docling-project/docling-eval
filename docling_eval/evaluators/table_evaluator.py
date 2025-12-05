@@ -22,7 +22,10 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
-from docling_eval.evaluators.teds import TEDScorer
+from docling_eval.evaluators.table.teds import TEDScorer
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -132,6 +135,7 @@ class TableEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments
@@ -139,6 +143,10 @@ class TableEvaluator(BaseEvaluator):
         "PredictionDoclingDocument"
         """
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
+
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
@@ -166,7 +174,7 @@ class TableEvaluator(BaseEvaluator):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
             gt_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record)
+            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -309,12 +317,18 @@ class TableEvaluator(BaseEvaluator):
         return table_evaluations
 
     def _get_pred_doc(
-        self, data_record: DatasetRecordWithPrediction
+        self,
+        data_record: DatasetRecordWithPrediction,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
+        if ext_docdoc_loader is not None:
+            pred_doc = ext_docdoc_loader(data_record)
+            return pred_doc
+
         for prediction_format in self._prediction_sources:
             if prediction_format == PredictionFormats.DOCLING_DOCUMENT:
                 pred_doc = data_record.predicted_doc
