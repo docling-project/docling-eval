@@ -711,25 +711,30 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.OCR:
-        if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
-            text_unit = TextCellUnit.LINE
+        if not external_predictions_path:
+            if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
+                text_unit = TextCellUnit.LINE
+            else:
+                text_unit = TextCellUnit.WORD
+
+            logging.info(
+                f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})"
+            )
+            logging.info(f"Text unit set to {text_unit}")
+
+            ocr_evaluator = OCREvaluator(
+                intermediate_evaluations_path=odir, text_unit=text_unit
+            )
+            evaluation = ocr_evaluator(  # type: ignore
+                idir,
+                split=split,
+                external_predictions_path=external_predictions_path,
+            )
+
+            with open(save_fn, "w") as fd:
+                json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
         else:
-            text_unit = TextCellUnit.WORD
-
-        logging.info(f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})")
-        logging.info(f"Text unit set to {text_unit}")
-
-        ocr_evaluator = OCREvaluator(
-            intermediate_evaluations_path=odir, text_unit=text_unit
-        )
-        evaluation = ocr_evaluator(  # type: ignore
-            idir,
-            split=split,
-            external_predictions_path=external_predictions_path,
-        )
-
-        with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            logging.error("External predictions are not supported for OCR evaluations")
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
