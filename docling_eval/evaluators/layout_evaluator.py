@@ -30,7 +30,7 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
 from docling_eval.utils.utils import tensor_to_float
 
 _log = logging.getLogger(__name__)
@@ -195,9 +195,9 @@ class LayoutEvaluator(BaseEvaluator):
     ) -> DatasetLayoutEvaluation:
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
-        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
         if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
@@ -598,15 +598,14 @@ class LayoutEvaluator(BaseEvaluator):
     def _get_pred_doc(
         self,
         data_record: DatasetRecordWithPrediction,
-        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
         if ext_docdoc_loader is not None:
-            doc_id = data_record.doc_id
-            pred_doc = ext_docdoc_loader(doc_id)
+            pred_doc = ext_docdoc_loader(data_record)
             return pred_doc
 
         for prediction_format in self._prediction_sources:
@@ -820,7 +819,7 @@ class LayoutEvaluator(BaseEvaluator):
     def _find_intersecting_labels(
         self,
         ds: Dataset,
-        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> tuple[dict[str, int], dict[str, int], list[DocItemLabel], list[DocItemLabel]]:
         r"""
         Compute counters per labels for the groundtruth, prediciton and their intersections

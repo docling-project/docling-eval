@@ -25,7 +25,7 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
 
 _log = logging.getLogger(__name__)
 
@@ -101,9 +101,9 @@ class BboxTextEvaluator(BaseEvaluator):
         external_predictions_path: Optional[Path] = None,
     ) -> DatasetBoxesTextEvaluation:
         r""" """
-        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
         if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
 
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
@@ -148,7 +148,7 @@ class BboxTextEvaluator(BaseEvaluator):
 
             # Load the pred_doc
             if ext_docdoc_loader is not None:
-                pred_doc = ext_docdoc_loader(doc_id)
+                pred_doc = ext_docdoc_loader(data_record)
             else:
                 pred_doc = data_record.predicted_doc
             if pred_doc is None:

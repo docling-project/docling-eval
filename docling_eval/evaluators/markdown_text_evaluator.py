@@ -26,7 +26,7 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
 
 _log = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         split: Split of the dataset to load
         """
         if external_predictions_path is not None:
-            external_docling_doc_loader = ExternalDoclingDocLoader(
+            external_docling_doc_loader = ExternalDoclingDocumentLoader(
                 external_predictions_path
             )
 
@@ -157,7 +157,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
 
             # Get the predicted markdown from the external predictions path
             if external_predictions_path is not None:
-                pred_doc = external_docling_doc_loader(doc_id)
+                pred_doc = external_docling_doc_loader(data_record)
                 if pred_doc is None:
                     _log.error("No external prediction found for doc_id=%s", doc_id)
                     rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1

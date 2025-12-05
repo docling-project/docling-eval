@@ -21,7 +21,7 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
-from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocumentLoader
 
 _log = logging.getLogger(__name__)
 
@@ -423,9 +423,9 @@ class KeyValueEvaluator(BaseEvaluator):
         external_predictions_path: Optional[Path] = None,
     ) -> DatasetKeyValueEvaluation:
         r""" """
-        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
         if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
 
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
@@ -648,13 +648,12 @@ class KeyValueEvaluator(BaseEvaluator):
     def _get_pred_doc(
         self,
         data_record: DatasetRecordWithPrediction,
-        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         """Fetch the prediction in the first available format declared by `prediction_sources`."""
         pred_doc: Optional[DoclingDocument] = None
         if ext_docdoc_loader is not None:
-            doc_id = data_record.doc_id
-            pred_doc = ext_docdoc_loader(doc_id)
+            pred_doc = ext_docdoc_loader(data_record)
             return pred_doc
 
         for fmt in self._prediction_sources:

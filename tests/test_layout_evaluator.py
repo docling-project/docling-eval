@@ -61,10 +61,15 @@ def test_layout_evaluator_external_predictions():
     r"""Testing the evaluator with external predictions"""
     eval = LayoutEvaluator()
     gt_path = Path("scratch/DPBench/gt_dataset")
-    preds_path = Path("scratch/DPBench/predicted_documents/json")
 
-    v = eval(gt_path, external_predictions_path=preds_path)
-    assert v is not None
+    preds_path = [
+        Path("scratch/DPBench/predicted_documents/json"),
+        Path("scratch/DPBench/predicted_documents/doctag"),
+        Path("scratch/DPBench/predicted_documents/yaml"),
+    ]
+    for pred_path in preds_path:
+        v = eval(gt_path, external_predictions_path=pred_path)
+        assert v is not None
 
 
 if __name__ == "__main__":
