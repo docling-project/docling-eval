@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import nltk
 from datasets import load_dataset
-from docling_core.types.doc.base import BoundingBox
+from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import DoclingDocument, TextItem
 from nltk import edit_distance, word_tokenize
 from nltk.metrics import f_measure, precision, recall
@@ -25,6 +25,7 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_doc_loader import ExternalDoclingDocLoader
 
 _log = logging.getLogger(__name__)
 
@@ -99,6 +100,11 @@ class BboxTextEvaluator(BaseEvaluator):
         split: str = "test",
         external_predictions_path: Optional[Path] = None,
     ) -> DatasetBoxesTextEvaluation:
+        r""" """
+        ext_docdoc_loader: Optional[ExternalDoclingDocLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocLoader(external_predictions_path)
+
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"oveview of dataset: {ds}")
@@ -128,7 +134,10 @@ class BboxTextEvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
-            if data_record.status not in self._accepted_status:
+            if (
+                ext_docdoc_loader is None
+                and data_record.status not in self._accepted_status
+            ):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
@@ -136,7 +145,12 @@ class BboxTextEvaluator(BaseEvaluator):
                 continue
 
             true_doc = data_record.ground_truth_doc
-            pred_doc = data_record.predicted_doc
+
+            # Load the pred_doc
+            if ext_docdoc_loader is not None:
+                pred_doc = ext_docdoc_loader(doc_id)
+            else:
+                pred_doc = data_record.predicted_doc
             if pred_doc is None:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -215,7 +229,15 @@ class BboxTextEvaluator(BaseEvaluator):
                     continue
                 assert len(doc_item.prov) == 1
                 prov = doc_item.prov[0]
-                bboxes[doc_key].append(prov.bbox)
+
+                # Ensure bbox is in top-left origin
+                bbox = prov.bbox
+                if bbox.coord_origin != CoordOrigin.TOPLEFT:
+                    page_no = prov.page_no
+                    page_size = doc.pages[page_no].size
+                    bbox = bbox.to_top_left_origin(page_size.height)
+
+                bboxes[doc_key].append(bbox)
                 texts[doc_key].append(doc_item.text)
 
         # Decide which document is the pivot
