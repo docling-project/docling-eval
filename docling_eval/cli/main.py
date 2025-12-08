@@ -39,7 +39,7 @@ from docling.datamodel.vlm_model_specs import (
 from docling.datamodel.vlm_model_specs import (
     SMOLDOCLING_TRANSFORMERS as smoldocling_vlm_conversion_options,
 )
-from docling.document_converter import FormatOption, PdfFormatOption
+from docling.document_converter import FormatOption, ImageFormatOption, PdfFormatOption
 from docling.models.factories import get_ocr_factory
 from docling.pipeline.vlm_pipeline import VlmPipeline
 from PyPDF2 import PdfReader, PdfWriter
@@ -414,7 +414,7 @@ def get_prediction_provider(
         return DoclingPredictionProvider(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
-                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.IMAGE: ImageFormatOption(pipeline_options=pipeline_options),
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
@@ -444,7 +444,7 @@ def get_prediction_provider(
         return DoclingPredictionProvider(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
-                InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+                InputFormat.IMAGE: ImageFormatOption(pipeline_options=pipeline_options),
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
@@ -493,7 +493,7 @@ def get_prediction_provider(
         return DoclingPredictionProvider(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
-                InputFormat.IMAGE: PdfFormatOption(
+                InputFormat.IMAGE: ImageFormatOption(
                     pipeline_options=ocr_pipeline_options
                 ),
             },
@@ -528,10 +528,14 @@ def get_prediction_provider(
             pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
         )
 
+        image_format_option = ImageFormatOption(
+            pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
+        )
+
         return DoclingPredictionProvider(
             format_options={
                 InputFormat.PDF: pdf_format_option,
-                InputFormat.IMAGE: pdf_format_option,
+                InputFormat.IMAGE: image_format_option,
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
@@ -575,10 +579,14 @@ def get_prediction_provider(
             pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
         )
 
+        image_format_option = ImageFormatOption(
+            pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
+        )
+
         return DoclingPredictionProvider(
             format_options={
                 InputFormat.PDF: pdf_format_option,
-                InputFormat.IMAGE: pdf_format_option,
+                InputFormat.IMAGE: image_format_option,
             },
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
