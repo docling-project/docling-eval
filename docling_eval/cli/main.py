@@ -126,6 +126,7 @@ from docling_eval.prediction_providers.google_prediction_provider import (
 from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
+from docling_eval.utils.external_predictions_visualizer import PredictionsVisualizer
 
 
 class DoclingLayoutOptionsManager:
@@ -362,7 +363,7 @@ def get_prediction_provider(
     docling_layout_keep_empty_clusters: Optional[bool] = None,
     # Controls orphan text cells only for the programmatic Docling pipeline (PDF_DOCLING)
     docling_programmatic_add_orphan_text_cells: Optional[bool] = None,
-    docling_force_full_page_ocr: Optional[bool] = None,
+    docling_force_full_page_ocr: bool = False,
     granite_docling_vlm_options: Optional[InlineVlmOptions] = None,
     max_new_tokens: Optional[int] = None,
 ):
@@ -376,7 +377,7 @@ def get_prediction_provider(
         ocr_factory = get_ocr_factory()
 
         ocr_options: OcrOptions = ocr_factory.create_options(  # type: ignore
-            kind="easyocr",
+            kind="rapidocr",
             force_full_page_ocr=docling_force_full_page_ocr,
         )
         # Use all CPU cores
@@ -1567,6 +1568,67 @@ def visualize_cmd(
         idir=input_dir,
         odir=eval_output_dir,
         split=split,
+    )
+
+
+@app.command(name="create_viz")
+def create_viz(
+    dataset_dir: Annotated[
+        Path,
+        typer.Option(
+            help=(
+                "Dataset directory (GT parquet or eval_dataset parquet with predictions) "
+                "containing the split folder with parquet shards."
+            )
+        ),
+    ],
+    split: Annotated[str, typer.Option(help="Dataset split to visualize")] = "test",
+    external_predictions_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help=(
+                "Directory with DoclingDocument predictions named as <doc_id>.[json|dt|yaml|yml]. "
+                "If omitted, predictions are taken from the dataset parquet."
+            )
+        ),
+    ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help=(
+                "Directory where HTML visualizations are written. Defaults to "
+                "<dataset_dir>/visualizations when omitted."
+            )
+        ),
+    ] = None,
+    begin_index: Annotated[int, typer.Option(help="Begin index (inclusive)")] = 0,
+    end_index: Annotated[
+        int, typer.Option(help="End index (exclusive), -1 for all")
+    ] = -1,
+    ignore_missing_predictions: Annotated[
+        bool,
+        typer.Option(
+            help="Skip documents without a matching prediction instead of failing"
+        ),
+    ] = False,
+):
+    """
+    Create paired GT vs. prediction HTML visualizations without generating parquet output.
+    """
+    visualizations_dir = (
+        output_dir if output_dir is not None else dataset_dir / "visualizations"
+    )
+
+    visualizer = PredictionsVisualizer(
+        visualizations_dir=visualizations_dir,
+        external_predictions_dir=external_predictions_path,
+        ignore_missing_predictions=ignore_missing_predictions,
+    )
+    visualizer.create_visualizations(
+        dataset_dir=dataset_dir,
+        split=split,
+        begin_index=begin_index,
+        end_index=end_index,
     )
 
 
