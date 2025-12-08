@@ -205,11 +205,44 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
                 page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
             )
 
-            # Get source as binary data
-            source_bytes = get_binary(filename)
-            source_stream = DocumentStream(
-                name=filename.name, stream=BytesIO(source_bytes)
-            )
+            # Prepare source binary: for JSON inputs prefer image streams when page images exist
+            source_bytes: bytes
+            source_stream: DocumentStream
+            effective_mime_type = mime_type
+
+            if mime_type == "application/json" and len(true_page_images) > 0:
+                images_rgb = [
+                    img.convert("RGB") if img.mode != "RGB" else img
+                    for img in true_page_images
+                ]
+
+                if len(images_rgb) == 1:
+                    buffer = BytesIO()
+                    images_rgb[0].save(buffer, format="PNG")
+                    source_bytes = buffer.getvalue()
+                    source_stream = DocumentStream(
+                        name=f"{filename.stem}.png", stream=BytesIO(source_bytes)
+                    )
+                    effective_mime_type = "image/png"
+                else:
+                    buffer = BytesIO()
+                    images_rgb[0].save(
+                        buffer,
+                        format="TIFF",
+                        save_all=True,
+                        append_images=images_rgb[1:],
+                        compression="tiff_lzw",
+                    )
+                    source_bytes = buffer.getvalue()
+                    source_stream = DocumentStream(
+                        name=f"{filename.stem}.tiff", stream=BytesIO(source_bytes)
+                    )
+                    effective_mime_type = "image/tiff"
+            else:
+                source_bytes = get_binary(filename)
+                source_stream = DocumentStream(
+                    name=filename.name, stream=BytesIO(source_bytes)
+                )
 
             # Create dataset record
             record = DatasetRecord(
@@ -219,7 +252,7 @@ class FileDatasetBuilder(BaseEvaluationDatasetBuilder):
                 ground_truth_pictures=true_pictures,
                 ground_truth_page_images=true_page_images,
                 original=source_stream,
-                mime_type=mime_type,
+                mime_type=effective_mime_type,
             )
 
             yield record
