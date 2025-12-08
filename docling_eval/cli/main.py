@@ -639,6 +639,7 @@ def evaluate(
     odir: Path,
     split: str = "test",
     cvat_overview_path: Optional[Path] = None,
+    external_predictions_path: Optional[Path] = None,
 ) -> Optional[DatasetEvaluationType]:
     """Evaluate predictions against ground truth."""
     if not os.path.exists(idir):
@@ -659,6 +660,7 @@ def evaluate(
         evaluation = timings_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
@@ -673,6 +675,7 @@ def evaluate(
         evaluation = layout_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
@@ -681,7 +684,9 @@ def evaluate(
         # Evaluate with the pixel-wise layout evaluation
         pixel_layout_evaluator = PixelLayoutEvaluator()
         pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
-            idir, split=split
+            idir,
+            split=split,
+            external_predictions_path=external_predictions_path,
         )
         pixel_save_root: Path = save_fn.parent
         pixel_layout_evaluator.save_evaluations(
@@ -695,6 +700,7 @@ def evaluate(
         evaluation = table_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
@@ -707,36 +713,44 @@ def evaluate(
         evaluation = doc_struct_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
     elif modality == EvaluationModality.OCR:
-        if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
-            text_unit = TextCellUnit.LINE
+        if not external_predictions_path:
+            if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
+                text_unit = TextCellUnit.LINE
+            else:
+                text_unit = TextCellUnit.WORD
+
+            logging.info(
+                f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})"
+            )
+            logging.info(f"Text unit set to {text_unit}")
+
+            ocr_evaluator = OCREvaluator(
+                intermediate_evaluations_path=odir, text_unit=text_unit
+            )
+            evaluation = ocr_evaluator(  # type: ignore
+                idir,
+                split=split,
+                external_predictions_path=external_predictions_path,
+            )
+
+            with open(save_fn, "w") as fd:
+                json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
         else:
-            text_unit = TextCellUnit.WORD
-
-        logging.info(f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})")
-        logging.info(f"Text unit set to {text_unit}")
-
-        ocr_evaluator = OCREvaluator(
-            intermediate_evaluations_path=odir, text_unit=text_unit
-        )
-        evaluation = ocr_evaluator(  # type: ignore
-            idir,
-            split=split,
-        )
-
-        with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            logging.error("External predictions are not supported for OCR evaluations")
 
     elif modality == EvaluationModality.READING_ORDER:
         readingorder_evaluator = ReadingOrderEvaluator()
         evaluation = readingorder_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
@@ -753,6 +767,7 @@ def evaluate(
         evaluation = md_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
 
         with open(save_fn, "w") as fd:
@@ -769,6 +784,7 @@ def evaluate(
         evaluation = bbox_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
         with open(save_fn, "w") as fd:
             json.dump(
@@ -784,6 +800,7 @@ def evaluate(
         evaluation = keyvalue_evaluator(  # type: ignore
             idir,
             split=split,
+            external_predictions_path=external_predictions_path,
         )
         with open(save_fn, "w") as fd:
             json.dump(
@@ -1487,6 +1504,12 @@ def evaluate_cmd(
         ),
     ] = None,
     split: Annotated[str, typer.Option(help="Dataset split")] = "test",
+    external_predictions_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to load existing DoclingDocument predictions. The filename must follow the pattern [doc_id].[json|dt|yaml|yml]",
+        ),
+    ] = None,
 ):
     """Evaluate predictions against ground truth."""
     input_dir, output_dir = derive_input_output_dirs(
@@ -1506,6 +1529,7 @@ def evaluate_cmd(
         idir=input_dir,
         odir=eval_output_dir,
         split=split,
+        external_predictions_path=external_predictions_path,
     )
 
 

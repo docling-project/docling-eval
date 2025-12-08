@@ -21,6 +21,9 @@ from docling_eval.evaluators.base_evaluator import (
     docling_document_from_doctags,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -415,7 +418,17 @@ class KeyValueEvaluator(BaseEvaluator):
     # --------------------------------------------------------------------- #
     # Public API
     # --------------------------------------------------------------------- #
-    def __call__(self, ds_path: Path, split: str = "test") -> DatasetKeyValueEvaluation:
+    def __call__(
+        self,
+        ds_path: Path,
+        split: str = "test",
+        external_predictions_path: Optional[Path] = None,
+    ) -> DatasetKeyValueEvaluation:
+        r""" """
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
+        if external_predictions_path is not None:
+            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
+
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
         _log.info("Loaded split '%s' – %d samples", split, len(ds[split]))
@@ -461,13 +474,13 @@ class KeyValueEvaluator(BaseEvaluator):
             doc_id = record.doc_id
 
             # ----- sanity checks --------------------------------------------------
-            if record.status not in self._accepted_status:
+            if ext_docdoc_loader is None and record.status not in self._accepted_status:
                 rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 _log.error("Skipping %s – conversion failed", doc_id)
                 continue
 
             gt_doc = record.ground_truth_doc
-            pred_doc = self._get_pred_doc(record)
+            pred_doc = self._get_pred_doc(record, ext_docdoc_loader)
             if pred_doc is None:
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 _log.error("Skipping %s – missing prediction", doc_id)
@@ -635,10 +648,15 @@ class KeyValueEvaluator(BaseEvaluator):
     # Helpers
     # --------------------------------------------------------------------- #
     def _get_pred_doc(
-        self, data_record: DatasetRecordWithPrediction
+        self,
+        data_record: DatasetRecordWithPrediction,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         """Fetch the prediction in the first available format declared by `prediction_sources`."""
         pred_doc: Optional[DoclingDocument] = None
+        if ext_docdoc_loader is not None:
+            pred_doc = ext_docdoc_loader(data_record)
+            return pred_doc
 
         for fmt in self._prediction_sources:
             if fmt == PredictionFormats.DOCLING_DOCUMENT:

@@ -85,7 +85,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    desription = """
+    description = """
     Running multi-evaluation and consolidation inside a working directory and generate matrix reports
     
     The working directory must have the structure:
@@ -108,7 +108,7 @@ if __name__ == "__main__":
                      └── evaluation_<benchmark>_<modality1>.json
     """
     parser = argparse.ArgumentParser(
-        description=desription, formatter_class=argparse.RawTextHelpFormatter
+        description=description, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
         "-t",

@@ -80,6 +80,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
+        external_predictions_path: Optional[Path] = None,
     ) -> DatasetReadingOrderEvaluation:
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
@@ -100,7 +101,10 @@ class ReadingOrderEvaluator(BaseEvaluator):
         ):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
-            if data_record.status not in self._accepted_status:
+            if (
+                external_predictions_path is None
+                and data_record.status not in self._accepted_status
+            ):
                 _log.error(
                     "Skipping record without successfull conversion status: %s", doc_id
                 )
