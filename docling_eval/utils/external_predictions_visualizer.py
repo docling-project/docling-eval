@@ -150,9 +150,14 @@ class PredictionsVisualizer:
             record.predicted_page_images,
         )
 
-        save_comparison_html_with_clusters(
-            filename=self._visualizations_dir / f"{record.doc_id}.html",
-            true_doc=gt_doc,
-            pred_doc=pred_doc,
-            draw_reading_order=True,
-        )
+        try:
+            save_comparison_html_with_clusters(
+                filename=self._visualizations_dir / f"{record.doc_id}.html",
+                true_doc=gt_doc,
+                pred_doc=pred_doc,
+                draw_reading_order=True,
+            )
+        except (IndexError, ValueError) as e:
+            _LOGGER.warning(
+                f"Failed to save visualization for doc_id {record.doc_id}: {e}"
+            )
