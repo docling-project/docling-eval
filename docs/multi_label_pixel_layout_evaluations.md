@@ -2,13 +2,13 @@
 
 ## Objectives
 
-We want to compute metrices for the multi-label document layout analysis task.
-Each document page undergoes a layout resolution, where each detected object is assigned a bounding box and one or many classes.
-The ground truth contains the bounding box and one object class, although in a generalized version the ground truth can also assign multiple classes for the same object.
+We want to evaluate the multi-label document layout analysis task.
+The layout resolution for each document page consists of the bounding boxes of each detected item and one or many classes.
+The ground truth contains the bounding box and one class, although in a generalized version of the ground truth can also assign multiple classes to each item.
 Everything which is not classified is considered to be the *Background*.
 
-We want to evaluate 2 sets of layout resolutions against each other.
-This can be either the ground truth layout resolutions against the prediction layout resolutions, or 2 predictions against each other.
+We want to evaluate two sets of layout resolutions against each other.
+This can be either the ground truth versus a model prediction or the evaluation across two model predictions.
 We name those layout resolutions as LR1 and LR2.
 
 We also want to solve this evaluation task under the following conditions:
@@ -23,48 +23,57 @@ We also want to solve this evaluation task under the following conditions:
 Additionally we have the following freedoms:
 
 - We do not require the predictions to contain any confidence scores but only bounding boxes and object classes.
-- The two evaluated layout resolutions are free to use any classification labels.
+- The two evaluated layout resolutions are free to use any classification taxonomies.
 
 
 ## Confusion matrix structure
 
 The rows of the matrix correspond to the first layout resolution (ground truth or prediction A) and the columns to the second layout resolution.
 
-Each cell (i, j) is the number of pixels that correspond to class i according to the first layout resolution (e.g. ground truth) and to class j according to the second layout resolution.
+Each cell (i, j) is the number of pixels that have been assigned to class i according to the first layout resolution (e.g. ground truth)
+and to class j according to the second layout resolution.
 
-The exact structure of the confusion matrix and the evaluation metrics that can be derived from it depend on the number of classes in the two layout resolutions.
+The structure of the confusion matrix depends on the classification taxonomies used by the two layout resolutions. 
 More specifically we distinguish two cases:
-- Case A: Both layout resolutions use the same classification classes.
-- Case B: When the classes differ across the layout resolutions.
+- Case A: Both layout resolutions use the same classification taxonomy.
+- Case B: The taxonomies differ across the layout resolutions.
 
-The following table provides some insight on the properties of the confusion matrix and the derived metrics on each case:
+<!--------------------------------------------------------------------------------------------->
+TODO: Make an illustration to show the differences in the confusion matrix structures
 
-
-|                                           | Same classes in LR1/LR2| Different classes in LR1/LR2           |
-|-------------------------------------------|------------------------|----------------------------------------|
-|Rows represent                             | LR1 (e.g. GT)          | LR1 (e.g. GT, predictions A)           |
-|Columns represent                          | LR2 (e.g. predictions) | LR2 (e.g. predictions B)               |
-|Rows/Columns indices                       | background - classes   | background - classes LR1 - classes LR2 |
-|Background class row/column                | (0, 0)                 | (0, 0)                                 |
-|Matrix structure when perfect match        | diagonal               | block                                  |
-|Location of mis-predictions/mis-matches    | off-diagonal           |                                        |
-|Recall/Precision/F1 matrices               | yes                    | yes                                    |
-|Background/class-collapsed R/P/F1 matrices | yes                    | yes                                    |
-|Recall/Precision/F1 detailed class vectors | yes                    | no                                     |
-|Recall/Precision/F1 collapsed class vectors| yes                    | yes                                    |
-|                                           |                        |                                        |
+The following table provides some insight on the properties of the confusion matrix and the derived metrics for each case:
 
 
-Table 1: Confusion matrix and derivatives configuration across label-set consistency cases
+|                                           | Same class taxonomy    | Different class taxonomies        |
+|-------------------------------------------|------------------------|-----------------------------------|
+|Confusion matrix rows represent            | LR1 (e.g. GT)          | LR1 (e.g. GT, predictions A)      |
+|Confusion matrix columns represent         | LR2 (e.g. predictions) | LR2 (e.g. predictions B)          |
+|Row/column index of the Background class   | (0, 0)                 | (0, 0)                            |
+|Rows/Columns after the Background class    | common taxonomy        | taxonomy of LR1 - taxonomy of LR2 |
+|Matrix structure when perfect match        | diagonal               | block                             |
+|Location of mis-predictions/mis-matches    | off-diagonal           |                                   |
+|Recall/Precision/F1 matrices               | yes                    | yes                               |
+|Background/class-collapsed R/P/F1 matrices | yes                    | yes                               |
+|Recall/Precision/F1 detailed class vectors | yes                    | no                                |
+|Recall/Precision/F1 collapsed class vectors| yes                    | yes                               |
+|                                           |                        |                                   |
 
 
-## Computation of the confusion matrix and derivatives
+Table 1: Properties of the confusion matrix and its derivatives across different taxonomy schemes
+
+
+<!--------------------------------------------------------------------------------------------->
+
+
+## Computation of the confusion matrix and its derivatives
 
 The computation of the multi-label classification matrix is based on the papers:
-[Multi-Label Classifier Performance Evaluation with Confusion Matrix](https://csitcp.org/paper/10/108csit01.pdf)
-[Comments on "MLCM: Multi-Label Confusion Matrix"](https://www.academia.edu/121504684/Comments_on_MLCM_Multi_Label_Confusion_Matrix)
+
+- [Multi-Label Classifier Performance Evaluation with Confusion Matrix.](https://csitcp.org/paper/10/108csit01.pdf)
+- [Comments on "MLCM: Multi-Label Confusion Matrix".](https://www.academia.edu/121504684/Comments_on_MLCM_Multi_Label_Confusion_Matrix)
 
 The papers describe how to build the confusion matrix for the multi-label classification problem under the assumptions:
+
 - The rows represent the ground truth and the columns the predictions.
 - Both ground-truth and predictions use the same classes.
 - The ground truth may assign more than one classes to the same object.
@@ -73,13 +82,13 @@ A _contribution matrix_ is computed for each pair of ground-truth / prediction s
 
 Each contribution matrix is computed according to an algorithm that distinguishes 4 cases:
 
-Case 1: Prediction and GT are a perfect match.
-Case 2: Prediction is a superset of the GT classes (over-prediction).
-Case 3: Prediction is a subset of the GT classes (under-prediction).
-Case 4: Prediction and GT have some partial overlap and some diff (diff-prediction).
+- Case 1: Prediction and GT are a perfect match.
+- Case 2: Prediction is a superset of the GT classes (over-prediction).
+- Case 3: Prediction is a subset of the GT classes (under-prediction).
+- Case 4: Prediction and GT have some partial overlap and some diff (diff-prediction).
 
 For each of those cases the contributions to the confusion matrix can be seen as "gains" that go to the diagonal cells and "penalties" that go to the off-diagonal cells.
-In case 1 the contributions are only gains and their value equals to the count of detections.
+In case 1 the contributions are only gains and their value equals to the number of page items.
 For the other cases the gains have been penalized by the mis-predictions and both gains and penalties have fractional values.
 For example in case of "over-prediction", if the classifier has predicted 3 classes (a, b, c) and the ground truth is (a, b),
 the contribution is a gain of 2/3 for the diagonal cells (a, a), (b, b) because 2 out of 3 predictions are correct
@@ -96,12 +105,17 @@ The diagonal of the recall/precision matrices are the recall/precision vectors f
 
 The _F1 matrix_ is the harmonic mean of the precision (P) and recall (R) matrices and is computed as (2 * P * R) / (P + R).
 
-We compute a contribution matrix for each page pixel according to the previous algorithm.
-Summing up the pixel-level contributions gives the confusion matrix for each page
+
+## Pixel-level multi-label confusion matrix
+
+We consider each page pixel as a dataset sample and we compute a contribution matrix according to the previous algorithm.
+Summing up the pixel-level contributions provides the confusion matrix for each page
 and the sum of all page-level confusion matrices provides the confusion matrix for the entire dataset.
 
 Additionally we compute 2x2 "abstractions" of the confusion matrices that contain only the
 "Background" and the non-Background classes collapsed as one:
+
+TODO: Make an illustration to show how the confusion matrix is collapsed
 
 
 |                | Background | non-Background |
@@ -112,11 +126,13 @@ Additionally we compute 2x2 "abstractions" of the confusion matrices that contai
 
 Table 2: Collapsed matrix computed for Background and non-Background classes
 
-The collapsed confusion matrix and its derivatives, collapsed recall/precision/F1,
-allow the evaluation across layout resolutions with incompatible classes.
+The collapsed confusion matrix and its derivatives - collapsed recall/precision/F1 -,
+allow the evaluation across layout resolutions with different class taxonomies.
 
 
 ## Implementation
+
+TODO: Make an illustration how the bit-packed encoding works.
 
 We use a bit‑packed encoding to represent multi‑label layout resolutions for up to 63 classes plus the Background class.
 Each pixel is stored as a single 64‑bit unsigned integer; the i‑th class is encoded by setting bit i.
@@ -134,4 +150,9 @@ Because the number of unique pixel‑pairs is significantly less than the total 
 
 Finally, since pages are independent, the computation of each page‑level confusion matrix can be
 also parallelized.
+
+
+## Discussion
+
+TODO 
 
