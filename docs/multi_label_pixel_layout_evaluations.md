@@ -26,7 +26,7 @@ Additionally we have the following freedoms:
 - The two evaluated layout resolutions are free to use any classification labels.
 
 
-## Confusion matrix
+## Confusion matrix structure
 
 The rows of the matrix correspond to the first layout resolution (ground truth or prediction A) and the columns to the second layout resolution.
 
@@ -37,27 +37,78 @@ More specifically we distinguish two cases:
 - Case A: Both layout resolutions use the same classification classes.
 - Case B: When the classes differ across the layout resolutions.
 
+The following table provides some insight on the properties of the confusion matrix and the derived metrics on each case:
+
 |                                           | Same classes in LR1/LR2| Different classes in LR1/LR2           |
 |---------------------------------------- --|------------------------|----------------------------------------|
 |Rows represent                             | LR1 (e.g. GT)          | LR1 (e.g. GT, predictions A)           |
 |Columns represent                          | LR2 (e.g. predictions) | LR2 (e.g. predictions B)               |
 |Rows/Columns indices                       | background - classes   | background - classes LR1 - classes LR2 |
+|Background class row/column                | (0, 0)                 | (0, 0)                                 |
 |Matrix structure when perfect match        | diagonal               | block                                  |
 |Location of mis-predictions/mis-matches    | off-diagonal           |                                        |
 |Recall/Precision/F1 matrices               | yes                    | yes                                    |
 |Background/class-collapsed R/P/F1 matrices | yes                    | yes                                    |
 |Recall/Precision/F1 detailed class vectors | yes                    | no                                     |
 |Recall/Precision/F1 collapsed class vectors| yes                    | yes                                    |
-|
+|                                           |                        |                                        |
 
-The background is always in index 0.
+Table 1: Confusion matrix and derivatives configuration across label-set consistency cases
+
+
+## Computation of the confusion matrix and derivatives
+
+The computation of the multi-label classification matrix is based on the papers:
+[Multi-Label Classifier Performance Evaluation with Confusion Matrix](https://csitcp.org/paper/10/108csit01.pdf)
+[Comments on "MLCM: Multi-Label Confusion Matrix"](https://www.academia.edu/121504684/Comments_on_MLCM_Multi_Label_Confusion_Matrix)
+
+The papers describe how to build the confusion matrix for the multi-label classification problem under the assumptions:
+- The rows represent the ground truth and the columns the predictions.
+- Both ground-truth and predictions use the same classes.
+- The ground truth may assign more than one classes to the same object.
+
+A _contribution matrix_ is computed for each pair of ground-truth / prediction samples and the sum of them is the _confusion matrix_ of the entire dataset.
+
+Each contribution matrix is computed according to an algorithm that distinguishes 4 cases:
+
+Case 1: Prediction and GT are a perfect match.
+Case 2: Prediction is a superset of the GT classes (over-prediction).
+Case 3: Prediction is a subset of the GT classes (under-prediction).
+Case 4: Prediction and GT have some partial overlap and some diff (diff-prediction).
+
+For each of those cases the contributions to the confusion matrix can be seen as "gains" that go to the diagonal cells and "penalties" that go to the off-diagonal cells.
+In case 1 the contributions are only gains and their value equals to the count of detections.
+For the other cases the gains have been penalized by the mis-predictions and both gains and penalties have fractional values.
+For example in case of "over-prediction", if the classifier has predicted 3 classes (a, b, c) and the ground truth is (a, b),
+the contribution is a gain of 2/3 for the diagonal cells (a, a), (b, b) because 2 out of 3 predictions are correct
+and a penalty of 1/3 for the off-diagonal cells (a, c) and (b, c) because the prediction c is wrong.
+
+The contribution matrix for each dataset sample has the following properties:
+- All rows without ground truth and all columns without predictions are zero.
+- The sum of each non-zero row is 1.
+- The sum of all cells equals to the number of GT classes for that sample.
+
+Dividing the dataset-wide confusion matrix by each row-sum gives us the _recall matrix_
+and dividing by each column-sum provides the _precision matrix_.
+The diagonal of the recall/precision matrices are the recall/precision vectors for the classification classes.
+
+The _F1 matrix_ is the harmonic mean of the precision (P) and recall (R) matrices and is computed as (2 * P * R) / (P + R).
+
+We compute a contribution matrix for each page pixel according to the previous algorithm.
+Summing up the pixel-level contributions gives the confusion matrix for each page
+and the sum of all page-level confusion matrices provides the confusion matrix for the entire dataset.
+
+Additionally we compute 2x2 "abstractions" of the page and dataset level confusion matrices
+<!-- TODO -->
 
 
 ## Binary representation of the Layout Resolution
 
 
-## Multi-label classification confusion matrix
-
-
 ## Computation Optimizations
+
+<!-- TODO
+- Compression
+- Vectorization
+-->
 
