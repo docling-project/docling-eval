@@ -39,8 +39,9 @@ More specifically we distinguish two cases:
 
 The following table provides some insight on the properties of the confusion matrix and the derived metrics on each case:
 
+
 |                                           | Same classes in LR1/LR2| Different classes in LR1/LR2           |
-|---------------------------------------- --|------------------------|----------------------------------------|
+|-------------------------------------------|------------------------|----------------------------------------|
 |Rows represent                             | LR1 (e.g. GT)          | LR1 (e.g. GT, predictions A)           |
 |Columns represent                          | LR2 (e.g. predictions) | LR2 (e.g. predictions B)               |
 |Rows/Columns indices                       | background - classes   | background - classes LR1 - classes LR2 |
@@ -52,6 +53,7 @@ The following table provides some insight on the properties of the confusion mat
 |Recall/Precision/F1 detailed class vectors | yes                    | no                                     |
 |Recall/Precision/F1 collapsed class vectors| yes                    | yes                                    |
 |                                           |                        |                                        |
+
 
 Table 1: Confusion matrix and derivatives configuration across label-set consistency cases
 
@@ -98,17 +100,38 @@ We compute a contribution matrix for each page pixel according to the previous a
 Summing up the pixel-level contributions gives the confusion matrix for each page
 and the sum of all page-level confusion matrices provides the confusion matrix for the entire dataset.
 
-Additionally we compute 2x2 "abstractions" of the page and dataset level confusion matrices
-<!-- TODO -->
+Additionally we compute 2x2 "abstractions" of the confusion matrices that contain only the
+"Background" and the non-Background classes collapsed as one:
 
 
-## Binary representation of the Layout Resolution
+|                | Background | non-Background |
+|----------------|------------|----------------|
+| Background     | cell(0,0)  | sum(0, 1:)     |
+| non-Background | sum(1:, 0) | sum(1:, 1:)    |
 
 
-## Computation Optimizations
+Table 2: Collapsed matrix computed for Background and non-Background classes
 
-<!-- TODO
-- Compression
-- Vectorization
--->
+The collapsed confusion matrix and its derivatives, collapsed recall/precision/F1,
+allow the evaluation across layout resolutions with incompatible classes.
+
+
+## Implementation
+
+We use a bit‑packed encoding to represent multi‑label layout resolutions for up to 63 classes plus the Background class.
+Each pixel is stored as a single 64‑bit unsigned integer; the i‑th class is encoded by setting bit i.
+The background occupies bit 0.
+
+This compact representation enables a vectorized implementation using numpy bitwise and linear algebra operations.
+Thanks to instruction-level parallelism, we can compute multiple pixel-level contribution matrices at once.
+
+Each pair of binary page layout representations is then compressed by counting the distinct pixel-pairs.
+Only the contribution matrices of the unique pixel-pairs need to be computed.
+The page-level confusion matrix is obtained as the weighted sum of the computed contribution matrices
+multiplied by the number of appearances of each unique pixel-pair.
+Because the number of unique pixel‑pairs is significantly less than the total number of pixels,
+ this approach dramatically reduces the computational overhead.
+
+Finally, since pages are independent, the computation of each page‑level confusion matrix can be
+also parallelized.
 
