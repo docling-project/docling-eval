@@ -1373,7 +1373,6 @@ dependencies = [
     { name = "edit-distance" },
     { name = "editdistance" },
     { name = "evaluate" },
-    { name = "ibm-cos-sdk" },
     { name = "jiwer" },
     { name = "lxml" },
     { name = "matplotlib" },
@@ -1411,6 +1410,7 @@ hyperscalers = [
     { name = "boto3" },
     { name = "google-cloud-documentai" },
     { name = "google-oauth" },
+    { name = "ibm-cos-sdk" },
 ]
 
 [package.dev-dependencies]
@@ -1456,7 +1456,7 @@ requires-dist = [
     { name = "evaluate", specifier = ">=0.4.3,<0.5.0" },
     { name = "google-cloud-documentai", marker = "extra == 'hyperscalers'", specifier = ">=3.2.0,<4.0.0" },
     { name = "google-oauth", marker = "extra == 'hyperscalers'", specifier = ">=1.0.1,<2.0.0" },
-    { name = "ibm-cos-sdk", specifier = ">=2.1.40,<3.0.0" },
+    { name = "ibm-cos-sdk", marker = "extra == 'hyperscalers'", specifier = ">=2.1.40,<3.0.0" },
     { name = "jiwer", specifier = ">=3.1.0,<4.0.0" },
     { name = "lxml", specifier = ">=5.3.0,<6.0.0" },
     { name = "matplotlib", specifier = ">=3.10.0,<4.0.0" },
