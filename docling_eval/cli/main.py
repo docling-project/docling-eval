@@ -767,7 +767,7 @@ def evaluate(
             )
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
-        md_evaluator = MarkdownTextEvaluator()
+        md_evaluator = MarkdownTextEvaluator(concurrency=concurrency)
         evaluation = md_evaluator(  # type: ignore
             idir,
             split=split,

@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import Executor, Future, ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -33,6 +34,51 @@ from docling_eval.utils.external_docling_document_loader import (
 _log = logging.getLogger(__name__)
 
 
+def compute_bleu_score(bleu_eval, true_txt: str, pred_txt: str) -> float:
+    r"""
+    Compute BLEU score with the HF evaluate and the default Tokenizer_13
+    """
+    result = bleu_eval.compute(predictions=[pred_txt], references=[[true_txt]])
+    bleu = result["bleu"]
+    return bleu
+
+
+def compute_nltk_scores(true_txt: str, pred_txt: str) -> dict[str, float]:
+    r"""
+    Returns:
+    --------
+    dict with keys: ["f_measure", "precision", "recall", "edit_dist"]
+    """
+    true_tokens = word_tokenize(true_txt)
+    true_tokens_set = set(true_tokens)
+    pred_tokens = word_tokenize(pred_txt)
+    pred_tokens_set = set(pred_tokens)
+
+    f1_score = f_measure(true_tokens_set, pred_tokens_set)
+    precision_score = precision(true_tokens_set, pred_tokens_set)
+    recall_score = recall(true_tokens_set, pred_tokens_set)
+    edit_dist = edit_distance(pred_tokens, true_tokens) / max(
+        len(pred_tokens), len(true_tokens)
+    )
+    meteor = meteor_score.meteor_score([true_tokens], pred_tokens)
+
+    metrics: dict[str, float] = {
+        "f1_score": f1_score,
+        "precision": precision_score,
+        "recall": recall_score,
+        "edit_distance": edit_dist,
+        "meteor": meteor,
+    }
+    return metrics
+
+
+def evaluate_page(bleu_eval, true_md: str, pred_md: str) -> dict[str, float]:
+    r"""Compute the bleu and the nltk scores"""
+    scores = compute_nltk_scores(true_md, pred_md)
+    scores["bleu"] = compute_bleu_score(bleu_eval, true_md, pred_md)
+    return scores
+
+
 class PageMarkdownEvaluation(UnitEvaluation):
     doc_id: str
 
@@ -62,6 +108,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         self,
         intermediate_evaluations_path: Optional[Path] = None,
         prediction_sources: List[PredictionFormats] = [],
+        concurrency: int = 4,
     ):
         r""" """
         supported_prediction_formats: List[PredictionFormats] = [
@@ -74,6 +121,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
             intermediate_evaluations_path=intermediate_evaluations_path,
             prediction_sources=prediction_sources,
             supported_prediction_formats=supported_prediction_formats,
+            concurrency=concurrency,
         )
 
         self._bleu_eval = evaluate.load("bleu")
@@ -146,67 +194,77 @@ class MarkdownTextEvaluator(BaseEvaluator):
             "meteor": [],
         }
 
-        for i, data in tqdm(
-            enumerate(ds_selection),
-            desc="Markdown text evaluations",
-            ncols=120,
-            total=len(ds_selection),
-        ):
-            data_record = DatasetRecordWithPrediction.model_validate(data)
-            doc_id = data_record.doc_id
-            true_doc = data_record.ground_truth_doc
-            true_md = self._docling_document_to_md(true_doc)
+        futures: list[Future] = []
+        with ProcessPoolExecutor(max_workers=self._concurrency) as executor:
+            # Submit the evaluation tasks
+            for data in ds_selection:
+                data_record = DatasetRecordWithPrediction.model_validate(data)
+                doc_id = data_record.doc_id
+                true_doc = data_record.ground_truth_doc
+                true_md = self._docling_document_to_md(true_doc)
 
-            # Get the predicted markdown from the external predictions path
-            if external_predictions_path is not None:
-                pred_doc = external_docling_doc_loader(data_record)
-                if pred_doc is None:
-                    _log.error("No external prediction found for doc_id=%s", doc_id)
+                # Get the predicted markdown from the external predictions path
+                if external_predictions_path is not None:
+                    pred_doc = external_docling_doc_loader(data_record)
+                    if pred_doc is None:
+                        _log.error("No external prediction found for doc_id=%s", doc_id)
+                        rejected_samples[
+                            EvaluationRejectionType.MISSING_PREDICTION
+                        ] += 1
+                        continue
+                    pred_md = self._docling_document_to_md(pred_doc)
+                else:
+                    if data_record.status not in self._accepted_status:
+                        _log.error(
+                            "Skipping record without successfull conversion status: %s",
+                            doc_id,
+                        )
+                        rejected_samples[
+                            EvaluationRejectionType.INVALID_CONVERSION_STATUS
+                        ] += 1
+                        continue
+                    pred_md = self._get_pred_md(data_record)  # type: ignore
+
+                if pred_md is None:
+                    _log.error("There is no markdown prediction for doc_id=%s", doc_id)
                     rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                     continue
-                pred_md = self._docling_document_to_md(pred_doc)
-            else:
-                if data_record.status not in self._accepted_status:
-                    _log.error(
-                        "Skipping record without successfull conversion status: %s",
-                        doc_id,
+
+                if true_md != "" and pred_md != "":
+                    futures.append(
+                        executor.submit(
+                            evaluate_page, self._bleu_eval, true_md, pred_md
+                        )
                     )
-                    rejected_samples[
-                        EvaluationRejectionType.INVALID_CONVERSION_STATUS
-                    ] += 1
-                    continue
-                pred_md = self._get_pred_md(data_record)  # type: ignore
 
-            if not pred_md:
-                _log.error("There is no markdown prediction for doc_id=%s", doc_id)
-                rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
-                continue
+            # Collect the futures
+            for i, future in tqdm(
+                enumerate(as_completed(futures)),
+                desc="Markdown text evaluations",
+                ncols=120,
+                total=len(futures),
+            ):
+                doc_metrics = future.result()
 
-            bleu = 0.0
-            if true_md != "" and pred_md != "":
-                bleu = self._compute_bleu_score(true_md, pred_md)
-                ntlk_scores = self._compute_nltk_scores(true_md, pred_md)
+                # Collect metrics across pages
+                for score_name, score in doc_metrics.items():
+                    ds_metrics[score_name].append(score)
 
-            # Collect metrics across pages
-            ds_metrics["bleu"].append(bleu)
-            for score_name, score in ntlk_scores.items():
-                ds_metrics[score_name].append(score)
+                md_evaluation = PageMarkdownEvaluation(
+                    doc_id=doc_id,
+                    true_md=true_md,
+                    pred_md=pred_md,
+                    bleu=doc_metrics["bleu"],
+                    f1_score=doc_metrics["f1_score"],
+                    precision=doc_metrics["precision"],
+                    recall=doc_metrics["recall"],
+                    edit_distance=doc_metrics["edit_distance"],
+                    meteor=doc_metrics["meteor"],
+                )
+                evaluations.append(md_evaluation)
 
-            md_evaluation = PageMarkdownEvaluation(
-                doc_id=doc_id,
-                true_md=true_md,
-                pred_md=pred_md,
-                bleu=bleu,
-                f1_score=ntlk_scores["f1_score"],
-                precision=ntlk_scores["precision"],
-                recall=ntlk_scores["recall"],
-                edit_distance=ntlk_scores["edit_distance"],
-                meteor=ntlk_scores["meteor"],
-            )
-            evaluations.append(md_evaluation)
-
-            if self._intermediate_evaluations_path:
-                self.save_intermediate_evaluations("MD", i, doc_id, evaluations)
+                if self._intermediate_evaluations_path:
+                    self.save_intermediate_evaluations("MD", i, doc_id, evaluations)
 
         ds_md_evalutions = DatasetMarkdownEvaluation(
             evaluated_samples=len(evaluations),
@@ -220,44 +278,6 @@ class MarkdownTextEvaluator(BaseEvaluator):
             meteor_stats=compute_stats(ds_metrics["meteor"]),
         )
         return ds_md_evalutions
-
-    def _compute_bleu_score(self, true_txt: str, pred_txt: str) -> float:
-        r"""
-        Compute BLEU score with the HF evaluate and the default Tokenizer_13
-        """
-        result = self._bleu_eval.compute(
-            predictions=[pred_txt], references=[[true_txt]]
-        )
-        bleu = result["bleu"]
-        return bleu
-
-    def _compute_nltk_scores(self, true_txt: str, pred_txt: str) -> dict[str, float]:
-        r"""
-        Returns:
-        --------
-        dict with keys: ["f_measure", "precision", "recall", "edit_dist"]
-        """
-        true_tokens = word_tokenize(true_txt)
-        true_tokens_set = set(true_tokens)
-        pred_tokens = word_tokenize(pred_txt)
-        pred_tokens_set = set(pred_tokens)
-
-        f1_score = f_measure(true_tokens_set, pred_tokens_set)
-        precision_score = precision(true_tokens_set, pred_tokens_set)
-        recall_score = recall(true_tokens_set, pred_tokens_set)
-        edit_dist = edit_distance(pred_tokens, true_tokens) / max(
-            len(pred_tokens), len(true_tokens)
-        )
-        meteor = meteor_score.meteor_score([true_tokens], pred_tokens)
-
-        metrics: dict[str, float] = {
-            "f1_score": f1_score,
-            "precision": precision_score,
-            "recall": recall_score,
-            "edit_distance": edit_dist,
-            "meteor": meteor,
-        }
-        return metrics
 
     def _docling_document_to_md(self, doc: DoclingDocument) -> str:
         r"""
