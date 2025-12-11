@@ -641,6 +641,7 @@ def evaluate(
     split: str = "test",
     cvat_overview_path: Optional[Path] = None,
     external_predictions_path: Optional[Path] = None,
+    concurrency: int = 4,
 ) -> Optional[DatasetEvaluationType]:
     """Evaluate predictions against ground truth."""
     if not os.path.exists(idir):
@@ -683,7 +684,7 @@ def evaluate(
             json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
         # Evaluate with the pixel-wise layout evaluation
-        pixel_layout_evaluator = PixelLayoutEvaluator()
+        pixel_layout_evaluator = PixelLayoutEvaluator(concurrency=concurrency)
         pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
             idir,
             split=split,
@@ -1517,6 +1518,9 @@ def evaluate_cmd(
             help="Path to load existing DoclingDocument predictions. The filename must follow the pattern [doc_id].[json|dt|yaml|yml]",
         ),
     ] = None,
+    concurrency: Annotated[
+        int, typer.Option(help="Concurrency for the computation of each metric")
+    ] = 4,
 ):
     """Evaluate predictions against ground truth."""
     input_dir, output_dir = derive_input_output_dirs(
@@ -1537,6 +1541,7 @@ def evaluate_cmd(
         odir=eval_output_dir,
         split=split,
         external_predictions_path=external_predictions_path,
+        concurrency=concurrency,
     )
 
 
