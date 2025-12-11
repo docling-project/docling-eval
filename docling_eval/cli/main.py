@@ -823,8 +823,8 @@ def evaluate(
 def visualize(
     modality: EvaluationModality,
     benchmark: BenchMarkNames,
-    idir: Path,
     odir: Path,
+    idir: Path | None = None,
     split: str = "test",
 ):
     """
@@ -839,10 +839,6 @@ def visualize(
         begin_index: Begin index
         end_index: End index
     """
-    if not os.path.exists(idir):
-        _log.error(f"Input directory not found: {idir}")
-        return
-
     os.makedirs(odir, exist_ok=True)
     metrics_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
@@ -989,6 +985,11 @@ def visualize(
 
     elif modality == EvaluationModality.READING_ORDER:
         try:
+            # idir is required here
+            if idir is None or not idir.is_dir():
+                _log.error(f"Input directory not found: {idir}")
+                return
+
             with open(metrics_filename, "r") as fd:
                 ro_evaluation = DatasetReadingOrderEvaluation.model_validate_json(
                     fd.read()
@@ -1080,6 +1081,11 @@ def visualize(
 
     elif modality == EvaluationModality.OCR:
         try:
+            # idir is required here
+            if idir is None or not idir.is_dir():
+                _log.error(f"Input directory not found: {idir}")
+                return
+
             with open(metrics_filename, "r") as fd:
                 ocr_evaluation = OcrDatasetEvaluationResult.model_validate_json(
                     fd.read()
@@ -1573,8 +1579,8 @@ def visualize_cmd(
     visualize(
         modality=modality,
         benchmark=benchmark,
-        idir=input_dir,
         odir=eval_output_dir,
+        idir=input_dir,
         split=split,
     )
 
