@@ -258,6 +258,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         ds_selection: Dataset = ds[split]
 
         # Results containers
+        evaluated_samples = 0
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
@@ -282,7 +283,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
             futures: list[Future] = []
 
             # Submit pages for execution
-            _log.info("Submit %s")
+            _log.info("Submitting the documents for evaluation...")
             for data in ds_selection:
                 data_record = DatasetRecordWithPrediction.model_validate(data)
 
@@ -321,6 +322,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                     continue
 
+                evaluated_samples += 1
                 futures.extend(
                     self._submit_document_evaluation(
                         executor, doc_id, true_doc, pred_doc
@@ -328,6 +330,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 )
 
             # Collect the futures
+            _log.info("Collecting the documents for evaluations...")
             for future in tqdm(
                 as_completed(futures),
                 desc="Multi-label Matrix Layout evaluations",
@@ -340,7 +343,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                 page_confusion_matrix: np.ndarray = (
                     page_metrics.detailed.confusion_matrix
                 )
-                ds_num_pixels = page_pixels
+                ds_num_pixels += page_pixels
                 ds_confusion_matrix += page_confusion_matrix
                 doc_page_id = f"{doc_id}-{page_no}"
                 page_evaluation = PagePixelLayoutEvaluation(
@@ -366,10 +369,11 @@ class PixelLayoutEvaluator(BaseEvaluator):
         )
 
         ds_evaluation = DatasetPixelLayoutEvaluation(
+            evaluated_samples=evaluated_samples,
+            rejected_samples=rejected_samples,
             layout_model_name=self._layout_model_name,
             num_pages=len(all_pages_evaluations),
             num_pixels=ds_num_pixels,
-            rejected_samples=rejected_samples,
             matrix_evaluation=ds_matrix_evaluation,
             page_evaluations=all_pages_evaluations,
             f1_all_classes_stats=compute_stats(pages_detailed_f1),
@@ -529,6 +533,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     raise ValueError(
                         f"Unknown missing prediction strategy: {self._missing_prediction_strategy}"
                     )
+
         return futures
 
     def _get_page_layout_resolution(

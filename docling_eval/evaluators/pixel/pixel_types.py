@@ -3,7 +3,10 @@ from typing import Any, Dict, Optional
 import numpy as np
 from pydantic import BaseModel, model_serializer, model_validator
 
-from docling_eval.evaluators.base_evaluator import EvaluationRejectionType
+from docling_eval.evaluators.base_evaluator import (
+    DatasetEvaluation,
+    EvaluationRejectionType,
+)
 from docling_eval.evaluators.stats import DatasetStatistics
 
 
@@ -73,11 +76,10 @@ class PagePixelLayoutEvaluation(BaseModel):
     matrix_evaluation: MultiLabelMatrixEvaluation
 
 
-class DatasetPixelLayoutEvaluation(BaseModel):
+class DatasetPixelLayoutEvaluation(DatasetEvaluation):
     layout_model_name: Optional[str]
     num_pages: int
     num_pixels: int
-    rejected_samples: Dict[EvaluationRejectionType, int]
     matrix_evaluation: MultiLabelMatrixEvaluation
     page_evaluations: Dict[str, PagePixelLayoutEvaluation]
 

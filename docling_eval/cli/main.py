@@ -674,14 +674,13 @@ def evaluate(
             # label_filtering_strategy=LabelFilteringStrategy.INTERSECTION,
             page_mapping_path=cvat_overview_path,
         )
-        evaluation = layout_evaluator(  # type: ignore
+        layout_evaluation = layout_evaluator(  # type: ignore
             idir,
             split=split,
             external_predictions_path=external_predictions_path,
         )
-
         with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
         # Evaluate with the pixel-wise layout evaluation
         pixel_layout_evaluator = PixelLayoutEvaluator(concurrency=concurrency)
@@ -696,6 +695,9 @@ def evaluate(
             pixel_ds_evaluation,
             pixel_save_root,
         )
+
+        # TODO: Redesign evaluate() to return multiple evaluation objects
+        evaluation = pixel_ds_evaluation  # type: ignore
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
