@@ -194,9 +194,11 @@ class MarkdownTextEvaluator(BaseEvaluator):
             "meteor": [],
         }
 
-        futures: list[Future] = []
         with ProcessPoolExecutor(max_workers=self._concurrency) as executor:
+            futures: list[Future] = []
+
             # Submit the evaluation tasks
+            _log.info("Submitting the documents for evaluation...")
             for data in ds_selection:
                 data_record = DatasetRecordWithPrediction.model_validate(data)
                 doc_id = data_record.doc_id
@@ -238,6 +240,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
                     )
 
             # Collect the futures
+            _log.info("Collecting the documents for evaluations...")
             for i, future in tqdm(
                 enumerate(as_completed(futures)),
                 desc="Markdown text evaluations",
