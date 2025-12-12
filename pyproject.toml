@@ -73,6 +73,7 @@ hyperscalers = [
     'azure-core (>=1.33.0,<2.0.0)',
     'boto3 (>=1.37.8,<2.0.0)',
     'google-cloud-documentai (>=3.2.0,<4.0.0)',
+    'google-oauth (>=1.0.1,<2.0.0)',
     'ibm-cos-sdk (>=2.1.40,<3.0.0)',
 ]
 cvat_tools = [

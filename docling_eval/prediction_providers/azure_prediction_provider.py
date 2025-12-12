@@ -5,8 +5,6 @@ import os
 from io import BytesIO
 from typing import Dict, Optional, Set, Tuple
 
-from azure.ai.documentintelligence import DocumentIntelligenceClient
-from azure.ai.documentintelligence.models import AnalyzeOutputOption
 from docling.datamodel.base_models import ConversionStatus
 
 # from docling_core.types import DoclingDocument
@@ -64,6 +62,15 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         true_labels: Optional[Set[DocItemLabel]] = None,
         pred_labels: Optional[Set[DocItemLabel]] = None,
     ):  # could be the docling converter options, the remote credentials for MS/Google, etc.
+
+        # Import guards
+        try:
+            from azure.ai.documentintelligence import DocumentIntelligenceClient
+        except ImportError:
+            raise ImportError(
+                "azure.ai.documentintelligence package is missing. Install optional dependencies."
+            )
+
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
@@ -404,6 +411,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         Raises:
             RuntimeError: If ground truth doc is not available or if mime type is unsupported
         """
+        from azure.ai.documentintelligence.models import AnalyzeOutputOption
 
         status = ConversionStatus.SUCCESS
         result_orig = None

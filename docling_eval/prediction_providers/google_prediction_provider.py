@@ -23,8 +23,6 @@ from docling_core.types.doc.page import (
     TextCell,
 )
 from docling_core.types.io import DocumentStream
-from google.cloud import documentai
-from google.oauth2 import service_account
 from google.protobuf.json_format import MessageToDict
 
 from docling_eval.datamodels.dataset_record import (
@@ -458,6 +456,21 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         true_labels: Optional[Set[DocItemLabel]] = None,
         pred_labels: Optional[Set[DocItemLabel]] = None,
     ):
+        r""" """
+        # Import guards
+        try:
+            from google.cloud import documentai
+        except ImportError:
+            raise ImportError(
+                "google.cloud package is missing. Install optional dependencies."
+            )
+        try:
+            from google.oauth2 import service_account
+        except ImportError:
+            raise ImportError(
+                "google.oauth2 package is missing. Install optional dependencies."
+            )
+
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
@@ -856,6 +869,14 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
 
     def predict(self, record: DatasetRecord) -> DatasetRecordWithPrediction:
         """For the given document stream (single document), run the API and create the doclingDocument."""
+
+        # Import guards
+        try:
+            from google.cloud import documentai
+        except ImportError:
+            raise ImportError(
+                "google.cloud package is missing. Install optional dependencies."
+            )
 
         status = ConversionStatus.SUCCESS
         assert record.original is not None
