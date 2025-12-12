@@ -4,9 +4,8 @@ import os
 import sys
 from abc import abstractmethod
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Union
 
-import ibm_boto3  # type: ignore
 from docling.utils.utils import chunkify
 from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
@@ -29,6 +28,14 @@ from docling_eval.visualisation.visualisations import save_single_document_html
 # Get logger
 _log = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    try:
+        from ibm_boto3 import client as IbmBoto3Client  # type: ignore
+        from ibm_boto3 import resource as IbmBoto3Resource  # type: ignore
+    except ImportError:
+        IbmBoto3Client = object
+        IbmBoto3Resource = object
+
 
 class HFSource(BaseModel):
     repo_id: str
@@ -45,14 +52,30 @@ class S3Source(BaseModel):
     overwrite_downloads: bool = True
 
     def __init__(self, **data):
+        r""" """
+        # Import guards
+        try:
+            import ibm_boto3
+        except ImportError:
+            raise ImportError(
+                "ibm_boto3 package is missing. Install optional dependencies."
+            )
+
         super().__init__(**data)
         self._cos_resource: ibm_boto3.resource = self.initialize_s3_resource()
         self._cos_client: ibm_boto3.client = self.initialize_s3_client()
 
-    def initialize_s3_client(self) -> ibm_boto3.client:
+    def initialize_s3_client(self) -> "IbmBoto3Client":
         """Initializes boto3 client - s3 instance
         Returns the s3 client
         """
+        # Import guards
+        try:
+            import ibm_boto3
+        except ImportError:
+            raise ImportError(
+                "ibm_boto3 package is missing. Install optional dependencies."
+            )
         return ibm_boto3.client(
             "s3",
             endpoint_url=self.endpoint,
@@ -60,10 +83,17 @@ class S3Source(BaseModel):
             aws_secret_access_key=self.secret_key,
         )
 
-    def initialize_s3_resource(self) -> ibm_boto3.resource:
+    def initialize_s3_resource(self) -> "IbmBoto3Resource":
         """Initializes boto3 resource - s3 instance
         Returns the s3 instance
         """
+        # Import guards
+        try:
+            import ibm_boto3
+        except ImportError:
+            raise ImportError(
+                "ibm_boto3 package is missing. Install optional dependencies."
+            )
 
         return ibm_boto3.resource(
             "s3",

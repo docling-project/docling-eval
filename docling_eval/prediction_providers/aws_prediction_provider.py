@@ -4,7 +4,6 @@ import logging
 import os
 from typing import Dict, Optional, Set, Tuple
 
-import boto3
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
@@ -55,6 +54,13 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         true_labels: Optional[Set[DocItemLabel]] = None,
         pred_labels: Optional[Set[DocItemLabel]] = None,
     ):
+        # Import guards
+        try:
+            import boto3
+        except ImportError:
+            raise ImportError(
+                "boto3 package is missing. Install optional packages dependencies."
+            )
         super().__init__(
             do_visualization=do_visualization,
             ignore_missing_predictions=ignore_missing_predictions,
