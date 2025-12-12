@@ -75,12 +75,14 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         supported_prediction_formats: List[PredictionFormats] = [
             PredictionFormats.DOCLING_DOCUMENT
         ],
+        concurrency: int = 4,
     ):
         r"""
         Parameters
         ----------
         intermediate_evaluations_path: When True the evalution per example will be saved in a file
         """
+        self._concurrency = concurrency
         self._intermediate_evaluations_path = intermediate_evaluations_path
 
         # Validate the prediction_sources

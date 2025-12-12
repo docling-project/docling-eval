@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pydantic import BaseModel, model_validator
 
+_log = logging.getLogger(__name__)
+
 
 class DatasetStatistics(BaseModel):
     total: int
@@ -82,7 +84,9 @@ def compute_stats(
     mean: float = statistics.mean(values) if len(values) > 0 else -1
     median: float = statistics.median(values) if len(values) > 0 else -1
     std: float = statistics.stdev(values) if len(values) > 1 else 0.0
-    logging.info(f"total: {total}, mean: {mean}, median: {median}, std: {std}")
+    _log.debug(
+        f"Compute statistics: total: {total}, mean: {mean}, median: {median}, std: {std}"
+    )
 
     max_value = 1.0
     if not max_value_is_one and len(values) > 0:
@@ -90,7 +94,7 @@ def compute_stats(
 
     # Compute the histogram
     hist, bins = np.histogram(values, bins=nr_bins, range=(0, max_value))
-    logging.info(f"#-hist: {len(hist)}, #-bins: {len(bins)}")
+    _log.debug(f"Compute statistics: hist: {len(hist)}, #-bins: {len(bins)}")
 
     return DatasetStatistics(
         total=total, mean=mean, median=median, std=std, hist=hist, bins=bins
