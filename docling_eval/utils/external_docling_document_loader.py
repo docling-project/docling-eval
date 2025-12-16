@@ -20,11 +20,40 @@ class ExternalDoclingDocumentLoader:
     def __init__(
         self,
         external_predictions_dir: Path,
+        enable_cache: bool = True,
     ):
         r""" """
         self._external_predictions_dir = external_predictions_dir
+        self._enable_cache = enable_cache
 
-    def __call__(self, record: DatasetRecord) -> Optional[DoclingDocument]:
+        # doc-id -> DoclingDocument
+        self._cache: dict[str, DoclingDocument] = {}
+
+    def predictions_path(self) -> Path:
+        r""" """
+        return self._external_predictions_dir
+
+    def get(self, record: DatasetRecord) -> Optional[DoclingDocument]:
+        r"""
+        Cache enabled loading of DoclingDocuments
+
+        Logic:
+        1. If the cache is enabled and the doc_id is in cache return it.
+        2. Otherwise try to load the document and return it.
+        3. If the document cannot be loaded return None
+        """
+        doc_id = record.doc_id
+        doc: Optional[DoclingDocument] = None
+        if self._enable_cache and doc_id in self._cache:
+            doc = self._cache[doc_id]
+        else:
+            doc = self.load(record)
+        return doc
+
+    def load(
+        self,
+        record: DatasetRecord,
+    ) -> Optional[DoclingDocument]:
         r"""
         Load the DoclingDocument from the external predictions path
 
@@ -41,22 +70,28 @@ class ExternalDoclingDocumentLoader:
         yaml_fn = self._external_predictions_dir / f"{doc_id}.yaml"
         yml_fn = self._external_predictions_dir / f"{doc_id}.yml"
 
+        doc: Optional[DoclingDocument] = None
         if json_fn.is_file():
-            return DoclingDocument.load_from_json(json_fn)
-        if doctags_fn.is_file():
+            doc = DoclingDocument.load_from_json(json_fn)
+        elif doctags_fn.is_file():
             gt_page_images = record.ground_truth_page_images
             gt_page_image = gt_page_images[0] if len(gt_page_images) > 0 else None
 
-            return ExternalDoclingDocumentLoader.load_doctags(
+            doc = ExternalDoclingDocumentLoader.load_doctags(
                 doc_id,
                 self._external_predictions_dir,
                 gt_page_image=gt_page_image,
             )
-        if yaml_fn.is_file():
-            return DoclingDocument.load_from_yaml(yaml_fn)
-        if yml_fn.is_file():
-            return DoclingDocument.load_from_yaml(yml_fn)
-        return None
+        elif yaml_fn.is_file():
+            doc = DoclingDocument.load_from_yaml(yaml_fn)
+        elif yml_fn.is_file():
+            doc = DoclingDocument.load_from_yaml(yml_fn)
+
+        # Check if to update the cache
+        if self._enable_cache and doc is not None:
+            self._cache[doc_id] = doc
+
+        return doc
 
     @staticmethod
     def build_doctags_path(doctags_root: Path, doc_id: str) -> Path:

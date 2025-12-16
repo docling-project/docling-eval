@@ -126,6 +126,9 @@ from docling_eval.prediction_providers.google_prediction_provider import (
 from docling_eval.prediction_providers.tableformer_provider import (
     TableFormerPredictionProvider,
 )
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 from docling_eval.utils.external_predictions_visualizer import PredictionsVisualizer
 
 
@@ -653,6 +656,11 @@ def evaluate(
     # Save the evaluation
     save_fn = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
+    # Initialize the ExternalDoclingDocumentLoader
+    ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
+    if external_predictions_path:
+        ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
+
     if modality == EvaluationModality.END2END:
         _log.error("END2END evaluation not supported. ")
         return None
@@ -677,7 +685,7 @@ def evaluate(
         layout_evaluation = layout_evaluator(  # type: ignore
             idir,
             split=split,
-            external_predictions_path=external_predictions_path,
+            ext_docdoc_loader=ext_docdoc_loader,
         )
         with open(save_fn, "w") as fd:
             json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
@@ -687,7 +695,7 @@ def evaluate(
         pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
             idir,
             split=split,
-            external_predictions_path=external_predictions_path,
+            ext_docdoc_loader=ext_docdoc_loader,
         )
         pixel_save_root: Path = save_fn.parent
         pixel_layout_evaluator.save_evaluations(
@@ -704,7 +712,7 @@ def evaluate(
         evaluation = table_evaluator(  # type: ignore
             idir,
             split=split,
-            external_predictions_path=external_predictions_path,
+            ext_docdoc_loader=ext_docdoc_loader,
         )
 
         with open(save_fn, "w") as fd:
@@ -771,7 +779,7 @@ def evaluate(
         evaluation = md_evaluator(  # type: ignore
             idir,
             split=split,
-            external_predictions_path=external_predictions_path,
+            ext_docdoc_loader=ext_docdoc_loader,
         )
 
         with open(save_fn, "w") as fd:

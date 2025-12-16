@@ -74,7 +74,7 @@ class DocStructureEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetDocStructureEvaluation:
         r"""
         Parameters
@@ -82,10 +82,6 @@ class DocStructureEvaluator(BaseEvaluator):
         ds_path: Path to load the parquet files of the dataset
         split: Split of the dataset to load
         """
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
-        if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
-
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"Overview of the dataset: {ds}")
@@ -126,7 +122,7 @@ class DocStructureEvaluator(BaseEvaluator):
 
             true_doc = data_record.ground_truth_doc
             if ext_docdoc_loader:
-                pred_doc = ext_docdoc_loader(data_record)
+                pred_doc = ext_docdoc_loader.get(data_record)
             else:
                 pred_doc = data_record.predicted_doc
 

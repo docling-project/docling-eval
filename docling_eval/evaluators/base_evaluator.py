@@ -14,6 +14,9 @@ from pydantic import BaseModel
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -102,7 +105,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetEvaluationType:
         r"""
         Perform the evaluation

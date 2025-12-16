@@ -422,13 +422,9 @@ class KeyValueEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetKeyValueEvaluation:
         r""" """
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
-        if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
-
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
         _log.info("Loaded split '%s' – %d samples", split, len(ds[split]))
@@ -655,7 +651,7 @@ class KeyValueEvaluator(BaseEvaluator):
         """Fetch the prediction in the first available format declared by `prediction_sources`."""
         pred_doc: Optional[DoclingDocument] = None
         if ext_docdoc_loader is not None:
-            pred_doc = ext_docdoc_loader(data_record)
+            pred_doc = ext_docdoc_loader.get(data_record)
             return pred_doc
 
         for fmt in self._prediction_sources:

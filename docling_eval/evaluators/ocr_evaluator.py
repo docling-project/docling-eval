@@ -33,6 +33,9 @@ from docling_eval.evaluators.ocr.processing_utils import (
     calculate_edit_distance,
     parse_segmented_pages,
 )
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,7 +65,7 @@ class OCREvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> OcrDatasetEvaluationResult:
         dataset_path = ds_path
         data_split_name = split

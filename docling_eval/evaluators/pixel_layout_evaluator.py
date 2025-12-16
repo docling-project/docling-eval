@@ -239,13 +239,9 @@ class PixelLayoutEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetPixelLayoutEvaluation:
         _log.info("Loading the split '%s' from: '%s'", split, ds_path)
-
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
-        if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
@@ -605,7 +601,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         """
         pred_doc = None
         if ext_docdoc_loader is not None:
-            pred_doc = ext_docdoc_loader(data_record)
+            pred_doc = ext_docdoc_loader.get(data_record)
             return pred_doc
 
         for prediction_format in self._prediction_sources:

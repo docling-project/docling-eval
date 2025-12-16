@@ -30,6 +30,9 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 from docling_eval.visualisation.visualisations import draw_arrow
 
 _log = logging.getLogger(__name__)
@@ -80,7 +83,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetReadingOrderEvaluation:
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
@@ -102,7 +105,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
             if (
-                external_predictions_path is None
+                ext_docdoc_loader is None
                 and data_record.status not in self._accepted_status
             ):
                 _log.error(
