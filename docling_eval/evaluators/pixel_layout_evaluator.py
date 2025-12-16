@@ -3,6 +3,7 @@ import json
 import logging
 import math
 from collections import defaultdict
+from concurrent.futures import Executor, Future, ProcessPoolExecutor, as_completed
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -53,6 +54,51 @@ def category_name_to_docitemlabel(category_name: str) -> DocItemLabel:
     return label
 
 
+def evaluate_page(
+    mlcm: MultiLabelConfusionMatrix,
+    doc_id: str,
+    page_no: int,
+    pg_width: int,
+    pg_height: int,
+    matrix_id_to_name: dict[int, str],
+    gt_resolutions: list[LayoutResolution],
+    pred_resolutions: Optional[list[LayoutResolution]] = None,
+) -> tuple[str, int, int, MultiLabelMatrixEvaluation]:
+    r"""
+    Compute the confusion matrix and the metrics for one page
+    If pred_resolutions is None, assume an all-background predictions
+
+    Return
+    ------
+    doc_id
+    page_no
+    page_pixels
+    page_metrics
+    """
+    # Make binary representations
+    gt_binary = mlcm.make_binary_representation(pg_width, pg_height, gt_resolutions)
+    if pred_resolutions is not None:
+        preds_binary = mlcm.make_binary_representation(
+            pg_width, pg_height, pred_resolutions
+        )
+    else:
+        preds_binary = np.ones((pg_height, pg_width), dtype=np.uint64)
+
+    # Compute confusion matrix
+    matrix_categories_ids: List[int] = list(matrix_id_to_name.keys())
+    confusion_matrix = mlcm.generate_confusion_matrix(
+        gt_binary, preds_binary, matrix_categories_ids
+    )
+
+    # Compute metrics
+    page_metrics: MultiLabelMatrixEvaluation = mlcm.compute_metrics(
+        confusion_matrix, matrix_id_to_name
+    )
+    page_pixels = pg_width * pg_height
+
+    return doc_id, page_no, page_pixels, page_metrics
+
+
 class PixelLayoutEvaluator(BaseEvaluator):
     r"""
     Evaluate the document layout by computing a pixel-level confusion matrix and derivative matrices
@@ -65,6 +111,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         intermediate_evaluations_path: Optional[Path] = None,
         prediction_sources: List[PredictionFormats] = [],
         missing_prediction_strategy: MissingPredictionStrategy = MissingPredictionStrategy.PENALIZE,
+        concurrency: int = 4,
     ):
         r"""
 
@@ -82,6 +129,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         if not prediction_sources:
             prediction_sources = supported_prediction_formats
         super().__init__(
+            concurrency=concurrency,
             intermediate_evaluations_path=intermediate_evaluations_path,
             prediction_sources=prediction_sources,
             supported_prediction_formats=supported_prediction_formats,
@@ -102,6 +150,23 @@ class PixelLayoutEvaluator(BaseEvaluator):
         self._matrix_doclabelitem_to_id, self._matrix_id_to_name = (
             self._build_matrix_categories(label_mapping)
         )
+
+    @staticmethod
+    def evaluation_filenames(
+        benchmark: BenchMarkNames, save_root: Path
+    ) -> dict[str, Path]:
+        r"""
+        Generate the expected filenames for the produced evaluation files
+        """
+        modality: str = EvaluationModality.LAYOUT.value
+        json_fn = save_root / f"evaluation_{benchmark.value}_pixel_{modality}.json"
+        excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_{modality}.xlsx"
+
+        eval_filenames: dict[str, Path] = {
+            "json": json_fn,
+            "excel": excel_fn,
+        }
+        return eval_filenames
 
     def _build_matrix_categories(
         self,
@@ -193,6 +258,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
         ds_selection: Dataset = ds[split]
 
         # Results containers
+        evaluated_samples = 0
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
@@ -213,95 +279,101 @@ class PixelLayoutEvaluator(BaseEvaluator):
             []
         )  # Gather f1 score/image when evaluated on collapsed classes
 
-        for i, data in tqdm(
-            enumerate(ds_selection),
-            desc="Multi-label Matrix Layout evaluations",
-            ncols=120,
-            total=len(ds_selection),
-        ):
-            data_record = DatasetRecordWithPrediction.model_validate(data)
+        with ProcessPoolExecutor(max_workers=self._concurrency) as executor:
+            futures: list[Future] = []
 
-            # Try to extract the layout model name
-            if not self._layout_model_name:
-                self._layout_model_name = dict_get(
-                    data_record.predictor_info,
-                    [
-                        "options",
-                        "pdf",
-                        "pipeline_options",
-                        "layout_options",
-                        "model_spec",
-                        "name",
-                    ],
-                )
+            # Submit pages for execution
+            _log.info("Submitting the documents for evaluation...")
+            for data in ds_selection:
+                data_record = DatasetRecordWithPrediction.model_validate(data)
 
-            doc_id: str = data_record.doc_id
-            if (
-                ext_docdoc_loader is None
-                and data_record.status not in self._accepted_status
-            ):
-                _log.error(
-                    "Skipping record without successfull conversion status: %s", doc_id
-                )
-                rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
-                continue
+                # Try to extract the layout model name
+                if not self._layout_model_name:
+                    self._layout_model_name = dict_get(
+                        data_record.predictor_info,
+                        [
+                            "options",
+                            "pdf",
+                            "pipeline_options",
+                            "layout_options",
+                            "model_spec",
+                            "name",
+                        ],
+                    )
 
-            true_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
-            if not pred_doc:
-                _log.error("There is no prediction for doc_id=%s", doc_id)
-                rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
-                continue
+                doc_id: str = data_record.doc_id
+                if (
+                    ext_docdoc_loader is None
+                    and data_record.status not in self._accepted_status
+                ):
+                    _log.error(
+                        "Skipping record without successfull conversion status: %s",
+                        doc_id,
+                    )
+                    rejected_samples[
+                        EvaluationRejectionType.INVALID_CONVERSION_STATUS
+                    ] += 1
+                    continue
 
-            # Compute confusion matrices
-            pages_confusion_matrices: Dict[int, np.ndarray]
-            pages_pixels: Dict[int, int]
-            pages_confusion_matrices, doc_num_pixels, pages_pixels = (
-                self._compute_document_confusion_matrix(true_doc, pred_doc)
-            )
+                true_doc = data_record.ground_truth_doc
+                pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
+                if not pred_doc:
+                    _log.error("There is no prediction for doc_id=%s", doc_id)
+                    rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
+                    continue
 
-            # Compute metrics per page
-            for page_no, page_confusion_matrix in pages_confusion_matrices.items():
-                # Contribute to the dataset's confusion matrix
-                ds_confusion_matrix += page_confusion_matrix
-
-                # Compute page metrics
-                page_matrix_evaluation: MultiLabelMatrixEvaluation = (
-                    self._mlcm.compute_metrics(
-                        page_confusion_matrix,
-                        self._matrix_id_to_name,
+                evaluated_samples += 1
+                futures.extend(
+                    self._submit_document_evaluation(
+                        executor, doc_id, true_doc, pred_doc
                     )
                 )
+
+            # Collect the futures
+            _log.info("Collecting the documents for evaluations...")
+            for future in tqdm(
+                as_completed(futures),
+                desc="Multi-label Matrix Layout evaluations",
+                ncols=120,
+                total=len(futures),
+            ):
+                page_metrics: MultiLabelMatrixEvaluation
+                doc_id, page_no, page_pixels, page_metrics = future.result()
+
+                page_confusion_matrix: np.ndarray = (
+                    page_metrics.detailed.confusion_matrix
+                )
+                ds_num_pixels += page_pixels
+                ds_confusion_matrix += page_confusion_matrix
+                doc_page_id = f"{doc_id}-{page_no}"
                 page_evaluation = PagePixelLayoutEvaluation(
                     doc_id=doc_id,
                     page_no=page_no,
-                    num_pixels=pages_pixels[page_no],
-                    matrix_evaluation=page_matrix_evaluation,
+                    num_pixels=page_pixels,
+                    matrix_evaluation=page_metrics,
                 )
-                doc_page_id = f"{doc_id}-{page_no}"
                 all_pages_evaluations[doc_page_id] = page_evaluation
 
                 # Update f1 lists
                 pages_detailed_f1.append(
-                    page_matrix_evaluation.detailed.agg_metrics.classes_f1_mean
+                    page_metrics.detailed.agg_metrics.classes_f1_mean
                 )
                 pages_collapsed_f1.append(
-                    page_matrix_evaluation.collapsed.agg_metrics.classes_f1_mean
+                    page_metrics.collapsed.agg_metrics.classes_f1_mean
                 )
 
-            ds_num_pixels += doc_num_pixels
-
-        # Compute metrics for the dataset and each document
+        # Compute metrics for the dataset
         ds_matrix_evaluation: MultiLabelMatrixEvaluation = self._mlcm.compute_metrics(
             ds_confusion_matrix,
             self._matrix_id_to_name,
         )
 
         ds_evaluation = DatasetPixelLayoutEvaluation(
+            evaluated_samples=evaluated_samples,
+            rejected_samples=rejected_samples,
             layout_model_name=self._layout_model_name,
             num_pages=len(all_pages_evaluations),
             num_pixels=ds_num_pixels,
-            rejected_samples=rejected_samples,
             matrix_evaluation=ds_matrix_evaluation,
             page_evaluations=all_pages_evaluations,
             f1_all_classes_stats=compute_stats(pages_detailed_f1),
@@ -309,23 +381,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
         )
 
         return ds_evaluation
-
-    @staticmethod
-    def evaluation_filenames(
-        benchmark: BenchMarkNames, save_root: Path
-    ) -> dict[str, Path]:
-        r"""
-        Generate the expected filenames for the produced evaluation files
-        """
-        modality: str = EvaluationModality.LAYOUT.value
-        json_fn = save_root / f"evaluation_{benchmark.value}_pixel_{modality}.json"
-        excel_fn = save_root / f"evaluation_{benchmark.value}_pixel_{modality}.xlsx"
-
-        eval_filenames: dict[str, Path] = {
-            "json": json_fn,
-            "excel": excel_fn,
-        }
-        return eval_filenames
 
     def save_evaluations(
         self,
@@ -393,19 +448,17 @@ class PixelLayoutEvaluator(BaseEvaluator):
             excel_fn,
         )
 
-    def _compute_document_confusion_matrix(
+    def _submit_document_evaluation(
         self,
+        executor: Executor,
+        doc_id: str,
         true_doc: DoclingDocument,
         pred_doc: DoclingDocument,
-    ) -> Tuple[
-        Dict[int, np.ndarray],  # page_no -> page confusion matrix
-        int,  # document num_pixels
-        Dict[int, int],  # page_no -> page num_pixels
-    ]:
+    ) -> list[Future]:
         r"""
-        Compute the confusion matrix for the given documents.
-        This is the sum of the confusion matrices of the document pages.
+        Submit the document for evaluation and return a future for each page
         """
+        futures: list[Future] = []
 
         # Collect all DocItems by page for both GT and predictions
         true_pages_to_objects = self._collect_items_by_page(true_doc)
@@ -415,13 +468,6 @@ class PixelLayoutEvaluator(BaseEvaluator):
         gt_pages = set(true_pages_to_objects.keys())
         pred_pages = set(pred_pages_to_objects.keys())
         _log.debug(f"GT pages: {sorted(gt_pages)}, Pred pages: {sorted(pred_pages)}")
-
-        matrix_categories_ids: List[int] = list(self._matrix_id_to_name.keys())
-        page_confusion_matrices: Dict[int, np.ndarray] = (
-            {}
-        )  # page_no -> page confusion_matrix
-        all_pages_pixels: Dict[int, int] = {}  # page_no -> page num_pixels
-        doc_pixels = 0
 
         for page_no in sorted(gt_pages):
             page_size = true_doc.pages[page_no].size
@@ -444,41 +490,39 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     doc=pred_doc,
                 )
 
-                # TODO: Parallelize the confusion matrix over the pages
-                # Compute the confusion matrix
-                gt_binary = self._mlcm.make_binary_representation(
-                    pg_width, pg_height, gt_layouts
+                # Submit the page for computation
+                futures.append(
+                    executor.submit(
+                        evaluate_page,
+                        self._mlcm,
+                        doc_id,
+                        page_no,
+                        pg_width,
+                        pg_height,
+                        self._matrix_id_to_name,
+                        gt_layouts,
+                        pred_layouts,
+                    )
                 )
-                preds_binary = self._mlcm.make_binary_representation(
-                    pg_width, pg_height, pred_layouts
-                )
-                page_confusion_matrix = self._mlcm.generate_confusion_matrix(
-                    gt_binary, preds_binary, matrix_categories_ids
-                )
-                page_pixels = pg_width * pg_height
-                doc_pixels += page_pixels
-                all_pages_pixels[page_no] = page_pixels
-                page_confusion_matrices[page_no] = page_confusion_matrix
             else:
                 # No prediction data for this page
                 if (
                     self._missing_prediction_strategy
                     == MissingPredictionStrategy.PENALIZE
                 ):
-                    gt_binary = self._mlcm.make_binary_representation(
-                        pg_width, pg_height, gt_layouts
+                    # Submit the page for computation
+                    futures.append(
+                        executor.submit(
+                            evaluate_page,
+                            self._mlcm,
+                            doc_id,
+                            page_no,
+                            pg_width,
+                            pg_height,
+                            self._matrix_id_to_name,
+                            gt_layouts,
+                        )
                     )
-
-                    # Make an all-one binary representation for the prediction and evaluate as usual
-                    preds_binary = np.ones((pg_height, pg_width), dtype=np.uint64)
-                    page_confusion_matrix = self._mlcm.generate_confusion_matrix(
-                        gt_binary, preds_binary, matrix_categories_ids
-                    )
-
-                    page_pixels = pg_width * pg_height
-                    doc_pixels += page_pixels
-                    all_pages_pixels[page_no] = page_pixels
-                    page_confusion_matrices[page_no] = page_confusion_matrix
                 elif (
                     self._missing_prediction_strategy
                     == MissingPredictionStrategy.IGNORE
@@ -489,7 +533,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     raise ValueError(
                         f"Unknown missing prediction strategy: {self._missing_prediction_strategy}"
                     )
-        return page_confusion_matrices, doc_pixels, all_pages_pixels
+
+        return futures
 
     def _get_page_layout_resolution(
         self,

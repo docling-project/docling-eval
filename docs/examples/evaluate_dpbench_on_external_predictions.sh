@@ -49,7 +49,7 @@ evaluate() {
 }
 
 
-visualize() {
+visualize_predictions() {
     local pred_dir save_dir modality
     pred_dir="$1"
     save_dir="$2"
@@ -71,10 +71,27 @@ visualize() {
         --output-dir "${save_dir}"
 }
 
+
+visualize_evaluations() {
+    local pred_dir eval_root modality
+    pred_dir="$1"
+    eval_root="$2"
+
+    for modality in "${MODALITIES[@]}"; do
+        echo "Evaluate: modality: ${modality} for evaluations: ${eval_root}"
+        uv run docling-eval visualize \
+            --benchmark DPBench \
+            --modality "${modality}" \
+            --input-dir "${pred_dir}" \
+            --output-dir "${eval_root}"
+    done
+}
+
 ###########################################################################################
 # Main
 #
 
+#########################################
 # Predictions
 
 # json predictions
@@ -95,8 +112,13 @@ evaluate \
     scratch/DPBench/external_predictions_yaml
 
 
+#########################################
 # Visualisations
-visualize \
+visualize_predictions \
     scratch/DPBench/predicted_documents/json \
     scratch/DPBench/external_predictions_visualisations
+
+visualize_evaluations \
+    scratch/DPBench/predicted_documents/doctag \
+    scratch/DPBench/external_predictions_doctags
 
