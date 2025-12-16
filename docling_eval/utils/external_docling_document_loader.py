@@ -87,8 +87,12 @@ class ExternalDoclingDocumentLoader:
         elif yml_fn.is_file():
             doc = DoclingDocument.load_from_yaml(yml_fn)
 
+        if doc is None:
+            _log.error("Failed to load document: %s", doc_id)
+
         # Check if to update the cache
         if self._enable_cache and doc is not None:
+            _log.info("Caching externally loaded document: %s", doc_id)
             self._cache[doc_id] = doc
 
         return doc
