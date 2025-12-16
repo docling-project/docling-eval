@@ -118,7 +118,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
     def save_intermediate_evaluations(
         self,
         evaluation_name: str,
-        enunumerate_id: int,
+        enumerate_id: int,
         doc_id: str,
         evaluations: List[UnitEvaluationType],
     ) -> Optional[Path]:
@@ -131,7 +131,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
             return None
 
         evals = [ev.model_dump() for ev in evaluations]
-        evaluation_filename = f"{evaluation_name}_{enunumerate_id:05d}_{doc_id}.json"
+        evaluation_filename = f"{evaluation_name}_{enumerate_id:05d}_{doc_id}.json"
         evaluation_fn = self._intermediate_evaluations_path / evaluation_filename  # type: ignore
         _log.info("Saving intermediate evaluations: %s", evaluation_fn)
         with open(evaluation_fn, "w") as fd:
