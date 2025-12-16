@@ -326,7 +326,7 @@ class MultiEvaluator(Generic[DatasetEvaluationType]):
                             modality,
                         )
                         evaluation = evaluate(
-                            modality, benchmark, pred_dir, eval_dir, split
+                            [modality], benchmark, pred_dir, eval_dir, split
                         )
                     if evaluation:
                         assert evaluation

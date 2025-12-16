@@ -17,7 +17,7 @@ def evaluate_external_predictions(
 ):
     r""" """
     evaluate(
-        modality,
+        [modality],
         benchmark,
         gt_path,
         save_dir,

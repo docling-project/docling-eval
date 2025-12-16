@@ -48,7 +48,7 @@ def test_run_fintabnet_builder():
     )
 
     evaluate(
-        modality=EvaluationModality.TABLE_STRUCTURE,
+        modalities=[EvaluationModality.TABLE_STRUCTURE],
         benchmark=BenchMarkNames.FINTABNET,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
@@ -87,7 +87,7 @@ def test_run_dpbench_builder():
     )
 
     evaluate(
-        modality=EvaluationModality.TABLE_STRUCTURE,
+        modalities=[EvaluationModality.TABLE_STRUCTURE],
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,

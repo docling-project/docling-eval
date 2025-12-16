@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # --- DoclingLayoutOptionsManager definition moved here ---
-from typing import Annotated, Dict, List, Optional, Tuple, Union
+from typing import Annotated, Dict, List, Optional, Tuple, Type, Union
 
 import typer
 from docling.datamodel.accelerator_options import AcceleratorOptions
@@ -73,7 +73,10 @@ from docling_eval.dataset_builders.otsl_table_dataset_builder import (
     PubTabNetDatasetBuilder,
 )
 from docling_eval.dataset_builders.xfund_builder import XFUNDDatasetBuilder
-from docling_eval.evaluators.base_evaluator import DatasetEvaluationType
+from docling_eval.evaluators.base_evaluator import (
+    DatasetEvaluation,
+    DatasetEvaluationType,
+)
 from docling_eval.evaluators.bbox_text_evaluator import BboxTextEvaluator
 from docling_eval.evaluators.doc_structure_evaluator import DocStructureEvaluator
 from docling_eval.evaluators.keyvalue_evaluator import (
@@ -203,7 +206,7 @@ app = typer.Typer(
 
 def derive_input_output_dirs(
     benchmark: BenchMarkNames,
-    modality: EvaluationModality,
+    modalities: List[EvaluationModality],
     input_dir: Optional[Path],
     output_dir: Optional[Path],
 ) -> Tuple[Path, Path]:
@@ -217,7 +220,13 @@ def derive_input_output_dirs(
         raise ValueError("Either input_dir or output_dir must be provided")
 
     if not input_dir and output_dir:
+        if len(modalities) > 0:
+            raise ValueError(
+                "Cannot derive the input_dir when multiple modalities are given"
+            )
+
         # Derive input and output paths based on the directory structure in test_dataset_builder.py
+        modality = modalities[0]
         input_dir = output_dir / "eval_dataset" / benchmark.value / modality.value
 
     if not output_dir and input_dir:
@@ -637,116 +646,71 @@ def get_prediction_provider(
 
 
 def evaluate(
-    modality: EvaluationModality,
+    modalities: List[EvaluationModality],
     benchmark: BenchMarkNames,
     idir: Path,
-    odir: Path,
+    odir: Path,  # TODO: Use odir as a save_path
     split: str = "test",
     cvat_overview_path: Optional[Path] = None,
     external_predictions_path: Optional[Path] = None,
     concurrency: int = 4,
-) -> Optional[DatasetEvaluationType]:
-    """Evaluate predictions against ground truth."""
+    modality_out_subdir: bool = False,
+) -> Optional[List[DatasetEvaluation]]:
+    """
+    Evaluate predictions against ground truth for multiple modalities.
+    Each modality can trigger one or more evaluators based on the underlying modality metrics.
+
+    Parameters
+    ----------
+    modalities: Each modality corresponds to one or more evaluators.
+    idir: Dir to load the input datasets as parquet files. Here the GT documents are expected.
+          The prediction documents are either an additional column of the loaded parquet dataset or
+          provided as files in the `external_predictions_path`
+    odir: Directory to save the evaluations. In case `modality_out_subdir == True`, the modality name
+          is used to create a subdir inside odir.
+    split: The spit load from the parquet dataset.
+    cvat_overview_path:
+    external_predictions_path: If an external_predictions_path is provided, it is used to load the
+                               predictions from file serializations of DoclingDocument objects.
+                               The loaded files are shared among the evaluators.
+    concurrency: Control the multiprocessing for each evaluator
+
+    Returns
+    -------
+    List of DatasetEvaluation subtypes or None if the evaluation cannot run.
+    Each list item corresponds to one metric. Each modality can provide one or more metrics.
+    """
     if not os.path.exists(idir):
         _log.error(f"Benchmark directory not found: {idir}")
         return None
 
-    os.makedirs(odir, exist_ok=True)
-
-    # Save the evaluation
-    save_fn = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
-
     # Initialize the ExternalDoclingDocumentLoader
     ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
     if external_predictions_path:
+        if not external_predictions_path.is_dir():
+            _log.error(
+                f"External predictions directory not found: {external_predictions_path}"
+            )
+            return None
         ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
 
-    if modality == EvaluationModality.END2END:
-        _log.error("END2END evaluation not supported. ")
-        return None
+    # Loop over all modalities
+    evaluations: List[DatasetEvaluation] = []
 
-    elif modality == EvaluationModality.TIMINGS:
-        timings_evaluator = TimingsEvaluator()
-        evaluation = timings_evaluator(  # type: ignore
-            idir,
-            split=split,
-            external_predictions_path=external_predictions_path,
-        )
+    for modality in modalities:
+        # Build the out subdir
+        save_dir = odir / modality.value if modality_out_subdir else odir
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_fn = save_dir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
-        with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+        # Distinquish evaluation cases based on the asked modality
+        if modality == EvaluationModality.END2END:
+            _log.error("END2END evaluation not supported. ")
+            return None
 
-    elif modality == EvaluationModality.LAYOUT:
-        layout_evaluator = LayoutEvaluator(
-            # missing_prediction_strategy=MissingPredictionStrategy.PENALIZE,
-            # label_filtering_strategy=LabelFilteringStrategy.INTERSECTION,
-            page_mapping_path=cvat_overview_path,
-        )
-        layout_evaluation = layout_evaluator(  # type: ignore
-            idir,
-            split=split,
-            ext_docdoc_loader=ext_docdoc_loader,
-        )
-        with open(save_fn, "w") as fd:
-            json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
-
-        # Evaluate with the pixel-wise layout evaluation
-        pixel_layout_evaluator = PixelLayoutEvaluator(concurrency=concurrency)
-        pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
-            idir,
-            split=split,
-            ext_docdoc_loader=ext_docdoc_loader,
-        )
-        pixel_save_root: Path = save_fn.parent
-        pixel_layout_evaluator.save_evaluations(
-            benchmark,
-            pixel_ds_evaluation,
-            pixel_save_root,
-        )
-
-        # TODO: Redesign evaluate() to return multiple evaluation objects
-        evaluation = pixel_ds_evaluation  # type: ignore
-
-    elif modality == EvaluationModality.TABLE_STRUCTURE:
-        table_evaluator = TableEvaluator(concurrency=concurrency)
-        evaluation = table_evaluator(  # type: ignore
-            idir,
-            split=split,
-            ext_docdoc_loader=ext_docdoc_loader,
-        )
-
-        with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
-
-    elif modality == EvaluationModality.DOCUMENT_STRUCTURE:
-        doc_struct_evaluator = DocStructureEvaluator(
-            page_mapping_path=cvat_overview_path
-        )
-        evaluation = doc_struct_evaluator(  # type: ignore
-            idir,
-            split=split,
-            external_predictions_path=external_predictions_path,
-        )
-
-        with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
-
-    elif modality == EvaluationModality.OCR:
-        if not external_predictions_path:
-            if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
-                text_unit = TextCellUnit.LINE
-            else:
-                text_unit = TextCellUnit.WORD
-
-            logging.info(
-                f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})"
-            )
-            logging.info(f"Text unit set to {text_unit}")
-
-            ocr_evaluator = OCREvaluator(
-                intermediate_evaluations_path=odir, text_unit=text_unit
-            )
-            evaluation = ocr_evaluator(  # type: ignore
+        elif modality == EvaluationModality.TIMINGS:
+            timings_evaluator = TimingsEvaluator()
+            evaluation = timings_evaluator(  # type: ignore
                 idir,
                 split=split,
                 external_predictions_path=external_predictions_path,
@@ -754,81 +718,169 @@ def evaluate(
 
             with open(save_fn, "w") as fd:
                 json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            evaluations.append(evaluation)
+
+        elif modality == EvaluationModality.LAYOUT:
+            layout_evaluator = LayoutEvaluator(
+                # missing_prediction_strategy=MissingPredictionStrategy.PENALIZE,
+                # label_filtering_strategy=LabelFilteringStrategy.INTERSECTION,
+                page_mapping_path=cvat_overview_path,
+            )
+            layout_evaluation = layout_evaluator(  # type: ignore
+                idir,
+                split=split,
+                ext_docdoc_loader=ext_docdoc_loader,
+            )
+            with open(save_fn, "w") as fd:
+                json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            evaluations.append(layout_evaluation)
+
+            # Evaluate with the pixel-wise layout evaluation
+            pixel_layout_evaluator = PixelLayoutEvaluator(concurrency=concurrency)
+            pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
+                idir,
+                split=split,
+                ext_docdoc_loader=ext_docdoc_loader,
+            )
+            pixel_save_root: Path = save_fn.parent
+            pixel_layout_evaluator.save_evaluations(
+                benchmark,
+                pixel_ds_evaluation,
+                pixel_save_root,
+            )
+
+            evaluations.append(pixel_ds_evaluation)
+
+        elif modality == EvaluationModality.TABLE_STRUCTURE:
+            table_evaluator = TableEvaluator(concurrency=concurrency)
+            evaluation = table_evaluator(  # type: ignore
+                idir,
+                split=split,
+                ext_docdoc_loader=ext_docdoc_loader,
+            )
+
+            with open(save_fn, "w") as fd:
+                json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            evaluations.append(evaluation)
+
+        elif modality == EvaluationModality.DOCUMENT_STRUCTURE:
+            doc_struct_evaluator = DocStructureEvaluator(
+                page_mapping_path=cvat_overview_path
+            )
+            evaluation = doc_struct_evaluator(  # type: ignore
+                idir,
+                split=split,
+                external_predictions_path=external_predictions_path,
+            )
+
+            with open(save_fn, "w") as fd:
+                json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            evaluations.append(evaluation)
+
+        elif modality == EvaluationModality.OCR:
+            if not external_predictions_path:
+                if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
+                    text_unit = TextCellUnit.LINE
+                else:
+                    text_unit = TextCellUnit.WORD
+
+                logging.info(
+                    f"Benchmark received in evaluate: {benchmark} ({type(benchmark)})"
+                )
+                logging.info(f"Text unit set to {text_unit}")
+
+                ocr_evaluator = OCREvaluator(
+                    intermediate_evaluations_path=odir, text_unit=text_unit
+                )
+                evaluation = ocr_evaluator(  # type: ignore
+                    idir,
+                    split=split,
+                    external_predictions_path=external_predictions_path,
+                )
+
+                with open(save_fn, "w") as fd:
+                    json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+                evaluations.append(evaluation)
+            else:
+                logging.error(
+                    "External predictions are not supported for OCR evaluations"
+                )
+
+        elif modality == EvaluationModality.READING_ORDER:
+            readingorder_evaluator = ReadingOrderEvaluator()
+            evaluation = readingorder_evaluator(  # type: ignore
+                idir,
+                split=split,
+                external_predictions_path=external_predictions_path,
+            )
+
+            with open(save_fn, "w") as fd:
+                json.dump(
+                    evaluation.model_dump(),
+                    fd,
+                    indent=2,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+            evaluations.append(evaluation)
+
+        elif modality == EvaluationModality.MARKDOWN_TEXT:
+            md_evaluator = MarkdownTextEvaluator(concurrency=concurrency)
+            evaluation = md_evaluator(  # type: ignore
+                idir,
+                split=split,
+                ext_docdoc_loader=ext_docdoc_loader,
+            )
+
+            with open(save_fn, "w") as fd:
+                json.dump(
+                    evaluation.model_dump(),
+                    fd,
+                    indent=2,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+            evaluations.append(evaluation)
+
+        elif modality == EvaluationModality.BBOXES_TEXT:
+            bbox_evaluator = BboxTextEvaluator()
+            evaluation = bbox_evaluator(  # type: ignore
+                idir,
+                split=split,
+                external_predictions_path=external_predictions_path,
+            )
+            with open(save_fn, "w") as fd:
+                json.dump(
+                    evaluation.model_dump(),
+                    fd,
+                    indent=2,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+            evaluations.append(evaluation)
+
+        elif modality == EvaluationModality.KEY_VALUE:
+            keyvalue_evaluator = KeyValueEvaluator(page_mapping_path=cvat_overview_path)
+            evaluation = keyvalue_evaluator(  # type: ignore
+                idir,
+                split=split,
+                external_predictions_path=external_predictions_path,
+            )
+            with open(save_fn, "w") as fd:
+                json.dump(
+                    evaluation.model_dump(),
+                    fd,
+                    indent=2,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+            evaluations.append(evaluation)
+
         else:
-            logging.error("External predictions are not supported for OCR evaluations")
+            _log.error(f"Unsupported modality for evaluation: {modality}")
 
-    elif modality == EvaluationModality.READING_ORDER:
-        readingorder_evaluator = ReadingOrderEvaluator()
-        evaluation = readingorder_evaluator(  # type: ignore
-            idir,
-            split=split,
-            external_predictions_path=external_predictions_path,
-        )
-
-        with open(save_fn, "w") as fd:
-            json.dump(
-                evaluation.model_dump(),
-                fd,
-                indent=2,
-                sort_keys=True,
-                ensure_ascii=False,
-            )
-
-    elif modality == EvaluationModality.MARKDOWN_TEXT:
-        md_evaluator = MarkdownTextEvaluator(concurrency=concurrency)
-        evaluation = md_evaluator(  # type: ignore
-            idir,
-            split=split,
-            ext_docdoc_loader=ext_docdoc_loader,
-        )
-
-        with open(save_fn, "w") as fd:
-            json.dump(
-                evaluation.model_dump(),
-                fd,
-                indent=2,
-                sort_keys=True,
-                ensure_ascii=False,
-            )
-
-    elif modality == EvaluationModality.BBOXES_TEXT:
-        bbox_evaluator = BboxTextEvaluator()
-        evaluation = bbox_evaluator(  # type: ignore
-            idir,
-            split=split,
-            external_predictions_path=external_predictions_path,
-        )
-        with open(save_fn, "w") as fd:
-            json.dump(
-                evaluation.model_dump(),
-                fd,
-                indent=2,
-                sort_keys=True,
-                ensure_ascii=False,
-            )
-
-    elif modality == EvaluationModality.KEY_VALUE:
-        keyvalue_evaluator = KeyValueEvaluator(page_mapping_path=cvat_overview_path)
-        evaluation = keyvalue_evaluator(  # type: ignore
-            idir,
-            split=split,
-            external_predictions_path=external_predictions_path,
-        )
-        with open(save_fn, "w") as fd:
-            json.dump(
-                evaluation.model_dump(),
-                fd,
-                indent=2,
-                sort_keys=True,
-                ensure_ascii=False,
-            )
-
-    else:
-        _log.error(f"Unsupported modality for evaluation: {modality}")
-        return None
-
-    _log.info(f"The evaluation has been saved in '{save_fn}'")
-    return evaluation  # type: ignore
+        _log.info(f"The evaluation has been saved in '{save_fn}'")
+    return evaluations  # type: ignore
 
 
 def visualize(
@@ -1502,11 +1554,16 @@ def create(
 
 @app.command(name="evaluate")
 def evaluate_cmd(
-    modality: Annotated[EvaluationModality, typer.Option(help="Evaluation modality")],
     benchmark: Annotated[
         BenchMarkNames,
         typer.Option(
             help="Benchmark name. It is used only to set the filename of the evaluation json file."
+        ),
+    ],
+    modality: Annotated[
+        List[EvaluationModality],
+        typer.Option(
+            help="Evaluation modalities. Multiple modalities are also supported."
         ),
     ],
     input_dir: Annotated[
@@ -1538,20 +1595,18 @@ def evaluate_cmd(
     )
     assert input_dir is not None
     assert output_dir is not None
-    eval_output_dir = output_dir / "evaluations" / modality.value
-
-    # Create output directory
-    os.makedirs(eval_output_dir, exist_ok=True)
+    eval_output_root = output_dir / "evaluations"
 
     # Call our self-contained evaluation function
     evaluate(
-        modality=modality,
+        modalities=modality,
         benchmark=benchmark,
         idir=input_dir,
-        odir=eval_output_dir,
+        odir=eval_output_root,
         split=split,
         external_predictions_path=external_predictions_path,
         concurrency=concurrency,
+        modality_out_subdir=True,
     )
 
 
@@ -1581,7 +1636,7 @@ def visualize_cmd(
 ):
     """Visualize evaluation results."""
     input_dir, output_dir = derive_input_output_dirs(
-        benchmark, modality, input_dir, output_dir
+        benchmark, [modality], input_dir, output_dir
     )
     assert input_dir is not None
     assert output_dir is not None

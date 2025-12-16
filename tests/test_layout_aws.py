@@ -47,7 +47,7 @@ def test_run_dpbench_builder():
     )
 
     evaluate(
-        modality=EvaluationModality.LAYOUT,
+        modalities=[EvaluationModality.LAYOUT],
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
@@ -85,7 +85,7 @@ def test_run_omnidocbench_builder():
     )
 
     evaluate(
-        modality=EvaluationModality.LAYOUT,
+        modalities=[EvaluationModality.LAYOUT],
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
