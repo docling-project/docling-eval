@@ -700,7 +700,7 @@ def evaluate(
         evaluation = pixel_ds_evaluation  # type: ignore
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
-        table_evaluator = TableEvaluator()
+        table_evaluator = TableEvaluator(concurrency=concurrency)
         evaluation = table_evaluator(  # type: ignore
             idir,
             split=split,

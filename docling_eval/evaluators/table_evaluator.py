@@ -275,10 +275,9 @@ class TableEvaluator(BaseEvaluator):
             _log.info("Collecting the tables for evaluations...")
             for future in tqdm(
                 as_completed(futures),
-                # TODO
-                desc="Table evaluations - collect loop",
+                desc="Table evaluations",
                 ncols=120,
-                total=len(ds_selection),
+                total=len(futures),
             ):
                 table_evaluation: Optional[TableEvaluation] = future.result()
                 if table_evaluation is None:
@@ -305,8 +304,8 @@ class TableEvaluator(BaseEvaluator):
         _log.info(
             (
                 "Finish. Missing prediction documents: %d."
-                + "Documents with mismatch in number of tables between GT/predictions: %d."
-                + "Skipped tables due to evaluation errors: %d"
+                + " Documents with mismatch in number of tables between GT/predictions: %d."
+                + " Skipped tables due to evaluation errors: %d"
             ),
             rejected_samples[EvaluationRejectionType.MISSING_PREDICTION],
             rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT],
