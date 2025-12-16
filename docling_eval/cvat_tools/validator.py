@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Type
@@ -154,7 +155,7 @@ class SecondLevelReadingOrderParentRule(ValidationRule):
         errors: list[CVATValidationError] = []
         for p in doc.paths:
             if p.label.startswith("reading_order") and p.level and p.level > 1:
-                container = doc.path_to_container.get(p.id)
+                container = doc.get_path_container_node(p.id)
                 if container is None or container.parent is None:
                     errors.append(
                         CVATValidationError(
@@ -223,14 +224,14 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         element_ids_to_check = {element.id}
 
         # Find merge group containing this element
-        for merge_elements in doc.path_mappings.merge.values():
+        for _, merge_elements in doc.iter_merge_paths():
             if element.id in merge_elements:
                 element_ids_to_check = set(merge_elements)
                 break
 
         # Check all elements in the group
         for el_id in element_ids_to_check:
-            el = next((e for e in doc.elements if e.id == el_id), None)
+            el = doc.get_element(el_id)
             if not el:
                 continue
 
@@ -285,7 +286,7 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         picture_element = picture_ancestor.element
 
         element_ids_to_check = {element.id}
-        for merge_elements in doc.path_mappings.merge.values():
+        for _, merge_elements in doc.iter_merge_paths():
             if element.id in merge_elements:
                 element_ids_to_check = set(merge_elements)
                 break
@@ -347,9 +348,9 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
         if len(doc.elements) <= 1:
             return errors
 
-        touched = set()
-        for elist in doc.path_mappings.reading_order.values():
-            touched.update(elist)
+        touched: set[int] = set()
+        for _, element_ids in doc.iter_reading_order_paths():
+            touched.update(element_ids)
 
         logger.debug(f"Total elements: {len(doc.elements)}")
         logger.debug(f"Total touched elements: {len(touched)}")
@@ -357,7 +358,7 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
 
         # Print containment tree structure
         logger.debug("\nCONTAINMENT TREE STRUCTURE:")
-        for i, root in enumerate(doc.tree_roots):
+        for i, root in enumerate(doc.roots()):
             logger.debug(f"Tree root {i}:")
             self._print_tree_node(root, 0)
 
@@ -372,10 +373,10 @@ class ElementTouchedByReadingOrderRule(ValidationRule):
             )
 
         # Pre-compute level 1 reading order touched elements for efficiency
-        level1_touched = set()
-        level2_plus_touched = set()
-        for path_id, element_ids in doc.path_mappings.reading_order.items():
-            path = doc.get_path_by_id(path_id)
+        level1_touched: set[int] = set()
+        level2_plus_touched: set[int] = set()
+        for path_id, element_ids in doc.iter_reading_order_paths():
+            path = doc.get_path(path_id)
             if path and path.label.startswith("reading_order"):
                 if path.level == 1 or path.level is None:
                     level1_touched.update(element_ids)
@@ -582,12 +583,12 @@ class MergeGroupPathsRule(ValidationRule):
 
         # Validate merge paths
         errors.extend(
-            self._validate_path_mappings(doc.elements, doc.path_mappings.merge, "merge")
+            self._validate_path_mappings(doc.elements, doc.iter_merge_paths(), "merge")
         )
 
         # Validate group paths
         errors.extend(
-            self._validate_path_mappings(doc.elements, doc.path_mappings.group, "group")
+            self._validate_path_mappings(doc.elements, doc.iter_group_paths(), "group")
         )
 
         return errors
@@ -595,17 +596,18 @@ class MergeGroupPathsRule(ValidationRule):
     def _validate_path_mappings(
         self,
         elements: List[CVATElement],
-        path_mappings: Dict[int, List[int]],
+        path_mappings: Iterator[Tuple[int, Tuple[int, ...]]],
         path_type: str,
     ) -> List[CVATValidationError]:
         """Validate that elements in path mappings have same label and content_layer."""
-        if not elements or not path_mappings:
+        if not elements:
             return []
 
         errors: list[CVATValidationError] = []
         id_to_element = {el.id: el for el in elements}
 
-        for path_id, el_ids in path_mappings.items():
+        for path_id, el_ids_tuple in path_mappings:
+            el_ids = list(el_ids_tuple)
             if len(el_ids) < 2:
                 continue
 
@@ -705,9 +707,9 @@ class MergePathDirectionRule(ValidationRule):
         errors: list[CVATValidationError] = []
 
         # Check each merge path using the centralized helper
-        for path_id, element_ids in doc.path_mappings.merge.items():
+        for path_id, element_ids in doc.iter_merge_paths():
             corrected_ids, was_backwards = doc.get_corrected_merge_elements(
-                path_id, element_ids
+                path_id, list(element_ids)
             )
 
             if was_backwards:
@@ -715,7 +717,7 @@ class MergePathDirectionRule(ValidationRule):
                     CVATValidationError(
                         error_type="merge_path_backwards",
                         message=f"Merge path {path_id}: Direction is backwards relative to reading order "
-                        f"(merge: {element_ids}, reading order: {corrected_ids}). ",
+                        f"(merge: {list(element_ids)}, reading order: {corrected_ids}). ",
                         severity=ValidationSeverity.WARNING,
                         path_id=path_id,
                     )
@@ -802,7 +804,7 @@ class CaptionFootnotePathsRule(ValidationRule):
 
         # First check for the special case where neither side is a container (ERROR)
         caption_paths_to_skip = set()
-        for path_id, (container_id, caption_id) in doc.path_mappings.to_caption.items():
+        for path_id, container_id, caption_id in doc.iter_to_caption_links():
             container_el = id_to_element.get(container_id)
             caption_el = id_to_element.get(caption_id)
 
@@ -821,10 +823,7 @@ class CaptionFootnotePathsRule(ValidationRule):
                     caption_paths_to_skip.add(path_id)
 
         footnote_paths_to_skip = set()
-        for path_id, (
-            container_id,
-            footnote_id,
-        ) in doc.path_mappings.to_footnote.items():
+        for path_id, container_id, footnote_id in doc.iter_to_footnote_links():
             container_el = id_to_element.get(container_id)
             footnote_el = id_to_element.get(footnote_id)
 
@@ -848,21 +847,21 @@ class CaptionFootnotePathsRule(ValidationRule):
             self._validate_basic_requirements(
                 doc.elements,
                 {
-                    k: v
-                    for k, v in doc.path_mappings.to_caption.items()
-                    if k not in caption_paths_to_skip
+                    path_id: (container_id, caption_id)
+                    for path_id, container_id, caption_id in doc.iter_to_caption_links()
+                    if path_id not in caption_paths_to_skip
                 },
                 {
-                    k: v
-                    for k, v in doc.path_mappings.to_footnote.items()
-                    if k not in footnote_paths_to_skip
+                    path_id: (container_id, footnote_id)
+                    for path_id, container_id, footnote_id in doc.iter_to_footnote_links()
+                    if path_id not in footnote_paths_to_skip
                 },
             )
         )
 
         # Validate caption uniqueness: each caption must be referenced by exactly one to_caption path
         caption_to_paths: Dict[int, List[int]] = {}
-        for path_id, (_, caption_id) in doc.path_mappings.to_caption.items():
+        for path_id, _, caption_id in doc.iter_to_caption_links():
             caption_to_paths.setdefault(caption_id, []).append(path_id)
 
         # Check for captions with multiple references
@@ -1001,7 +1000,7 @@ class ToValuePathStructureRule(ValidationRule):
 
         # Build element-to-merge-group mapping
         element_to_merge_group: Dict[int, Set[int]] = {}
-        for merge_elements in doc.path_mappings.merge.values():
+        for _, merge_elements in doc.iter_merge_paths():
             group = set(merge_elements)
             for el_id in merge_elements:
                 element_to_merge_group[el_id] = group
@@ -1072,13 +1071,13 @@ class GraphCellConnectionRule(ValidationRule):
 
         # Build set of all element IDs touched by to_value paths
         connected_elements: Set[int] = set()
-        for key_id, value_id in doc.path_mappings.to_value.values():
+        for _, key_id, value_id in doc.iter_to_value_links():
             connected_elements.add(key_id)
             connected_elements.add(value_id)
 
         # Build element-to-merge-group mapping to handle merged elements
         element_to_merge_group: Dict[int, Set[int]] = {}
-        for merge_elements in doc.path_mappings.merge.values():
+        for _, merge_elements in doc.iter_merge_paths():
             group = set(merge_elements)
             for el_id in merge_elements:
                 element_to_merge_group[el_id] = group
@@ -1204,7 +1203,7 @@ class GroupConsecutiveReadingOrderRule(ValidationRule):
 
         list_group_elements: Dict[int, Set[int]] = {}
 
-        for path_id, group_element_ids in doc.path_mappings.group.items():
+        for path_id, group_element_ids in doc.iter_group_paths():
             if len(group_element_ids) < 2:
                 continue
 
@@ -1230,7 +1229,7 @@ class GroupConsecutiveReadingOrderRule(ValidationRule):
         group_positions: Dict[int, Dict[int, List[int]]] = {}
         ro_to_groups: Dict[int, Set[int]] = {}
 
-        for ro_path_id, ro_element_ids in doc.path_mappings.reading_order.items():
+        for ro_path_id, ro_element_ids in doc.iter_reading_order_paths():
             for index, element_id in enumerate(ro_element_ids):
                 for group_path_id in element_to_groups.get(element_id, ()):
                     positions = group_positions.setdefault(
@@ -1302,7 +1301,7 @@ class GroupConsecutiveReadingOrderRule(ValidationRule):
                 if element_id in id_to_element
             }
 
-            for ro_path_id, ro_element_ids in doc.path_mappings.reading_order.items():
+            for ro_path_id, ro_element_ids in doc.iter_reading_order_paths():
                 cluster_positions: List[Tuple[int, int]] = [
                     (index, element_id)
                     for index, element_id in enumerate(ro_element_ids)
