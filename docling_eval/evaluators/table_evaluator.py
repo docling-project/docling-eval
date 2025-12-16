@@ -118,8 +118,7 @@ def evaluate_tables(
     pred_num_cols: int,
     is_complex: bool,
     structure_only: bool,
-    # ) -> tuple[float, bool, bool]:
-) -> TableEvaluation:
+) -> Optional[TableEvaluation]:
     r"""
     Execution function
     Receive 2 tables as html-formatted string. Compute the TEDS score
@@ -130,35 +129,38 @@ def evaluate_tables(
     is_complex: bool
     structure_only: bool
     """
-    # TODO: Check if exceptions can be thrown in the following code
-    for stopword in stopwords:
-        pred_html = pred_html.replace(stopword, "")
-    for stopword in stopwords:
-        true_html = true_html.replace(stopword, "")
+    try:
+        for stopword in stopwords:
+            pred_html = pred_html.replace(stopword, "")
+        for stopword in stopwords:
+            true_html = true_html.replace(stopword, "")
 
-    pred_html_obj = html.fromstring(pred_html)
-    true_html_obj = html.fromstring(true_html)
+        pred_html_obj = html.fromstring(pred_html)
+        true_html_obj = html.fromstring(true_html)
 
-    teds = teds_scorer(
-        gt_table=true_html_obj,
-        pred_table=pred_html_obj,
-        structure_only=structure_only,
-    )
-    teds = round(teds, 3)
+        teds = teds_scorer(
+            gt_table=true_html_obj,
+            pred_table=pred_html_obj,
+            structure_only=structure_only,
+        )
+        teds = round(teds, 3)
 
-    # Prepare output
-    table_evaluation = TableEvaluation(
-        TEDS=teds,
-        is_complex=is_complex,
-        filename=doc_id,
-        table_id=table_id,
-        true_ncols=true_num_cols,
-        pred_ncols=pred_num_cols,
-        true_nrows=true_num_rows,
-        pred_nrows=pred_num_rows,
-        structure_only_evaluation=structure_only,
-    )
-    return table_evaluation
+        # Prepare output
+        table_evaluation = TableEvaluation(
+            TEDS=teds,
+            is_complex=is_complex,
+            filename=doc_id,
+            table_id=table_id,
+            true_ncols=true_num_cols,
+            pred_ncols=pred_num_cols,
+            true_nrows=true_num_rows,
+            pred_nrows=pred_num_rows,
+            structure_only_evaluation=structure_only,
+        )
+        return table_evaluation
+    except Exception:
+        _log.error("Cannot evaluate doc_id: %s table: %d ", doc_id, table_id)
+        return None
 
 
 class TableEvaluator(BaseEvaluator):
@@ -277,7 +279,10 @@ class TableEvaluator(BaseEvaluator):
                 ncols=120,
                 total=len(ds_selection),
             ):
-                table_evaluation: TableEvaluation = future.result()
+                table_evaluation: Optional[TableEvaluation] = future.result()
+                if table_evaluation is None:
+                    continue
+
                 table_id: int = table_evaluation.table_id
                 doc_id = table_evaluation.filename
 
