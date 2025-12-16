@@ -106,7 +106,7 @@ def is_complex_table(table: TableItem) -> bool:
 
 
 def evaluate_tables(
-    teds_scorer,
+    teds_scorer: TEDScorer,
     stopwords: list[str],
     doc_id: str,
     table_id: int,
@@ -189,7 +189,7 @@ class TableEvaluator(BaseEvaluator):
         )
 
         self._structure_only = structure_only
-        self._teds_scorer = TEDScorer()
+        self._teds_scorer: TEDScorer = TEDScorer()
         self._stopwords = ["<i>", "</i>", "<b>", "</b>", "<u>", "</u>"]
 
     def __call__(
@@ -275,12 +275,14 @@ class TableEvaluator(BaseEvaluator):
             _log.info("Collecting the tables for evaluations...")
             for future in tqdm(
                 as_completed(futures),
-                desc="Table evaluations",
+                # TODO
+                desc="Table evaluations - collect loop",
                 ncols=120,
                 total=len(ds_selection),
             ):
                 table_evaluation: Optional[TableEvaluation] = future.result()
                 if table_evaluation is None:
+                    rejected_samples[EvaluationRejectionType.EVALUATION_ERROR] += 1
                     continue
 
                 table_id: int = table_evaluation.table_id
@@ -299,8 +301,15 @@ class TableEvaluator(BaseEvaluator):
                         "TEDs_struct", table_id, doc_id, [table_evaluation]
                     )
 
+        # Summary log
         _log.info(
-            "Finish. %s documents were skipped due to evaluation errors",
+            (
+                "Finish. Missing prediction documents: %d."
+                + "Documents with mismatch in number of tables between GT/predictions: %d."
+                + "Skipped tables due to evaluation errors: %d"
+            ),
+            rejected_samples[EvaluationRejectionType.MISSING_PREDICTION],
+            rejected_samples[EvaluationRejectionType.MISMATHCED_DOCUMENT],
             rejected_samples[EvaluationRejectionType.EVALUATION_ERROR],
         )
 
