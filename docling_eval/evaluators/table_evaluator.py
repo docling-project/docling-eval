@@ -208,7 +208,7 @@ class TableEvaluator(BaseEvaluator):
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
         split_files = glob.glob(split_path)
-        _log.info("Files: %s", split_files)
+        _log.debug("Files: %s", split_files)
         ds = load_dataset("parquet", data_files={split: split_files})
         _log.info("Overview of dataset: %s", ds)
 

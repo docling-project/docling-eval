@@ -92,7 +92,7 @@ class ExternalDoclingDocumentLoader:
 
         # Check if to update the cache
         if self._enable_cache and doc is not None:
-            _log.info("Caching externally loaded document: %s", doc_id)
+            _log.debug("Caching externally loaded document: %s", doc_id)
             self._cache[doc_id] = doc
 
         return doc
