@@ -1,0 +1,11 @@
+{
+  "test_id": "021",
+  "name": "keyvalue_multiline_merge",
+  "description": "All key-value elements, including multiline merges must be recovered correctly.",
+  "observation": "Some key-value pairs are missing despite correct annotation, e.g. 'Age'.",
+  "observation_status": "broken",
+  
+  "source": {
+    "image_identifier": "doc_ca658961adbd77b31569efa98b2ede0987fd25564b15e4fc16b0287de710e29c_page_000001.png"
+  }
+}

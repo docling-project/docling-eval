@@ -1,0 +1,9 @@
+{
+  "test_id": "007",
+  "name": "007_rotation_test",
+  "description": "270 degree rotation of center element must be respected.",
+  "observation_status": "correct",
+  "source": {
+    "image_identifier": "doc_33a640307319c3daaa319101efbcb723352ca833ef3ba848348538fe685b073a_page_000001.png"
+  }
+}

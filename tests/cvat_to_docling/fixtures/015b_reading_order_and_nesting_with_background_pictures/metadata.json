@@ -1,0 +1,12 @@
+{
+  "test_id": "015",
+  "name": "015b_reading_order_and_nesting_with_background_pictures",
+  "description": "If an incorrect annotation defines level 2 reading order paths but these do not fall into a distinct container (e.g. because the screenshot was moved to BACKGROUND), they must not be trivially concatenated, but raise a FATAL error.",
+  "observation": "Reading-orders are appended one after another as fallback, which should not happen.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_1ffe1f189763a662b622d8f04cffcb6dedb76661bf86f11e34e400c3eb7d4827_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

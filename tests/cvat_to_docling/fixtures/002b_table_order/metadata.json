@@ -1,0 +1,11 @@
+{
+  "test_id": "023",
+  "name": "002b_table_order",
+  "description": "Table must be in correct order.",
+  "observation_status": "correct",
+  "source": {
+    "image_identifier": "doc_cb72a5b81790ad0360fbba7839110f7d5563c07cc6a3f2f0e450ab29f4c54f66_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

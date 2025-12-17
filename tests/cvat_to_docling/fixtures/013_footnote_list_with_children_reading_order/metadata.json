@@ -1,0 +1,12 @@
+{
+  "test_id": "013",
+  "name": "bad_handling_of_footnote_vs_list_and_merges_inside",
+  "description": "The footnote list with sandwiched text must be handled in correct reading order.",
+  "observation": "Observing out-of-order elements in the footnotes.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_a4b6343889cd5469d7957e1fcfd97be1299a75c865e12779001180c790620801_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='utf-8'?>
+<annotations>
+    <image id="5406" name="doc_a08d29766b5aec0cb3e69cb8c12552bea8cfabcea0f435ee6f437f83d72a0260_page_000001.png" width="1224" height="1584">
+        <box label="text" source="" occluded="0" xtl="104.84049599999997" ytl="109.023552" xbr="600.6412799999999" ybr="315.44568" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="caption" source="" occluded="0" xtl="106.12691999999998" ytl="929.54664" xbr="603.44424" ybr="987.0664320000001" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="106.183224" ytl="1037.390112" xbr="599.995008" ybr="1445.124384" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="631.543608" ytl="620.427456" xbr="1126.607544" ybr="870.739056" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="631.373472" ytl="886.2654239999999" xbr="1127.124072" ybr="1251.933408" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="632.66112" ytl="1267.117632" xbr="1128.11184" ybr="1450.09656" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="caption" source="" occluded="0" xtl="632.0858400000001" ytl="421.59585599999997" xbr="1127.405592" ybr="525.6092160000001" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="160.771176" ytl="640.2813120000001" xbr="566.505144" ybr="876.1230720000001" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">CHART</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="363.84256799999997" ytl="776.07288" xbr="397.74492" ybr="787.50936" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">OTHER</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="362.924568" ytl="798.7082399999999" xbr="395.036208" ybr="810.14472" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">OTHER</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="941.227848" ytl="138.33547199999998" xbr="965.682144" ybr="148.21488" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">OTHER</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="942.080976" ytl="152.53128" xbr="964.8485999999999" ybr="162.410688" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">OTHER</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="941.596272" ytl="283.555008" xbr="964.363896" ybr="293.434416" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">OTHER</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="942.098112" ytl="296.868528" xbr="964.865736" ybr="306.747936" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">OTHER</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="969.066504" ytl="139.103712" xbr="1058.861592" ybr="148.28457600000002" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="968.5524240000001" ytl="153.92995200000001" xbr="1053.593496" ybr="163.110816" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="968.163192" ytl="284.356512" xbr="1051.051248" ybr="293.537376" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="967.870656" ytl="298.411344" xbr="1045.7819279999999" ybr="307.59220799999997" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="402.724152" ytl="777.479472" xbr="488.919456" ybr="787.4729279999999" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="402.715584" ytl="801.136512" xbr="497.75184" ybr="811.129968" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="1113.9354720000001" ytl="57.19982399999999" xbr="1125.122832" ybr="73.393056" rotation="0" z_order="2">
+            <attribute name="content_layer">FURNITURE</attribute>
+        </box>
+        <box label="picture" source="" occluded="0" xtl="655.644168" ytl="114.914448" xbr="1092.926736" ybr="399.150576" rotation="0" z_order="1">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="type">CHART</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="105.1722" ytl="314.8596" xbr="601.517664" ybr="587.222064" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <polyline label="merge" source="" occluded="0" points="484.819056,1337.7339359999999;704.814696,713.7456480000001" />
+        <polyline label="reading_order" source="" occluded="0" points="1119.220704,63.108144;436.95331200000004,199.584;238.733856,403.53508800000003;273.381624,776.038032;354.81924,954.3932639999999;331.73949600000003,1255.4388000000001;782.68068,254.03083199999998;959.5976400000001,497.04969600000004;817.591608,799.153344;851.9786640000001,964.1776319999999;896.663232,1386.5908319999999">
+            <attribute name="level">1</attribute>
+        </polyline>
+        <polyline label="to_caption" source="" occluded="0" points="1013.534424,322.036704;993.7656,488.83665600000006" />
+        <polyline label="reading_order" source="" occluded="0" points="958.3932239999999,142.113312;989.043408,143.903232;954.813024,158.66928;999.558792,159.56424">
+            <attribute name="level">2</attribute>
+        </polyline>
+        <polyline label="reading_order" source="" occluded="0" points="957.335688,287.770032;976.1522400000001,289.130688;958.469112,298.538064;984.086208,302.051376">
+            <attribute name="level">2</attribute>
+        </polyline>
+        <polyline label="reading_order" source="" occluded="0" points="385.466976,782.657568;425.960568,781.985952;380.097288,803.9100960000001;407.839248,805.924944">
+            <attribute name="level">2</attribute>
+        </polyline>
+        <polyline label="to_caption" source="" occluded="0" points="205.20115199999998,803.23848;209.696904,960.5772" />
+        <polyline label="to_value" source="" occluded="0" points="389.835432,784.502928;411.10120800000004,784.868832" />
+        <polyline label="to_value" source="" occluded="0" points="379.934496,807.2364960000001;410.368032,808.3357920000001" />
+        <polyline label="to_value" source="" occluded="0" points="946.636704,290.56737599999997;971.3370239999999,290.10168" />
+        <polyline label="to_value" source="" occluded="0" points="954.325872,302.917824;975.9967919999999,304.082064" />
+        <polyline label="to_value" source="" occluded="0" points="956.738376,160.536816;973.106928,161.12131200000002" />
+        <polyline label="to_value" source="" occluded="0" points="950.891328,145.043712;975.152232,145.628208" />
+    </image>
+</annotations>
