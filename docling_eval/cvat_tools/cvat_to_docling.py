@@ -772,7 +772,10 @@ class CVATToDoclingConverter:
             # Create image reference if available
             image_ref = None
             if page_no in self.page_images:
-                image_ref = ImageRef.from_pil(self.page_images[page_no], dpi=72)
+                # page_images are already at cvat_input_scale, so DPI = 72 * cvat_input_scale
+                image_ref = ImageRef.from_pil(
+                    self.page_images[page_no], dpi=int(72 * self.cvat_input_scale)
+                )
 
             # Add page
             self.doc.add_page(page_no=page_no, size=page_size, image=image_ref)
