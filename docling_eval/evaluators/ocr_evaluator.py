@@ -67,6 +67,9 @@ class OCREvaluator(BaseEvaluator):
         split: str = "test",
         ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> OcrDatasetEvaluationResult:
+        r""" """
+        self._begin_message(ds_path, split, ext_docdoc_loader)
+
         dataset_path = ds_path
         data_split_name = split
         ignore_zone_filter_config = "default"

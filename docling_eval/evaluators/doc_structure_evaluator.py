@@ -82,6 +82,8 @@ class DocStructureEvaluator(BaseEvaluator):
         ds_path: Path to load the parquet files of the dataset
         split: Split of the dataset to load
         """
+        self._begin_message(ds_path, split, ext_docdoc_loader)
+
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"Overview of the dataset: {ds}")

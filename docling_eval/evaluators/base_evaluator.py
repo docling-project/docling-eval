@@ -141,3 +141,22 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
             json.dump(evals, fd)
 
         return evaluation_fn
+
+    def _begin_message(
+        self,
+        ds_path: Path,
+        split: str,
+        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader],
+    ):
+        r""" """
+        if ext_docdoc_loader is None:
+            source_msg = f"GT and predictions from '{str(ds_path)}'"
+        else:
+            predictions_path = ext_docdoc_loader.predictions_path()
+            source_msg = f"GT from '{str(ds_path)}' and predictions from '{str(predictions_path)}'"
+        _log.info(
+            "%s: Start evaluation with %s. Split = %s",
+            self.__class__.__name__,
+            source_msg,
+            split,
+        )

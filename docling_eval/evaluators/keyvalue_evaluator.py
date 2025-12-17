@@ -425,6 +425,8 @@ class KeyValueEvaluator(BaseEvaluator):
         ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetKeyValueEvaluation:
         r""" """
+        self._begin_message(ds_path, split, ext_docdoc_loader)
+
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
         _log.info("Loaded split '%s' – %d samples", split, len(ds[split]))

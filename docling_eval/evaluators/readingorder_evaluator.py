@@ -85,6 +85,9 @@ class ReadingOrderEvaluator(BaseEvaluator):
         split: str = "test",
         ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetReadingOrderEvaluation:
+        r""" """
+        self._begin_message(ds_path, split, ext_docdoc_loader)
+
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"oveview of dataset: {ds}")

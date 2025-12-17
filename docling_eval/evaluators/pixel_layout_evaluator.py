@@ -241,7 +241,8 @@ class PixelLayoutEvaluator(BaseEvaluator):
         split: str = "test",
         ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetPixelLayoutEvaluation:
-        _log.info("Loading the split '%s' from: '%s'", split, ds_path)
+        r""" """
+        self._begin_message(ds_path, split, ext_docdoc_loader)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
