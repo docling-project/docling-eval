@@ -561,9 +561,6 @@ def get_prediction_provider(
         pipeline_options.generate_picture_images = True
         pipeline_options.vlm_options = GRANITEDOCLING_TRANSFORMERS
 
-        if max_new_tokens:
-            pipeline_options.vlm_options.max_new_tokens = max_new_tokens
-
         if artifacts_path is not None:
             pipeline_options.artifacts_path = artifacts_path
 
@@ -587,6 +584,9 @@ def get_prediction_provider(
                     "To run SmolDocling faster, please install mlx-vlm:\n"
                     "pip install mlx-vlm"
                 )
+
+        if max_new_tokens:
+            pipeline_options.vlm_options.max_new_tokens = max_new_tokens
 
         pdf_format_option = PdfFormatOption(
             pipeline_cls=VlmPipeline, pipeline_options=pipeline_options
