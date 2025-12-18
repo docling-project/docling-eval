@@ -181,7 +181,22 @@ class DatasetRecord(
         else:
             record.update({self.get_field_alias("original"): None})
 
+        # auto-close PIL Images after serialization to prevent memory leaks
+        self._close_images()
         return record
+
+    def _close_images(self) -> None:
+        """Close all PIL Images to release resources."""
+        for img in self.ground_truth_page_images:
+            try:
+                img.close()
+            except Exception:
+                pass
+        for img in self.ground_truth_pictures:
+            try:
+                img.close()
+            except Exception:
+                pass
 
     @model_validator(mode="after")
     def validate_images(self) -> "DatasetRecord":
@@ -338,6 +353,20 @@ class DatasetRecordWithPrediction(DatasetRecord):
             )
 
         return record
+
+    def _close_images(self) -> None:
+        """Close all PIL Images to release resources (extends parent)."""
+        super()._close_images()
+        for img in self.predicted_page_images:
+            try:
+                img.close()
+            except Exception:
+                pass
+        for img in self.predicted_pictures:
+            try:
+                img.close()
+            except Exception:
+                pass
 
     @model_validator(mode="after")
     def validate_images(self) -> "DatasetRecordWithPrediction":

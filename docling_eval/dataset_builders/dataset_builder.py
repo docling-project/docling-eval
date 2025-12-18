@@ -315,7 +315,6 @@ class BaseEvaluationDatasetBuilder:
         for record_chunk in chunkify(self.iterate(), chunk_size):
             record_list = []
             for r in record_chunk:
-                record_list.append(r.as_record_dict())
                 if do_visualization:
                     viz_path_split = self.target / "visualizations" / f"{r.doc_id}.html"
 
@@ -333,6 +332,7 @@ class BaseEvaluationDatasetBuilder:
                         doc=tmp,
                         draw_reading_order=True,
                     )
+                record_list.append(r.as_record_dict())
 
             save_shard_to_disk(
                 items=record_list,
