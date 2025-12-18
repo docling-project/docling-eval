@@ -489,7 +489,7 @@ class LayoutEvaluator(BaseEvaluator):
             weighted_map_90_values.append(average_iou_90)
             weighted_map_95_values.append(average_iou_95)
 
-            _log.info(
+            _log.debug(
                 "doc: %s\tprecision: %.2f, recall: %.2f, f1: %.2f, map_50: %.2f, "
                 "precision_no_pics: %.2f, recall_no_pics: %.2f, f1_no_pics: %.2f",
                 doc_id_page,
@@ -528,7 +528,6 @@ class LayoutEvaluator(BaseEvaluator):
                 segmentation_precision_no_pictures=precision_no_pics,
                 segmentation_recall_no_pictures=recall_no_pics,
                 segmentation_f1_no_pictures=f1_no_pics,
-                # New per-sample element count metrics
                 true_element_count=true_element_count,
                 pred_element_count=pred_element_count,
                 true_table_count=true_table_count,
@@ -836,9 +835,7 @@ class LayoutEvaluator(BaseEvaluator):
         true_labels: Dict[str, int] = {}
         pred_labels: Dict[str, int] = {}
 
-        for i, data in tqdm(
-            enumerate(ds), desc="Layout evaluations", ncols=120, total=len(ds)
-        ):
+        for i, data in enumerate(ds):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             true_doc = data_record.ground_truth_doc
             pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)

@@ -641,6 +641,7 @@ def evaluate(
     split: str = "test",
     cvat_overview_path: Optional[Path] = None,
     external_predictions_path: Optional[Path] = None,
+    concurrency: int = 4,
 ) -> Optional[DatasetEvaluationType]:
     """Evaluate predictions against ground truth."""
     if not os.path.exists(idir):
@@ -673,17 +674,16 @@ def evaluate(
             # label_filtering_strategy=LabelFilteringStrategy.INTERSECTION,
             page_mapping_path=cvat_overview_path,
         )
-        evaluation = layout_evaluator(  # type: ignore
+        layout_evaluation = layout_evaluator(  # type: ignore
             idir,
             split=split,
             external_predictions_path=external_predictions_path,
         )
-
         with open(save_fn, "w") as fd:
-            json.dump(evaluation.model_dump(), fd, indent=2, sort_keys=True)
+            json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
 
         # Evaluate with the pixel-wise layout evaluation
-        pixel_layout_evaluator = PixelLayoutEvaluator()
+        pixel_layout_evaluator = PixelLayoutEvaluator(concurrency=concurrency)
         pixel_ds_evaluation: DatasetPixelLayoutEvaluation = pixel_layout_evaluator(
             idir,
             split=split,
@@ -695,6 +695,9 @@ def evaluate(
             pixel_ds_evaluation,
             pixel_save_root,
         )
+
+        # TODO: Redesign evaluate() to return multiple evaluation objects
+        evaluation = pixel_ds_evaluation  # type: ignore
 
     elif modality == EvaluationModality.TABLE_STRUCTURE:
         table_evaluator = TableEvaluator()
@@ -764,7 +767,7 @@ def evaluate(
             )
 
     elif modality == EvaluationModality.MARKDOWN_TEXT:
-        md_evaluator = MarkdownTextEvaluator()
+        md_evaluator = MarkdownTextEvaluator(concurrency=concurrency)
         evaluation = md_evaluator(  # type: ignore
             idir,
             split=split,
@@ -823,8 +826,8 @@ def evaluate(
 def visualize(
     modality: EvaluationModality,
     benchmark: BenchMarkNames,
-    idir: Path,
     odir: Path,
+    idir: Path | None = None,
     split: str = "test",
 ):
     """
@@ -839,10 +842,6 @@ def visualize(
         begin_index: Begin index
         end_index: End index
     """
-    if not os.path.exists(idir):
-        _log.error(f"Input directory not found: {idir}")
-        return
-
     os.makedirs(odir, exist_ok=True)
     metrics_filename = odir / f"evaluation_{benchmark.value}_{modality.value}.json"
 
@@ -989,6 +988,11 @@ def visualize(
 
     elif modality == EvaluationModality.READING_ORDER:
         try:
+            # idir is required here
+            if idir is None or not idir.is_dir():
+                _log.error(f"Input directory not found: {idir}")
+                return
+
             with open(metrics_filename, "r") as fd:
                 ro_evaluation = DatasetReadingOrderEvaluation.model_validate_json(
                     fd.read()
@@ -1080,6 +1084,11 @@ def visualize(
 
     elif modality == EvaluationModality.OCR:
         try:
+            # idir is required here
+            if idir is None or not idir.is_dir():
+                _log.error(f"Input directory not found: {idir}")
+                return
+
             with open(metrics_filename, "r") as fd:
                 ocr_evaluation = OcrDatasetEvaluationResult.model_validate_json(
                     fd.read()
@@ -1511,6 +1520,9 @@ def evaluate_cmd(
             help="Path to load existing DoclingDocument predictions. The filename must follow the pattern [doc_id].[json|dt|yaml|yml]",
         ),
     ] = None,
+    concurrency: Annotated[
+        int, typer.Option(help="Concurrency for the computation of each metric")
+    ] = 4,
 ):
     """Evaluate predictions against ground truth."""
     input_dir, output_dir = derive_input_output_dirs(
@@ -1531,6 +1543,7 @@ def evaluate_cmd(
         odir=eval_output_dir,
         split=split,
         external_predictions_path=external_predictions_path,
+        concurrency=concurrency,
     )
 
 
@@ -1573,8 +1586,8 @@ def visualize_cmd(
     visualize(
         modality=modality,
         benchmark=benchmark,
-        idir=input_dir,
         odir=eval_output_dir,
+        idir=input_dir,
         split=split,
     )
 
