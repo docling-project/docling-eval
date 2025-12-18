@@ -1,0 +1,12 @@
+{
+  "test_id": "024",
+  "name": "024_table_furniture_order",
+  "description": "Table should be placed before page footer.",
+  "observation": "Table is placed at end.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_344e4038a1c0d978993bc98ccea322d992aa2fe557b47434e9b6ca8b5568c539_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

@@ -1,0 +1,12 @@
+{
+  "test_id": "012",
+  "name": "012_key_value_picture_glitch",
+  "description": "All legend key-values must be reproduced.",
+  "observation": "The picture itself is assigned as value field for the first KVP. The text reconstruction from the picture is garbage.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_0876138981f988e63d7d99b4363c17585f4f5372f8a6ca507828109f4644f9a0_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

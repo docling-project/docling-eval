@@ -1,0 +1,12 @@
+{
+  "test_id": "010",
+  "name": "010_caption_assignment",
+  "description": "Caption must be assigned to table.",
+  "observation": "Caption is unassigned. It breaks when to_caption link hits an inner element of the picture.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_75bb199cabb753592477355c87e6c70b6998d02d2b00fe068ae007482d7dbc7a_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

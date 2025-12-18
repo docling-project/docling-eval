@@ -1,0 +1,9 @@
+{
+  "test_id": "018",
+  "name": "disaster_case_for_reading_order_and_ocr_annotated",
+  "description": "Disaster case. Valid annotation but reading order, rotation and OCR fail.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_4b7ec91685cf95aa2909e1e5251f143919a14acc4fffa2e9732bc0d4530a6f94_page_000001.png"
+  }
+}

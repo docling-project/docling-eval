@@ -1,0 +1,10 @@
+{
+  "test_id": "017",
+  "name": "picture_groups_destroy_reading_order",
+  "description": "Picture groups must not destroy reading order.",
+  "observation": "Groups break it.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_42ab8750b75d1a0b1ffcb63dcc622cab0309e86e8fd7862977bd9bf871b07036_page_000001.png"
+  }
+}

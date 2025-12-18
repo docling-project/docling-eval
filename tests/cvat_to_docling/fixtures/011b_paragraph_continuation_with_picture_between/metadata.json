@@ -1,0 +1,11 @@
+{
+  "test_id": "016",
+  "name": "011b_paragraph_continuation_with_picture_between",
+  "description": "Paragraph merge across column must be respected",
+  "observation_status": "correct",
+  "source": {
+    "image_identifier": "doc_a08d29766b5aec0cb3e69cb8c12552bea8cfabcea0f435ee6f437f83d72a0260_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

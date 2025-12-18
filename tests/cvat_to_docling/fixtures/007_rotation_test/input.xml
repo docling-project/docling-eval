@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<annotations>
+    <image id="591" name="doc_33a640307319c3daaa319101efbcb723352ca833ef3ba848348538fe685b073a_page_000001.png" width="1003" height="1600">
+        <box label="section_header" source="" occluded="0" xtl="144.90040100000004" ytl="97.3216" xbr="854.403544" ybr="329.0" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+            <attribute name="level">1</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="242.167329" ytl="1385.2864" xbr="758.5959809999999" ybr="1500.2192" rotation="0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <box label="text" source="" occluded="0" xtl="270.450733" ytl="849.9056720000001" xbr="729.1611330000001" ybr="878.7439280000001" rotation="270.0" z_order="2">
+            <attribute name="content_layer">BODY</attribute>
+        </box>
+        <polyline label="reading_order" source="" occluded="0" points="514.7957680000001,287.0992;502.17100700000003,779.4832;514.7957680000001,1407.5904">
+            <attribute name="level">1</attribute>
+        </polyline>
+    </image>
+</annotations>
