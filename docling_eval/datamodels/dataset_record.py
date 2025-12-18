@@ -151,6 +151,10 @@ class DatasetRecord(
         return pictures, page_images
 
     def as_record_dict(self):
+        # Convert images to bytes format BEFORE closing them
+        gt_pictures_bytes = self._images_to_bytes(self.ground_truth_pictures)
+        gt_page_images_bytes = self._images_to_bytes(self.ground_truth_page_images)
+
         record = {
             self.get_field_alias("doc_id"): self.doc_id,
             self.get_field_alias("doc_path"): str(self.doc_path),
@@ -158,13 +162,11 @@ class DatasetRecord(
             self.get_field_alias("ground_truth_doc"): json.dumps(
                 self.ground_truth_doc.export_to_dict()
             ),
-            self.get_field_alias("ground_truth_pictures"): self.ground_truth_pictures,
+            self.get_field_alias("ground_truth_pictures"): gt_pictures_bytes,
             self.get_field_alias("ground_truth_segmented_pages"): seg_adapter.dump_json(
                 self.ground_truth_segmented_pages
             ).decode("utf-8"),
-            self.get_field_alias(
-                "ground_truth_page_images"
-            ): self.ground_truth_page_images,
+            self.get_field_alias("ground_truth_page_images"): gt_page_images_bytes,
             self.get_field_alias("mime_type"): self.mime_type,
             self.get_field_alias("modalities"): list(
                 [m.value for m in self.modalities]
@@ -185,8 +187,19 @@ class DatasetRecord(
         self._close_images()
         return record
 
+    @staticmethod
+    def _pil_to_bytes(img: PIL.Image.Image) -> bytes:
+        """Convert PIL image to PNG bytes."""
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        return buffered.getvalue()
+
+    def _images_to_bytes(self, images: List[PIL.Image.Image]) -> List[dict]:
+        """Convert list of PIL Images to HuggingFace-compatible bytes format."""
+        return [{"bytes": self._pil_to_bytes(img), "path": None} for img in images]
+
     def _close_images(self) -> None:
-        """Close all PIL Images to release resources."""
+        """Close all PIL Images and release references to allow garbage collection."""
         for img in self.ground_truth_page_images:
             try:
                 img.close()
@@ -197,6 +210,9 @@ class DatasetRecord(
                 img.close()
             except Exception:
                 pass
+        # Clear references to allow garbage collection
+        self.ground_truth_page_images = []
+        self.ground_truth_pictures = []
 
     @model_validator(mode="after")
     def validate_images(self) -> "DatasetRecord":
@@ -332,6 +348,10 @@ class DatasetRecordWithPrediction(DatasetRecord):
         )
 
         if self.predicted_doc is not None:
+            # Convert prediction images to bytes BEFORE closing
+            pred_pictures_bytes = self._images_to_bytes(self.predicted_pictures)
+            pred_page_images_bytes = self._images_to_bytes(self.predicted_page_images)
+
             record.update(
                 {
                     self.get_field_alias("predicted_doc"): json.dumps(
@@ -342,21 +362,22 @@ class DatasetRecordWithPrediction(DatasetRecord):
                     ): seg_adapter.dump_json(self.predicted_segmented_pages).decode(
                         "utf-8"
                     ),
-                    self.get_field_alias("predicted_pictures"): self.predicted_pictures,
+                    self.get_field_alias("predicted_pictures"): pred_pictures_bytes,
                     self.get_field_alias(
                         "predicted_page_images"
-                    ): self.predicted_page_images,
+                    ): pred_page_images_bytes,
                     self.get_field_alias("original_prediction"): (
                         self.original_prediction
                     ),
                 }
             )
 
+        # Close prediction images (parent already closed ground truth images)
+        self._close_prediction_images()
         return record
 
-    def _close_images(self) -> None:
-        """Close all PIL Images to release resources (extends parent)."""
-        super()._close_images()
+    def _close_prediction_images(self) -> None:
+        """Close prediction PIL Images and release references for garbage collection."""
         for img in self.predicted_page_images:
             try:
                 img.close()
@@ -367,6 +388,9 @@ class DatasetRecordWithPrediction(DatasetRecord):
                 img.close()
             except Exception:
                 pass
+        # Clear references to allow garbage collection
+        self.predicted_page_images = []
+        self.predicted_pictures = []
 
     @model_validator(mode="after")
     def validate_images(self) -> "DatasetRecordWithPrediction":
