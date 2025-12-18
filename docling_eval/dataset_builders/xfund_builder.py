@@ -418,45 +418,50 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
 
                 # Load image
                 img = Image.open(img_path)
+                try:
+                    img_format = img.format
+                    # Get image bytes
+                    with io.BytesIO() as img_byte_stream:
+                        img.save(img_byte_stream, format=img_format)
+                        img_byte_stream.seek(0)
+                        img_bytes = img_byte_stream.getvalue()
 
-                # Get image bytes
-                with io.BytesIO() as img_byte_stream:
-                    img.save(img_byte_stream, format=img.format)
-                    img_byte_stream.seek(0)
-                    img_bytes = img_byte_stream.getvalue()
+                    # Create ground truth document
+                    true_doc = DoclingDocument(name=Path(img_filename).stem)
 
-                # Create ground truth document
-                true_doc = DoclingDocument(name=Path(img_filename).stem)
+                    assert img.format is not None
 
-                assert img.format is not None
+                    # Add page with image
+                    image_ref = ImageRef(
+                        mimetype=f"image/{img_format.lower()}",
+                        dpi=72,
+                        size=Size(width=float(img.width), height=float(img.height)),
+                        uri=from_pil_to_base64uri(img),
+                    )
+                    page_item = PageItem(
+                        page_no=1,
+                        size=Size(width=float(img.width), height=float(img.height)),
+                        image=image_ref,
+                    )
+                    true_doc.pages[1] = page_item
 
-                # Add page with image
-                image_ref = ImageRef(
-                    mimetype=f"image/{img.format.lower()}",
-                    dpi=72,
-                    size=Size(width=float(img.width), height=float(img.height)),
-                    uri=from_pil_to_base64uri(img),
-                )
-                page_item = PageItem(
-                    page_no=1,
-                    size=Size(width=float(img.width), height=float(img.height)),
-                    image=image_ref,
-                )
-                true_doc.pages[1] = page_item
+                    # Populate document with key-value data
+                    true_doc, seg_pages = self._create_ground_truth_doc(
+                        true_doc, doc_data
+                    )
 
-                # Populate document with key-value data
-                true_doc, seg_pages = self._create_ground_truth_doc(true_doc, doc_data)
+                    # Extract images
+                    true_doc, true_pictures, true_page_images = extract_images(
+                        document=true_doc,
+                        pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                        page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
+                    )
+                finally:
+                    img.close()
 
-                # Extract images
-                true_doc, true_pictures, true_page_images = extract_images(
-                    document=true_doc,
-                    pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
-                    page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
-                )
                 image_stream = DocumentStream(
                     name=img_path.stem, stream=io.BytesIO(img_bytes)
                 )
-                assert img.format is not None
                 # Create dataset record
                 record = DatasetRecord(
                     doc_id=Path(img_filename).stem,
@@ -464,7 +469,7 @@ class XFUNDDatasetBuilder(BaseEvaluationDatasetBuilder):
                     ground_truth_doc=true_doc,
                     ground_truth_segmented_pages=seg_pages,
                     original=image_stream,
-                    mime_type=f"image/{img.format.lower()}",
+                    mime_type=f"image/{img_format.lower()}",
                     modalities=[EvaluationModality.KEY_VALUE, EvaluationModality.OCR],
                     ground_truth_pictures=true_pictures,
                     ground_truth_page_images=true_page_images,

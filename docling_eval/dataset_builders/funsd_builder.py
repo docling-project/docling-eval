@@ -378,50 +378,57 @@ class FUNSDDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
 
                 # Load image and annotation
-                img: PillowImageType = Image.open(img_path)
-                if img.mode != "RGBA":
-                    _log.debug(
-                        f"Converting image {img_path.name} from {img.mode} to RGBA during dataset preparation."
+                src_img = Image.open(img_path)
+                try:
+                    if src_img.mode != "RGBA":
+                        _log.debug(
+                            f"Converting image {img_path.name} from {src_img.mode} to RGBA during dataset preparation."
+                        )
+                        img = src_img.convert("RGBA")
+                        src_img.close()
+                    else:
+                        img = src_img
+
+                    with open(annotation_path, "r", encoding="utf-8") as f:
+                        funsd_data = json.load(f)
+
+                    # Get image bytes
+                    with io.BytesIO() as img_byte_stream:
+                        img.save(img_byte_stream, format="PNG")
+                        img_byte_stream.seek(0)
+                        img_bytes = img_byte_stream.getvalue()
+
+                    # Create ground truth document
+                    true_doc = DoclingDocument(name=img_path.stem)
+
+                    # Add page with image
+                    image_ref = ImageRef(
+                        mimetype="image/png",
+                        dpi=72,
+                        size=Size(width=float(img.width), height=float(img.height)),
+                        uri=from_pil_to_base64uri(img),
                     )
-                    img = img.convert("RGBA")
+                    page_item = PageItem(
+                        page_no=1,
+                        size=Size(width=float(img.width), height=float(img.height)),
+                        image=image_ref,
+                    )
+                    true_doc.pages[1] = page_item
 
-                with open(annotation_path, "r", encoding="utf-8") as f:
-                    funsd_data = json.load(f)
+                    # Populate document with key-value data
+                    true_doc, seg_pages = self._create_ground_truth_doc(
+                        true_doc, funsd_data
+                    )
 
-                # Get image bytes
-                with io.BytesIO() as img_byte_stream:
-                    img.save(img_byte_stream, format="PNG")
-                    img_byte_stream.seek(0)
-                    img_bytes = img_byte_stream.getvalue()
+                    # Extract images
+                    true_doc, true_pictures, true_page_images = extract_images(
+                        document=true_doc,
+                        pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                        page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
+                    )
+                finally:
+                    img.close()
 
-                # Create ground truth document
-                true_doc = DoclingDocument(name=img_path.stem)
-
-                # Add page with image
-                image_ref = ImageRef(
-                    mimetype="image/png",
-                    dpi=72,
-                    size=Size(width=float(img.width), height=float(img.height)),
-                    uri=from_pil_to_base64uri(img),
-                )
-                page_item = PageItem(
-                    page_no=1,
-                    size=Size(width=float(img.width), height=float(img.height)),
-                    image=image_ref,
-                )
-                true_doc.pages[1] = page_item
-
-                # Populate document with key-value data
-                true_doc, seg_pages = self._create_ground_truth_doc(
-                    true_doc, funsd_data
-                )
-
-                # Extract images
-                true_doc, true_pictures, true_page_images = extract_images(
-                    document=true_doc,
-                    pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
-                    page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
-                )
                 image_stream = DocumentStream(
                     name=img_path.stem, stream=io.BytesIO(img_bytes)
                 )
