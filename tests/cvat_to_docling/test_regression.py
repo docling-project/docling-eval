@@ -165,12 +165,36 @@ def test_cvat_to_docling_regression(fixture_dir: Path) -> None:
 
         expected_doc = load_expected_output(fixture_dir)
 
+        # Serialize and deserialize actual_doc to match the behavior of expected_doc
+        # This ensures both go through the same serialization cycle
+        actual_doc_json = actual_doc.export_to_dict()
+        actual_doc = DoclingDocument.model_validate(actual_doc_json)
+
         # Normalize references before comparison for deterministic equality
         actual_doc._normalize_references()
         expected_doc._normalize_references()
 
         # Compare using DoclingDocument equality
-        assert actual_doc == expected_doc, (
+        matches = actual_doc == expected_doc
+
+        # Get observation status
+        observation_status = metadata.get("observation_status", "unknown")
+
+        # Handle broken tests
+        if matches and observation_status == "broken":
+            # Reproduced the known broken behavior - expected failure
+            observation = metadata.get("observation", "No observation recorded")
+            pytest.xfail(f"Expected failure: {observation}")
+
+        if not matches and observation_status == "broken":
+            # Output differs from the known broken expected.json - unexpected
+            pytest.fail(
+                f"Test {fixture_dir.name} is marked as 'broken' but produced unexpected output "
+                f"(differs from the known broken expected.json)."
+            )
+
+        # For correct/unknown tests, assert equality (will fail if not matches)
+        assert matches, (
             f"Conversion output differs from expected for {fixture_dir.name}. "
             f"Test ID: {metadata['test_id']}, Description: {metadata['description']}"
         )
