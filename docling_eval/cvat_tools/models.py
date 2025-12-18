@@ -32,6 +32,15 @@ class CVATElement(BaseModel):
     id: int
     label: Union[DocItemLabel, GraphCellLabel, TableStructLabel]
     bbox: BoundingBox
+    # CVAT supports rotated rectangles via the `rotation` attribute on <box>.
+    # In CVAT, xtl/ytl/xbr/ybr describe the unrotated rectangle and the rotation is applied
+    # around the box center. Docling's BoundingBox is axis-aligned only, so we store both:
+    # - bbox: the axis-aligned bbox used by our pipeline (potentially expanded to enclose rotation)
+    # - bbox_unrotated: the raw, unrotated CVAT bbox as authored in the XML (TOPLEFT origin)
+    # - rotation_deg: the rotation in degrees as provided by CVAT (clockwise/counterclockwise is
+    #   irrelevant for the enclosing axis-aligned bbox of a rectangle).
+    rotation_deg: float = 0.0
+    bbox_unrotated: Optional[BoundingBox] = None
     content_layer: ContentLayer
     type: Optional[str] = None
     level: Optional[int] = None

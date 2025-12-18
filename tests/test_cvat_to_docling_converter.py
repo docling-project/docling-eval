@@ -79,6 +79,7 @@ def _test_conversion_with_sample_data(
     image_path: Path,
     output_dir: Optional[Path] = None,
     verbose: bool = True,
+    cvat_image_name: Optional[str] = None,
 ) -> Tuple[CVATValidationReport, Optional[DoclingDocument]]:
     """Test the conversion with sample data.
 
@@ -94,12 +95,15 @@ def _test_conversion_with_sample_data(
     print(f"Testing conversion for: {image_path.name}")
     print("=" * 60)
 
-    # Create DocumentStructure first for validation
-    doc_structure = DocumentStructure.from_cvat_xml(xml_path, image_path.name)
+    # Create DocumentStructure first for validation. The CVAT XML image name refers to the
+    # rendered page image (usually a PNG), not necessarily the source document filename.
+    doc_structure = DocumentStructure.from_cvat_xml(
+        xml_path, cvat_image_name or image_path.name
+    )
     print(f"✓ Created DocumentStructure:")
     print(f"  - Elements: {len(doc_structure.elements)}")
     print(f"  - Paths: {len(doc_structure.paths)}")
-    print(f"  - Tree roots: {len(doc_structure.tree_roots)}")
+    print(f"  - Tree roots: {len(doc_structure.roots())}")
 
     # Validate the document structure before conversion
     validator = Validator()
@@ -145,18 +149,12 @@ def _test_conversion_with_sample_data(
         )
 
         print("\n--- Original Containment Tree ---")
-        print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
+        print_containment_tree(list(doc_structure.roots()), doc_structure.image_info)
 
-        global_ro = build_global_reading_order(
-            doc_structure.paths,
-            doc_structure.path_mappings.reading_order,
-            doc_structure.path_to_container,
-            doc_structure.tree_roots,
-        )
+        global_ro = doc_structure.build_global_reading_order()
         print("\n--- Ordered Containment Tree ---")
-        # Apply reading order to tree before printing
-        apply_reading_order_to_tree(doc_structure.tree_roots, global_ro)
-        print_containment_tree(doc_structure.tree_roots, doc_structure.image_info)
+        doc_structure.apply_reading_order(global_ro)
+        print_containment_tree(list(doc_structure.roots()), doc_structure.image_info)
 
     # Convert to DoclingDocument (only if validation passed)
     doc = convert_cvat_to_docling(xml_path, image_path)
@@ -254,6 +252,8 @@ def test_case_02_specific_sample():
         / "6b18af59b633f89b96a64aa435e0f7616eb1813d884c4c3da5e4cea9a8f9316b.pdf"
     )
     xml_path = root_dir / "case_02_annotations.xml"
+    # The CVAT XML <image name="..."> refers to the rendered page image name, not the source PDF name.
+    cvat_image_name = "doc_6b18af59b633f89b96a64aa435e0f7616eb1813d884c4c3da5e4cea9a8f9316b_page_000001.png"
     output_dir = Path("scratch/cvat_to_docling_converter/case_02")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -263,7 +263,11 @@ def test_case_02_specific_sample():
 
     # Run conversion test
     validation_report, result = _test_conversion_with_sample_data(
-        xml_path=xml_path, image_path=pdf_path, output_dir=output_dir, verbose=True
+        xml_path=xml_path,
+        image_path=pdf_path,
+        output_dir=output_dir,
+        verbose=True,
+        cvat_image_name=cvat_image_name,
     )
 
     # Assertions

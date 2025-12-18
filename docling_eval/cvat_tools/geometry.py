@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Iterable, Iterator, Optional, Protocol, Sequence, TypeVar
 
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
@@ -87,3 +88,56 @@ def iter_unique_by_bbox(
         if all(bbox_iou(element.bbox, kept.bbox) < iou_threshold for kept in seen):
             seen.append(element)
             yield element
+
+
+def bbox_enclosing_rotated_rect(
+    unrotated_bbox: BoundingBox, *, rotation_deg: float
+) -> BoundingBox:
+    """Return the smallest axis-aligned BoundingBox enclosing a rotated rectangle.
+
+    CVAT represents rotated boxes as an unrotated rectangle (xtl/ytl/xbr/ybr) plus a
+    `rotation` attribute. The rotation is applied around the center of that rectangle.
+
+    This helper returns an axis-aligned BoundingBox that encloses the rotated rectangle.
+    It preserves the input bbox coord origin and requires TOPLEFT coordinates (CVAT).
+    """
+    if unrotated_bbox.coord_origin != CoordOrigin.TOPLEFT:
+        raise ValueError(
+            "bbox_enclosing_rotated_rect currently expects CoordOrigin.TOPLEFT"
+        )
+
+    normalized = rotation_deg % 360.0
+    if normalized == 0.0:
+        return unrotated_bbox
+
+    theta = math.radians(normalized)
+    cos_t = math.cos(theta)
+    sin_t = math.sin(theta)
+
+    cx = (unrotated_bbox.l + unrotated_bbox.r) / 2.0
+    cy = (unrotated_bbox.t + unrotated_bbox.b) / 2.0
+
+    corners = (
+        (unrotated_bbox.l, unrotated_bbox.t),
+        (unrotated_bbox.r, unrotated_bbox.t),
+        (unrotated_bbox.r, unrotated_bbox.b),
+        (unrotated_bbox.l, unrotated_bbox.b),
+    )
+
+    xs: list[float] = []
+    ys: list[float] = []
+    for x, y in corners:
+        dx = x - cx
+        dy = y - cy
+        rx = cx + (dx * cos_t) - (dy * sin_t)
+        ry = cy + (dx * sin_t) + (dy * cos_t)
+        xs.append(rx)
+        ys.append(ry)
+
+    return BoundingBox(
+        l=min(xs),
+        t=min(ys),
+        r=max(xs),
+        b=max(ys),
+        coord_origin=unrotated_bbox.coord_origin,
+    )
