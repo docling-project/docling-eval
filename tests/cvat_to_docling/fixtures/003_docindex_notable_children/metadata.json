@@ -1,0 +1,12 @@
+{
+  "test_id": "003",
+  "name": "docindex_notable_children",
+  "description": "Document index which is not a table. Children must be preserved with internal layout in a rich table cell.",
+  "observation": "The fake table cell created does not preserve the layout, it is not a rich table cell.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_cc599446da22da9a4798c773e85d4b44eaff9a96174eeb3b914e81cc66b3d40f_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

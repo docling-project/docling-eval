@@ -273,8 +273,9 @@ def test_path_mappings(tmp_path):
     )
 
     # Test reading order mappings
-    assert len(doc.path_mappings.reading_order) == 2  # Two reading order paths
-    for path_id, element_ids in doc.path_mappings.reading_order.items():
+    reading_order_paths = list(doc.iter_reading_order_paths())
+    assert len(reading_order_paths) == 2  # Two reading order paths
+    for path_id, element_ids in reading_order_paths:
         assert len(element_ids) > 0
         for element_id in element_ids:
             element = doc.get_element_by_id(element_id)
@@ -282,9 +283,11 @@ def test_path_mappings(tmp_path):
             assert element.content_layer == ContentLayer.BODY
 
     # Test path-to-container mappings
-    # assert len(doc.path_to_container) == 2  # One container per reading order path
-    for path_id, container in doc.path_to_container.items():
-        assert container is not None
+    # Not every reading-order path is required to have a container. Where present, it must be sane.
+    for path_id, _ in reading_order_paths:
+        container = doc.get_path_container_node(path_id)
+        if container is None:
+            continue
         assert container.element is not None
         assert container.element.content_layer == ContentLayer.BODY
 
@@ -303,18 +306,13 @@ def test_analysis_functions(tmp_path):
 
     # Test printing containment tree
     print("\n=== Containment Tree ===")
-    print_containment_tree(doc.tree_roots, doc.image_info)
+    print_containment_tree(list(doc.roots()), doc.image_info)
 
     # Test applying reading order and printing the reordered tree
     print("\n=== Containment Tree (Reading Order Applied) ===")
-    global_ro = build_global_reading_order(
-        doc.paths,
-        doc.path_mappings.reading_order,
-        doc.path_to_container,
-        doc.tree_roots,
-    )
-    doc.tree_roots = apply_reading_order_to_tree(doc.tree_roots, global_ro)
-    print_containment_tree(doc.tree_roots, doc.image_info)
+    global_ro = doc.build_global_reading_order()
+    doc.apply_reading_order(global_ro)
+    print_containment_tree(list(doc.roots()), doc.image_info)
 
 
 def test_validation_report(tmp_path):
@@ -344,18 +342,13 @@ def test_doublepage_list(tmp_path):
 
     # Test printing containment tree
     print("\n=== Containment Tree ===")
-    print_containment_tree(doc.tree_roots, doc.image_info)
+    print_containment_tree(list(doc.roots()), doc.image_info)
 
     # Test applying reading order and printing the reordered tree
     print("\n=== Containment Tree (Reading Order Applied) ===")
-    global_ro = build_global_reading_order(
-        doc.paths,
-        doc.path_mappings.reading_order,
-        doc.path_to_container,
-        doc.tree_roots,
-    )
-    doc.tree_roots = apply_reading_order_to_tree(doc.tree_roots, global_ro)
-    print_containment_tree(doc.tree_roots, doc.image_info)
+    global_ro = doc.build_global_reading_order()
+    doc.apply_reading_order(global_ro)
+    print_containment_tree(list(doc.roots()), doc.image_info)
 
     validator = Validator()
     validation_report = validator.validate_sample(

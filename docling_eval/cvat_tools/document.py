@@ -5,6 +5,7 @@ This module provides the DocumentStructure class which encapsulates all core dat
 """
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
@@ -23,9 +24,12 @@ from .path_mappings import (
 )
 from .tree import (
     TreeNode,
+    apply_reading_order_to_tree,
     build_containment_tree,
+    build_global_reading_order,
     find_node_by_element_id,
     index_tree_by_element_id,
+    iter_tree_nodes,
 )
 from .utils import DEFAULT_PROXIMITY_THRESHOLD
 
@@ -47,11 +51,19 @@ class DocumentStructure:
     path_mappings: PathMappings
     path_to_container: Dict[int, TreeNode]
     image_info: CVATImageInfo
+    _element_index: Dict[int, CVATElement] = field(
+        init=False, repr=False, default_factory=dict
+    )
+    _path_index: Dict[int, CVATAnnotationPath] = field(
+        init=False, repr=False, default_factory=dict
+    )
     _node_index: Dict[int, TreeNode] = field(
         init=False, repr=False, default_factory=dict
     )
 
     def __post_init__(self) -> None:
+        self._element_index = {element.id: element for element in self.elements}
+        self._path_index = {path.id: path for path in self.paths}
         self._node_index = index_tree_by_element_id(self.tree_roots)
 
     @classmethod
@@ -240,13 +252,54 @@ class DocumentStructure:
     def get_elements_by_label(self, label: object) -> list[CVATElement]:
         return [e for e in self.elements if e.label == label]
 
+    def get_element(self, element_id: int) -> Optional[CVATElement]:
+        """Get an element by its ID (O(1))."""
+        return self._element_index.get(element_id)
+
+    def require_element(self, element_id: int) -> CVATElement:
+        """Get an element by its ID, raising if missing."""
+        element = self.get_element(element_id)
+        if element is None:
+            raise KeyError(f"Element not found: {element_id}")
+        return element
+
     def get_element_by_id(self, element_id: int) -> Optional[CVATElement]:
-        """Get an element by its ID."""
-        return next((el for el in self.elements if el.id == element_id), None)
+        """Backward-compatible alias for :meth:`get_element`."""
+        return self.get_element(element_id)
+
+    def get_path(self, path_id: int) -> Optional[CVATAnnotationPath]:
+        """Get a path by its ID (O(1))."""
+        return self._path_index.get(path_id)
+
+    def require_path(self, path_id: int) -> CVATAnnotationPath:
+        """Get a path by its ID, raising if missing."""
+        path = self.get_path(path_id)
+        if path is None:
+            raise KeyError(f"Path not found: {path_id}")
+        return path
 
     def get_path_by_id(self, path_id: int) -> Optional[CVATAnnotationPath]:
-        """Get a path by its ID."""
-        return next((p for p in self.paths if p.id == path_id), None)
+        """Backward-compatible alias for :meth:`get_path`."""
+        return self.get_path(path_id)
+
+    def roots(self) -> Tuple[TreeNode, ...]:
+        """Return containment tree roots as an immutable tuple."""
+        return tuple(self.tree_roots)
+
+    def iter_nodes(self) -> Iterator[TreeNode]:
+        """Iterate over all containment tree nodes (depth-first)."""
+        return iter_tree_nodes(self.roots())
+
+    def get_path_container_node(self, path_id: int) -> Optional[TreeNode]:
+        """Return the container node associated with ``path_id`` if present."""
+        return self.path_to_container.get(path_id)
+
+    def get_path_container_id(self, path_id: int) -> Optional[int]:
+        """Return the container element id associated with ``path_id`` if present."""
+        node = self.get_path_container_node(path_id)
+        if node is None:
+            return None
+        return node.element.id
 
     def get_node_by_element_id(self, element_id: int) -> Optional[TreeNode]:
         """Get a tree node by its element ID."""
@@ -258,6 +311,70 @@ class DocumentStructure:
         if node is not None:
             self._node_index[element_id] = node
         return node
+
+    def get_node(self, element_id: int) -> Optional[TreeNode]:
+        """Backward-compatible alias for :meth:`get_node_by_element_id`."""
+        return self.get_node_by_element_id(element_id)
+
+    def iter_reading_order_paths(self) -> Iterator[Tuple[int, Tuple[int, ...]]]:
+        """Iterate reading-order path mappings as immutable tuples."""
+        for path_id, element_ids in self.path_mappings.reading_order.items():
+            yield path_id, tuple(element_ids)
+
+    def get_reading_order_path(self, path_id: int) -> Optional[Tuple[int, ...]]:
+        element_ids = self.path_mappings.reading_order.get(path_id)
+        if element_ids is None:
+            return None
+        return tuple(element_ids)
+
+    def iter_merge_paths(self) -> Iterator[Tuple[int, Tuple[int, ...]]]:
+        for path_id, element_ids in self.path_mappings.merge.items():
+            yield path_id, tuple(element_ids)
+
+    def iter_group_paths(self) -> Iterator[Tuple[int, Tuple[int, ...]]]:
+        for path_id, element_ids in self.path_mappings.group.items():
+            yield path_id, tuple(element_ids)
+
+    def find_group_id_for_element(self, element_id: int) -> Optional[int]:
+        """Return the first group path id containing ``element_id`` if present."""
+        for path_id, element_ids in self.path_mappings.group.items():
+            if element_id in element_ids:
+                return path_id
+        return None
+
+    def iter_to_caption_links(self) -> Iterator[Tuple[int, int, int]]:
+        for path_id, (
+            container_id,
+            caption_id,
+        ) in self.path_mappings.to_caption.items():
+            yield path_id, container_id, caption_id
+
+    def iter_to_footnote_links(self) -> Iterator[Tuple[int, int, int]]:
+        for path_id, (
+            container_id,
+            footnote_id,
+        ) in self.path_mappings.to_footnote.items():
+            yield path_id, container_id, footnote_id
+
+    def iter_to_value_links(self) -> Iterator[Tuple[int, int, int]]:
+        for path_id, (key_id, value_id) in self.path_mappings.to_value.items():
+            yield path_id, key_id, value_id
+
+    def has_to_value_links(self) -> bool:
+        return bool(self.path_mappings.to_value)
+
+    def apply_reading_order(self, global_order: List[int]) -> None:
+        """Apply a flattened reading order to the containment tree (in-place)."""
+        apply_reading_order_to_tree(self.tree_roots, global_order)
+
+    def build_global_reading_order(self) -> List[int]:
+        """Build global reading order from reading-order paths."""
+        return build_global_reading_order(
+            self.paths,
+            self.path_mappings.reading_order,
+            self.path_to_container,
+            self.tree_roots,
+        )
 
     @cached_property
     def _global_reading_order_positions(self) -> Dict[int, int]:

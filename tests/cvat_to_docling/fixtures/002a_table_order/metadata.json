@@ -1,0 +1,12 @@
+{
+  "test_id": "002",
+  "name": "002a_table_order",
+  "description": "Tables should be included in reading order correctly. Footnotes should appear once.",
+  "observation": "Footnotes are replicated on top and after the table as captions, because the XML annotation uses a to_caption link for the footnote. We should tolerate this error.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_fade275d3b925d67abc61f56f5bb414c1cab6c3e94c5953cb9cfa8a6f7a9853d_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

@@ -1,0 +1,11 @@
+{
+  "test_id": "015",
+  "name": "015a_reading_order_and_nesting_on_screenshots",
+  "description": "In-picture reading order must be respected and inserted correctly into parent reading order.",
+  "observation_status": "correct",
+  "source": {
+    "image_identifier": "doc_1ffe1f189763a662b622d8f04cffcb6dedb76661bf86f11e34e400c3eb7d4827_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

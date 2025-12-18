@@ -1,0 +1,12 @@
+{
+  "test_id": "020",
+  "name": "picture_group_reading_order_skip",
+  "description": "Picture groups must be created with GroupLabel.PICTURE_AREA, and all share the same caption. The caption must not be child of one of the pictures, but in the group.",
+  "observation": "Picture grouping is not respected.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_ea53eb4299ecff9b8e14e6725dad10fcfa93f85e7610f3c8069e4e82a16800c2_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

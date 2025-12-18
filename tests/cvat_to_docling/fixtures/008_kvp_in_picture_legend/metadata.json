@@ -1,0 +1,12 @@
+{
+  "test_id": "008",
+  "name": "008_kvp_in_picture_legend",
+  "description": "All KVPs must be recovered.",
+  "observation": "'Foreign banks'  and 'Other' key-value pairs must not get lost.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_ffb0a983a0998b8b4cb73d085350ac9ea7c7538119a553f76213df26beeaf64e_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

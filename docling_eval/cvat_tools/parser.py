@@ -10,6 +10,7 @@ from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer
 from docling_core.types.doc.labels import DocItemLabel, GraphCellLabel
 
+from docling_eval.cvat_tools.geometry import bbox_enclosing_rotated_rect
 from docling_eval.cvat_tools.models import (
     CVATAnnotationPath,
     CVATElement,
@@ -183,7 +184,11 @@ def _parse_image_element(
         ytl = float(box.attrib["ytl"])
         xbr = float(box.attrib["xbr"])
         ybr = float(box.attrib["ybr"])
-        bbox = cvat_box_to_bbox(xtl, ytl, xbr, ybr)  # -> BoundingBox(l,t,r,b) TOPLEFT
+        bbox_unrotated = cvat_box_to_bbox(
+            xtl, ytl, xbr, ybr
+        )  # -> BoundingBox(l,t,r,b) TOPLEFT
+        rotation_deg = float(box.attrib.get("rotation", "0.0"))
+        bbox = bbox_enclosing_rotated_rect(bbox_unrotated, rotation_deg=rotation_deg)
 
         # Parse child <attribute> tags; default content_layer to BODY
         attributes: dict[str, str | None] = {}
@@ -216,6 +221,8 @@ def _parse_image_element(
                 id=box_id,
                 label=label_obj,  # Union[DocItemLabel, GraphCellLabel, TableStructLabel]
                 bbox=bbox,
+                bbox_unrotated=bbox_unrotated,
+                rotation_deg=rotation_deg,
                 content_layer=content_layer,
                 type=type_,
                 level=level,

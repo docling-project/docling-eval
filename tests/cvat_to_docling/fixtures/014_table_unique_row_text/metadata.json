@@ -1,0 +1,12 @@
+{
+  "test_id": "014",
+  "name": "014_table_unique_row_text",
+  "description": "Row texts must be unique.",
+  "observation": "Observing some repeated rows in the constructed table.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_d499f67897fa38afd299f91207e4ad1f452c9ad3449b09cabcf588e761e5575e_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

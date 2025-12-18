@@ -475,10 +475,7 @@ class ListHierarchyManager:
         self, element: CVATElement, doc_structure
     ) -> Optional[int]:
         """Helper to find group ID for an element (for fallback scenarios)."""
-        for path_id, group_element_ids in doc_structure.path_mappings.group.items():
-            if element.id in group_element_ids:
-                return path_id
-        return None
+        return doc_structure.find_group_id_for_element(element.id)
 
 
 class CVATToDoclingConverter:
@@ -775,34 +772,28 @@ class CVATToDoclingConverter:
             # Create image reference if available
             image_ref = None
             if page_no in self.page_images:
-                image_ref = ImageRef.from_pil(self.page_images[page_no], dpi=72)
+                # page_images are already at cvat_input_scale, so DPI = 72 * cvat_input_scale
+                image_ref = ImageRef.from_pil(
+                    self.page_images[page_no], dpi=int(72 * self.cvat_input_scale)
+                )
 
             # Add page
             self.doc.add_page(page_no=page_no, size=page_size, image=image_ref)
 
     def _apply_reading_order(self):
         """Apply reading order to the containment tree."""
-        # Get all reading order element mappings
-        reading_order_mappings = self.doc_structure.path_mappings.reading_order
-
         # Combine all reading order elements into a global order
-        all_ordered_elements = []
-        for path_id, element_ids in reading_order_mappings.items():
+        all_ordered_elements: list[int] = []
+        for _, element_ids in self.doc_structure.iter_reading_order_paths():
             for el_id in element_ids:
                 if el_id not in all_ordered_elements:
                     all_ordered_elements.append(el_id)
 
-        # Apply to tree
-        apply_reading_order_to_tree(self.doc_structure.tree_roots, all_ordered_elements)
+        self.doc_structure.apply_reading_order(all_ordered_elements)
 
     def _build_global_reading_order(self) -> List[int]:
         """Build global reading order from paths."""
-        return build_global_reading_order(
-            self.doc_structure.paths,
-            self.doc_structure.path_mappings.reading_order,
-            self.doc_structure.path_to_container,
-            self.doc_structure.tree_roots,
-        )
+        return self.doc_structure.build_global_reading_order()
 
     def _build_fallback_global_order(self) -> List[int]:
         """Build a fallback global order when no level-1 reading order is present."""
@@ -825,7 +816,7 @@ class CVATToDoclingConverter:
             for child in node.children:
                 traverse(child)
 
-        sorted_roots = sorted(self.doc_structure.tree_roots, key=root_sort_key)
+        sorted_roots = sorted(self.doc_structure.roots(), key=root_sort_key)
         for root in sorted_roots:
             traverse(root)
 
@@ -840,9 +831,9 @@ class CVATToDoclingConverter:
             Tuple of (path_id, element_ids) if element is in a group, None otherwise
         """
 
-        for path_id, element_ids in self.doc_structure.path_mappings.group.items():
+        for path_id, element_ids in self.doc_structure.iter_group_paths():
             if element_id in element_ids and len(element_ids) >= 2:
-                return (path_id, element_ids)
+                return (path_id, list(element_ids))
         return None
 
     def _create_group_on_demand(
@@ -891,7 +882,7 @@ class CVATToDoclingConverter:
 
     def _find_group_parent(self, element: CVATElement) -> Optional[NodeItem]:
         """Find the parent for a list group based on containment tree."""
-        node = find_node_by_element_id(self.doc_structure.tree_roots, element.id)
+        node = self.doc_structure.get_node(element.id)
         if node:
             parent_node = self._find_parent_node(node)
             if parent_node and parent_node.element.id in self.element_to_item:
@@ -954,13 +945,7 @@ class CVATToDoclingConverter:
 
     def _find_group_id_for_element(self, element: CVATElement) -> Optional[int]:
         """Find which group this element belongs to."""
-        for (
-            path_id,
-            group_element_ids,
-        ) in self.doc_structure.path_mappings.group.items():
-            if element.id in group_element_ids:
-                return path_id
-        return None
+        return self.doc_structure.find_group_id_for_element(element.id)
 
     def _prune_empty_groups(self) -> None:
         """Remove group containers that ended up without children."""
@@ -1069,7 +1054,7 @@ class CVATToDoclingConverter:
             if element_id in self.processed_elements:
                 continue
 
-            node = find_node_by_element_id(self.doc_structure.tree_roots, element_id)
+            node = self.doc_structure.get_node(element_id)
             if not node:
                 continue
 
@@ -1206,7 +1191,7 @@ class CVATToDoclingConverter:
                     return result
             return None
 
-        for root in self.doc_structure.tree_roots:
+        for root in self.doc_structure.roots():
             if root == node:
                 return None  # Root has no parent
             result = search_parent(root, node)
@@ -1329,10 +1314,11 @@ class CVATToDoclingConverter:
         from .utils import is_caption_element, is_container_element, is_footnote_element
 
         # Check captions
-        for path_id, (
+        for (
+            path_id,
             container_id,
             caption_id,
-        ) in self.doc_structure.path_mappings.to_caption.items():
+        ) in self.doc_structure.iter_to_caption_links():
             if caption_id == element_id:
                 # Get the actual elements
                 container_el = self.doc_structure.get_element_by_id(container_id)
@@ -1348,10 +1334,11 @@ class CVATToDoclingConverter:
                         return True
 
         # Check footnotes
-        for path_id, (
+        for (
+            path_id,
             container_id,
             footnote_id,
-        ) in self.doc_structure.path_mappings.to_footnote.items():
+        ) in self.doc_structure.iter_to_footnote_links():
             if footnote_id == element_id:
                 # Get the actual elements
                 container_el = self.doc_structure.get_element_by_id(container_id)
@@ -1387,13 +1374,13 @@ class CVATToDoclingConverter:
 
         Auto-corrects backwards merge paths by sorting elements according to reading order.
         """
-        for path_id, element_ids in self.doc_structure.path_mappings.merge.items():
+        for path_id, element_ids in self.doc_structure.iter_merge_paths():
             if element_id not in element_ids:
                 continue
 
             # Auto-correct the order before collecting elements
             corrected_ids, _ = self.doc_structure.get_corrected_merge_elements(
-                path_id, element_ids
+                path_id, list(element_ids)
             )
 
             candidate_elements: List[CVATElement] = []
@@ -1758,20 +1745,22 @@ class CVATToDoclingConverter:
         already validated and reported as warnings).
         """
         # Process captions
-        for path_id, (
+        for (
+            path_id,
             container_id,
             caption_id,
-        ) in self.doc_structure.path_mappings.to_caption.items():
+        ) in self.doc_structure.iter_to_caption_links():
             # Skip if neither side is a container (invalid path)
             if not self._has_valid_container_relationship(container_id, caption_id):
                 continue
             self._add_caption_or_footnote(container_id, caption_id, is_caption=True)
 
         # Process footnotes
-        for path_id, (
+        for (
+            path_id,
             container_id,
             footnote_id,
-        ) in self.doc_structure.path_mappings.to_footnote.items():
+        ) in self.doc_structure.iter_to_footnote_links():
             # Skip if neither side is a container (invalid path)
             if not self._has_valid_container_relationship(container_id, footnote_id):
                 continue
@@ -1780,7 +1769,7 @@ class CVATToDoclingConverter:
     def _process_to_value_relationships(self) -> None:  # noqa: C901
         """Convert CVAT *to_value* links into a single KeyValueItem graph."""
 
-        if not self.doc_structure.path_mappings.to_value:
+        if not self.doc_structure.has_to_value_links():
             return
 
         cell_by_element: dict[int, GraphCell] = {}
@@ -1797,10 +1786,8 @@ class CVATToDoclingConverter:
 
         element_to_keyvalue_merge_group: Dict[int, Set[int]] = {}
 
-        for path_id, _ in self.doc_structure.path_mappings.merge.items():
-            merge_path = next(
-                (p for p in self.doc_structure.paths if p.id == path_id), None
-            )
+        for path_id, _ in self.doc_structure.iter_merge_paths():
+            merge_path = self.doc_structure.get_path(path_id)
             if not merge_path:
                 continue
 
@@ -1944,10 +1931,7 @@ class CVATToDoclingConverter:
             cell_id_seq += 1
             return cell
 
-        for path_id, (
-            key_id,
-            value_id,
-        ) in self.doc_structure.path_mappings.to_value.items():
+        for path_id, key_id, value_id in self.doc_structure.iter_to_value_links():
             try:
                 key_cell = _make_cell(key_id, GraphCellLabel.KEY)
                 value_cell = _make_cell(value_id, GraphCellLabel.VALUE)
@@ -2881,9 +2865,17 @@ def convert_cvat_to_docling(
         DoclingDocument or None if conversion fails
     """
     try:
-        image_name = (
-            image_identifier if image_identifier is not None else input_path.name
-        )
+        is_pdf = input_path.suffix.lower() == ".pdf"
+        if image_identifier is not None:
+            image_name = image_identifier
+        elif is_pdf:
+            # CVAT exports store rendered page images as <image name="doc_{pdf_stem}_page_000001.png">.
+            # For single-page documents this convention is stable and allows PDF inputs to resolve
+            # their corresponding CVAT <image> entry without additional metadata.
+            image_name = f"doc_{input_path.stem}_page_000001.png"
+        else:
+            image_name = input_path.name
+
         parsed_file = parse_cvat_file(xml_path)
         validated_sample = validate_cvat_sample(
             xml_path, image_name, parsed_file=parsed_file
@@ -2900,7 +2892,6 @@ def convert_cvat_to_docling(
             return None
 
         # Determine scales based on input type
-        is_pdf = input_path.suffix.lower() == ".pdf"
         actual_cvat_input_scale = cvat_input_scale if is_pdf else 1.0
         actual_storage_scale = storage_scale if is_pdf else 1.0
 

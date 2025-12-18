@@ -1,0 +1,12 @@
+{
+  "test_id": "011",
+  "name": "011a_paragraph_continuation_with_picture_between",
+  "description": "Paragraph must merge across column wrap, with picture and caption placed afterwards.",
+  "observation": "The paragraph is cut up, and also all paragraphs before the first figure are concatenated to the list that starts at the top.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_f0ac80935cb386d734bee68e317b47050819ab112dadb25fbf78266d3918fbd2_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

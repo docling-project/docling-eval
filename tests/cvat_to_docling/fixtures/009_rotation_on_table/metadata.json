@@ -1,0 +1,12 @@
+{
+  "test_id": "009",
+  "name": "009_rotation_on_table",
+  "description": "Rotated table should be correctly rebuilt.",
+  "observation": "The rotated table is garbage.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_a02617dc490954fe59c8382c7e8dc6203bf230c56b156c7778e09b31f1d43f2b_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}

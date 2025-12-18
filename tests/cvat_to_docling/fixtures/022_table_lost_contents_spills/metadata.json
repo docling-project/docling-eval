@@ -1,0 +1,12 @@
+{
+  "test_id": "022",
+  "name": "table_lost_contents_spills",
+  "description": "Table must be correctly reconstructed.",
+  "observation": "Table is not merged into one.",
+  "observation_status": "broken",
+  "source": {
+    "image_identifier": "doc_dcea5d0eb77fbcac9289cc49d9388348fa023cd75cc737f3cc93c1dd60271f4d_page_000001.png"
+  },
+  "input_type": "pdf",
+  "page_number": 1
+}
