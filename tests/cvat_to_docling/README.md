@@ -20,7 +20,7 @@ DOCLING_GEN_VIZ=1 uv run pytest tests/cvat_to_docling/test_regression.py -v
 ```
 tests/cvat_to_docling/
 ├── README.md              # This file
-├── test_regression.py    # Main test suite
+├── test_regression.py    # Test suite
 └── fixtures/             # Test fixtures
     ├── 002a_table_order/
     │   ├── input.xml         # Single-image CVAT XML
