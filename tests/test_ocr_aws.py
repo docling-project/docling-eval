@@ -43,7 +43,7 @@ def test_run_pixparse_builder():
     )
 
     evaluate(
-        modalities=[EvaluationModality.OCR],
+        modality=EvaluationModality.OCR,
         benchmark=BenchMarkNames.PIXPARSEIDL,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.OCR.value,

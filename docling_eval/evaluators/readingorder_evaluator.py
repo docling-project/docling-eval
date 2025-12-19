@@ -83,10 +83,10 @@ class ReadingOrderEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetReadingOrderEvaluation:
         r""" """
-        self._begin_message(ds_path, split, ext_docdoc_loader)
+        self._begin_message(ds_path, split, external_document_loader)
 
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
@@ -108,7 +108,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
             if (
-                ext_docdoc_loader is None
+                external_document_loader is None
                 and data_record.status not in self._accepted_status
             ):
                 _log.error(

@@ -65,10 +65,10 @@ class OCREvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> OcrDatasetEvaluationResult:
         r""" """
-        self._begin_message(ds_path, split, ext_docdoc_loader)
+        self._begin_message(ds_path, split, external_document_loader)
 
         dataset_path = ds_path
         data_split_name = split

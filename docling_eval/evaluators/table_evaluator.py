@@ -196,14 +196,14 @@ class TableEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments
         "GTDoclingDocument"
         "PredictionDoclingDocument"
         """
-        self._begin_message(ds_path, split, ext_docdoc_loader)
+        self._begin_message(ds_path, split, external_document_loader)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
@@ -234,7 +234,7 @@ class TableEvaluator(BaseEvaluator):
                 data_record = DatasetRecordWithPrediction.model_validate(data)
                 doc_id = data_record.doc_id
                 gt_doc = data_record.ground_truth_doc
-                pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
+                pred_doc = self._get_pred_doc(data_record, external_document_loader)
                 if not pred_doc:
                     _log.error("There is no prediction for doc_id=%s", doc_id)
                     rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -416,14 +416,14 @@ class TableEvaluator(BaseEvaluator):
     def _get_pred_doc(
         self,
         data_record: DatasetRecordWithPrediction,
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
-        if ext_docdoc_loader is not None:
-            pred_doc = ext_docdoc_loader.get(data_record)
+        if external_document_loader is not None:
+            pred_doc = external_document_loader.get(data_record)
             return pred_doc
 
         for prediction_format in self._prediction_sources:

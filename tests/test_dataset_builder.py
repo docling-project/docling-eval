@@ -100,7 +100,7 @@ def test_run_dpbench_e2e():
 
     ## Evaluate Layout
     evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset_e2e",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
@@ -115,7 +115,7 @@ def test_run_dpbench_e2e():
 
     ## Evaluate Reading order
     evaluate(
-        modalities=[EvaluationModality.READING_ORDER],
+        modality=EvaluationModality.READING_ORDER,
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset_e2e",
         odir=target_path / "evaluations" / EvaluationModality.READING_ORDER.value,
@@ -130,7 +130,7 @@ def test_run_dpbench_e2e():
 
     ## Evaluate Markdown text
     evaluate(
-        modalities=[EvaluationModality.MARKDOWN_TEXT],
+        modality=EvaluationModality.MARKDOWN_TEXT,
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset_e2e",
         odir=target_path / "evaluations" / EvaluationModality.MARKDOWN_TEXT.value,
@@ -173,7 +173,7 @@ def test_run_doclaynet_with_doctags_fileprovider():
 
     ## Evaluate Layout
     evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=[EvaluationModality.LAYOUT],
         benchmark=BenchMarkNames.DOCLAYNETV1,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
@@ -188,7 +188,7 @@ def test_run_doclaynet_with_doctags_fileprovider():
 
     ## Evaluate Markdown text
     evaluate(
-        modalities=[EvaluationModality.MARKDOWN_TEXT],
+        modality=EvaluationModality.MARKDOWN_TEXT,
         benchmark=BenchMarkNames.DOCLAYNETV1,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.MARKDOWN_TEXT.value,
@@ -225,7 +225,7 @@ def test_run_omnidocbench_e2e():
 
     # Evaluate Layout
     evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
@@ -240,7 +240,7 @@ def test_run_omnidocbench_e2e():
 
     # Evaluate Reading Order
     evaluate(
-        modalities=[EvaluationModality.READING_ORDER],
+        modality=EvaluationModality.READING_ORDER,
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.READING_ORDER.value,
@@ -255,7 +255,7 @@ def test_run_omnidocbench_e2e():
 
     # Evaluate Markdown Text
     evaluate(
-        modalities=[EvaluationModality.MARKDOWN_TEXT],
+        modality=EvaluationModality.MARKDOWN_TEXT,
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.MARKDOWN_TEXT.value,
@@ -284,7 +284,7 @@ def test_run_dpbench_tables():
     )
 
     evaluate(
-        modalities=[EvaluationModality.TABLE_STRUCTURE],
+        modality=EvaluationModality.TABLE_STRUCTURE,
         benchmark=BenchMarkNames.DPBENCH,
         idir=target_path / "eval_dataset_tables",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
@@ -320,7 +320,7 @@ def test_run_omnidocbench_tables():
     )
 
     evaluate(
-        modalities=[EvaluationModality.TABLE_STRUCTURE],
+        modality=EvaluationModality.TABLE_STRUCTURE,
         benchmark=BenchMarkNames.OMNIDOCBENCH,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
@@ -358,7 +358,7 @@ def test_run_doclaynet_v1_e2e():
 
     # Evaluate Layout
     evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.DOCLAYNETV1,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
@@ -373,7 +373,7 @@ def test_run_doclaynet_v1_e2e():
 
     # Evaluate Markdown Text
     evaluate(
-        modalities=[EvaluationModality.MARKDOWN_TEXT],
+        modality=EvaluationModality.MARKDOWN_TEXT,
         benchmark=BenchMarkNames.DOCLAYNETV1,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.MARKDOWN_TEXT.value,
@@ -409,7 +409,7 @@ def test_run_doclaynet_v2_e2e():
 
     # Evaluate Layout
     evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.DOCLAYNETV2,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,
@@ -424,7 +424,7 @@ def test_run_doclaynet_v2_e2e():
 
     # Evaluate Markdown Text
     evaluate(
-        modalities=[EvaluationModality.MARKDOWN_TEXT],
+        modality=EvaluationModality.MARKDOWN_TEXT,
         benchmark=BenchMarkNames.DOCLAYNETV2,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.MARKDOWN_TEXT.value,
@@ -492,7 +492,7 @@ def test_run_fintabnet_builder():
     )
 
     evaluate(
-        modalities=[EvaluationModality.TABLE_STRUCTURE],
+        modality=EvaluationModality.TABLE_STRUCTURE,
         benchmark=BenchMarkNames.FINTABNET,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
@@ -528,7 +528,7 @@ def test_run_p1m_builder():
     )
 
     evaluate(
-        modalities=[EvaluationModality.TABLE_STRUCTURE],
+        modality=EvaluationModality.TABLE_STRUCTURE,
         benchmark=BenchMarkNames.PUB1M,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
@@ -566,7 +566,7 @@ def test_run_pubtabnet_builder():
     )
 
     evaluate(
-        modalities=[EvaluationModality.TABLE_STRUCTURE],
+        modality=EvaluationModality.TABLE_STRUCTURE,
         benchmark=BenchMarkNames.PUBTABNET,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.TABLE_STRUCTURE.value,
@@ -624,7 +624,7 @@ def test_run_pixparse_builder():
     )
 
     evaluate(
-        modalities=[EvaluationModality.OCR],
+        modality=EvaluationModality.OCR,
         benchmark=BenchMarkNames.PIXPARSEIDL,
         idir=target_path / "eval_dataset_e2e",
         odir=target_path / "evaluations" / EvaluationModality.OCR.value,

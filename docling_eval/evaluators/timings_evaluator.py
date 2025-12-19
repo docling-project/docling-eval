@@ -53,7 +53,7 @@ class TimingsEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetTimingsEvaluation:
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
@@ -84,7 +84,7 @@ class TimingsEvaluator(BaseEvaluator):
 
             doc_id = data_record.doc_id
             if (
-                ext_docdoc_loader is None
+                external_document_loader is None
                 and data_record.status not in self._accepted_status
             ):
                 _log.error(

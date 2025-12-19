@@ -105,7 +105,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetEvaluationType:
         r"""
         Perform the evaluation
@@ -146,13 +146,13 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         self,
         ds_path: Path,
         split: str,
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader],
+        external_document_loader: Optional[ExternalDoclingDocumentLoader],
     ):
         r""" """
-        if ext_docdoc_loader is None:
+        if external_document_loader is None:
             source_msg = f"GT and predictions from '{str(ds_path)}'"
         else:
-            predictions_path = ext_docdoc_loader.predictions_path()
+            predictions_path = external_document_loader.predictions_path()
             source_msg = f"GT from '{str(ds_path)}' and predictions from '{str(predictions_path)}'"
         _log.info(
             "%s: Start evaluation with %s. Split = %s",

@@ -218,7 +218,7 @@ def step4_run_evaluation(eval_dataset_dir: Path, evaluation_output_dir: Path) ->
 
     # Run layout evaluation
     evaluation_results = evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.CVAT,
         idir=eval_dataset_dir,
         odir=evaluation_output_dir,
@@ -238,7 +238,7 @@ def step4_run_evaluation(eval_dataset_dir: Path, evaluation_output_dir: Path) ->
 
     # Run tree evaluation
     evaluation_results = evaluate(
-        modalities=[EvaluationModality.DOCUMENT_STRUCTURE],
+        modality=EvaluationModality.DOCUMENT_STRUCTURE,
         benchmark=BenchMarkNames.CVAT,
         idir=eval_dataset_dir,
         odir=evaluation_output_dir,

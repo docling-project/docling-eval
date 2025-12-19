@@ -636,7 +636,7 @@ class CVATEvaluationPipeline:
             try:
                 # TODO: Consider to pass all modalities in evaluate
                 evaluation_results = evaluate(
-                    modalities=[modality],
+                    modality=modality,
                     benchmark=BenchMarkNames.CVAT,
                     idir=self.eval_dataset_dir,
                     odir=self.evaluation_results_dir,

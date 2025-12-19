@@ -159,7 +159,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetMarkdownEvaluation:
         r"""
         Parameters
@@ -167,7 +167,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         ds_path: Path to load the parquet files of the dataset
         split: Split of the dataset to load
         """
-        self._begin_message(ds_path, split, ext_docdoc_loader)
+        self._begin_message(ds_path, split, external_document_loader)
 
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
@@ -203,8 +203,8 @@ class MarkdownTextEvaluator(BaseEvaluator):
                 true_md = self._docling_document_to_md(true_doc)
 
                 # Get the predicted markdown from the external predictions path
-                if ext_docdoc_loader is not None:
-                    pred_doc = ext_docdoc_loader.get(data_record)
+                if external_document_loader is not None:
+                    pred_doc = external_document_loader.get(data_record)
                     if pred_doc is None:
                         _log.error("No external prediction found for doc_id=%s", doc_id)
                         rejected_samples[

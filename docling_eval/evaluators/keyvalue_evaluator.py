@@ -422,10 +422,10 @@ class KeyValueEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetKeyValueEvaluation:
         r""" """
-        self._begin_message(ds_path, split, ext_docdoc_loader)
+        self._begin_message(ds_path, split, external_document_loader)
 
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
@@ -472,13 +472,16 @@ class KeyValueEvaluator(BaseEvaluator):
             doc_id = record.doc_id
 
             # ----- sanity checks --------------------------------------------------
-            if ext_docdoc_loader is None and record.status not in self._accepted_status:
+            if (
+                external_document_loader is None
+                and record.status not in self._accepted_status
+            ):
                 rejected_samples[EvaluationRejectionType.INVALID_CONVERSION_STATUS] += 1
                 _log.error("Skipping %s – conversion failed", doc_id)
                 continue
 
             gt_doc = record.ground_truth_doc
-            pred_doc = self._get_pred_doc(record, ext_docdoc_loader)
+            pred_doc = self._get_pred_doc(record, external_document_loader)
             if pred_doc is None:
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 _log.error("Skipping %s – missing prediction", doc_id)
@@ -648,12 +651,12 @@ class KeyValueEvaluator(BaseEvaluator):
     def _get_pred_doc(
         self,
         data_record: DatasetRecordWithPrediction,
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         """Fetch the prediction in the first available format declared by `prediction_sources`."""
         pred_doc: Optional[DoclingDocument] = None
-        if ext_docdoc_loader is not None:
-            pred_doc = ext_docdoc_loader.get(data_record)
+        if external_document_loader is not None:
+            pred_doc = external_document_loader.get(data_record)
             return pred_doc
 
         for fmt in self._prediction_sources:

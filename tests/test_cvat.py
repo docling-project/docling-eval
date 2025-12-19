@@ -170,7 +170,7 @@ def run_cvat_e2e(idir: Path, odir: Path, annotation_xmlfile: Path):
     """
 
     evaluate(
-        modalities=[EvaluationModality.LAYOUT],
+        modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.PLAIN_FILES,
         idir=odir / "cvat_dataset_annotated/eval_pdf_docling/eval_dataset",
         odir=odir / "cvat_dataset_annotated/eval_pdf_docling",

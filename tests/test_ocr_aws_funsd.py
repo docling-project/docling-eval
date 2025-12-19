@@ -47,7 +47,7 @@ def test_run_funsd_builder():
     )
 
     evaluate(
-        modalities=[EvaluationModality.OCR],
+        modality=EvaluationModality.OCR,
         benchmark=BenchMarkNames.FUNSD,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.OCR.value,

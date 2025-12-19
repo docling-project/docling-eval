@@ -239,10 +239,10 @@ class PixelLayoutEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetPixelLayoutEvaluation:
         r""" """
-        self._begin_message(ds_path, split, ext_docdoc_loader)
+        self._begin_message(ds_path, split, external_document_loader)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
@@ -300,7 +300,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
 
                 doc_id: str = data_record.doc_id
                 if (
-                    ext_docdoc_loader is None
+                    external_document_loader is None
                     and data_record.status not in self._accepted_status
                 ):
                     _log.error(
@@ -313,7 +313,7 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     continue
 
                 true_doc = data_record.ground_truth_doc
-                pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
+                pred_doc = self._get_pred_doc(data_record, external_document_loader)
                 if not pred_doc:
                     _log.error("There is no prediction for doc_id=%s", doc_id)
                     rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -595,14 +595,14 @@ class PixelLayoutEvaluator(BaseEvaluator):
     def _get_pred_doc(
         self,
         data_record: DatasetRecordWithPrediction,
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
-        if ext_docdoc_loader is not None:
-            pred_doc = ext_docdoc_loader.get(data_record)
+        if external_document_loader is not None:
+            pred_doc = external_document_loader.get(data_record)
             return pred_doc
 
         for prediction_format in self._prediction_sources:
