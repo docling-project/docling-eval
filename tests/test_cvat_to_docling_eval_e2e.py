@@ -28,6 +28,10 @@ from docling_eval.datamodels.types import (
     PredictionProviderType,
 )
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
+from docling_eval.evaluators.doc_structure_evaluator import (
+    DatasetDocStructureEvaluation,
+)
+from docling_eval.evaluators.layout_evaluator import DatasetLayoutEvaluation
 from docling_eval.prediction_providers.file_provider import FilePredictionProvider
 
 # Configure logging
@@ -213,7 +217,7 @@ def step4_run_evaluation(eval_dataset_dir: Path, evaluation_output_dir: Path) ->
     evaluation_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Run layout evaluation
-    evaluation_result = evaluate(
+    evaluation_results = evaluate(
         modality=EvaluationModality.LAYOUT,
         benchmark=BenchMarkNames.CVAT,
         idir=eval_dataset_dir,
@@ -221,18 +225,19 @@ def step4_run_evaluation(eval_dataset_dir: Path, evaluation_output_dir: Path) ->
         split="test",
     )
 
-    if evaluation_result:
+    if evaluation_results:
+        evaluation_result = evaluation_results[0]
         _log.info("✓ Layout evaluation completed successfully")
         _log.info(f"Results saved to: {evaluation_output_dir}")
 
         # Print some basic stats
         _log.info(f"Evaluated samples: {evaluation_result.evaluated_samples}")
-        _log.info(f"Mean mAP: {evaluation_result.mAP:.4f}")
+        _log.info(f"Mean mAP: {evaluation_result.mAP:.4f}")  # type: ignore
     else:
         _log.error("✗ Layout evaluation failed")
 
     # Run tree evaluation
-    evaluation_result = evaluate(
+    evaluation_results = evaluate(
         modality=EvaluationModality.DOCUMENT_STRUCTURE,
         benchmark=BenchMarkNames.CVAT,
         idir=eval_dataset_dir,
@@ -240,14 +245,15 @@ def step4_run_evaluation(eval_dataset_dir: Path, evaluation_output_dir: Path) ->
         split="test",
     )
 
-    if evaluation_result:
+    if evaluation_results:
+        evaluation_result = evaluation_results[0]
         _log.info("✓ Document structure evaluation completed successfully")
         _log.info(f"Results saved to: {evaluation_output_dir}")
 
         # Print some basic stats
         _log.info(f"Evaluated samples: {evaluation_result.evaluated_samples}")
         _log.info(
-            f"Mean edit distance: {evaluation_result.edit_distance_stats.mean:.4f}"
+            f"Mean edit distance: {evaluation_result.edit_distance_stats.mean:.4f}"  # type: ignore
         )
     else:
         _log.error("✗ Document structure evaluation failed")

@@ -173,7 +173,7 @@ def test_run_doclaynet_with_doctags_fileprovider():
 
     ## Evaluate Layout
     evaluate(
-        modality=EvaluationModality.LAYOUT,
+        modality=[EvaluationModality.LAYOUT],
         benchmark=BenchMarkNames.DOCLAYNETV1,
         idir=target_path / "eval_dataset",
         odir=target_path / "evaluations" / EvaluationModality.LAYOUT.value,

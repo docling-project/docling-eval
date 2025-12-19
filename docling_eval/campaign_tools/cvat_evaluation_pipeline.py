@@ -634,7 +634,8 @@ class CVATEvaluationPipeline:
                 continue
 
             try:
-                evaluation_result = evaluate(
+                # TODO: Consider to pass all modalities in evaluate
+                evaluation_results = evaluate(
                     modality=modality,
                     benchmark=BenchMarkNames.CVAT,
                     idir=self.eval_dataset_dir,
@@ -643,7 +644,9 @@ class CVATEvaluationPipeline:
                     cvat_overview_path=overview_for_eval,
                 )
 
-                if evaluation_result:
+                if evaluation_results:
+                    evaluation_result = evaluation_results[0]
+
                     _log.info(
                         f"\u2713 {modality_name} evaluation completed successfully"
                     )
@@ -652,10 +655,10 @@ class CVATEvaluationPipeline:
                     )
 
                     if modality_name == "layout":
-                        _log.info(f"Mean mAP: {evaluation_result.mAP:.4f}")
+                        _log.info(f"Mean mAP: {evaluation_result.mAP:.4f}")  # type: ignore
                     elif modality_name == "document_structure":
                         _log.info(
-                            f"Mean edit distance: {evaluation_result.edit_distance_stats.mean:.4f}"
+                            f"Mean edit distance: {evaluation_result.edit_distance_stats.mean:.4f}"  # type: ignore
                         )
                 else:
                     _log.error(f"\u2717 {modality_name} evaluation failed")

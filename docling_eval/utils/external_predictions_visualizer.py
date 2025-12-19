@@ -90,7 +90,7 @@ class PredictionsVisualizer:
         self, record: DatasetRecordWithPrediction
     ) -> Optional[DoclingDocument]:
         if self._loader is not None:
-            return self._loader(record)
+            return self._loader.get(record)
         return record.predicted_doc
 
     def _prepare_prediction_assets(

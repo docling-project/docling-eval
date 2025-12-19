@@ -14,6 +14,9 @@ from pydantic import BaseModel
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import PredictionFormats
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -102,7 +105,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetEvaluationType:
         r"""
         Perform the evaluation
@@ -118,7 +121,7 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
     def save_intermediate_evaluations(
         self,
         evaluation_name: str,
-        enunumerate_id: int,
+        enumerate_id: int,
         doc_id: str,
         evaluations: List[UnitEvaluationType],
     ) -> Optional[Path]:
@@ -131,10 +134,29 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
             return None
 
         evals = [ev.model_dump() for ev in evaluations]
-        evaluation_filename = f"{evaluation_name}_{enunumerate_id:05d}_{doc_id}.json"
+        evaluation_filename = f"{evaluation_name}_{enumerate_id:05d}_{doc_id}.json"
         evaluation_fn = self._intermediate_evaluations_path / evaluation_filename  # type: ignore
         _log.info("Saving intermediate evaluations: %s", evaluation_fn)
         with open(evaluation_fn, "w") as fd:
             json.dump(evals, fd)
 
         return evaluation_fn
+
+    def _begin_message(
+        self,
+        ds_path: Path,
+        split: str,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader],
+    ):
+        r""" """
+        if external_document_loader is None:
+            source_msg = f"GT and predictions from '{str(ds_path)}'"
+        else:
+            predictions_path = external_document_loader.predictions_path()
+            source_msg = f"GT from '{str(ds_path)}' and predictions from '{str(predictions_path)}'"
+        _log.info(
+            "%s: Start evaluation with %s. Split = %s",
+            self.__class__.__name__,
+            source_msg,
+            split,
+        )
