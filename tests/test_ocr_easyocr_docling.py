@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
