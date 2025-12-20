@@ -1,4 +1,5 @@
 import json
+import logging
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
@@ -16,6 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 from docling_eval.datamodels.types import EvaluationModality, PredictionFormats
 from docling_eval.utils.utils import extract_images
+
+_log = logging.getLogger(__name__)
 
 seg_adapter = TypeAdapter(Dict[int, SegmentedPage])
 
@@ -198,19 +201,19 @@ class DatasetRecord(
         """Convert list of PIL Images to HuggingFace-compatible bytes format."""
         return [{"bytes": self._pil_to_bytes(img), "path": None} for img in images]
 
+    @staticmethod
+    def _close_image_list(images: List[PIL.Image.Image]) -> None:
+        """Close all PIL Images in a list, logging any errors at debug level."""
+        for img in images:
+            try:
+                img.close()
+            except Exception as e:
+                _log.debug(f"Failed to close PIL image: {e}")
+
     def _close_images(self) -> None:
-        """Close all PIL Images and release references to allow garbage collection."""
-        for img in self.ground_truth_page_images:
-            try:
-                img.close()
-            except Exception:
-                pass
-        for img in self.ground_truth_pictures:
-            try:
-                img.close()
-            except Exception:
-                pass
-        # Clear references to allow garbage collection
+        """Close ground truth PIL Images to prevent memory leaks."""
+        self._close_image_list(self.ground_truth_page_images)
+        self._close_image_list(self.ground_truth_pictures)
         self.ground_truth_page_images = []
         self.ground_truth_pictures = []
 
@@ -377,18 +380,9 @@ class DatasetRecordWithPrediction(DatasetRecord):
         return record
 
     def _close_prediction_images(self) -> None:
-        """Close prediction PIL Images and release references for garbage collection."""
-        for img in self.predicted_page_images:
-            try:
-                img.close()
-            except Exception:
-                pass
-        for img in self.predicted_pictures:
-            try:
-                img.close()
-            except Exception:
-                pass
-        # Clear references to allow garbage collection
+        """Close prediction PIL Images to prevent memory leaks."""
+        self._close_image_list(self.predicted_page_images)
+        self._close_image_list(self.predicted_pictures)
         self.predicted_page_images = []
         self.predicted_pictures = []
 

@@ -18,6 +18,8 @@ from docling_eval.prediction_providers.docling_provider import DoclingPrediction
 
 IS_CI = bool(os.getenv("CI"))
 
+_log = logging.getLogger(__name__)
+
 logging.getLogger("docling").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -80,9 +82,9 @@ def test_run_pixparse_easyocr_docling():
     # Create EasyOCR prediction provider
     easyocr_provider = create_easyocr_provider()
 
-    logging.info(f"Dataset name {dataset.name}")
-    logging.info(f"Created ground truth dataset at {gt_dataset}")
-    logging.info(f"Creating evaluation dataset at {eval_dataset}")
+    _log.info(f"Dataset name {dataset.name}")
+    _log.info(f"Created ground truth dataset at {gt_dataset}")
+    _log.info(f"Creating evaluation dataset at {eval_dataset}")
 
     easyocr_provider.create_prediction_dataset(
         name=dataset.name,
@@ -105,4 +107,4 @@ def test_run_pixparse_easyocr_docling():
         odir=evaluations_path,
     )
 
-    logging.info(f"Completed evaluation. Results saved to {target_path}")
+    _log.info(f"Completed evaluation. Results saved to {target_path}")
