@@ -19,6 +19,7 @@ from docling_core.types.doc import (
 from docling_core.types.io import DocumentStream
 from PIL.Image import Image
 from tqdm import tqdm
+from huggingface_hub import snapshot_download
 
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns
@@ -26,6 +27,8 @@ from docling_eval.dataset_builders.dataset_builder import (
     BaseEvaluationDatasetBuilder,
     HFSource,
 )
+from datasets import load_dataset
+from PIL import Image as PILImage
 from docling_eval.utils.utils import (
     add_pages_to_true_doc,
     convert_html_table_into_docling_tabledata,
@@ -88,11 +91,18 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
 
     This builder processes the OmniDocBench dataset, which contains document
     layout annotations for a variety of document types.
+
+    Supports two modes:
+    - Raw mode: Downloads raw files via snapshot_download (many requests)
+    - Parquet mode: Downloads Parquet shards and extracts files (few requests)
     """
 
     def __init__(
         self,
         target: Path,
+        repo_id: str = "opendatalab/OmniDocBench",
+        revision: str = "v1_0",
+        use_parquet: bool = False,
         split: str = "test",
         begin_index: int = 0,
         end_index: int = -1,
@@ -102,22 +112,54 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         Args:
             target: Path where processed dataset will be saved
+            repo_id: HuggingFace repository ID (default: opendatalab/OmniDocBench)
+            revision: Repository revision/branch
+            use_parquet: If True, download Parquet and extract files (avoids rate limits)
             split: Dataset split to use
             begin_index: Start index for processing (inclusive)
             end_index: End index for processing (exclusive), -1 means process all
         """
         super().__init__(
             name="OmniDocBench: end-to-end",
-            dataset_source=HFSource(
-                repo_id="opendatalab/OmniDocBench", revision="v1_0"
-            ),
+            dataset_source=HFSource(repo_id=repo_id, revision=revision),
             target=target,
             split=split,
             begin_index=begin_index,
             end_index=end_index,
         )
 
+        self.use_parquet = use_parquet
         self.must_retrieve = True
+
+    def retrieve_input_dataset(self) -> Path:
+        """
+        Download and retrieve the input dataset.
+
+        In Parquet mode, this is a no-op since iterate() loads data directly.
+        In raw mode, downloads all files via snapshot_download.
+        """
+        if self.use_parquet:
+            # Parquet mode: iterate() uses load_dataset directly, no download needed
+            _log.info("Parquet mode: skipping download (data loaded in iterate)")
+            self.retrieved = True
+            return self.target
+
+        # Raw mode: download all raw files
+        if not self.dataset_local_path:
+            self.dataset_local_path = self.target / "source_data"
+
+        self.dataset_local_path.mkdir(parents=True, exist_ok=True)
+
+        _log.info("Downloading files (raw mode)...")
+        snapshot_download(
+            repo_id=self.dataset_source.repo_id,
+            revision=self.dataset_source.revision,
+            repo_type="dataset",
+            token=self.dataset_source.hf_token,
+            local_dir=self.dataset_local_path,
+        )
+        self.retrieved = True
+        return self.dataset_local_path
 
     def update_gt_into_map(self, gt: List[Dict]) -> Dict[str, Dict]:
         """
@@ -330,6 +372,11 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         Yields:
             DatasetRecord objects
         """
+        # Parquet mode: use load_dataset directly
+        if self.use_parquet:
+            yield from self._iterate_parquet()
+            return
+
         if not self.retrieved and self.must_retrieve:
             raise RuntimeError(
                 "You must first retrieve the source dataset. Call retrieve_input_dataset()."
@@ -412,6 +459,83 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             # Create dataset record
             record = DatasetRecord(
                 doc_id=str(os.path.basename(jpg_path)),
+                doc_hash=get_binhash(pdf_bytes),
+                ground_truth_doc=true_doc,
+                ground_truth_pictures=true_pictures,
+                ground_truth_page_images=true_page_images,
+                original=pdf_stream,
+                mime_type="application/pdf",
+            )
+
+            yield record
+
+    def _iterate_parquet(self) -> Iterable[DatasetRecord]:
+        """
+        Iterate through the Parquet dataset and yield DatasetRecord objects.
+
+        This method loads data directly via load_dataset, avoiding rate limits
+        from downloading many individual files.
+        """
+        _log.info("Loading dataset via load_dataset (Parquet mode)...")
+
+        ds = load_dataset(
+            self.dataset_source.repo_id,
+            split="train",
+        )
+
+        total_items = len(ds)
+        begin, end = self.get_effective_indices(total_items)
+        ds = ds.select(range(begin, end))
+        selected_items = len(ds)
+
+        self.log_dataset_stats(total_items, selected_items)
+
+        for item in tqdm(
+            ds, total=selected_items, ncols=128, desc="Processing Parquet records"
+        ):
+            filename = item["filename"]
+            gt_data = json.loads(item["ground_truth"])
+            pdf_bytes = item["pdf"]
+            page_image: PILImage.Image = item["image"]
+
+            # Create document and add page
+            true_doc = DoclingDocument(name=f"ground-truth {filename}")
+            page_image_rgb = page_image.convert("RGB")
+            page_width = float(page_image_rgb.width)
+            page_height = float(page_image_rgb.height)
+
+            page_item = PageItem(
+                page_no=1,
+                size=Size(width=page_width, height=page_height),
+            )
+            true_doc.pages[1] = page_item
+
+            # Update document with ground truth
+            true_doc = self.update_doc_with_gt(
+                gt=gt_data,
+                true_doc=true_doc,
+                page=true_doc.pages[1],
+                page_image=page_image_rgb,
+                page_width=page_width,
+                page_height=page_height,
+            )
+
+            # Extract images from the ground truth document
+            true_doc, true_pictures, true_page_images = extract_images(
+                document=true_doc,
+                pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
+            )
+
+            # Create PDF stream from bytes
+            pdf_stream = DocumentStream(
+                name=Path(filename).stem + ".pdf",
+                stream=BytesIO(pdf_bytes),
+            )
+
+            # Create dataset record
+            record = DatasetRecord(
+                doc_id=filename,
                 doc_hash=get_binhash(pdf_bytes),
                 ground_truth_doc=true_doc,
                 ground_truth_pictures=true_pictures,

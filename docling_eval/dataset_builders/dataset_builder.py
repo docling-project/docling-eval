@@ -192,23 +192,20 @@ class BaseEvaluationDatasetBuilder:
             Path to the retrieved dataset
         """
         if isinstance(self.dataset_source, HFSource):
+            download_kwargs = {
+                "repo_id": self.dataset_source.repo_id,
+                "revision": self.dataset_source.revision,
+                "repo_type": "dataset",
+                "token": self.dataset_source.hf_token,
+            }
+
             if not self.dataset_local_path:
-                path_str = snapshot_download(
-                    repo_id=self.dataset_source.repo_id,
-                    revision=self.dataset_source.revision,
-                    repo_type="dataset",
-                    token=self.dataset_source.hf_token,
-                )
+                path_str = snapshot_download(**download_kwargs)
                 path: Path = Path(path_str)
                 self.dataset_local_path = path
             else:
-                path_str = snapshot_download(
-                    repo_id=self.dataset_source.repo_id,
-                    revision=self.dataset_source.revision,
-                    repo_type="dataset",
-                    token=self.dataset_source.hf_token,
-                    local_dir=self.dataset_local_path,
-                )
+                download_kwargs["local_dir"] = self.dataset_local_path
+                path_str = snapshot_download(**download_kwargs)
                 path = Path(path_str)
         elif isinstance(self.dataset_source, Path):
             path = self.dataset_source
