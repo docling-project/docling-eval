@@ -14,6 +14,27 @@ from docling_eval.evaluators.pixel.pixel_types import (
 _log = logging.getLogger(__name__)
 
 
+def _popcount(x: np.ndarray) -> np.ndarray:
+    """
+    Count the number of 1-bits in each element of x.
+
+    Compatible with NumPy 1.x (falls back to vectorized bit counting)
+    and NumPy 2.0+ (uses np.bitwise_count).
+    """
+    if hasattr(np, "bitwise_count"):
+        # NumPy 2.0+
+        return np.bitwise_count(x)
+    else:
+        # NumPy 1.x fallback - vectorized popcount using lookup table
+        # Works for uint64 by processing 8 bits at a time
+        lookup = np.array([bin(i).count("1") for i in range(256)], dtype=np.uint8)
+        x = x.astype(np.uint64)
+        result = np.zeros_like(x, dtype=np.int64)
+        for shift in range(0, 64, 8):
+            result += lookup[(x >> shift) & 0xFF]
+        return result
+
+
 def unpackbits(x: np.ndarray, num_bits: int):
     r"""
     Unpack num_bits bits of each element of the numpy array x
@@ -246,10 +267,10 @@ class MultiLabelConfusionMatrix:
             )
 
             # [num_pixels_with_extra_preds,]
-            case2_gt_multiplier = np.bitwise_count(case2_gt_pixels)
+            case2_gt_multiplier = _popcount(case2_gt_pixels)
 
             # [num_pixels_with_extra_preds,]
-            case2_preds_divider = np.bitwise_count(case2_preds_pixels)
+            case2_preds_divider = _popcount(case2_preds_pixels)
 
             # [num_pixels_with_extra_preds, num_categories, num_categories]
             case2_gain = case2_gt_multiplier[:, None, None] * case2_gt_diagonals
@@ -292,7 +313,7 @@ class MultiLabelConfusionMatrix:
             case3_gt_preds_diff = unpackbits(case3_gt_preds_diff, num_categories)
 
             # [num_pixels_with_additional_gt_labels,]
-            case3_preds_divider = np.bitwise_count(case3_preds_pixels)
+            case3_preds_divider = _popcount(case3_preds_pixels)
 
             # [num_pixels_with_additional_gt_labels, num_categories, num_categories]
             case3_preds_diagonals = (
@@ -342,7 +363,7 @@ class MultiLabelConfusionMatrix:
             case4_preds_pixels ^ case4_gt_pixels
         ) & case4_preds_pixels
         if len(case4_preds_gt_diff) > 0:
-            case4_divider = np.bitwise_count(case4_preds_gt_diff)
+            case4_divider = _popcount(case4_preds_gt_diff)
             case4_preds_gt_diff = unpackbits(case4_preds_gt_diff, num_categories)
 
             # [num_pixels_with_mutual_gt_pred_deltas, num_categories]
@@ -525,7 +546,7 @@ class MultiLabelConfusionMatrix:
 
         # Full sum check
         full_sum = np.sum(row_sum)
-        expected_full_sum = np.sum(np.bitwise_count(selected_gt))
+        expected_full_sum = np.sum(_popcount(selected_gt))
         if full_sum != expected_full_sum:
             self._handle_error(f"{info}: Wrong contributions full sums")
 
