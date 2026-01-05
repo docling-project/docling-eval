@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
+from datasets import load_dataset
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -17,9 +18,10 @@ from docling_core.types.doc import (
     Size,
 )
 from docling_core.types.io import DocumentStream
+from huggingface_hub import snapshot_download
+from PIL import Image as PILImage
 from PIL.Image import Image
 from tqdm import tqdm
-from huggingface_hub import snapshot_download
 
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns
@@ -27,8 +29,6 @@ from docling_eval.dataset_builders.dataset_builder import (
     BaseEvaluationDatasetBuilder,
     HFSource,
 )
-from datasets import load_dataset
-from PIL import Image as PILImage
 from docling_eval.utils.utils import (
     add_pages_to_true_doc,
     convert_html_table_into_docling_tabledata,
@@ -151,6 +151,7 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         self.dataset_local_path.mkdir(parents=True, exist_ok=True)
 
         _log.info("Downloading files (raw mode)...")
+        assert isinstance(self.dataset_source, HFSource)
         snapshot_download(
             repo_id=self.dataset_source.repo_id,
             revision=self.dataset_source.revision,
@@ -477,6 +478,7 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         from downloading many individual files.
         """
         _log.info("Loading dataset via load_dataset (Parquet mode)...")
+        assert isinstance(self.dataset_source, HFSource)
 
         ds = load_dataset(
             self.dataset_source.repo_id,

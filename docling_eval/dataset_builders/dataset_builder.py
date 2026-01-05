@@ -204,7 +204,7 @@ class BaseEvaluationDatasetBuilder:
                 path: Path = Path(path_str)
                 self.dataset_local_path = path
             else:
-                download_kwargs["local_dir"] = self.dataset_local_path
+                download_kwargs["local_dir"] = str(self.dataset_local_path)
                 path_str = snapshot_download(**download_kwargs)
                 path = Path(path_str)
         elif isinstance(self.dataset_source, Path):
