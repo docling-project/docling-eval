@@ -274,9 +274,9 @@ class DatasetRecord(
                 img_buffer.seek(0)
                 data[gt_binary] = DocumentStream(name="image.png", stream=img_buffer)
 
-        # Backward compatibility: ensure tags field exists for old datasets
+        # Backward compatibility: ensure tags field exists for old datasets and is not None
         tags_alias = cls.get_field_alias("tags")
-        if tags_alias not in data:
+        if tags_alias not in data or data[tags_alias] is None:
             data[tags_alias] = []
 
         return data
