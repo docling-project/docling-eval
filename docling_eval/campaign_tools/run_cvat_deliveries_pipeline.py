@@ -15,7 +15,15 @@ from docling_eval.campaign_tools.cvat_evaluation_pipeline import (
     PREDICTION_PATTERN,
     CVATEvaluationPipeline,
 )
-from docling_eval.cvat_tools.models import CVATValidationRunReport
+
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.cvat_tools.models import CVATValidationRunReport
+except ImportError as e:
+    raise ImportError(
+        "CVAT deliveries pipeline requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[campaign-tools]"
+    ) from e
 
 _LOGGER = logging.getLogger(__name__)
 

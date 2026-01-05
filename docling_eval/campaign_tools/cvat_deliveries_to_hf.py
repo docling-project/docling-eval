@@ -15,7 +15,14 @@ from typing import Dict, Iterable, List, Sequence, Set
 import typer
 from docling_core.types.io import DocumentStream
 
-from docling_eval.datamodels.cvat_types import AnnotationOverview
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.datamodels.cvat_types import AnnotationOverview
+except ImportError as e:
+    raise ImportError(
+        "CVAT deliveries to HuggingFace requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[campaign-tools]"
+    ) from e
 from docling_eval.datamodels.dataset_record import DatasetRecord, FieldType
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
 from docling_eval.utils.utils import get_binhash

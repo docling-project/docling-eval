@@ -15,15 +15,22 @@ from docling_core.types.io import DocumentStream
 from PIL import Image
 from pydantic import ValidationError
 
-from docling_eval.datamodels.cvat_types import (
-    AnnotatedDoc,
-    AnnotatedImage,
-    AnnotationBBox,
-    AnnotationOverview,
-    BenchMarkDirs,
-    DocLinkLabel,
-    TableComponentLabel,
-)
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.datamodels.cvat_types import (
+        AnnotatedDoc,
+        AnnotatedImage,
+        AnnotationBBox,
+        AnnotationOverview,
+        BenchMarkDirs,
+        DocLinkLabel,
+        TableComponentLabel,
+    )
+except ImportError as e:
+    raise ImportError(
+        "CVAT preannotation builder requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[campaign-tools]"
+    ) from e
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

@@ -76,9 +76,12 @@ hyperscalers = [
     'google-oauth (>=1.0.1,<2.0.0)',
     'ibm-cos-sdk (>=2.1.40,<3.0.0)',
 ]
+campaign-tools = [
+    "docling-cvat-tools>=0.1.0",
+]
+# Deprecated: Use campaign-tools instead
 cvat_tools = [
-    "cvat-sdk>=2.40.0",
-    'ocrmac>=1.0.0; sys_platform == "darwin" and platform_machine == "arm64"',
+    "docling-cvat-tools>=0.1.0",
 ]
 
 [dependency-groups]
@@ -109,6 +112,7 @@ dev = [
 package = true
 
 [tool.uv.sources]
+docling-cvat-tools = { path = "../docling-campaign-tools", editable = true }
 
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]
@@ -138,6 +142,7 @@ module = [
     "docling.*",
     "docling_parse.*",
     "docling_ibm_models.*",
+    "docling_cvat_tools.*",
     "pypdfium2.*",
     "lxml.*",
     "distance.*",
