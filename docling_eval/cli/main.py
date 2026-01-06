@@ -352,7 +352,7 @@ def get_dataset_builder(
         if not CVAT_AVAILABLE:
             raise ImportError(
                 "CVAT benchmark requires docling-cvat-tools. "
-                "Install with: pip install docling-eval[campaign-tools]"
+                "Install with: pip install docling-eval[cvat_tools]"
             )
         assert dataset_source is not None
         return CvatDatasetBuilder(
@@ -1264,7 +1264,7 @@ if CVAT_AVAILABLE:
     ):
         """Create dataset ready to upload to CVAT starting from (ground-truth) dataset.
 
-        Requires docling-cvat-tools. Install with: pip install docling-eval[campaign-tools]
+        Requires docling-cvat-tools. Install with: pip install docling-eval[cvat_tools]
         """
         builder = CvatPreannotationBuilder(
             dataset_source=gt_dir,

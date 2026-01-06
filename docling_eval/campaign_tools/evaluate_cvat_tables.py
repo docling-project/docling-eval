@@ -19,7 +19,7 @@ try:
 except ImportError as e:
     raise ImportError(
         "CVAT table evaluation requires docling-cvat-tools. "
-        "Install with: pip install docling-eval[campaign-tools]"
+        "Install with: pip install docling-eval[cvat_tools]"
     ) from e
 
 DEFAULT_TABLE_PAIR_IOU: float = 0.20

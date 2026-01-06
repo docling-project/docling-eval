@@ -26,7 +26,7 @@ try:
     from docling_cvat_tools.cvat_tools.cvat_to_docling import convert_cvat_to_docling
 except ImportError:
     pytest.skip(
-        "CVAT tools not available - install docling-eval[campaign-tools]",
+        "CVAT tools not available - install docling-eval[cvat_tools]",
         allow_module_level=True,
     )
 from docling_eval.datamodels.types import (

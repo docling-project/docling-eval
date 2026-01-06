@@ -22,7 +22,7 @@ try:
 except ImportError as e:
     raise ImportError(
         "CVAT deliveries pipeline requires docling-cvat-tools. "
-        "Install with: pip install docling-eval[campaign-tools]"
+        "Install with: pip install docling-eval[cvat_tools]"
     ) from e
 
 _LOGGER = logging.getLogger(__name__)

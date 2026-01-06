@@ -76,12 +76,8 @@ hyperscalers = [
     'google-oauth (>=1.0.1,<2.0.0)',
     'ibm-cos-sdk (>=2.1.40,<3.0.0)',
 ]
-campaign-tools = [
-    "docling-cvat-tools>=0.1.0",
-]
-# Deprecated: Use campaign-tools instead
 cvat_tools = [
-    "docling-cvat-tools>=0.1.0",
+    "docling-cvat-tools>=0.0.1",
 ]
 
 [dependency-groups]
@@ -110,9 +106,6 @@ dev = [
 
 [tool.uv]
 package = true
-
-[tool.uv.sources]
-docling-cvat-tools = { path = "../docling-campaign-tools", editable = true }
 
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]

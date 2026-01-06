@@ -28,7 +28,7 @@ try:
 except ImportError as e:
     raise ImportError(
         "CVAT dataset builder requires docling-cvat-tools. "
-        "Install with: pip install docling-eval[campaign-tools]"
+        "Install with: pip install docling-eval[cvat_tools]"
     ) from e
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns, EvaluationModality

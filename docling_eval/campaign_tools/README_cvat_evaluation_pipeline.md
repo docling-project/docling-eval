@@ -193,12 +193,12 @@ This utility is designed to work with the existing docling-eval framework and us
 
 ## Installation
 
-To use this pipeline, you need to install the optional `campaign-tools` dependencies:
+To use this pipeline, you need to install the optional `cvat_tools` dependencies:
 
 ```bash
-pip install docling-eval[campaign-tools]
+pip install docling-eval[cvat_tools]
 # or with uv:
-uv pip install docling-eval[campaign-tools]
+uv pip install docling-eval[cvat_tools]
 ```
 
 ## Tips for Best Results
