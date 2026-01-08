@@ -68,6 +68,14 @@ class OCREvaluator(BaseEvaluator):
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> OcrDatasetEvaluationResult:
         r""" """
+        if external_document_loader is not None:
+            raise ValueError(
+                "OCREvaluator does not support external predictions. "
+                "This evaluator works with segmented pages (GROUNDTRUTH_SEGMENTED_PAGES and PREDICTED_SEGMENTED_PAGES) "
+                "embedded in the dataset parquet columns, not with external DoclingDocument files. "
+                "Please run without external_predictions_path."
+            )
+
         self._begin_message(ds_path, split, external_document_loader)
 
         dataset_path = ds_path

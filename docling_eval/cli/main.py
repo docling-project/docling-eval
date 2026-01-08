@@ -733,7 +733,7 @@ def evaluate(
             evaluation = timings_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
 
             with open(save_fn, "w") as fd:
@@ -790,7 +790,7 @@ def evaluate(
             evaluation = doc_struct_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
 
             with open(save_fn, "w") as fd:
@@ -798,7 +798,7 @@ def evaluate(
             evaluations.append(evaluation)
 
         elif mode == EvaluationModality.OCR:
-            if not external_predictions_path:
+            if external_document_loader is None:
                 if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
                     text_unit = TextCellUnit.LINE
                 else:
@@ -815,7 +815,7 @@ def evaluate(
                 evaluation = ocr_evaluator(  # type: ignore
                     idir,
                     split=split,
-                    external_predictions_path=external_predictions_path,
+                    external_document_loader=external_document_loader,
                 )
 
                 with open(save_fn, "w") as fd:
@@ -831,7 +831,7 @@ def evaluate(
             evaluation = readingorder_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
 
             with open(save_fn, "w") as fd:
@@ -867,7 +867,7 @@ def evaluate(
             evaluation = bbox_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
             with open(save_fn, "w") as fd:
                 json.dump(
@@ -884,7 +884,7 @@ def evaluate(
             evaluation = keyvalue_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
             with open(save_fn, "w") as fd:
                 json.dump(

@@ -86,6 +86,14 @@ class ReadingOrderEvaluator(BaseEvaluator):
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetReadingOrderEvaluation:
         r""" """
+        if external_document_loader is not None:
+            raise ValueError(
+                "ReadingOrderEvaluator does not support external predictions. "
+                "This evaluator only evaluates reading order on ground truth documents "
+                "using an internal reading order model for predictions, not external DoclingDocument files. "
+                "Please run without external_predictions_path."
+            )
+
         self._begin_message(ds_path, split, external_document_loader)
 
         parquet_files = str(ds_path / split / "*.parquet")
