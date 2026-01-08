@@ -101,3 +101,9 @@ class DoclingDPBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             )
 
             yield record
+
+            # Close PIL images to prevent memory leaks
+            for img in page_images:
+                img.close()
+            for img in pictures:
+                img.close()

@@ -1,4 +1,5 @@
 import json
+import logging
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
@@ -16,6 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 from docling_eval.datamodels.types import EvaluationModality, PredictionFormats
 from docling_eval.utils.utils import extract_images
+
+_log = logging.getLogger(__name__)
 
 seg_adapter = TypeAdapter(Dict[int, SegmentedPage])
 
@@ -151,6 +154,10 @@ class DatasetRecord(
         return pictures, page_images
 
     def as_record_dict(self):
+        # Convert images to bytes format BEFORE closing them
+        gt_pictures_bytes = self._images_to_bytes(self.ground_truth_pictures)
+        gt_page_images_bytes = self._images_to_bytes(self.ground_truth_page_images)
+
         record = {
             self.get_field_alias("doc_id"): self.doc_id,
             self.get_field_alias("doc_path"): str(self.doc_path),
@@ -158,13 +165,11 @@ class DatasetRecord(
             self.get_field_alias("ground_truth_doc"): json.dumps(
                 self.ground_truth_doc.export_to_dict()
             ),
-            self.get_field_alias("ground_truth_pictures"): self.ground_truth_pictures,
+            self.get_field_alias("ground_truth_pictures"): gt_pictures_bytes,
             self.get_field_alias("ground_truth_segmented_pages"): seg_adapter.dump_json(
                 self.ground_truth_segmented_pages
             ).decode("utf-8"),
-            self.get_field_alias(
-                "ground_truth_page_images"
-            ): self.ground_truth_page_images,
+            self.get_field_alias("ground_truth_page_images"): gt_page_images_bytes,
             self.get_field_alias("mime_type"): self.mime_type,
             self.get_field_alias("modalities"): list(
                 [m.value for m in self.modalities]
@@ -181,7 +186,36 @@ class DatasetRecord(
         else:
             record.update({self.get_field_alias("original"): None})
 
+        # auto-close PIL Images after serialization to prevent memory leaks
+        self._close_images()
         return record
+
+    @staticmethod
+    def _pil_to_bytes(img: PIL.Image.Image) -> bytes:
+        """Convert PIL image to PNG bytes."""
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        return buffered.getvalue()
+
+    def _images_to_bytes(self, images: List[PIL.Image.Image]) -> List[dict]:
+        """Convert list of PIL Images to HuggingFace-compatible bytes format."""
+        return [{"bytes": self._pil_to_bytes(img), "path": None} for img in images]
+
+    @staticmethod
+    def _close_image_list(images: List[PIL.Image.Image]) -> None:
+        """Close all PIL Images in a list, logging any errors at debug level."""
+        for img in images:
+            try:
+                img.close()
+            except Exception as e:
+                _log.debug(f"Failed to close PIL image: {e}")
+
+    def _close_images(self) -> None:
+        """Close ground truth PIL Images to prevent memory leaks."""
+        self._close_image_list(self.ground_truth_page_images)
+        self._close_image_list(self.ground_truth_pictures)
+        self.ground_truth_page_images = []
+        self.ground_truth_pictures = []
 
     @model_validator(mode="after")
     def validate_images(self) -> "DatasetRecord":
@@ -240,9 +274,9 @@ class DatasetRecord(
                 img_buffer.seek(0)
                 data[gt_binary] = DocumentStream(name="image.png", stream=img_buffer)
 
-        # Backward compatibility: ensure tags field exists for old datasets
+        # Backward compatibility: ensure tags field exists for old datasets and is not None
         tags_alias = cls.get_field_alias("tags")
-        if tags_alias not in data:
+        if tags_alias not in data or data[tags_alias] is None:
             data[tags_alias] = []
 
         return data
@@ -317,6 +351,10 @@ class DatasetRecordWithPrediction(DatasetRecord):
         )
 
         if self.predicted_doc is not None:
+            # Convert prediction images to bytes BEFORE closing
+            pred_pictures_bytes = self._images_to_bytes(self.predicted_pictures)
+            pred_page_images_bytes = self._images_to_bytes(self.predicted_page_images)
+
             record.update(
                 {
                     self.get_field_alias("predicted_doc"): json.dumps(
@@ -327,17 +365,26 @@ class DatasetRecordWithPrediction(DatasetRecord):
                     ): seg_adapter.dump_json(self.predicted_segmented_pages).decode(
                         "utf-8"
                     ),
-                    self.get_field_alias("predicted_pictures"): self.predicted_pictures,
+                    self.get_field_alias("predicted_pictures"): pred_pictures_bytes,
                     self.get_field_alias(
                         "predicted_page_images"
-                    ): self.predicted_page_images,
+                    ): pred_page_images_bytes,
                     self.get_field_alias("original_prediction"): (
                         self.original_prediction
                     ),
                 }
             )
 
+        # Close prediction images (parent already closed ground truth images)
+        self._close_prediction_images()
         return record
+
+    def _close_prediction_images(self) -> None:
+        """Close prediction PIL Images to prevent memory leaks."""
+        self._close_image_list(self.predicted_page_images)
+        self._close_image_list(self.predicted_pictures)
+        self.predicted_page_images = []
+        self.predicted_pictures = []
 
     @model_validator(mode="after")
     def validate_images(self) -> "DatasetRecordWithPrediction":

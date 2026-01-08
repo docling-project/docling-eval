@@ -159,82 +159,89 @@ class TableDatasetBuilder(BaseEvaluationDatasetBuilder):
                 filename = item["filename"]
                 table_image = item["image"]
 
-                page_tokens = self.create_page_tokens(
-                    data=item["cells"],
-                    height=table_image.height,
-                    width=table_image.width,
-                )
+                try:
+                    page_tokens = self.create_page_tokens(
+                        data=item["cells"],
+                        height=table_image.height,
+                        width=table_image.width,
+                    )
 
-                # Create ground truth document
-                true_doc = DoclingDocument(name=f"ground-truth {filename}")
+                    # Create ground truth document
+                    true_doc = DoclingDocument(name=f"ground-truth {filename}")
 
-                # Add page to document
-                page_index = 1
-                image_ref = ImageRef(
-                    mimetype="image/png",
-                    dpi=72,
-                    size=Size(
-                        width=float(table_image.width), height=float(table_image.height)
-                    ),
-                    uri=from_pil_to_base64uri(table_image),
-                )
-                page_item = PageItem(
-                    page_no=page_index,
-                    size=Size(
-                        width=float(table_image.width), height=float(table_image.height)
-                    ),
-                    image=image_ref,
-                )
-                true_doc.pages[1] = page_item
+                    # Add page to document
+                    page_index = 1
+                    image_ref = ImageRef(
+                        mimetype="image/png",
+                        dpi=72,
+                        size=Size(
+                            width=float(table_image.width),
+                            height=float(table_image.height),
+                        ),
+                        uri=from_pil_to_base64uri(table_image),
+                    )
+                    page_item = PageItem(
+                        page_no=page_index,
+                        size=Size(
+                            width=float(table_image.width),
+                            height=float(table_image.height),
+                        ),
+                        image=image_ref,
+                    )
+                    true_doc.pages[1] = page_item
 
-                # Create table data
-                html = "<table>" + "".join(item["html"]) + "</table>"
-                table_data = convert_html_table_into_docling_tabledata(
-                    html, text_cells=item["cells"][0]
-                )
+                    # Create table data
+                    html = "<table>" + "".join(item["html"]) + "</table>"
+                    table_data = convert_html_table_into_docling_tabledata(
+                        html, text_cells=item["cells"][0]
+                    )
 
-                for tbl_cell, page_token in zip(
-                    table_data.table_cells, page_tokens.tokens, strict=True
-                ):
-                    tbl_cell.bbox = page_token.bbox
+                    for tbl_cell, page_token in zip(
+                        table_data.table_cells, page_tokens.tokens, strict=True
+                    ):
+                        tbl_cell.bbox = page_token.bbox
 
-                # Create bounding box for table
-                l = 0.0
-                b = 0.0
-                r = table_image.width
-                t = table_image.height
-                if "table_bbox" in item:
-                    l = item["table_bbox"][0]
-                    b = table_image.height - item["table_bbox"][3]
-                    r = item["table_bbox"][2]
-                    t = table_image.height - item["table_bbox"][1]
+                    # Create bounding box for table
+                    l = 0.0
+                    b = 0.0
+                    r = table_image.width
+                    t = table_image.height
+                    if "table_bbox" in item:
+                        l = item["table_bbox"][0]
+                        b = table_image.height - item["table_bbox"][3]
+                        r = item["table_bbox"][2]
+                        t = table_image.height - item["table_bbox"][1]
 
-                bbox = BoundingBox(
-                    l=l,
-                    r=r,
-                    b=b,
-                    t=t,
-                    coord_origin=CoordOrigin.BOTTOMLEFT,
-                )
+                    bbox = BoundingBox(
+                        l=l,
+                        r=r,
+                        b=b,
+                        t=t,
+                        coord_origin=CoordOrigin.BOTTOMLEFT,
+                    )
 
-                # Create provenance
-                prov = ProvenanceItem(page_no=page_index, bbox=bbox, charspan=(0, 0))
+                    # Create provenance
+                    prov = ProvenanceItem(
+                        page_no=page_index, bbox=bbox, charspan=(0, 0)
+                    )
 
-                # Add table to document
-                true_doc.add_table(data=table_data, caption=None, prov=prov)
+                    # Add table to document
+                    true_doc.add_table(data=table_data, caption=None, prov=prov)
 
-                # Extract images
-                true_doc, true_pictures, true_page_images = extract_images(
-                    document=true_doc,
-                    pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
-                    page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
-                )
+                    # Extract images
+                    true_doc, true_pictures, true_page_images = extract_images(
+                        document=true_doc,
+                        pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                        page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
+                    )
 
-                # Create dataset record
-                with io.BytesIO() as img_byte_stream:
-                    table_image.save(img_byte_stream, format="PNG")
-                    img_byte_stream.seek(0)
-                    img_bytes = img_byte_stream.read()
+                    # Create dataset record
+                    with io.BytesIO() as img_byte_stream:
+                        table_image.save(img_byte_stream, format="PNG")
+                        img_byte_stream.seek(0)
+                        img_bytes = img_byte_stream.read()
+                finally:
+                    table_image.close()
 
                 record = DatasetRecord(
                     doc_id=str(Path(filename).stem),
