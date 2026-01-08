@@ -77,8 +77,7 @@ hyperscalers = [
     'ibm-cos-sdk (>=2.1.40,<3.0.0)',
 ]
 cvat_tools = [
-    "cvat-sdk>=2.40.0",
-    'ocrmac>=1.0.0; sys_platform == "darwin" and platform_machine == "arm64"',
+    "docling-cvat-tools>=0.0.1",
 ]
 
 [dependency-groups]
@@ -108,8 +107,6 @@ dev = [
 [tool.uv]
 package = true
 
-[tool.uv.sources]
-
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]
 
@@ -138,6 +135,7 @@ module = [
     "docling.*",
     "docling_parse.*",
     "docling_ibm_models.*",
+    "docling_cvat_tools.*",
     "pypdfium2.*",
     "lxml.*",
     "distance.*",

@@ -51,10 +51,20 @@ from docling_eval.datamodels.types import (
     PredictionFormats,
     PredictionProviderType,
 )
-from docling_eval.dataset_builders.cvat_dataset_builder import CvatDatasetBuilder
-from docling_eval.dataset_builders.cvat_preannotation_builder import (
-    CvatPreannotationBuilder,
-)
+
+# CVAT dataset builders are in docling-eval, but cvat_tools are optional - provided by docling-cvat-tools
+# Import dataset builders conditionally since they require cvat_tools
+try:
+    from docling_eval.dataset_builders.cvat_dataset_builder import CvatDatasetBuilder
+    from docling_eval.dataset_builders.cvat_preannotation_builder import (
+        CvatPreannotationBuilder,
+    )
+
+    CVAT_AVAILABLE = True
+except ImportError:
+    CVAT_AVAILABLE = False
+    CvatDatasetBuilder = None  # type: ignore
+    CvatPreannotationBuilder = None  # type: ignore
 from docling_eval.dataset_builders.doclaynet_v1_builder import DocLayNetV1DatasetBuilder
 from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2DatasetBuilder
 from docling_eval.dataset_builders.doclingdpbench_builder import (
@@ -339,6 +349,11 @@ def get_dataset_builder(
         return DocVQADatasetBuilder(**common_params)  # type: ignore
 
     elif benchmark == BenchMarkNames.CVAT:
+        if not CVAT_AVAILABLE:
+            raise ImportError(
+                "CVAT benchmark requires docling-cvat-tools. "
+                "Install with: pip install docling-eval[cvat_tools]"
+            )
         assert dataset_source is not None
         return CvatDatasetBuilder(
             name="CVAT", dataset_source=dataset_source, target=target, split=split
@@ -718,7 +733,7 @@ def evaluate(
             evaluation = timings_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
 
             with open(save_fn, "w") as fd:
@@ -775,7 +790,7 @@ def evaluate(
             evaluation = doc_struct_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
 
             with open(save_fn, "w") as fd:
@@ -783,7 +798,7 @@ def evaluate(
             evaluations.append(evaluation)
 
         elif mode == EvaluationModality.OCR:
-            if not external_predictions_path:
+            if external_document_loader is None:
                 if benchmark in [BenchMarkNames.XFUND, BenchMarkNames.PIXPARSEIDL]:
                     text_unit = TextCellUnit.LINE
                 else:
@@ -800,7 +815,7 @@ def evaluate(
                 evaluation = ocr_evaluator(  # type: ignore
                     idir,
                     split=split,
-                    external_predictions_path=external_predictions_path,
+                    external_document_loader=external_document_loader,
                 )
 
                 with open(save_fn, "w") as fd:
@@ -816,7 +831,7 @@ def evaluate(
             evaluation = readingorder_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
 
             with open(save_fn, "w") as fd:
@@ -852,7 +867,7 @@ def evaluate(
             evaluation = bbox_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
             with open(save_fn, "w") as fd:
                 json.dump(
@@ -869,7 +884,7 @@ def evaluate(
             evaluation = keyvalue_evaluator(  # type: ignore
                 idir,
                 split=split,
-                external_predictions_path=external_predictions_path,
+                external_document_loader=external_document_loader,
             )
             with open(save_fn, "w") as fd:
                 json.dump(
@@ -1232,28 +1247,33 @@ def create_sliced_pdfs(
             _log.error(f"Error processing {pdf_path}: {e}")
 
 
-@app.command()
-def create_cvat(
-    output_dir: Annotated[Path, typer.Option(help="Output directory")],
-    gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
-    bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
-    use_predictions: Annotated[bool, typer.Option(help="use predictions")] = False,
-    sliding_window: Annotated[
-        int,
-        typer.Option(
-            help="Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)"
-        ),
-    ] = 2,
-):
-    """Create dataset ready to upload to CVAT starting from (ground-truth) dataset."""
-    builder = CvatPreannotationBuilder(
-        dataset_source=gt_dir,
-        target=output_dir,
-        bucket_size=bucket_size,
-        use_predictions=use_predictions,
-        sliding_window=sliding_window,
-    )
-    builder.prepare_for_annotation()
+if CVAT_AVAILABLE:
+
+    @app.command()
+    def create_cvat(
+        output_dir: Annotated[Path, typer.Option(help="Output directory")],
+        gt_dir: Annotated[Path, typer.Option(help="Dataset source path")],
+        bucket_size: Annotated[int, typer.Option(help="Size of CVAT tasks")] = 20,
+        use_predictions: Annotated[bool, typer.Option(help="use predictions")] = False,
+        sliding_window: Annotated[
+            int,
+            typer.Option(
+                help="Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)"
+            ),
+        ] = 2,
+    ):
+        """Create dataset ready to upload to CVAT starting from (ground-truth) dataset.
+
+        Requires docling-cvat-tools. Install with: pip install docling-eval[cvat_tools]
+        """
+        builder = CvatPreannotationBuilder(
+            dataset_source=gt_dir,
+            target=output_dir,
+            bucket_size=bucket_size,
+            use_predictions=use_predictions,
+            sliding_window=sliding_window,
+        )
+        builder.prepare_for_annotation()
 
 
 @app.command()

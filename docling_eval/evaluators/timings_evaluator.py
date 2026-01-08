@@ -55,6 +55,13 @@ class TimingsEvaluator(BaseEvaluator):
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetTimingsEvaluation:
+        if external_document_loader is not None:
+            raise ValueError(
+                "TimingsEvaluator does not support external predictions. "
+                "This evaluator works with timing metadata embedded in the dataset predictions, "
+                "not with external DoclingDocument files. Please run without external_predictions_path."
+            )
+
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
         rejected_samples: Dict[EvaluationRejectionType, int] = {

@@ -20,7 +20,15 @@ import pytest
 from dotenv import load_dotenv
 
 from docling_eval.cli.main import evaluate, get_prediction_provider
-from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_to_docling
+
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.cvat_tools.cvat_to_docling import convert_cvat_to_docling
+except ImportError:
+    pytest.skip(
+        "CVAT tools not available - install docling-eval[cvat_tools]",
+        allow_module_level=True,
+    )
 from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,

@@ -32,20 +32,33 @@ from docling_eval.campaign_tools.merge_cvat_annotations import (
     extract_image_tags,
 )
 from docling_eval.cli.main import evaluate
-from docling_eval.cvat_tools.cvat_to_docling import convert_cvat_folder_to_docling
-from docling_eval.cvat_tools.folder_models import CVATFolderStructure
-from docling_eval.cvat_tools.folder_parser import (
-    find_xml_files_by_pattern,
-    parse_cvat_folder,
-)
-from docling_eval.cvat_tools.models import (
-    CVATValidationError,
-    CVATValidationReport,
-    CVATValidationRunReport,
-    ValidationSeverity,
-)
-from docling_eval.cvat_tools.parser import get_all_images_from_cvat_xml, parse_cvat_file
-from docling_eval.cvat_tools.validator import Validator, validate_cvat_sample
+
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.cvat_tools.cvat_to_docling import (
+        convert_cvat_folder_to_docling,
+    )
+    from docling_cvat_tools.cvat_tools.folder_models import CVATFolderStructure
+    from docling_cvat_tools.cvat_tools.folder_parser import (
+        find_xml_files_by_pattern,
+        parse_cvat_folder,
+    )
+    from docling_cvat_tools.cvat_tools.models import (
+        CVATValidationError,
+        CVATValidationReport,
+        CVATValidationRunReport,
+        ValidationSeverity,
+    )
+    from docling_cvat_tools.cvat_tools.parser import (
+        get_all_images_from_cvat_xml,
+        parse_cvat_file,
+    )
+    from docling_cvat_tools.cvat_tools.validator import Validator, validate_cvat_sample
+except ImportError as e:
+    raise ImportError(
+        "CVAT evaluation pipeline requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[cvat_tools]"
+    ) from e
 from docling_eval.datamodels.types import (
     BenchMarkNames,
     EvaluationModality,
