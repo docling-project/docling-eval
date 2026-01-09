@@ -14,12 +14,22 @@ from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm
 
-from docling_eval.cvat_tools.cvat_to_docling import (
-    CVATConversionResult,
-    convert_cvat_folder_to_docling,
-)
-from docling_eval.cvat_tools.folder_parser import parse_cvat_folder
-from docling_eval.datamodels.cvat_types import AnnotationOverview, BenchMarkDirs
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.cvat_tools.cvat_to_docling import (
+        CVATConversionResult,
+        convert_cvat_folder_to_docling,
+    )
+    from docling_cvat_tools.cvat_tools.folder_parser import parse_cvat_folder
+    from docling_cvat_tools.datamodels.cvat_types import (
+        AnnotationOverview,
+        BenchMarkDirs,
+    )
+except ImportError as e:
+    raise ImportError(
+        "CVAT dataset builder requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[cvat_tools]"
+    ) from e
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns, EvaluationModality
 from docling_eval.dataset_builders.dataset_builder import BaseEvaluationDatasetBuilder

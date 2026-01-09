@@ -17,7 +17,14 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import List, Set
 
-from docling_eval.cvat_tools.parser import get_all_images_from_cvat_xml
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.cvat_tools.parser import get_all_images_from_cvat_xml
+except ImportError as e:
+    raise ImportError(
+        "CVAT image collection requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[cvat_tools]"
+    ) from e
 
 
 def extract_image_filenames(xml_path: Path) -> Set[str]:
@@ -49,7 +56,7 @@ def find_images_in_subdirectories(
         processed_folders.add(resolved_folder)
 
         try:
-            from docling_eval.cvat_tools.folder_parser import parse_cvat_folder
+            from docling_cvat_tools.cvat_tools.folder_parser import parse_cvat_folder
 
             folder_structure = parse_cvat_folder(folder_path)
         except Exception:

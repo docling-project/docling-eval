@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
 
-from docling_eval.datamodels.cvat_types import AnnotatedImage, AnnotationOverview
+if TYPE_CHECKING:
+    from docling_cvat_tools.datamodels.cvat_types import (
+        AnnotatedImage,
+        AnnotationOverview,
+    )
 
 
 def _canonical_page_id(doc_hash: str, page_no: int) -> str:
@@ -41,7 +45,13 @@ class CvatPageMapping:
         self._pages_by_image_name = pages_by_image_name
 
     @classmethod
-    def from_overview(cls, overview: AnnotationOverview) -> "CvatPageMapping":
+    def from_overview(cls, overview: "AnnotationOverview") -> "CvatPageMapping":
+        # Import only when this method is called
+        from docling_cvat_tools.datamodels.cvat_types import (
+            AnnotatedImage,
+            AnnotationOverview,
+        )
+
         pages_by_doc_hash: Dict[str, List[PageRef]] = {}
         pages_by_doc_name: Dict[str, List[PageRef]] = {}
         pages_by_image_name: Dict[str, PageRef] = {}
@@ -86,6 +96,9 @@ class CvatPageMapping:
 
     @classmethod
     def from_overview_path(cls, overview_path: Path) -> "CvatPageMapping":
+        # Import only when this method is called
+        from docling_cvat_tools.datamodels.cvat_types import AnnotationOverview
+
         overview = AnnotationOverview.load_from_json(overview_path)
         return cls.from_overview(overview)
 

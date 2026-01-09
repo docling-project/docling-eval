@@ -193,13 +193,10 @@ class LayoutEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetLayoutEvaluation:
-        logging.info("Loading the split '%s' from: '%s'", split, ds_path)
-
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
-        if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
+        r""" """
+        self._begin_message(ds_path, split, external_document_loader)
 
         # Load the dataset
         split_path = str(ds_path / split / "*.parquet")
@@ -216,7 +213,7 @@ class LayoutEvaluator(BaseEvaluator):
             pred_labels,
             intersection_labels,
             union_labels,
-        ) = self._find_intersecting_labels(ds_selection, ext_docdoc_loader)
+        ) = self._find_intersecting_labels(ds_selection, external_document_loader)
         true_labels_str = ", ".join(sorted(true_labels))
         logging.info(f"True labels: {true_labels_str}")
 
@@ -283,7 +280,7 @@ class LayoutEvaluator(BaseEvaluator):
             doc_id = data_record.doc_id
 
             if (
-                ext_docdoc_loader is None
+                external_document_loader is None
                 and data_record.status not in self._accepted_status
             ):
                 _log.error(
@@ -295,7 +292,7 @@ class LayoutEvaluator(BaseEvaluator):
             true_doc = data_record.ground_truth_doc
 
             # Get the predicted document
-            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
+            pred_doc = self._get_pred_doc(data_record, external_document_loader)
             if not pred_doc:
                 _log.error("There is no prediction for doc_id=%s", doc_id)
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
@@ -599,14 +596,14 @@ class LayoutEvaluator(BaseEvaluator):
     def _get_pred_doc(
         self,
         data_record: DatasetRecordWithPrediction,
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> Optional[DoclingDocument]:
         r"""
         Get the predicted DoclingDocument
         """
         pred_doc = None
-        if ext_docdoc_loader is not None:
-            pred_doc = ext_docdoc_loader(data_record)
+        if external_document_loader is not None:
+            pred_doc = external_document_loader.get(data_record)
             return pred_doc
 
         for prediction_format in self._prediction_sources:
@@ -820,7 +817,7 @@ class LayoutEvaluator(BaseEvaluator):
     def _find_intersecting_labels(
         self,
         ds: Dataset,
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> tuple[dict[str, int], dict[str, int], list[DocItemLabel], list[DocItemLabel]]:
         r"""
         Compute counters per labels for the groundtruth, prediciton and their intersections
@@ -838,7 +835,7 @@ class LayoutEvaluator(BaseEvaluator):
         for i, data in enumerate(ds):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             true_doc = data_record.ground_truth_doc
-            pred_doc = self._get_pred_doc(data_record, ext_docdoc_loader)
+            pred_doc = self._get_pred_doc(data_record, external_document_loader)
 
             for item, level in true_doc.iterate_items(
                 included_content_layers={

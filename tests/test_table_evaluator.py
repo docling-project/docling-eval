@@ -326,11 +326,16 @@ def test_table_evaluator():
 )
 def test_table_evaluator_external_predictions():
     r"""Testing the evaluator with external predictions"""
+    from docling_eval.utils.external_docling_document_loader import (
+        ExternalDoclingDocumentLoader,
+    )
+
     eval = TableEvaluator()
     gt_path = Path("scratch/DPBench/gt_dataset")
     preds_path = Path("scratch/DPBench/predicted_documents/json")
 
-    v = eval(gt_path, external_predictions_path=preds_path)
+    loader = ExternalDoclingDocumentLoader(preds_path)
+    v = eval(gt_path, external_document_loader=loader)
     assert v is not None
 
 
