@@ -72,10 +72,19 @@ def compute_nltk_scores(true_txt: str, pred_txt: str) -> dict[str, float]:
     return metrics
 
 
-def evaluate_page(bleu_eval, true_md: str, pred_md: str) -> dict[str, float]:
+def evaluate_page(
+    bleu_eval, true_md: str, pred_md: str, doc_id: str
+) -> dict[str, float | str | dict[str, float]]:
     r"""Compute the bleu and the nltk scores"""
-    scores = compute_nltk_scores(true_md, pred_md)
-    scores["bleu"] = compute_bleu_score(bleu_eval, true_md, pred_md)
+    metrics = compute_nltk_scores(true_md, pred_md)
+    metrics["bleu"] = compute_bleu_score(bleu_eval, true_md, pred_md)
+
+    scores: dict[str, float | str | dict[str, float]] = {
+        "doc_id": doc_id,
+        "true_md": true_md,
+        "pred_md": pred_md,
+        "metrics": metrics,
+    }
     return scores
 
 
@@ -232,7 +241,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
                 if true_md != "" and pred_md != "":
                     futures.append(
                         executor.submit(
-                            evaluate_page, self._bleu_eval, true_md, pred_md
+                            evaluate_page, self._bleu_eval, true_md, pred_md, doc_id
                         )
                     )
 
@@ -244,27 +253,32 @@ class MarkdownTextEvaluator(BaseEvaluator):
                 ncols=120,
                 total=len(futures),
             ):
-                doc_metrics = future.result()
+                doc_evaluations: dict[str, float | str | dict[str, float]] = (
+                    future.result()
+                )
+                metrics: dict[str, float] = doc_evaluations["metrics"]  # type: ignore
 
                 # Collect metrics across pages
-                for score_name, score in doc_metrics.items():
+                for score_name, score in metrics.items():
                     ds_metrics[score_name].append(score)
 
                 md_evaluation = PageMarkdownEvaluation(
-                    doc_id=doc_id,
-                    true_md=true_md,
-                    pred_md=pred_md,
-                    bleu=doc_metrics["bleu"],
-                    f1_score=doc_metrics["f1_score"],
-                    precision=doc_metrics["precision"],
-                    recall=doc_metrics["recall"],
-                    edit_distance=doc_metrics["edit_distance"],
-                    meteor=doc_metrics["meteor"],
+                    doc_id=doc_evaluations["doc_id"],  # type: ignore
+                    true_md=doc_evaluations["true_md"],  # type: ignore
+                    pred_md=doc_evaluations["pred_md"],  # type: ignore
+                    bleu=metrics["bleu"],
+                    f1_score=metrics["f1_score"],
+                    precision=metrics["precision"],
+                    recall=metrics["recall"],
+                    edit_distance=metrics["edit_distance"],
+                    meteor=metrics["meteor"],
                 )
                 evaluations.append(md_evaluation)
 
                 if self._intermediate_evaluations_path:
-                    self.save_intermediate_evaluations("MD", i, doc_id, evaluations)
+                    self.save_intermediate_evaluations(
+                        "MD", i, doc_evaluations["doc_id"], evaluations  # type: ignore
+                    )
 
         ds_md_evalutions = DatasetMarkdownEvaluation(
             evaluated_samples=len(evaluations),
