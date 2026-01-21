@@ -59,6 +59,10 @@ def test_failed_conversions():
 )
 def test_layout_evaluator_external_predictions():
     r"""Testing the evaluator with external predictions"""
+    from docling_eval.utils.external_docling_document_loader import (
+        ExternalDoclingDocumentLoader,
+    )
+
     eval = LayoutEvaluator()
     gt_path = Path("scratch/DPBench/gt_dataset")
 
@@ -68,7 +72,8 @@ def test_layout_evaluator_external_predictions():
         Path("scratch/DPBench/predicted_documents/yaml"),
     ]
     for pred_path in preds_path:
-        v = eval(gt_path, external_predictions_path=pred_path)
+        loader = ExternalDoclingDocumentLoader(pred_path)
+        v = eval(gt_path, external_document_loader=loader)
         assert v is not None
 
 

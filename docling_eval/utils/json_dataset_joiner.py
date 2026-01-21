@@ -143,18 +143,34 @@ def join_docling_json_datasets(
                     continue
                 raise ValueError(message)
 
-            prediction_doc, pictures, page_images = _load_prediction_json(
-                prediction_record
-            )
+            try:
+                prediction_doc, pictures, page_images = _load_prediction_json(
+                    prediction_record
+                )
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.error(
+                    "Error loading prediction JSON for document %s: %s. Skipping this document.",
+                    gt_record.doc_id,
+                    exc,
+                )
+                continue
 
-            joined = _build_prediction_record(
-                gt_record,
-                prediction_doc,
-                pictures,
-                page_images,
-                prediction_format=prediction_format,
-                predictor_info=predictor_info,
-            )
+            try:
+                joined = _build_prediction_record(
+                    gt_record,
+                    prediction_doc,
+                    pictures,
+                    page_images,
+                    prediction_format=prediction_format,
+                    predictor_info=predictor_info,
+                )
+            except Exception as exc:  # noqa: BLE001
+                _LOGGER.error(
+                    "Error building prediction record for document %s: %s. Skipping this document.",
+                    gt_record.doc_id,
+                    exc,
+                )
+                continue
 
             if do_visualization and visualizations_dir is not None:
                 try:

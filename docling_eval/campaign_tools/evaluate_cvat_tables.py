@@ -11,9 +11,16 @@ from docling_core.types.doc.base import BoundingBox
 from docling_core.types.doc.labels import DocItemLabel
 from pydantic import BaseModel, Field
 
-from docling_eval.cvat_tools.document import DocumentStructure
-from docling_eval.cvat_tools.models import CVATElement, TableStructLabel
-from docling_eval.cvat_tools.parser import ParsedCVATFile, parse_cvat_file
+# CVAT tools are optional - provided by docling-cvat-tools
+try:
+    from docling_cvat_tools.cvat_tools.document import DocumentStructure
+    from docling_cvat_tools.cvat_tools.models import CVATElement, TableStructLabel
+    from docling_cvat_tools.cvat_tools.parser import ParsedCVATFile, parse_cvat_file
+except ImportError as e:
+    raise ImportError(
+        "CVAT table evaluation requires docling-cvat-tools. "
+        "Install with: pip install docling-eval[cvat_tools]"
+    ) from e
 
 DEFAULT_TABLE_PAIR_IOU: float = 0.20
 DEFAULT_CONTAINMENT_THRESH: float = 0.50

@@ -186,10 +186,20 @@ The utility provides detailed logging with timestamps:
 ## Integration with Existing Codebase
 
 This utility is designed to work with the existing docling-eval framework and uses:
-- `docling_eval.cvat_tools.cvat_to_docling` for CVAT conversion
+- `docling_cvat_tools.cvat_tools.cvat_to_docling` for CVAT conversion (from docling-cvat-tools package)
 - `docling_eval.dataset_builders.file_dataset_builder` for dataset creation
 - `docling_eval.prediction_providers.file_provider` for prediction datasets
 - `docling_eval.cli.main.evaluate` for running evaluations
+
+## Installation
+
+To use this pipeline, you need to install the optional `cvat_tools` dependencies:
+
+```bash
+pip install docling-eval[cvat_tools]
+# or with uv:
+uv pip install docling-eval[cvat_tools]
+```
 
 ## Tips for Best Results
 

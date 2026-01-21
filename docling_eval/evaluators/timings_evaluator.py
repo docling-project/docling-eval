@@ -15,6 +15,9 @@ from docling_eval.evaluators.base_evaluator import (
     UnitEvaluation,
 )
 from docling_eval.evaluators.stats import DatasetStatistics, compute_stats
+from docling_eval.utils.external_docling_document_loader import (
+    ExternalDoclingDocumentLoader,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -50,8 +53,15 @@ class TimingsEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetTimingsEvaluation:
+        if external_document_loader is not None:
+            raise ValueError(
+                "TimingsEvaluator does not support external predictions. "
+                "This evaluator works with timing metadata embedded in the dataset predictions, "
+                "not with external DoclingDocument files. Please run without external_predictions_path."
+            )
+
         logging.info("Loading the split '%s' from: '%s'", split, ds_path)
 
         rejected_samples: Dict[EvaluationRejectionType, int] = {
@@ -81,7 +91,7 @@ class TimingsEvaluator(BaseEvaluator):
 
             doc_id = data_record.doc_id
             if (
-                external_predictions_path is None
+                external_document_loader is None
                 and data_record.status not in self._accepted_status
             ):
                 _log.error(

@@ -100,12 +100,10 @@ class BboxTextEvaluator(BaseEvaluator):
         self,
         ds_path: Path,
         split: str = "test",
-        external_predictions_path: Optional[Path] = None,
+        external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
     ) -> DatasetBoxesTextEvaluation:
         r""" """
-        ext_docdoc_loader: Optional[ExternalDoclingDocumentLoader] = None
-        if external_predictions_path is not None:
-            ext_docdoc_loader = ExternalDoclingDocumentLoader(external_predictions_path)
+        self._begin_message(ds_path, split, external_document_loader)
 
         parquet_files = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: parquet_files})
@@ -137,7 +135,7 @@ class BboxTextEvaluator(BaseEvaluator):
             data_record = DatasetRecordWithPrediction.model_validate(data)
             doc_id = data_record.doc_id
             if (
-                ext_docdoc_loader is None
+                external_document_loader is None
                 and data_record.status not in self._accepted_status
             ):
                 _log.error(
@@ -149,8 +147,8 @@ class BboxTextEvaluator(BaseEvaluator):
             true_doc = data_record.ground_truth_doc
 
             # Load the pred_doc
-            if ext_docdoc_loader is not None:
-                pred_doc = ext_docdoc_loader(data_record)
+            if external_document_loader is not None:
+                pred_doc = external_document_loader.get(data_record)
             else:
                 pred_doc = data_record.predicted_doc
             if pred_doc is None:
