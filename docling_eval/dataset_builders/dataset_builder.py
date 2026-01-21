@@ -7,17 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Optional, Union
 
 from docling.utils.utils import chunkify
-from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
 from pydantic import BaseModel
 
-from docling_eval.datamodels.dataset_record import (
-    DatasetRecord,
-    DatasetRecordWithPrediction,
-)
-from docling_eval.prediction_providers.base_prediction_provider import (
-    TRUE_HTML_EXPORT_LABELS,
-)
+from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.utils.utils import (
     insert_images_from_pil,
     save_shard_to_disk,
@@ -192,23 +185,20 @@ class BaseEvaluationDatasetBuilder:
             Path to the retrieved dataset
         """
         if isinstance(self.dataset_source, HFSource):
+            download_kwargs = {
+                "repo_id": self.dataset_source.repo_id,
+                "revision": self.dataset_source.revision,
+                "repo_type": "dataset",
+                "token": self.dataset_source.hf_token,
+            }
+
             if not self.dataset_local_path:
-                path_str = snapshot_download(
-                    repo_id=self.dataset_source.repo_id,
-                    revision=self.dataset_source.revision,
-                    repo_type="dataset",
-                    token=self.dataset_source.hf_token,
-                )
+                path_str = snapshot_download(**download_kwargs)
                 path: Path = Path(path_str)
                 self.dataset_local_path = path
             else:
-                path_str = snapshot_download(
-                    repo_id=self.dataset_source.repo_id,
-                    revision=self.dataset_source.revision,
-                    repo_type="dataset",
-                    token=self.dataset_source.hf_token,
-                    local_dir=self.dataset_local_path,
-                )
+                download_kwargs["local_dir"] = str(self.dataset_local_path)
+                path_str = snapshot_download(**download_kwargs)
                 path = Path(path_str)
         elif isinstance(self.dataset_source, Path):
             path = self.dataset_source
