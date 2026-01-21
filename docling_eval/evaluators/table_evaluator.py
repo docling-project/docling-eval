@@ -152,7 +152,12 @@ class TableEvaluator(BaseEvaluator):
         split_path = str(ds_path / split / "*.parquet")
         split_files = glob.glob(split_path)
         logging.info("Files: %s", split_files)
-        ds = load_dataset("parquet", data_files={split: split_files})
+
+        ds = load_dataset(
+            "parquet",
+            data_files={split: split_files},
+            features=DatasetRecordWithPrediction.features(),
+        )
         logging.info("Overview of dataset: %s", ds)
 
         # Select the split

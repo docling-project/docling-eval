@@ -207,6 +207,11 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         processed_pages = set()
         segmented_pages: Dict[int, SegmentedPage] = {}
 
+        if not record.ground_truth_page_images:
+            _log.warning(
+                "No ground truth page images available for AWS Textract conversion"
+            )
+            return doc, segmented_pages
         # Get page dimensions from page block
         # AWS provides normalized coordinates, so we need to multiply by a typical page size
         # width = 8.5 * 72  # Standard US Letter width in points
@@ -542,6 +547,9 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
         """For the given document stream (single document), run the API and create the doclingDocument."""
 
         status = ConversionStatus.SUCCESS
+        result_orig = None
+        pred_segmented_pages = {}
+        pred_doc = None
         assert record.original is not None
 
         if not isinstance(record.original, DocumentStream):

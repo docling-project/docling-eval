@@ -128,6 +128,10 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         doc = DoclingDocument(name=record.doc_id)
         segmented_pages: Dict[int, SegmentedPage] = {}
 
+        if not record.ground_truth_page_images:
+            _log.warning("No ground truth page images available for Azure conversion")
+            return doc, segmented_pages
+
         for page in analyze_result.get("pages", []):
             page_no = page.get("pageNumber", 1)
 
@@ -414,7 +418,9 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         from azure.ai.documentintelligence.models import AnalyzeOutputOption
 
         status = ConversionStatus.SUCCESS
-        result_orig = None
+        result_json = None
+        pred_segmented_pages = {}
+        pred_doc = None
         assert record.original is not None
 
         try:
