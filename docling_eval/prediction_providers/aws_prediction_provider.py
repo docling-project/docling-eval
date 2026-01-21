@@ -548,7 +548,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
 
         status = ConversionStatus.SUCCESS
         result_orig = None
-        pred_segmented_pages = {}
+        pred_segmented_pages: Dict[int, SegmentedPage] = {}
         pred_doc = None
         assert record.original is not None
 
