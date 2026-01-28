@@ -186,9 +186,6 @@ class DatasetRecord(
         else:
             record.update({self.get_field_alias("original"): None})
 
-        # NOTE: Do NOT close images here - they are still needed for visualization
-        # The images will be closed after visualization is complete
-        # self._close_images()
         return record
 
     @staticmethod
