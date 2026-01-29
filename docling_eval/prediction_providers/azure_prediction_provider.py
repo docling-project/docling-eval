@@ -430,6 +430,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     raise RuntimeError(
                         "Original document must be a DocumentStream for PDF files"
                     )
+                record.original.stream.seek(0)
                 # Call the Azure API by passing in the image for prediction
                 poller = self.doc_intelligence_client.begin_analyze_document(
                     "prebuilt-layout",

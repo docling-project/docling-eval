@@ -565,7 +565,7 @@ class AWSTextractPredictionProvider(BasePredictionProvider):
                 "image/jpeg",
             ]:
                 # Call the AWS Textract API by passing in the image for prediction
-
+                record.original.stream.seek(0)
                 file_bytes = record.original.stream.read()
                 response = self.textract_client.analyze_document(
                     Document={"Bytes": file_bytes},

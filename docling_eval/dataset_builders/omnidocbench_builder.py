@@ -506,9 +506,16 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             page_width = float(page_image_rgb.width)
             page_height = float(page_image_rgb.height)
 
+            image_ref = ImageRef(
+                mimetype="image/png",
+                dpi=72,
+                size=Size(width=page_width, height=page_height),
+                uri=from_pil_to_base64uri(page_image_rgb),
+            )
             page_item = PageItem(
                 page_no=1,
                 size=Size(width=page_width, height=page_height),
+                image=image_ref,
             )
             true_doc.pages[1] = page_item
 
