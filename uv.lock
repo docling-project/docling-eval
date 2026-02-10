@@ -1304,7 +1304,7 @@ requires-dist = [
     { name = "docling-core", specifier = ">=2.48.0,<3.0.0" },
     { name = "docling-cvat-tools" },
     { name = "docling-cvat-tools", marker = "extra == 'cvat-tools'", specifier = ">=0.0.1" },
-    { name = "docling-parse", specifier = ">=4.7.1" },
+    { name = "docling-parse", specifier = ">=4.7.1,<5" },
     { name = "edit-distance", specifier = ">=1.0.6,<2.0.0" },
     { name = "editdistance", specifier = ">=0.8.1" },
     { name = "evaluate", specifier = ">=0.4.3,<0.5.0" },
