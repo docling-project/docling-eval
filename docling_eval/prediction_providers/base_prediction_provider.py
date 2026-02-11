@@ -149,6 +149,7 @@ class BasePredictionProvider:
         if (
             prediction_record.predicted_doc is not None
             and prediction_record.ground_truth_page_images
+            and prediction_record.predicted_page_images
         ):
             gt_doc = insert_images_from_pil(
                 prediction_record.ground_truth_doc.model_copy(),
@@ -453,9 +454,13 @@ class BasePredictionProvider:
             end_index: End index for processing (exclusive), -1 means process all
             chunk_size: items per chunk
         """
-        # Load the dataset
+        # Load the dataset with proper schema to ensure PIL images are decoded
         parquet_files = str(gt_dataset_dir / split / "*.parquet")
-        ds = load_dataset("parquet", data_files={split: parquet_files})
+        ds = load_dataset(
+            "parquet",
+            data_files={split: parquet_files},
+            features=DatasetRecord.features(),
+        )
 
         if ds is None:
             _log.error(f"Failed to load dataset from {parquet_files}")

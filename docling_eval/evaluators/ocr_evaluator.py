@@ -108,7 +108,9 @@ class OCREvaluator(BaseEvaluator):
             "Found %d files for processing: %s", len(dataset_files), dataset_files
         )
         hf_dataset = load_dataset(
-            "parquet", data_files={data_split_name: dataset_files}
+            "parquet",
+            data_files={data_split_name: dataset_files},
+            features=DatasetRecordWithPrediction.features(),
         )
         _log.info("Dataset overview: %s", hf_dataset)
 
@@ -394,7 +396,9 @@ class OCRVisualizer:
 
         path_to_parquet_files: str = str(dataset_path / data_split_name / "*.parquet")
         hf_dataset: Dataset = load_dataset(
-            "parquet", data_files={data_split_name: path_to_parquet_files}
+            "parquet",
+            data_files={data_split_name: path_to_parquet_files},
+            features=DatasetRecordWithPrediction.features(),
         )
 
         generated_visualization_paths: List[Path] = []
