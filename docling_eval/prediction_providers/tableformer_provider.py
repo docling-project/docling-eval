@@ -19,7 +19,9 @@ from docling.datamodel.pipeline_options import (
     TableFormerMode,
     TableStructureOptions,
 )
-from docling.models.table_structure_model import TableStructureModel
+from docling.models.stages.table_structure.table_structure_model import (
+    TableStructureModel,
+)
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import DocItemLabel, TableCell, TableData, TableItem
 from docling_core.types.io import DocumentStream
