@@ -15,12 +15,14 @@ This is useful for preparing large-scale annotation tasks for CVAT or similar to
 avoiding "too many files open" errors.
 
 Usage:
-    uv run python docling_eval/campaign_tools/cvat_create_annotation_tasks_from_folders.py batch-prepare --input-directory <input_dir> --output-directory <output_dir> [--sliding-window <int>] [--use-predictions/--no-use-predictions] [--max-files-per-chunk <int>]
+    uv run python docling_eval/campaign_tools/cvat_create_annotation_tasks_from_folders.py batch-prepare --input-directory <input_dir> --output-directory <output_dir> [--sliding-window <int>] [--window-mode <rolling|parity_even|parity_odd>] [--slice-manifest <path>] [--use-predictions/--no-use-predictions] [--max-files-per-chunk <int>]
 
 Arguments:
     input_directory: Root directory containing subdirectories with files to process
     output_directory: Where to store the generated datasets (one subdir per input subdir, with chunk suffixes if needed)
     sliding_window: Number of pages per CVAT task (default: 1)
+    window_mode: Window selection mode for PDFs (rolling, parity_even, parity_odd)
+    slice_manifest: Optional path to recombined_slices_manifest.json
     use_predictions: Whether to create prediction dataset and use predictions in CVAT (default: True)
     max_files_per_chunk: Maximum number of files to process per chunk (default: 1000)
 """
@@ -41,6 +43,8 @@ def process_subdirectories(
     input_directory: Path,
     output_directory: Path,
     sliding_window: int = 1,
+    window_mode: str = "rolling",
+    slice_manifest: Optional[Path] = None,
     use_predictions: bool = True,
     max_files_per_chunk: int = 1000,
 ) -> None:
@@ -53,6 +57,8 @@ def process_subdirectories(
         input_directory: Root directory with subdirectories to process
         output_directory: Where to store generated datasets
         sliding_window: Number of pages per CVAT task (default: 1)
+        window_mode: Window selection mode for PDF chunks (rolling, parity_even, parity_odd)
+        slice_manifest: Optional manifest for parity window modes
         use_predictions: Whether to create prediction dataset and use predictions in CVAT
         max_files_per_chunk: Maximum number of files to process per chunk (default: 1000)
     """
@@ -154,12 +160,19 @@ def process_subdirectories(
                 source_dir = (
                     (eval_dir / "test") if use_predictions else (gt_dir / "test")
                 )
+                effective_manifest = slice_manifest
+                if effective_manifest is None:
+                    candidate_manifest = subdir / "recombined_slices_manifest.json"
+                    if candidate_manifest.exists():
+                        effective_manifest = candidate_manifest
                 create_cvat(
                     gt_dir=source_dir,
                     output_dir=cvat_dir,
                     bucket_size=100,
                     use_predictions=use_predictions,
                     sliding_window=sliding_window,
+                    window_mode=window_mode,
+                    slice_manifest=effective_manifest,
                 )
             else:
                 typer.echo(f"    CVAT dataset already exists, skipping.")
@@ -190,6 +203,17 @@ def batch_prepare(
     sliding_window: int = typer.Option(
         1, help="Number of pages per CVAT task (default: 1)"
     ),
+    window_mode: str = typer.Option(
+        "rolling",
+        help="Window selection mode for PDF chunks: rolling, parity_even, parity_odd.",
+    ),
+    slice_manifest: Optional[Path] = typer.Option(
+        None,
+        help=(
+            "Optional path to recombined_slices_manifest.json. "
+            "If omitted, each subdirectory is checked for a local manifest file."
+        ),
+    ),
     use_predictions: bool = typer.Option(
         True, help="Whether to create prediction dataset and use predictions in CVAT"
     ),
@@ -204,6 +228,8 @@ def batch_prepare(
         input_directory,
         output_directory,
         sliding_window,
+        window_mode,
+        slice_manifest,
         use_predictions,
         max_files_per_chunk,
     )

@@ -3,8 +3,9 @@ import json
 import logging
 import os
 import shutil
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from datasets import load_dataset
 from docling_core.types.doc import DocItemLabel
@@ -13,7 +14,7 @@ from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocume
 from docling_core.types.doc.labels import GraphCellLabel, TableCellLabel
 from docling_core.types.io import DocumentStream
 from PIL import Image
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 # CVAT tools are optional - provided by docling-cvat-tools
 try:
@@ -41,6 +42,72 @@ from docling_eval.utils.utils import get_binhash, insert_images_from_pil
 _log = logging.getLogger(__name__)
 
 
+class WindowMode(str, Enum):
+    """Window selection mode for PDF page grouping."""
+
+    ROLLING = "rolling"
+    PARITY_EVEN = "parity_even"
+    PARITY_ODD = "parity_odd"
+
+
+class RecombinedSliceManifestEntry(BaseModel):
+    """Manifest entry for one recombined slice PDF."""
+
+    output_doc_id: str
+    output_doc_hash: str
+    start_page: int
+    end_page_inclusive: int
+    end_page_exclusive: int
+
+
+def build_rolling_windows(page_nos: List[int], window_size: int) -> List[List[int]]:
+    """Build rolling windows over sorted page numbers."""
+    if window_size <= 1:
+        return [[page_no] for page_no in page_nos]
+    if len(page_nos) < window_size:
+        return []
+    return [
+        page_nos[idx : idx + window_size]
+        for idx in range(0, len(page_nos) - window_size + 1)
+    ]
+
+
+def build_parity_windows(
+    page_nos: List[int],
+    *,
+    absolute_start_page: int,
+    parity: int,
+) -> List[List[int]]:
+    """Build parity-based 2-page windows with mandatory edge singletons."""
+    if not page_nos:
+        return []
+    if len(page_nos) == 1:
+        return [[page_nos[0]]]
+
+    windows: List[List[int]] = []
+    covered_pages: set[int] = set()
+
+    for idx in range(0, len(page_nos) - 1):
+        abs_window_start = absolute_start_page + idx
+        if abs_window_start % 2 != parity:
+            continue
+        window = [page_nos[idx], page_nos[idx + 1]]
+        windows.append(window)
+        covered_pages.update(window)
+
+    ordered_windows: List[List[int]] = []
+    first_page = page_nos[0]
+    last_page = page_nos[-1]
+
+    if first_page not in covered_pages:
+        ordered_windows.append([first_page])
+    ordered_windows.extend(windows)
+    if last_page not in covered_pages and last_page != first_page:
+        ordered_windows.append([last_page])
+
+    return ordered_windows
+
+
 class CvatPreannotationBuilder:
     """
     Builder class for creating CVAT preannotations from a dataset.
@@ -56,6 +123,8 @@ class CvatPreannotationBuilder:
         bucket_size: int = 200,
         use_predictions: bool = False,
         sliding_window: int = 2,
+        window_mode: str = WindowMode.ROLLING.value,
+        slice_manifest: Optional[Path] = None,
         cleanup_json_groundtruth_after_creation: bool = True,
     ):
         """
@@ -67,21 +136,40 @@ class CvatPreannotationBuilder:
             bucket_size: Number of documents per bucket for CVAT tasks
             use_predictions: Whether to use predictions instead of ground truth
             sliding_window: Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)
+            window_mode: Page-window selection mode for PDFs
+            slice_manifest: Optional manifest to map recombined slices to absolute page numbers
             cleanup_json_groundtruth_after_creation: Whether to delete json_groundtruth/ after preannotation XML generation (default True)
         """
         self.source_dir = dataset_source
         self.target_dir = target
         self.bucket_size = bucket_size
         self.sliding_window = sliding_window
+        self.window_mode = WindowMode(window_mode)
+        self.slice_manifest = (
+            slice_manifest.expanduser().resolve() if slice_manifest else None
+        )
         self.benchmark_dirs = BenchMarkDirs()
         self.benchmark_dirs.set_up_directory_structure(
             source=dataset_source, target=target
         )
         self.overview = AnnotationOverview()
         self.use_predictions = use_predictions
+        self._slice_manifest_by_doc_id: Dict[str, RecombinedSliceManifestEntry] = {}
+        self._slice_manifest_by_doc_hash: Dict[str, RecombinedSliceManifestEntry] = {}
+        if self.slice_manifest is not None:
+            self._load_slice_manifest(self.slice_manifest)
         self.cleanup_json_groundtruth_after_creation = (
             cleanup_json_groundtruth_after_creation
         )
+        if self.window_mode in {WindowMode.PARITY_EVEN, WindowMode.PARITY_ODD}:
+            if self.sliding_window != 2:
+                raise ValueError(
+                    "Parity window mode requires sliding_window=2 to build double-page chunks."
+                )
+            if self.slice_manifest is None:
+                raise ValueError(
+                    "window_mode parity_even/parity_odd requires --slice-manifest."
+                )
 
     def _relative_to_target(self, path: Union[Path, str]) -> Path:
         """
@@ -189,6 +277,85 @@ class CvatPreannotationBuilder:
         target_dir = self.benchmark_dirs.target_dir.resolve()
         return target_dir / path_obj
 
+    def _load_slice_manifest(self, manifest_path: Path) -> None:
+        raw_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(raw_payload, list):
+            raise ValueError(
+                f"Invalid slice manifest {manifest_path}: expected a JSON list."
+            )
+
+        for idx, raw_entry in enumerate(raw_payload):
+            try:
+                entry = RecombinedSliceManifestEntry.model_validate(raw_entry)
+            except ValidationError as exc:
+                raise ValueError(
+                    f"Invalid manifest entry at index {idx} in {manifest_path}: {exc}"
+                ) from exc
+
+            existing_doc_id = self._slice_manifest_by_doc_id.get(entry.output_doc_id)
+            if (
+                existing_doc_id is not None
+                and existing_doc_id.start_page != entry.start_page
+            ):
+                raise ValueError(
+                    f"Conflicting start_page for output_doc_id={entry.output_doc_id} in {manifest_path}"
+                )
+
+            existing_doc_hash = self._slice_manifest_by_doc_hash.get(
+                entry.output_doc_hash
+            )
+            if (
+                existing_doc_hash is not None
+                and existing_doc_hash.start_page != entry.start_page
+            ):
+                raise ValueError(
+                    f"Conflicting start_page for output_doc_hash={entry.output_doc_hash} in {manifest_path}"
+                )
+
+            self._slice_manifest_by_doc_id[entry.output_doc_id] = entry
+            self._slice_manifest_by_doc_hash[entry.output_doc_hash] = entry
+
+    def _resolve_absolute_start_page(self, doc_overview: AnnotatedDoc) -> Optional[int]:
+        if not self._slice_manifest_by_doc_id and not self._slice_manifest_by_doc_hash:
+            return None
+
+        by_hash = self._slice_manifest_by_doc_hash.get(doc_overview.doc_hash)
+        if by_hash is not None:
+            return by_hash.start_page
+
+        by_doc_id = self._slice_manifest_by_doc_id.get(doc_overview.doc_name)
+        if by_doc_id is not None:
+            return by_doc_id.start_page
+
+        return None
+
+    def _build_page_windows(
+        self,
+        doc: DoclingDocument,
+        doc_overview: AnnotatedDoc,
+        sliding_window: int,
+    ) -> List[List[int]]:
+        page_nos = sorted(doc.pages.keys())
+        if not page_nos:
+            return []
+
+        if self.window_mode == WindowMode.ROLLING:
+            return build_rolling_windows(page_nos, sliding_window)
+
+        absolute_start_page = self._resolve_absolute_start_page(doc_overview)
+        if absolute_start_page is None:
+            raise ValueError(
+                "Could not resolve absolute start page for parity window mode. "
+                f"Document: doc_name={doc_overview.doc_name}, doc_hash={doc_overview.doc_hash}"
+            )
+
+        parity = 0 if self.window_mode == WindowMode.PARITY_EVEN else 1
+        return build_parity_windows(
+            page_nos,
+            absolute_start_page=absolute_start_page,
+            parity=parity,
+        )
+
     def _export_from_dataset(self) -> AnnotationOverview:
         """
         Export supplementary files from the dataset.
@@ -203,6 +370,11 @@ class CvatPreannotationBuilder:
         test_files = sorted(
             glob.glob(str(self.benchmark_dirs.source_dir / "*.parquet"))
         )
+        if not test_files:
+            raise ValueError(
+                f"No parquet files found in {self.benchmark_dirs.source_dir}. "
+                "Expected one or more '*.parquet' files in the input dataset split."
+            )
         ds = load_dataset("parquet", data_files={"test": test_files})
 
         if ds is None:
@@ -513,13 +685,17 @@ class CvatPreannotationBuilder:
                     )
 
                 elif sliding_window > 1 and doc_overview.mime_type == "application/pdf":
-                    img_id = self._process_pages_in_the_document_with_sliding_window(
+                    page_windows = self._build_page_windows(
+                        doc=doc,
+                        doc_overview=doc_overview,
+                        sliding_window=sliding_window,
+                    )
+                    img_id = self._process_page_windows_in_the_document(
                         img_id=img_id,
                         bucket_annotations=bucket_annotations,
                         doc=doc,
                         doc_overview=doc_overview,
-                        sliding_window=sliding_window,
-                        overlap_window=sliding_window,
+                        page_windows=page_windows,
                     )
 
                 else:
@@ -625,25 +801,24 @@ class CvatPreannotationBuilder:
             f"Saved annotation overview to {self.benchmark_dirs.overview_file} with {len(self.overview.img_annotations)} images"
         )
 
-    def _process_pages_in_the_document_with_sliding_window(
+        # Drop empty page_imgs directory to avoid producing unused artifacts
+        # for single-page workflows (sliding_window=1).
+        page_imgs_dir = self.benchmark_dirs.page_imgs_dir
+        if page_imgs_dir.exists() and not any(page_imgs_dir.iterdir()):
+            page_imgs_dir.rmdir()
+            _log.info(f"Removed empty page images directory {page_imgs_dir}")
+
+    def _process_page_windows_in_the_document(
         self,
         img_id: int,
         bucket_annotations: dict[int, list[str]],
         doc: DoclingDocument,
         doc_overview: AnnotatedDoc,
-        sliding_window: int,
-        overlap_window: int,
+        page_windows: List[List[int]],
     ) -> int:
-        page_nos: list[int] = list(doc.pages.keys())
-
-        # for start_page in range(0, total_pages, sliding_window-overlap_window):
-        for page_start in page_nos:
-            page_end = min(page_start + sliding_window, max(page_nos) + 1)
-
-            # Skip if it is not of the correct size
-            if page_end - page_start != sliding_window:
+        for page_window in page_windows:
+            if not page_window:
                 continue
-
             img_id += 1
 
             # Calculate bucket ID consistently for both folder and XML naming
@@ -660,7 +835,10 @@ class CvatPreannotationBuilder:
             doc_hash = doc_overview.doc_hash
 
             # Create unique filename for the page image
-            filename = f"doc_{doc_hash}_ps_{page_start:06}_pe_{page_end:06}.png"
+            if len(page_window) == 1:
+                filename = f"doc_{doc_hash}_page_{page_window[0]:06}.png"
+            else:
+                filename = f"doc_{doc_hash}_ps_{page_window[0]:06}_pe_{page_window[-1] + 1:06}.png"
 
             # Create annotated image record - using the SAME document file path
             annotated_image = AnnotatedImage(
@@ -675,7 +853,7 @@ class CvatPreannotationBuilder:
             )
 
             page_imgs = {}
-            for page_no in range(page_start, page_end):
+            for page_no in page_window:
                 # Extract and save page image
                 page_image_ref = doc.pages[page_no].image
                 if page_image_ref is not None:
@@ -692,15 +870,15 @@ class CvatPreannotationBuilder:
                         f"Missing image reference for page {page_no}, skipping..."
                     )
 
-            if len(page_imgs) != page_end - page_start:
+            if len(page_imgs) != len(page_window):
                 _log.error(f"Could not extract enough page-images, skipping ...")
                 continue
 
             skip = False
             for page_no, img in page_imgs.items():
-                if page_imgs[page_start].height != img.height:
+                if page_imgs[page_window[0]].height != img.height:
                     _log.warning(
-                        f"{page_imgs[page_start].width} != {img.width} or {page_imgs[page_start].height} != {img.height}"
+                        f"{page_imgs[page_window[0]].width} != {img.width} or {page_imgs[page_window[0]].height} != {img.height}"
                     )
                     skip = True
 
@@ -713,7 +891,7 @@ class CvatPreannotationBuilder:
                 "RGB",
                 (
                     sum(img.width for page_no, img in page_imgs.items()),
-                    page_imgs[page_start].height,
+                    page_imgs[page_window[0]].height,
                 ),
             )
 
@@ -738,28 +916,28 @@ class CvatPreannotationBuilder:
 
             annotated_image.img_w = combined_image.width
             annotated_image.img_h = combined_image.height
-            annotated_image.page_nos = [
-                page_no for page_no in range(page_start, page_end)
-            ]
+            annotated_image.page_nos = page_window.copy()
 
-            # Save individual page images to cvat_tasks/ in PNG format (needed for CVAT uploader)
-            # This eliminates redundancy with page_imgs/ directory
+            # For multi-page windows, keep source page images in page_imgs/ so task_XX
+            # contains only actual CVAT task images referenced by preannotate XML.
             annotated_image.page_img_files = []
-            for page_no in range(page_start, page_end):
+            for page_no in page_window:
                 # Create unique filename for the page image
                 page_filename = f"doc_{doc_hash}_page_{page_no:06}.png"
-
-                # Save page image to task directory
-                page_img_file = bucket_dir / page_filename
+                if len(page_window) == 1:
+                    # Singleton windows already use the page image as CVAT task image.
+                    page_img_file = annotated_image.img_file
+                else:
+                    page_img_file = self.benchmark_dirs.page_imgs_dir / page_filename
+                    if not page_img_file.exists():
+                        _log.info(f"saving {page_img_file}")
+                        page_imgs[page_no].save(str(page_img_file))
                 annotated_image.page_img_files.append(page_img_file)
-
-                _log.info(f"saving {page_img_file}")
-                page_imgs[page_no].save(str(page_img_file))
 
             # Extract bounding boxes for annotation
             page_bboxes = []
 
-            for page_no in range(page_start, page_end):
+            for page_no in page_window:
                 bboxs = self._extract_page_bounding_boxes(
                     doc=doc,
                     page_no=page_no,
