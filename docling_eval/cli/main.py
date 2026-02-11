@@ -1261,6 +1261,25 @@ if CVAT_AVAILABLE:
                 help="Size of sliding window for page processing (1 for single pages, >1 for multi-page windows)"
             ),
         ] = 2,
+        window_mode: Annotated[
+            str,
+            typer.Option(
+                help=(
+                    "PDF window selection mode: "
+                    "rolling (default), parity_even, or parity_odd. "
+                    "Parity modes require --slice-manifest and sliding-window=2."
+                )
+            ),
+        ] = "rolling",
+        slice_manifest: Annotated[
+            Optional[Path],
+            typer.Option(
+                help=(
+                    "Optional manifest from recombine_chunked_slice_pdfs.py. "
+                    "Required for parity_even/parity_odd window modes."
+                )
+            ),
+        ] = None,
     ):
         """Create dataset ready to upload to CVAT starting from (ground-truth) dataset.
 
@@ -1272,6 +1291,8 @@ if CVAT_AVAILABLE:
             bucket_size=bucket_size,
             use_predictions=use_predictions,
             sliding_window=sliding_window,
+            window_mode=window_mode,
+            slice_manifest=slice_manifest,
         )
         builder.prepare_for_annotation()
 
