@@ -136,18 +136,9 @@ from docling_eval.prediction_providers.file_provider import FilePredictionProvid
 from docling_eval.prediction_providers.google_prediction_provider import (
     GoogleDocAIPredictionProvider,
 )
-
-# TableFormer is optional - it requires docling with table_structure_model support
-try:
-    from docling_eval.prediction_providers.tableformer_provider import (
-        TableFormerPredictionProvider,
-    )
-
-    TABLEFORMER_AVAILABLE = True
-except ImportError:
-    TABLEFORMER_AVAILABLE = False
-    TableFormerPredictionProvider = None  # type: ignore
-
+from docling_eval.prediction_providers.tableformer_provider import (
+    TableFormerPredictionProvider,
+)
 from docling_eval.utils.external_docling_document_loader import (
     ExternalDoclingDocumentLoader,
 )
@@ -629,11 +620,6 @@ def get_prediction_provider(
             ignore_missing_predictions=True,
         )
     elif provider_type == PredictionProviderType.TABLEFORMER:
-        if not TABLEFORMER_AVAILABLE:
-            raise RuntimeError(
-                "TableFormer prediction provider is not available. "
-                "Please ensure docling is installed with table_structure_model support."
-            )
         return TableFormerPredictionProvider(
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
