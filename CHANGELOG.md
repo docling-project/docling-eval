@@ -1,3 +1,9 @@
+## [v1.0.1](https://github.com/docling-project/docling-eval/releases/tag/v1.0.1) - 2026-03-11
+
+### Fix
+
+* Remove hard pinning of docling-parse ([#203](https://github.com/docling-project/docling-eval/issues/203)) ([`901814d`](https://github.com/docling-project/docling-eval/commit/901814d35a5aec6cf9f4120a84a7716e058b926c))
+
 ## [v1.0.0](https://github.com/docling-project/docling-eval/releases/tag/v1.0.0) - 2026-03-11
 
 ### Feature
