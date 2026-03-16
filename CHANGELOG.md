@@ -1,3 +1,40 @@
+## [v1.0.1](https://github.com/docling-project/docling-eval/releases/tag/v1.0.1) - 2026-03-11
+
+### Fix
+
+* Remove hard pinning of docling-parse ([#203](https://github.com/docling-project/docling-eval/issues/203)) ([`901814d`](https://github.com/docling-project/docling-eval/commit/901814d35a5aec6cf9f4120a84a7716e058b926c))
+
+## [v1.0.0](https://github.com/docling-project/docling-eval/releases/tag/v1.0.0) - 2026-03-11
+
+### Feature
+
+* Parallelize the evaluation of tables and cache the loading of external predictions ([#190](https://github.com/docling-project/docling-eval/issues/190)) ([`9d04a56`](https://github.com/docling-project/docling-eval/commit/9d04a56b936e0efd130653ab64a765f08020fcc5))
+* Regression tests for CVAT to Docling conversion ([#193](https://github.com/docling-project/docling-eval/issues/193)) ([`8a10188`](https://github.com/docling-project/docling-eval/commit/8a101881774ea73b56a608090e5c9b51b43be966))
+* CVAT box rotation support, structural cleanup ([#191](https://github.com/docling-project/docling-eval/issues/191)) ([`db068e9`](https://github.com/docling-project/docling-eval/commit/db068e9d88f4e08093af746ff8d89f81d57588ae))
+* Improvements in user experience: Performance, error handling, logging ([#189](https://github.com/docling-project/docling-eval/issues/189)) ([`a850784`](https://github.com/docling-project/docling-eval/commit/a850784b4f9b26e94659085d6ea1f95473313f90))
+* Visualizer tool and command for datasets ([#186](https://github.com/docling-project/docling-eval/issues/186)) ([`373f959`](https://github.com/docling-project/docling-eval/commit/373f959633077e0aa82b0970ccfd9f18c7d87292))
+* Extend the evaluators to support external predictions stored in files ([#185](https://github.com/docling-project/docling-eval/issues/185)) ([`53dbd95`](https://github.com/docling-project/docling-eval/commit/53dbd955ae4da718ae419aae5e90963d8cb98b7f))
+* Convert Docling JSON inputs to image streams in FileDatasetBuilder ([#184](https://github.com/docling-project/docling-eval/issues/184)) ([`15888fd`](https://github.com/docling-project/docling-eval/commit/15888fd25c6e7fe08ca04b07f0fd1fb8dd1c4e84))
+* Allow subset to split routing in CVAT to HF exporter ([#182](https://github.com/docling-project/docling-eval/issues/182)) ([`ebb8800`](https://github.com/docling-project/docling-eval/commit/ebb88006413d7611299b1e7be85441ab966352eb))
+* Ingest CVAT assets and filter submissions ([#180](https://github.com/docling-project/docling-eval/issues/180)) ([`b55b2ea`](https://github.com/docling-project/docling-eval/commit/b55b2ea40df8d1ffe18d644c8cee673336082a49))
+* Runtime optimizations for MultiLabelConfusionMatrix ([#175](https://github.com/docling-project/docling-eval/issues/175)) ([`5084a4d`](https://github.com/docling-project/docling-eval/commit/5084a4d675d6cf2478b08b72fd3fbc9949c2de6d))
+* Add more fine-grained control in the DoclingEvalCOCOExporter ([#149](https://github.com/docling-project/docling-eval/issues/149)) ([`8f33420`](https://github.com/docling-project/docling-eval/commit/8f33420d6a0d006fe521f5efabaa612b99699930))
+* Remove legacy CvatDatasetBuilder code, use modernized code ([#174](https://github.com/docling-project/docling-eval/issues/174)) ([`693c224`](https://github.com/docling-project/docling-eval/commit/693c22445fff0704db86711b2d5a5a0477bf375b))
+* Introduce the PixelLayoutEvaluator to produce confusion matrices for the multi-label layout analysis ([#173](https://github.com/docling-project/docling-eval/issues/173)) ([`a79bac5`](https://github.com/docling-project/docling-eval/commit/a79bac5d0265d054a16e32750cbedda18d1f2115))
+* Review-bundle builder, fixes for GraphCell with merged elements and more ([#172](https://github.com/docling-project/docling-eval/issues/172)) ([`21341ce`](https://github.com/docling-project/docling-eval/commit/21341ce1bed43b337e3097449377dbf5368a082b))
+
+### Fix
+
+* Correct import path for TableStructureModel ([#199](https://github.com/docling-project/docling-eval/issues/199)) ([`a7e74a3`](https://github.com/docling-project/docling-eval/commit/a7e74a3b369f9ab8426818aa2591217d6b1b4df7))
+* Fix the reporting of doc_id, true_md, pred_md in markdown_text_evaluator.py ([#196](https://github.com/docling-project/docling-eval/issues/196)) ([`3ce7591`](https://github.com/docling-project/docling-eval/commit/3ce75918724bf09a07d1ad2c82ae536e7fa63af2))
+* PixelLayoutEvaluator: Set all-pixels background in case of a missing prediction and evaluate ([#183](https://github.com/docling-project/docling-eval/issues/183)) ([`4314091`](https://github.com/docling-project/docling-eval/commit/4314091abf4d1cdd4244ebb604579eba6bfffba8))
+* Fix empty prediction handling in markdown evaluator ([#177](https://github.com/docling-project/docling-eval/issues/177)) ([`9b6df83`](https://github.com/docling-project/docling-eval/commit/9b6df83aea0bd9d2c2aac8d2ce6db2d5b126d64f))
+* Consistenty and perf improvements ([#171](https://github.com/docling-project/docling-eval/issues/171)) ([`8fb3a16`](https://github.com/docling-project/docling-eval/commit/8fb3a169f6d45b055c1012a63fbdab667b704054))
+
+### Breaking
+
+* CvatDatasetBuilder now requires modern CVAT folder structure and uses convert_cvat_folder_to_docling() internally. ([`693c224`](https://github.com/docling-project/docling-eval/commit/693c22445fff0704db86711b2d5a5a0477bf375b))
+
 ## [v0.10.0](https://github.com/docling-project/docling-eval/releases/tag/v0.10.0) - 2025-11-05
 
 ### Feature
