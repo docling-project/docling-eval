@@ -1,6 +1,6 @@
 [project]
 name = "docling-eval"
-version = "0.10.0" # DO NOT EDIT, updated automatically
+version = "1.0.1" # DO NOT EDIT, updated automatically
 description = "Evaluation of Docling"
 license = "MIT"
 keywords= ["docling", "evaluation", "convert", "document", "pdf", "docx", "html", "markdown", "layout model", "segmentation", "table structure", "table former"]
@@ -54,7 +54,6 @@ dependencies = [
     "scipy-stubs>=1.15.3.0",
     "editdistance>=0.8.1",
     "reportlab>=4.4.3",
-    "docling-parse==4.7.1",
 ]
 
 [project.urls]
