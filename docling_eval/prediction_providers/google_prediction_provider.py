@@ -597,6 +597,10 @@ class GoogleDocAIPredictionProvider(BasePredictionProvider):
         doc = DoclingDocument(name=record.doc_id)
         segmented_pages: Dict[int, SegmentedPage] = {}
 
+        if not record.ground_truth_page_images:
+            _log.warning("No ground truth page images available for Google conversion")
+            return doc, segmented_pages
+
         for page in document.get("pages", []):
             page_no = page.get("pageNumber", 1)
             page_width = page.get("dimension", {}).get("width", 0)

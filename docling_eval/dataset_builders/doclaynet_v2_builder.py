@@ -633,59 +633,64 @@ class DocLayNetV2DatasetBuilder(BaseEvaluationDatasetBuilder):
                     # Extract image
                     img = doc["image"]
 
-                    # Convert image to bytes for storage
-                    with io.BytesIO() as img_byte_stream:
-                        img.save(img_byte_stream, format=img.format or "PNG")
-                        img_byte_stream.seek(0)
-                        img_bytes = img_byte_stream.getvalue()
+                    try:
+                        # Convert image to bytes for storage
+                        with io.BytesIO() as img_byte_stream:
+                            img.save(img_byte_stream, format=img.format or "PNG")
+                            img_byte_stream.seek(0)
+                            img_bytes = img_byte_stream.getvalue()
 
-                    # Create ground truth document
-                    doc_id = doc["page_hash"]
-                    true_doc = DoclingDocument(name=doc_id)
+                        # Create ground truth document
+                        doc_id = doc["page_hash"]
+                        true_doc = DoclingDocument(name=doc_id)
 
-                    # Add page with image
-                    image_ref = ImageRef(
-                        mimetype=f"image/{img.format.lower() if img.format else 'png'}",
-                        dpi=72,
-                        size=Size(width=float(img.width), height=float(img.height)),
-                        uri=from_pil_to_base64uri(img),
-                    )
-                    page_item = PageItem(
-                        page_no=1,
-                        size=Size(width=float(img.width), height=float(img.height)),
-                        image=image_ref,
-                    )
-                    true_doc.pages[1] = page_item
-
-                    # Create key-value pairs if present
-                    kv_pairs = self.create_kv_pairs(doc)
-                    if kv_pairs:
-                        self.populate_key_value_item(true_doc, kv_pairs)
-
-                    # Process layout elements
-                    current_list = None
-                    boxes = doc["boxes"]
-                    labels = list(
-                        map(
-                            lambda label: label.lower()
-                            .replace("-", "_")
-                            .replace(" ", "_"),
-                            doc["labels"],
+                        # Add page with image
+                        image_ref = ImageRef(
+                            mimetype=f"image/{img.format.lower() if img.format else 'png'}",
+                            dpi=72,
+                            size=Size(width=float(img.width), height=float(img.height)),
+                            uri=from_pil_to_base64uri(img),
                         )
-                    )
-                    segments = doc["segments"]
+                        page_item = PageItem(
+                            page_no=1,
+                            size=Size(width=float(img.width), height=float(img.height)),
+                            image=image_ref,
+                        )
+                        true_doc.pages[1] = page_item
 
-                    for label, segment, box in zip(labels, segments, boxes):
-                        current_list = self.update_doc(
-                            true_doc, current_list, img, label, segment, box
+                        # Create key-value pairs if present
+                        kv_pairs = self.create_kv_pairs(doc)
+                        if kv_pairs:
+                            self.populate_key_value_item(true_doc, kv_pairs)
+
+                        # Process layout elements
+                        current_list = None
+                        boxes = doc["boxes"]
+                        labels = list(
+                            map(
+                                lambda label: label.lower()
+                                .replace("-", "_")
+                                .replace(" ", "_"),
+                                doc["labels"],
+                            )
+                        )
+                        segments = doc["segments"]
+
+                        for label, segment, box in zip(labels, segments, boxes):
+                            current_list = self.update_doc(
+                                true_doc, current_list, img, label, segment, box
+                            )
+
+                        # Extract images from ground truth document
+                        true_doc, true_pictures, true_page_images = extract_images(
+                            document=true_doc,
+                            pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                            page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
                         )
 
-                    # Extract images from ground truth document
-                    true_doc, true_pictures, true_page_images = extract_images(
-                        document=true_doc,
-                        pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
-                        page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
-                    )
+                        img_format = img.format
+                    finally:
+                        img.close()
 
                     # Create dataset record
                     record = DatasetRecord(
@@ -695,7 +700,7 @@ class DocLayNetV2DatasetBuilder(BaseEvaluationDatasetBuilder):
                         original=DocumentStream(
                             name=doc_id, stream=io.BytesIO(img_bytes)
                         ),
-                        mime_type=f"image/{img.format.lower() if img.format else 'png'}",
+                        mime_type=f"image/{img_format.lower() if img_format else 'png'}",
                         modalities=[
                             EvaluationModality.LAYOUT,
                             EvaluationModality.MARKDOWN_TEXT,

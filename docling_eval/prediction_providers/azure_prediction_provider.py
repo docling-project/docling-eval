@@ -127,6 +127,10 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         doc = DoclingDocument(name=record.doc_id)
         segmented_pages: Dict[int, SegmentedPage] = {}
 
+        if not record.ground_truth_page_images:
+            _log.warning("No ground truth page images available for Azure conversion")
+            return doc, segmented_pages
+
         for page in analyze_result.get("pages", []):
             page_no = page.get("pageNumber", 1)
 
@@ -413,7 +417,9 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
         from azure.ai.documentintelligence.models import AnalyzeOutputOption
 
         status = ConversionStatus.SUCCESS
-        result_orig = None
+        result_json = None
+        pred_segmented_pages: Dict[int, SegmentedPage] = {}
+        pred_doc = None
         assert record.original is not None
 
         try:
@@ -423,6 +429,7 @@ class AzureDocIntelligencePredictionProvider(BasePredictionProvider):
                     raise RuntimeError(
                         "Original document must be a DocumentStream for PDF files"
                     )
+                record.original.stream.seek(0)
                 # Call the Azure API by passing in the image for prediction
                 poller = self.doc_intelligence_client.begin_analyze_document(
                     "prebuilt-layout",
