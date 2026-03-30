@@ -70,6 +70,7 @@ from docling_eval.dataset_builders.doclaynet_v2_builder import DocLayNetV2Datase
 from docling_eval.dataset_builders.doclingdpbench_builder import (
     DoclingDPBenchDatasetBuilder,
 )
+from docling_eval.dataset_builders.doclingsdg_builder import DoclingSDGDatasetBuilder
 from docling_eval.dataset_builders.docvqa_builder import DocVQADatasetBuilder
 from docling_eval.dataset_builders.dpbench_builder import DPBenchDatasetBuilder
 from docling_eval.dataset_builders.file_dataset_builder import FileDatasetBuilder
@@ -136,9 +137,17 @@ from docling_eval.prediction_providers.file_provider import FilePredictionProvid
 from docling_eval.prediction_providers.google_prediction_provider import (
     GoogleDocAIPredictionProvider,
 )
-from docling_eval.prediction_providers.tableformer_provider import (
-    TableFormerPredictionProvider,
-)
+
+# TableFormer provider may not be available for all docling installations.
+try:
+    from docling_eval.prediction_providers.tableformer_provider import (
+        TableFormerPredictionProvider,
+    )
+
+    TABLEFORMER_AVAILABLE = True
+except ImportError:
+    TABLEFORMER_AVAILABLE = False
+    TableFormerPredictionProvider = None  # type: ignore
 from docling_eval.utils.external_docling_document_loader import (
     ExternalDoclingDocumentLoader,
 )
@@ -314,6 +323,11 @@ def get_dataset_builder(
 
     elif benchmark == BenchMarkNames.DOCLING_DPBENCH:
         return DoclingDPBenchDatasetBuilder(**common_params)  # type: ignore
+
+    elif benchmark == BenchMarkNames.DOCLING_SDG:
+        if dataset_source is None:
+            raise ValueError("dataset_source is required for DOCLING_SDG")
+        return DoclingSDGDatasetBuilder(dataset_source=dataset_source, **common_params)  # type: ignore
 
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
         return DocLayNetV1DatasetBuilder(**common_params)  # type: ignore
@@ -620,6 +634,12 @@ def get_prediction_provider(
             ignore_missing_predictions=True,
         )
     elif provider_type == PredictionProviderType.TABLEFORMER:
+        if not TABLEFORMER_AVAILABLE:
+            raise ImportError(
+                "TableFormer provider is not available in this environment. "
+                "Please install a compatible docling/docling-eval setup "
+                "that provides `docling.models.stages`."
+            )
         return TableFormerPredictionProvider(
             do_visualization=do_visualization,
             ignore_missing_predictions=True,
