@@ -6,9 +6,6 @@ from io import BytesIO
 from typing import Dict, Optional, Set, Tuple
 
 from docling.datamodel.base_models import ConversionStatus
-
-# from docling_core.types import DoclingDocument
-from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.base import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     DoclingDocument,
@@ -26,6 +23,8 @@ from docling_core.types.doc.page import (
 )
 from docling_core.types.io import DocumentStream
 
+# from docling_core.types import DoclingDocument
+from docling_core.types.doc import DocItemLabel
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

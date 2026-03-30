@@ -5,10 +5,10 @@ from io import BytesIO
 from pathlib import Path
 from typing import Iterator, List
 
-from docling_core.types import DoclingDocument
 from docling_core.types.io import DocumentStream
 from pydantic import ValidationError
 
+from docling_core.types import DoclingDocument
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns
 from docling_eval.utils.utils import extract_images, get_binhash

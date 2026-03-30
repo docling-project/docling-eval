@@ -6,9 +6,9 @@ from typing import Dict, Iterator, Optional
 
 from docling.datamodel.base_models import ConversionStatus
 from docling.utils.utils import chunkify
-from docling_core.types import DoclingDocument
 from docling_core.types.io import DocumentStream
 
+from docling_core.types import DoclingDocument
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

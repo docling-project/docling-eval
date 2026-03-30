@@ -11,11 +11,11 @@ from datasets import load_dataset
 from docling.datamodel.base_models import ConversionStatus
 from docling.utils.profiling import ProfilingItem
 from docling.utils.utils import chunkify
-from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.io import DocumentStream
 from tqdm import tqdm
 
+from docling_core.types.doc import DocItemLabel
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

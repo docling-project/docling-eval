@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 from datasets import Features, Sequence, Value, load_dataset
-from docling_core.types import DoclingDocument
-from docling_core.types.doc import BoundingBox, CoordOrigin, ImageRef, PageItem, Size
 from docling_core.types.doc.page import (
     BoundingRectangle,
     PageGeometry,
@@ -18,6 +16,8 @@ from docling_core.types.io import DocumentStream
 from PIL import Image
 from tqdm import tqdm
 
+from docling_core.types import DoclingDocument
+from docling_core.types.doc import BoundingBox, CoordOrigin, ImageRef, PageItem, Size
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns, EvaluationModality
 from docling_eval.dataset_builders.dataset_builder import (

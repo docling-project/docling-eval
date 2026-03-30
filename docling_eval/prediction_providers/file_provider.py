@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Dict, Optional, Set
 
 from docling.datamodel.base_models import ConversionStatus
-from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.document import DoclingDocument
 from PIL import Image
 
+from docling_core.types.doc import DocItemLabel
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

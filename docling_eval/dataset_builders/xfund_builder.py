@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from datasets import DownloadManager
-from docling_core.types import DoclingDocument
-from docling_core.types.doc import BoundingBox, ImageRef, PageItem, ProvenanceItem, Size
 from docling_core.types.doc.document import GraphCell, GraphData, GraphLink
 from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
 from docling_core.types.doc.page import (
@@ -21,6 +19,8 @@ from docling_core.types.io import DocumentStream
 from PIL import Image
 from tqdm import tqdm
 
+from docling_core.types import DoclingDocument
+from docling_core.types.doc import BoundingBox, ImageRef, PageItem, ProvenanceItem, Size
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns, EvaluationModality
 from docling_eval.dataset_builders.dataset_builder import BaseEvaluationDatasetBuilder

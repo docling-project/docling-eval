@@ -107,7 +107,7 @@ dev = [
 package = true
 
 [tool.uv.sources]
-docling-cvat-tools = { git = "https://github.com/docling-project/docling-cvat-tools.git", branch = "cau/tree-errors" }
+docling-cvat-tools = { git = "https://github.com/docling-project/docling-cvat-tools.git", branch = "cau/table-hierarchy-fix" }
 
 [tool.setuptools.packages.find]
 include = ["docling_eval*"]

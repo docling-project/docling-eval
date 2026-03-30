@@ -9,11 +9,11 @@ from datasets import Features
 from datasets import Image as Features_Image
 from datasets import Sequence, Value
 from docling.datamodel.base_models import ConversionStatus
-from docling_core.types import DoclingDocument
 from docling_core.types.doc.page import SegmentedPage
 from docling_core.types.io import DocumentStream
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
+from docling_core.types import DoclingDocument
 from docling_eval.datamodels.types import EvaluationModality, PredictionFormats
 from docling_eval.utils.utils import extract_images
 
