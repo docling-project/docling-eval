@@ -2,7 +2,7 @@ import logging
 import re
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable, List
+from typing import Dict, Iterable, List
 
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import ImageRef, PageItem, Size
@@ -23,7 +23,7 @@ from docling_eval.utils.utils import (
 
 _log = logging.getLogger(__name__)
 
-_PAGE_SUFFIX_PATTERN = re.compile(r"_page_(\\d+)$", re.IGNORECASE)
+_PAGE_SUFFIX_PATTERN = re.compile(r"_page_(\d+)$", re.IGNORECASE)
 
 
 class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
@@ -70,32 +70,65 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
         deduped = {f.resolve(): f for f in files}
         return sorted(deduped.values(), key=lambda p: p.name.lower())
 
-    def _find_png_files_for_doc(self, doc_id: str) -> List[Path]:
+    def _build_png_indices(self) -> tuple[Dict[str, List[Path]], Dict[str, List[Path]]]:
         assert isinstance(self.dataset_source, Path)
 
+        png_candidates = list(self.dataset_source.glob("*.png"))
+        png_candidates.extend(self.dataset_source.glob("*.PNG"))
+
+        exact_index: Dict[str, List[Path]] = {}
+        paged_index: Dict[str, List[Path]] = {}
+
+        for png_path in png_candidates:
+            stem = png_path.stem
+            page_match = _PAGE_SUFFIX_PATTERN.search(stem)
+
+            if page_match is None:
+                exact_index.setdefault(stem, []).append(png_path)
+                continue
+
+            base_name = stem[: page_match.start()]
+            paged_index.setdefault(base_name, []).append(png_path)
+
+        for key, values in exact_index.items():
+            exact_index[key] = sorted(
+                {f.resolve(): f for f in values}.values(),
+                key=lambda p: p.name.lower(),
+            )
+
+        for key, values in paged_index.items():
+            paged_index[key] = sorted(
+                {f.resolve(): f for f in values}.values(),
+                key=self._sort_by_page_suffix,
+            )
+
+        return exact_index, paged_index
+
+    def _find_png_files_for_doc(
+        self,
+        doc_id: str,
+        exact_index: Dict[str, List[Path]],
+        paged_index: Dict[str, List[Path]],
+    ) -> List[Path]:
         base_names = [doc_id]
         if doc_id.lower().endswith(".png"):
             base_names.append(doc_id[:-4])
 
-        exact_matches: List[Path] = []
-        paged_matches: List[Path] = []
+        for base_name in dict.fromkeys(base_names):
+            if not base_name:
+                continue
+            exact_matches = exact_index.get(base_name)
+            if exact_matches:
+                return exact_matches
 
         for base_name in dict.fromkeys(base_names):
             if not base_name:
                 continue
+            paged_matches = paged_index.get(base_name)
+            if paged_matches:
+                return paged_matches
 
-            exact_matches.extend(self.dataset_source.glob(f"{base_name}.png"))
-            exact_matches.extend(self.dataset_source.glob(f"{base_name}.PNG"))
-
-            paged_matches.extend(self.dataset_source.glob(f"{base_name}_page_*.png"))
-            paged_matches.extend(self.dataset_source.glob(f"{base_name}_page_*.PNG"))
-
-        if exact_matches:
-            deduped = {f.resolve(): f for f in exact_matches}
-            return sorted(deduped.values(), key=lambda p: p.name.lower())
-
-        deduped = {f.resolve(): f for f in paged_matches}
-        return sorted(deduped.values(), key=self._sort_by_page_suffix)
+        return []
 
     @staticmethod
     def _load_png_images(files: List[Path]) -> List[Image.Image]:
@@ -166,6 +199,7 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
         assert isinstance(self.dataset_source, Path)
 
         json_files = self._find_json_files()
+        exact_png_index, paged_png_index = self._build_png_indices()
 
         begin, end = self.get_effective_indices(len(json_files))
         selected_json_files = json_files[begin:end]
@@ -192,7 +226,11 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                 _log.warning("Failed to load %s: %s. Skipping.", json_path, exc)
                 continue
 
-            png_files = self._find_png_files_for_doc(doc_id)
+            png_files = self._find_png_files_for_doc(
+                doc_id=doc_id,
+                exact_index=exact_png_index,
+                paged_index=paged_png_index,
+            )
             if len(png_files) == 0:
                 _log.warning(
                     "No matching PNG found for %s. Expected '%s.png' or '%s_page_*.png'. Skipping.",
