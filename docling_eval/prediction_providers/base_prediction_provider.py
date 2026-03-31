@@ -149,6 +149,7 @@ class BasePredictionProvider:
         if (
             prediction_record.predicted_doc is not None
             and prediction_record.ground_truth_page_images
+            and prediction_record.predicted_page_images
         ):
             gt_doc = insert_images_from_pil(
                 prediction_record.ground_truth_doc.model_copy(),
@@ -453,9 +454,13 @@ class BasePredictionProvider:
             end_index: End index for processing (exclusive), -1 means process all
             chunk_size: items per chunk
         """
-        # Load the dataset
+        # Load the dataset with proper schema to ensure PIL images are decoded
         parquet_files = str(gt_dataset_dir / split / "*.parquet")
-        ds = load_dataset("parquet", data_files={split: parquet_files})
+        ds = load_dataset(
+            "parquet",
+            data_files={split: parquet_files},
+            features=DatasetRecord.features(),
+        )
 
         if ds is None:
             _log.error(f"Failed to load dataset from {parquet_files}")
@@ -501,6 +506,13 @@ class BasePredictionProvider:
                     if not self.ignore_missing_predictions:
                         raise
 
+        def _serialize_predictions():
+            for pred_record in _iterate_predictions():
+                if self.do_visualization:
+                    self.visualize_results(pred_record, target_dataset_dir)
+                # Serialize immediately to release PIL image memory
+                yield pred_record.as_record_dict()
+
         # Create output directories
         test_dir = target_dataset_dir / split
         test_dir.mkdir(parents=True, exist_ok=True)
@@ -513,20 +525,15 @@ class BasePredictionProvider:
 
         count = 0
         chunk_count = 0
-        for record_chunk in chunkify(_iterate_predictions(), chunk_size):
-            if self.do_visualization:
-                for r in record_chunk:
-                    self.visualize_results(r, target_dataset_dir)
-
-            record_chunk = [r.as_record_dict() for r in record_chunk]
-
+        # Use _serialize_predictions to ensure we hold dicts (bytes), not open PIL images
+        for record_chunk_dicts in chunkify(_serialize_predictions(), chunk_size):
             save_shard_to_disk(
-                items=record_chunk,
+                items=record_chunk_dicts,
                 dataset_path=test_dir,
                 schema=DatasetRecordWithPrediction.pyarrow_schema(),
                 shard_id=chunk_count,
             )
-            count += len(record_chunk)
+            count += len(record_chunk_dicts)
             chunk_count += 1
 
             if chunk_count >= max_num_chunks:

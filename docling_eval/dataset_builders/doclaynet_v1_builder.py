@@ -335,33 +335,37 @@ class DocLayNetV1DatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
 
                 # Set up document dimensions
-                img = true_page_images[0]
-                old_w, old_h = doc["image"].size
-                old_size = Size(width=old_w, height=old_h)
+                hf_image = doc["image"]
+                try:
+                    img = true_page_images[0]
+                    old_w, old_h = hf_image.size
+                    old_size = Size(width=old_w, height=old_h)
 
-                # Process elements
-                current_list = None
-                labels = list(
-                    map(lambda cid: self.category_map[int(cid)], doc["category_id"])
-                )
-                bboxes = doc["bboxes"]
-                segments = doc["pdf_cells"]
-                contents = [
-                    " ".join(map(lambda cell: cell["text"], cells))
-                    for cells in segments
-                ]
-
-                for l, b, c in zip(labels, bboxes, contents):
-                    current_list = self.update_doc_with_gt(
-                        true_doc, current_list, img, old_size, l, b, c
+                    # Process elements
+                    current_list = None
+                    labels = list(
+                        map(lambda cid: self.category_map[int(cid)], doc["category_id"])
                     )
+                    bboxes = doc["bboxes"]
+                    segments = doc["pdf_cells"]
+                    contents = [
+                        " ".join(map(lambda cell: cell["text"], cells))
+                        for cells in segments
+                    ]
 
-                # Extract images from the ground truth document
-                true_doc, true_pictures, true_page_images = extract_images(
-                    document=true_doc,
-                    pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
-                    page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
-                )
+                    for l, b, c in zip(labels, bboxes, contents):
+                        current_list = self.update_doc_with_gt(
+                            true_doc, current_list, img, old_size, l, b, c
+                        )
+
+                    # Extract images from the ground truth document
+                    true_doc, true_pictures, true_page_images = extract_images(
+                        document=true_doc,
+                        pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                        page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
+                    )
+                finally:
+                    hf_image.close()
 
                 pdf_stream.seek(0)
                 doc_stream = DocumentStream(name=page_hash, stream=pdf_stream)
