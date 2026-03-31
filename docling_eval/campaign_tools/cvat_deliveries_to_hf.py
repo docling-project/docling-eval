@@ -583,7 +583,8 @@ def build_combined_dataset(
     test_dir.mkdir(parents=True, exist_ok=True)
 
     count = 0
-    chunk_count = 0
+    written_shard_count = 0
+    next_shard_id = 0
 
     for record_chunk in chunkify(
         iter_records_with_tags(
@@ -595,14 +596,15 @@ def build_combined_dataset(
         chunk_size,
     ):
         record_list = [r.as_record_dict() for r in record_chunk]
-        save_shard_to_disk(
+        save_result = save_shard_to_disk(
             items=record_list,
             dataset_path=test_dir,
             schema=DatasetRecord.pyarrow_schema(),
-            shard_id=chunk_count,
+            shard_id=next_shard_id,
         )
-        count += len(record_list)
-        chunk_count += 1
+        count += save_result.written_record_count
+        written_shard_count += save_result.written_shard_count
+        next_shard_id = save_result.next_shard_id
 
     write_datasets_info(
         name=builder.name,
