@@ -85,6 +85,12 @@ class SplitRule:
 
 
 @dataclass(frozen=True)
+class SplitFileRule:
+    split: str
+    path: Path
+
+
+@dataclass(frozen=True)
 class BuildResult:
     config: ConfigEntry
     stats: CombinedBuildStats
@@ -268,6 +274,54 @@ def _parse_subset_split_rules(rules: List[str]) -> List[SplitRule]:
     return parsed_rules
 
 
+def _parse_split_file_rules(rules: List[str]) -> List[SplitFileRule]:
+    parsed_rules: List[SplitFileRule] = []
+    for rule in rules:
+        if "=" not in rule:
+            raise typer.BadParameter(
+                f"Invalid --split-file value '{rule}'. Expected format split=path."
+            )
+        split, raw_path = rule.split("=", maxsplit=1)
+        if not split or not raw_path:
+            raise typer.BadParameter(
+                f"Invalid --split-file value '{rule}'. Both split and path are required."
+            )
+        path = Path(raw_path).expanduser().resolve()
+        if not path.exists():
+            raise typer.BadParameter(f"Split file {path} does not exist.")
+        parsed_rules.append(SplitFileRule(split=split, path=path))
+    return parsed_rules
+
+
+def _load_doc_split_assignments(rules: Sequence[SplitFileRule]) -> Dict[str, str]:
+    doc_to_split: Dict[str, str] = {}
+    doc_to_origin: Dict[str, tuple[str, int, str]] = {}
+
+    for rule in rules:
+        for line_number, raw_line in enumerate(
+            rule.path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            doc_id = raw_line.strip()
+            if not doc_id:
+                continue
+
+            existing_split = doc_to_split.get(doc_id)
+            if existing_split is not None:
+                existing_path, existing_line_number, existing_rule_split = (
+                    doc_to_origin[doc_id]
+                )
+                raise RuntimeError(
+                    f"Document '{doc_id}' is assigned more than once: "
+                    f"{existing_path}:{existing_line_number} ({existing_rule_split}) and "
+                    f"{rule.path}:{line_number} ({rule.split})."
+                )
+
+            doc_to_split[doc_id] = rule.split
+            doc_to_origin[doc_id] = (str(rule.path), line_number, rule.split)
+
+    return doc_to_split
+
+
 def _route_subsets_to_splits(
     subset_sources: Dict[str, List[Path]],
     rules: List[SplitRule],
@@ -297,6 +351,60 @@ def _route_subsets_to_splits(
     return split_map
 
 
+def collect_subset_json_files(
+    subset_sources: Dict[str, List[Path]],
+) -> Dict[str, List[Path]]:
+    subset_json_files: Dict[str, List[Path]] = {}
+
+    for subset_name in sorted(subset_sources.keys()):
+        json_files: List[Path] = []
+        for source_dir in subset_sources[subset_name]:
+            source_json_files = sorted(
+                p for p in source_dir.glob("*.json") if p.is_file()
+            )
+            if not source_json_files:
+                _LOGGER.warning("No JSON files found under %s", source_dir)
+                continue
+            json_files.extend(source_json_files)
+        subset_json_files[subset_name] = json_files
+
+    return subset_json_files
+
+
+def _route_documents_to_splits(
+    subset_json_files: Dict[str, List[Path]],
+    doc_to_split: Dict[str, str],
+    *,
+    fail_on_unmatched: bool,
+) -> Dict[str, Dict[str, List[Path]]]:
+    split_map: Dict[str, Dict[str, List[Path]]] = defaultdict(lambda: defaultdict(list))
+    unmatched_doc_ids: Set[str] = set()
+
+    for subset_name in sorted(subset_json_files.keys()):
+        for json_file in subset_json_files[subset_name]:
+            matched_split = doc_to_split.get(json_file.stem)
+            if matched_split is None:
+                unmatched_doc_ids.add(json_file.stem)
+                continue
+            split_map[matched_split][subset_name].append(json_file)
+
+    if unmatched_doc_ids and fail_on_unmatched:
+        sample = ", ".join(f"'{doc_id}'" for doc_id in sorted(unmatched_doc_ids)[:10])
+        raise RuntimeError(
+            "Documents were found in the exports but not assigned by any --split-file. "
+            f"Found {len(unmatched_doc_ids)} unmatched documents. Sample: {sample}"
+        )
+
+    return {
+        split_name: {
+            subset_name: sorted(paths)
+            for subset_name, paths in sorted(subset_map.items())
+            if paths
+        }
+        for split_name, subset_map in sorted(split_map.items())
+    }
+
+
 def _dataset_dir_for_split(base_name: str, split: str, multi_split: bool) -> str:
     if not multi_split:
         return base_name
@@ -318,7 +426,7 @@ def link_file(source: Path, destination: Path) -> None:
 
 def populate_staging_dir(
     staging_dir: Path,
-    subset_sources: Dict[str, List[Path]],
+    subset_json_files: Dict[str, List[Path]],
 ) -> tuple[int, Dict[str, str]]:
     """
     Populate staging directory with files from all subsets.
@@ -329,21 +437,15 @@ def populate_staging_dir(
     file_index = 0
     file_to_subset: Dict[str, str] = {}
 
-    for subset_name in sorted(subset_sources.keys()):
-        for source_dir in subset_sources[subset_name]:
-            json_files = sorted(p for p in source_dir.glob("*.json") if p.is_file())
-            if not json_files:
-                _LOGGER.warning("No JSON files found under %s", source_dir)
-                continue
-
-            for json_file in json_files:
-                # Use original filename to preserve doc_id
-                destination = staging_dir / json_file.name
-                link_file(json_file, destination)
-                # Map the original filename stem to subset name
-                original_stem = json_file.stem
-                file_to_subset[original_stem] = subset_name
-                file_index += 1
+    for subset_name in sorted(subset_json_files.keys()):
+        for json_file in subset_json_files[subset_name]:
+            # Use original filename to preserve doc_id
+            destination = staging_dir / json_file.name
+            link_file(json_file, destination)
+            # Map the original filename stem to subset name
+            original_stem = json_file.stem
+            file_to_subset[original_stem] = subset_name
+            file_index += 1
 
     return file_index, file_to_subset
 
@@ -428,7 +530,7 @@ def iter_records_with_tags(
 
 
 def build_combined_dataset(
-    subset_sources: Dict[str, List[Path]],
+    subset_json_files: Dict[str, List[Path]],
     staging_dir: Path,
     output_root: Path,
     dataset_dir_name: str,
@@ -436,6 +538,7 @@ def build_combined_dataset(
     chunk_size: int,
     export_kind: DeliveryExportKind,
     force: bool,
+    source_count: int,
     subset_assets: Dict[str, Dict[str, DocumentAsset]] | None = None,
     *,
     assets_required: bool = False,
@@ -457,7 +560,7 @@ def build_combined_dataset(
         shutil.rmtree(target_root)
 
     ensure_clean_dir(staging_dir)
-    processed, file_to_subset = populate_staging_dir(staging_dir, subset_sources)
+    processed, file_to_subset = populate_staging_dir(staging_dir, subset_json_files)
     if processed == 0:
         _LOGGER.warning("No JSON payloads found across all subsets. Skipping.")
         shutil.rmtree(staging_dir)
@@ -480,7 +583,8 @@ def build_combined_dataset(
     test_dir.mkdir(parents=True, exist_ok=True)
 
     count = 0
-    chunk_count = 0
+    written_shard_count = 0
+    next_shard_id = 0
 
     for record_chunk in chunkify(
         iter_records_with_tags(
@@ -492,14 +596,15 @@ def build_combined_dataset(
         chunk_size,
     ):
         record_list = [r.as_record_dict() for r in record_chunk]
-        save_shard_to_disk(
+        save_result = save_shard_to_disk(
             items=record_list,
             dataset_path=test_dir,
             schema=DatasetRecord.pyarrow_schema(),
-            shard_id=chunk_count,
+            shard_id=next_shard_id,
         )
-        count += len(record_list)
-        chunk_count += 1
+        count += save_result.written_record_count
+        written_shard_count += save_result.written_shard_count
+        next_shard_id = save_result.next_shard_id
 
     write_datasets_info(
         name=builder.name,
@@ -512,29 +617,39 @@ def build_combined_dataset(
     shutil.rmtree(staging_dir)
 
     record_count = read_num_rows(target_root)
-    submission_count = sum(len(dirs) for dirs in subset_sources.values())
-    subset_names = sorted(subset_sources.keys())
+    subset_names = sorted(subset_json_files.keys())
 
     return CombinedBuildStats(
         record_count=record_count if record_count else processed,
-        submission_count=submission_count,
+        submission_count=source_count,
         subsets=subset_names,
     )
 
 
 def render_configs_block(configs: Sequence[ConfigEntry]) -> List[str]:
     lines: List[str] = ["configs:"]
+    grouped_configs: Dict[str, List[ConfigEntry]] = {}
     for config in configs:
-        lines.append(f"- config_name: {config.name}")
+        if config.name not in grouped_configs:
+            grouped_configs[config.name] = []
+        grouped_configs[config.name].append(config)
+
+    for config_name, config_entries in grouped_configs.items():
+        lines.append(f"- config_name: {config_name}")
         lines.append("  data_files:")
-        lines.append(f"    - split: {config.split}")
-        lines.append(f"      path: {config.path_pattern}")
+        for config in config_entries:
+            lines.append(f"    - split: {config.split}")
+            lines.append(f"      path: {config.path_pattern}")
     return lines
 
 
 def render_dataset_info_block(configs: Sequence[ConfigEntry]) -> List[str]:
     lines: List[str] = ["dataset_info:"]
+    seen_config_names: Set[str] = set()
     for config in configs:
+        if config.name in seen_config_names:
+            continue
+        seen_config_names.add(config.name)
         feature_rows = iter_dataset_features()
         lines.append(f"- config_name: {config.name}")
         lines.append("  features:")
@@ -652,11 +767,22 @@ def main(
             "Example: --subset-split pdf_val=validation --subset-split 'pdf_train_*'=train"
         ),
     ),
+    split_file: List[str] | None = typer.Option(
+        None,
+        "--split-file",
+        help=(
+            "Assign documents to splits using split=path, where each file lists one "
+            "document id per line. Example: --split-file train=/path/train.txt "
+            "--split-file validation=/path/validation.txt"
+        ),
+    ),
     fail_on_unmatched: bool = typer.Option(
         False,
         "--fail-on-unmatched/--allow-unmatched",
         help=(
-            "Error if a subset does not match any --subset-split rule instead of "
+            "With --split-file, error if any exported document is not listed in a "
+            "split file; otherwise unmatched documents are omitted. With "
+            "--subset-split, error if a subset does not match any rule instead of "
             "falling back to the default --split."
         ),
     ),
@@ -690,9 +816,12 @@ def main(
     datasets_root = datasets_root.expanduser().resolve() if datasets_root else None
     staging_root = output_dir / "_staging"
     subset_split_rules = _parse_subset_split_rules(subset_split) if subset_split else []
+    split_file_rules = _parse_split_file_rules(split_file) if split_file else []
 
     if not deliveries_root.exists():
         raise typer.BadParameter(f"{deliveries_root} does not exist.")
+    if split_file_rules and subset_split_rules:
+        raise typer.BadParameter("Use either --split-file or --subset-split, not both.")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     ensure_clean_dir(staging_root)
@@ -740,17 +869,28 @@ def main(
                 + ". Ensure datasets-root contains matching subsets."
             )
 
-    staging_dir = staging_root / "combined"
-    split_map = (
-        _route_subsets_to_splits(
+    all_subset_json_files = collect_subset_json_files(sorted_subset_sources)
+    split_map: Dict[str, Dict[str, List[Path]]]
+    if split_file_rules:
+        doc_to_split = _load_doc_split_assignments(split_file_rules)
+        split_map = _route_documents_to_splits(
+            subset_json_files=all_subset_json_files,
+            doc_to_split=doc_to_split,
+            fail_on_unmatched=fail_on_unmatched,
+        )
+    elif subset_split_rules:
+        routed_subset_sources = _route_subsets_to_splits(
             subset_sources=sorted_subset_sources,
             rules=subset_split_rules,
             default_split=split,
             fail_on_unmatched=fail_on_unmatched,
         )
-        if subset_split_rules
-        else {split: sorted_subset_sources}
-    )
+        split_map = {
+            split_name: collect_subset_json_files(subset_sources)
+            for split_name, subset_sources in sorted(routed_subset_sources.items())
+        }
+    else:
+        split_map = {split: all_subset_json_files}
 
     build_results: List[BuildResult] = []
     multi_split = len(split_map) > 1
@@ -758,8 +898,15 @@ def main(
     for split_name in sorted(split_map.keys()):
         staging_dir = staging_root / f"combined-{split_name}"
         dataset_dir = _dataset_dir_for_split(dataset_dir_name, split_name, multi_split)
+        source_count = len(
+            {
+                json_file.parent
+                for paths in split_map[split_name].values()
+                for json_file in paths
+            }
+        )
         stats = build_combined_dataset(
-            subset_sources=split_map[split_name],
+            subset_json_files=split_map[split_name],
             staging_dir=staging_dir,
             output_root=output_dir,
             dataset_dir_name=dataset_dir,
@@ -767,15 +914,14 @@ def main(
             chunk_size=chunk_size,
             export_kind=export_kind,
             force=force,
+            source_count=source_count,
             subset_assets=subset_assets,
             assets_required=datasets_root is not None,
         )
         if stats is not None:
-            config_name = split_name if multi_split or subset_split_rules else None
             config = stats.as_config(
                 dataset_dir_name=dataset_dir,
                 split=split_name,
-                config_name=config_name,
             )
             build_results.append(BuildResult(config=config, stats=stats))
 

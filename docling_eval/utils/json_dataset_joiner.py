@@ -183,21 +183,23 @@ def join_docling_json_datasets(
             yield joined
 
     count = 0
-    chunk_count = 0
+    written_shard_count = 0
+    next_shard_id = 0
     for prediction_chunk in chunkify(_generate_records(), chunk_size):
         chunk_list = list(prediction_chunk)
         if not chunk_list:
             continue
 
-        save_shard_to_disk(
+        save_result = save_shard_to_disk(
             items=[record.as_record_dict() for record in chunk_list],
             dataset_path=test_dir,
             schema=DatasetRecordWithPrediction.pyarrow_schema(),
-            shard_id=chunk_count,
+            shard_id=next_shard_id,
         )
 
-        count += len(chunk_list)
-        chunk_count += 1
+        count += save_result.written_record_count
+        written_shard_count += save_result.written_shard_count
+        next_shard_id = save_result.next_shard_id
 
     write_datasets_info(
         name=name,
@@ -211,5 +213,5 @@ def join_docling_json_datasets(
         "Joined %s records into dataset %s (chunks: %s)",
         count,
         target_dataset_dir,
-        chunk_count,
+        written_shard_count,
     )

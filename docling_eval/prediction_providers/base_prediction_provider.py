@@ -524,19 +524,21 @@ class BasePredictionProvider:
         max_num_chunks = sys.maxsize
 
         count = 0
-        chunk_count = 0
+        written_shard_count = 0
+        next_shard_id = 0
         # Use _serialize_predictions to ensure we hold dicts (bytes), not open PIL images
         for record_chunk_dicts in chunkify(_serialize_predictions(), chunk_size):
-            save_shard_to_disk(
+            save_result = save_shard_to_disk(
                 items=record_chunk_dicts,
                 dataset_path=test_dir,
                 schema=DatasetRecordWithPrediction.pyarrow_schema(),
-                shard_id=chunk_count,
+                shard_id=next_shard_id,
             )
-            count += len(record_chunk_dicts)
-            chunk_count += 1
+            count += save_result.written_record_count
+            written_shard_count += save_result.written_shard_count
+            next_shard_id = save_result.next_shard_id
 
-            if chunk_count >= max_num_chunks:
+            if written_shard_count >= max_num_chunks:
                 _log.info(
                     f"Reached maximum number of chunks ({max_num_chunks}). Stopping."
                 )
@@ -551,4 +553,6 @@ class BasePredictionProvider:
                 features=DatasetRecordWithPrediction.features(),
             )
 
-        _log.info(f"Saved {count} records in {chunk_count} chunks to {test_dir}")
+        _log.info(
+            f"Saved {count} records in {written_shard_count} chunks to {test_dir}"
+        )
