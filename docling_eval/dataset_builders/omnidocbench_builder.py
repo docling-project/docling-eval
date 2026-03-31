@@ -7,12 +7,6 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
 from datasets import load_dataset
-from docling_core.types.io import DocumentStream
-from huggingface_hub import snapshot_download
-from PIL import Image as PILImage
-from PIL.Image import Image
-from tqdm import tqdm
-
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -23,6 +17,12 @@ from docling_core.types.doc import (
     ProvenanceItem,
     Size,
 )
+from docling_core.types.io import DocumentStream
+from huggingface_hub import snapshot_download
+from PIL import Image as PILImage
+from PIL.Image import Image
+from tqdm import tqdm
+
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns
 from docling_eval.dataset_builders.dataset_builder import (

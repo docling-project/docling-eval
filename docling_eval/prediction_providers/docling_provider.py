@@ -6,9 +6,9 @@ from typing import Dict, List, Optional, Set
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.settings import settings
 from docling.document_converter import DocumentConverter, FormatOption
+from docling_core.types.doc import DocItemLabel
 from pydantic import TypeAdapter
 
-from docling_core.types.doc import DocItemLabel
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

@@ -5,10 +5,6 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, Iterable, Set
 
-from docling_core.types.io import DocumentStream
-from PIL.Image import Image
-from tqdm import tqdm
-
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -20,6 +16,10 @@ from docling_core.types.doc import (
     TableCell,
     TableData,
 )
+from docling_core.types.io import DocumentStream
+from PIL.Image import Image
+from tqdm import tqdm
+
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns
 from docling_eval.dataset_builders.dataset_builder import (

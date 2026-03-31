@@ -1,9 +1,8 @@
 from enum import Enum
 from typing import List
 
-from pydantic import BaseModel
-
 from docling_core.types.doc import BoundingBox
+from pydantic import BaseModel
 
 
 class BenchMarkColumns(str, Enum):

@@ -1,10 +1,9 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+from docling_core.types.doc import BoundingBox
 from docling_core.types.doc.page import TextCell
 from pydantic import BaseModel, Field
-
-from docling_core.types.doc import BoundingBox
 
 
 class _CalculationConstants:

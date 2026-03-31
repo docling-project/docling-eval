@@ -4,9 +4,6 @@ from pathlib import Path
 from typing import Any, Iterable, List
 
 from datasets import load_dataset
-from docling_core.types.io import DocumentStream
-from tqdm import tqdm
-
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -16,6 +13,9 @@ from docling_core.types.doc import (
     ProvenanceItem,
     Size,
 )
+from docling_core.types.io import DocumentStream
+from tqdm import tqdm
+
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import (
     BenchMarkColumns,

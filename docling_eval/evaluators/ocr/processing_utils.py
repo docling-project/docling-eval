@@ -4,6 +4,7 @@ import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
 import edit_distance
+from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_core.types.doc.page import (
     BoundingRectangle,
     SegmentedPage,
@@ -11,7 +12,6 @@ from docling_core.types.doc.page import (
     TextDirection,
 )
 
-from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_eval.evaluators.ocr.evaluation_models import Word, _CalculationConstants
 from docling_eval.evaluators.ocr.geometry_utils import create_polygon_from_bbox
 

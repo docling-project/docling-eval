@@ -22,11 +22,11 @@ from docling.datamodel.pipeline_options import (
 from docling.models.stages.table_structure.table_structure_model import (
     TableStructureModel,
 )
+from docling_core.types import DoclingDocument
+from docling_core.types.doc import DocItemLabel, TableCell, TableData, TableItem
 from docling_core.types.io import DocumentStream
 from PIL import Image
 
-from docling_core.types import DoclingDocument
-from docling_core.types.doc import DocItemLabel, TableCell, TableData, TableItem
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

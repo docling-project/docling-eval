@@ -6,6 +6,8 @@ import os
 from typing import Dict, List, Optional, Set, Tuple
 
 from docling.datamodel.base_models import ConversionStatus
+from docling_core.types import DoclingDocument
+from docling_core.types.doc import BoundingBox, CoordOrigin, Size
 from docling_core.types.doc.document import (
     ImageRef,
     PageItem,
@@ -23,8 +25,6 @@ from docling_core.types.doc.page import (
 from docling_core.types.io import DocumentStream
 from google.protobuf.json_format import MessageToDict
 
-from docling_core.types import DoclingDocument
-from docling_core.types.doc import BoundingBox, CoordOrigin, Size
 from docling_eval.datamodels.dataset_record import (
     DatasetRecord,
     DatasetRecordWithPrediction,

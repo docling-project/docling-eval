@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from datasets import Dataset, load_dataset
+from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_core.types.doc.page import BoundingRectangle, PageGeometry, SegmentedPage
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel
 from tqdm import tqdm
 
-from docling_core.types.doc import BoundingBox, CoordOrigin
 from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
 from docling_eval.datamodels.types import BenchMarkColumns, PredictionFormats
 from docling_eval.evaluators.base_evaluator import BaseEvaluator

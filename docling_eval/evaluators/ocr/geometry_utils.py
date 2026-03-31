@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 from docling_core.types.doc import BoundingBox, CoordOrigin
+
 from docling_eval.evaluators.ocr.evaluation_models import Word, _CalculationConstants
 
 

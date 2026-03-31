@@ -7,14 +7,13 @@ from pathlib import Path
 from typing import Dict, List, Union
 
 from datasets import load_dataset
+from docling_core.types.doc import DocItemLabel
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.document import ContentLayer, DocItem, DoclingDocument
 from docling_core.types.doc.labels import GraphCellLabel, TableCellLabel
 from docling_core.types.io import DocumentStream
 from PIL import Image
 from pydantic import ValidationError
-
-from docling_core.types.doc import DocItemLabel
 
 # CVAT tools are optional - provided by docling-cvat-tools
 try:

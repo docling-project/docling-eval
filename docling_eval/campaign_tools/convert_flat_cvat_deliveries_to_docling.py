@@ -28,9 +28,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Final, Iterable, List, Literal, Sequence, Tuple, cast
 
-from pydantic import BaseModel, Field
-
 from docling_core.types import DoclingDocument
+from pydantic import BaseModel, Field
 
 # CVAT tools are optional - provided by docling-cvat-tools
 try:

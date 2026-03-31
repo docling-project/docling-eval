@@ -5,16 +5,6 @@ from typing import Iterable, List, Optional, Set
 
 import PIL.Image
 from datasets import load_dataset
-from docling_core.types.doc.document import (
-    GraphCell,
-    GraphData,
-    GraphLink,
-    KeyValueItem,
-)
-from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
-from docling_core.types.io import DocumentStream
-from tqdm import tqdm
-
 from docling_core.types import DoclingDocument
 from docling_core.types.doc import (
     BoundingBox,
@@ -29,6 +19,16 @@ from docling_core.types.doc import (
     TableCell,
     TableData,
 )
+from docling_core.types.doc.document import (
+    GraphCell,
+    GraphData,
+    GraphLink,
+    KeyValueItem,
+)
+from docling_core.types.doc.labels import GraphCellLabel, GraphLinkLabel
+from docling_core.types.io import DocumentStream
+from tqdm import tqdm
+
 from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.datamodels.types import BenchMarkColumns, EvaluationModality
 from docling_eval.dataset_builders.dataset_builder import (
