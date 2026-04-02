@@ -4,6 +4,7 @@ import io
 import json
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
 from pathlib import Path
@@ -37,6 +38,21 @@ from docling_eval.datamodels.types import (
     EvaluationModality,
     PredictionProviderType,
 )
+
+_ARROW_SHARD_TARGET_BYTES = 1_500_000_000
+_ARROW_ESTIMATE_MARGIN_NUMERATOR = 6
+_ARROW_ESTIMATE_MARGIN_DENOMINATOR = 5
+_ARROW_CONTAINER_OVERHEAD_BYTES = 64
+_ARROW_SCALAR_OVERHEAD_BYTES = 16
+
+
+@dataclass(frozen=True)
+class SaveShardResult:
+    written_record_count: int
+    written_shard_count: int
+    skipped_record_count: int
+    next_shard_id: int
+    skipped_doc_ids: List[str]
 
 
 def get_binhash(binary_data: bytes) -> str:
@@ -569,25 +585,202 @@ def _pil_to_bytes(img: PIL.Image.Image) -> bytes:
     return buffered.getvalue()
 
 
+def _prepare_record_for_arrow(item: Any) -> Dict[str, Any]:
+    # Import here to avoid circular import
+    from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
+
+    record = dict(item)
+
+    for field_name in [
+        DatasetRecordWithPrediction.get_field_alias("ground_truth_pictures"),
+        DatasetRecordWithPrediction.get_field_alias("ground_truth_page_images"),
+        DatasetRecordWithPrediction.get_field_alias("predicted_pictures"),
+        DatasetRecordWithPrediction.get_field_alias("predicted_page_images"),
+    ]:
+        images = record.get(field_name)
+        if images and isinstance(images[0], PIL.Image.Image):
+            record[field_name] = [
+                {"bytes": _pil_to_bytes(img), "path": None} for img in images
+            ]
+
+    return record
+
+
+def _estimate_arrow_value_size_bytes(value: Any) -> int:
+    if value is None:
+        return _ARROW_SCALAR_OVERHEAD_BYTES
+
+    if isinstance(value, bytes):
+        return len(value) + _ARROW_SCALAR_OVERHEAD_BYTES
+
+    if isinstance(value, str):
+        return len(value.encode("utf-8")) + _ARROW_SCALAR_OVERHEAD_BYTES
+
+    if isinstance(value, Path):
+        return len(str(value).encode("utf-8")) + _ARROW_SCALAR_OVERHEAD_BYTES
+
+    if isinstance(value, bool):
+        return 1 + _ARROW_SCALAR_OVERHEAD_BYTES
+
+    if isinstance(value, int | float):
+        return 8 + _ARROW_SCALAR_OVERHEAD_BYTES
+
+    if isinstance(value, list | tuple):
+        return (
+            _ARROW_CONTAINER_OVERHEAD_BYTES
+            + len(value) * _ARROW_SCALAR_OVERHEAD_BYTES
+            + sum(_estimate_arrow_value_size_bytes(item) for item in value)
+        )
+
+    if isinstance(value, dict):
+        return (
+            _ARROW_CONTAINER_OVERHEAD_BYTES
+            + len(value) * _ARROW_SCALAR_OVERHEAD_BYTES
+            + sum(
+                _estimate_arrow_value_size_bytes(key)
+                + _estimate_arrow_value_size_bytes(item)
+                for key, item in value.items()
+            )
+        )
+
+    return len(str(value).encode("utf-8")) + _ARROW_SCALAR_OVERHEAD_BYTES
+
+
+def _estimate_prepared_record_size_bytes(record: Dict[str, Any]) -> int:
+    raw_size = _estimate_arrow_value_size_bytes(record)
+    return (
+        raw_size * _ARROW_ESTIMATE_MARGIN_NUMERATOR
+    ) // _ARROW_ESTIMATE_MARGIN_DENOMINATOR
+
+
+def _append_skipped_records_audit(
+    *,
+    dataset_path: Path,
+    thread_id: int,
+    shard_id: int,
+    records: List[Dict[str, Any]],
+    estimated_size_bytes: int,
+    reason: str,
+) -> None:
+    audit_path = dataset_path / "skipped_records.jsonl"
+    with audit_path.open("a", encoding="utf-8") as file_handle:
+        for record in records:
+            entry = {
+                "thread_id": thread_id,
+                "shard_id": shard_id,
+                "doc_id": record.get("document_id"),
+                "doc_path": record.get("document_filepath"),
+                "estimated_size_bytes": estimated_size_bytes,
+                "record_count_in_dropped_shard": len(records),
+                "reason": reason,
+            }
+            file_handle.write(json.dumps(entry) + "\n")
+
+
 def save_shard_to_disk(
     items: List[Any],
     dataset_path: Path,
     schema: Any,
     thread_id: int = 0,
     shard_id: int = 0,
-) -> None:
-    """Save shard to disk as parquet."""
+) -> SaveShardResult:
+    """Save one or more parquet shards to disk for the provided items."""
     if not items:
-        return
+        return SaveShardResult(
+            written_record_count=0,
+            written_shard_count=0,
+            skipped_record_count=0,
+            next_shard_id=shard_id,
+            skipped_doc_ids=[],
+        )
 
-    # Write directly to parquet using pyarrow to avoid Dataset.from_list() overhead
-    _save_to_parquet_direct(items, dataset_path, thread_id, shard_id, schema)
+    import pyarrow as pa
 
-    logging.info(
-        f"Saved shard {shard_id} to {dataset_path / f'shard_{thread_id:06}_{shard_id:06}.parquet'} with {len(items)} documents"
+    prepared_items = [_prepare_record_for_arrow(item) for item in items]
+
+    current_shard_records: List[Dict[str, Any]] = []
+    current_estimated_size_bytes = 0
+    current_shard_id = shard_id
+    written_record_count = 0
+    written_shard_count = 0
+    skipped_record_count = 0
+    skipped_doc_ids: List[str] = []
+
+    def flush_current_shard() -> None:
+        nonlocal current_shard_records
+        nonlocal current_estimated_size_bytes
+        nonlocal current_shard_id
+        nonlocal written_record_count
+        nonlocal written_shard_count
+        nonlocal skipped_record_count
+        nonlocal skipped_doc_ids
+
+        if not current_shard_records:
+            return
+
+        records_to_write = current_shard_records
+        estimated_size_bytes = current_estimated_size_bytes
+
+        try:
+            _save_to_parquet_direct(
+                records_to_write, dataset_path, thread_id, current_shard_id, schema
+            )
+            written_record_count += len(records_to_write)
+            written_shard_count += 1
+            logging.info(
+                "Saved shard %s to %s with %s documents",
+                current_shard_id,
+                dataset_path / f"shard_{thread_id:06}_{current_shard_id:06}.parquet",
+                len(records_to_write),
+            )
+        except pa.ArrowCapacityError as exc:
+            skipped_record_count += len(records_to_write)
+            skipped_doc_ids.extend(
+                str(doc_id)
+                for doc_id in [record.get("document_id") for record in records_to_write]
+                if doc_id is not None
+            )
+            _append_skipped_records_audit(
+                dataset_path=dataset_path,
+                thread_id=thread_id,
+                shard_id=current_shard_id,
+                records=records_to_write,
+                estimated_size_bytes=estimated_size_bytes,
+                reason=f"ArrowCapacityError: {exc}",
+            )
+            logging.error(
+                "Skipping shard %s with %s records after ArrowCapacityError: %s",
+                current_shard_id,
+                len(records_to_write),
+                exc,
+            )
+
+        current_shard_id += 1
+        current_shard_records = []
+        current_estimated_size_bytes = 0
+
+    for record in prepared_items:
+        estimated_record_size_bytes = _estimate_prepared_record_size_bytes(record)
+
+        if (
+            current_shard_records
+            and current_estimated_size_bytes + estimated_record_size_bytes
+            > _ARROW_SHARD_TARGET_BYTES
+        ):
+            flush_current_shard()
+
+        current_shard_records.append(record)
+        current_estimated_size_bytes += estimated_record_size_bytes
+
+    flush_current_shard()
+
+    return SaveShardResult(
+        written_record_count=written_record_count,
+        written_shard_count=written_shard_count,
+        skipped_record_count=skipped_record_count,
+        next_shard_id=current_shard_id,
+        skipped_doc_ids=skipped_doc_ids,
     )
-
-    shard_id += 1
 
 
 def _save_to_parquet_direct(
@@ -597,37 +790,8 @@ def _save_to_parquet_direct(
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    # Import here to avoid circular import
-    from docling_eval.datamodels.dataset_record import DatasetRecordWithPrediction
-
-    # Convert data to pyarrow table format
-    records = []
-    for item in items:
-        record = dict(item)
-
-        # Convert PIL images to bytes for direct Arrow storage
-        for field_name in [
-            DatasetRecordWithPrediction.get_field_alias("ground_truth_pictures"),
-            DatasetRecordWithPrediction.get_field_alias("ground_truth_page_images"),
-            DatasetRecordWithPrediction.get_field_alias("predicted_pictures"),
-            DatasetRecordWithPrediction.get_field_alias("predicted_page_images"),
-        ]:
-            if field_name in record:
-                images = record[field_name]
-                if (
-                    images
-                    and len(images) > 0
-                    and isinstance(images[0], PIL.Image.Image)
-                ):
-                    # Convert to the same format as HuggingFace datasets expects
-                    record[field_name] = [
-                        {"bytes": _pil_to_bytes(img), "path": None} for img in images
-                    ]
-
-        records.append(record)
-
     # Create pyarrow table with mandatory explicit schema
-    table = pa.Table.from_pylist(records, schema=schema)
+    table = pa.Table.from_pylist(items, schema=schema)
 
     # Write to parquet
     output_file = dataset_path / f"shard_{thread_id:06}_{shard_id:06}.parquet"

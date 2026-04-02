@@ -76,7 +76,7 @@ hyperscalers = [
     'ibm-cos-sdk (>=2.1.40,<3.0.0)',
 ]
 cvat_tools = [
-    "docling-cvat-tools>=0.0.1",
+    "docling-cvat-tools>=0.1.0",
 ]
 
 [dependency-groups]

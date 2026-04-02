@@ -1,4 +1,5 @@
 import base64
+import gc
 import json
 import logging
 from io import BytesIO
@@ -179,23 +180,29 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                     continue
 
                 image_bytes = image_data["bytes"]
-                image = Image.open(BytesIO(image_bytes)).convert("RGB")
                 gt_data = json.loads(sample["json_data"])
 
-                true_doc, seg_pages = self._create_ground_truth_doc(
-                    doc_id, gt_data, image
-                )
+                with BytesIO(image_bytes) as input_stream:
+                    with Image.open(input_stream) as src_img:
+                        image = src_img.convert("RGB")
 
-                true_doc, true_pictures, true_page_images = extract_images(
-                    document=true_doc,
-                    pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
-                    page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
-                )
+                        try:
+                            true_doc, seg_pages = self._create_ground_truth_doc(
+                                doc_id, gt_data, image
+                            )
 
-                with BytesIO() as img_byte_stream:
-                    image.save(img_byte_stream, format="PNG")
-                    img_byte_stream.seek(0)
-                    img_bytes = img_byte_stream.getvalue()
+                            true_doc, true_pictures, true_page_images = extract_images(
+                                document=true_doc,
+                                pictures_column=BenchMarkColumns.GROUNDTRUTH_PICTURES.value,
+                                page_images_column=BenchMarkColumns.GROUNDTRUTH_PAGE_IMAGES.value,
+                            )
+
+                            with BytesIO() as img_byte_stream:
+                                image.save(img_byte_stream, format="PNG")
+                                img_byte_stream.seek(0)
+                                img_bytes = img_byte_stream.getvalue()
+                        finally:
+                            image.close()
 
                 image_stream = DocumentStream(
                     name=f"{doc_id}.png", stream=BytesIO(img_bytes)
@@ -212,6 +219,17 @@ class PixparseDatasetBuilder(BaseEvaluationDatasetBuilder):
                     ground_truth_pictures=true_pictures,
                     ground_truth_page_images=true_page_images,
                 )
+
+                # Manual cleanup to prevent memory accumulation
+                del (
+                    true_doc,
+                    seg_pages,
+                    true_pictures,
+                    true_page_images,
+                    image_stream,
+                    img_bytes,
+                )
+                gc.collect()
 
             except Exception as e:
                 logging.error(

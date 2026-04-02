@@ -151,15 +151,13 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         self.dataset_local_path.mkdir(parents=True, exist_ok=True)
 
         _log.info("Downloading files (raw mode)...")
-        assert isinstance(
-            self.dataset_source, HFSource
-        ), "dataset_source must be HFSource"
+        assert isinstance(self.dataset_source, HFSource)
         snapshot_download(
             repo_id=self.dataset_source.repo_id,
             revision=self.dataset_source.revision,
             repo_type="dataset",
             token=self.dataset_source.hf_token,
-            local_dir=str(self.dataset_local_path),
+            local_dir=self.dataset_local_path,
         )
         self.retrieved = True
         return self.dataset_local_path
@@ -480,10 +478,8 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
         from downloading many individual files.
         """
         _log.info("Loading dataset via load_dataset (Parquet mode)...")
+        assert isinstance(self.dataset_source, HFSource)
 
-        assert isinstance(
-            self.dataset_source, HFSource
-        ), "dataset_source must be HFSource"
         ds = load_dataset(
             self.dataset_source.repo_id,
             split="train",
@@ -510,9 +506,16 @@ class OmniDocBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             page_width = float(page_image_rgb.width)
             page_height = float(page_image_rgb.height)
 
+            image_ref = ImageRef(
+                mimetype="image/png",
+                dpi=72,
+                size=Size(width=page_width, height=page_height),
+                uri=from_pil_to_base64uri(page_image_rgb),
+            )
             page_item = PageItem(
                 page_no=1,
                 size=Size(width=page_width, height=page_height),
+                image=image_ref,
             )
             true_doc.pages[1] = page_item
 
