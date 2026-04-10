@@ -242,6 +242,7 @@ def _execute_job(
     reuse_eval_dataset: bool,
     gt_json_dirname: str,
     pred_json_dirname: str,
+    do_visualization: bool = True,
 ) -> Optional[pd.DataFrame]:
     """Execute pipeline stages for a single job according to the execution plan.
 
@@ -255,6 +256,7 @@ def _execute_job(
         storage_scale: Scale for stored page images and coordinates
         gt_json_dirname: Directory name for ground truth JSON exports
         pred_json_dirname: Directory name for prediction JSON exports
+        do_visualization: Whether to generate comparison HTML visualizations
 
     Returns:
         DataFrame with evaluation results, or None if no evaluation was run
@@ -306,7 +308,7 @@ def _execute_job(
         pipeline.create_eval_dataset_from_json(
             reuse_existing=reuse_eval_dataset and not plan.force_rerun,
             ignore_missing_predictions=True,
-            do_visualization=True,
+            do_visualization=do_visualization,
         )
     elif resume_from_json:
         pipeline.ensure_json_exports_exist()
@@ -470,6 +472,7 @@ def run_jobs(
     reuse_eval_dataset: bool = False,
     gt_json_dirname: str = "ground_truth_json",
     pred_json_dirname: str = "predictions_json",
+    do_visualization: bool = True,
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
@@ -561,6 +564,7 @@ def run_jobs(
                     reuse_eval_dataset=reuse_eval_dataset,
                     gt_json_dirname=gt_json_dirname,
                     pred_json_dirname=pred_json_dirname,
+                    do_visualization=do_visualization,
                 )
 
                 if subset_df is not None and not subset_df.empty:
@@ -799,6 +803,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         default="predictions_json",
         help="Directory name for prediction JSON exports (default: predictions_json).",
     )
+    parser.add_argument(
+        "--no-visualization",
+        action="store_true",
+        help="Skip generating comparison HTML visualizations (significantly faster).",
+    )
 
     return parser.parse_args(argv)
 
@@ -833,6 +842,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             reuse_eval_dataset=args.reuse_eval_dataset,
             gt_json_dirname=args.gt_json_dirname,
             pred_json_dirname=args.pred_json_dirname,
+            do_visualization=not args.no_visualization,
         )
     except ValueError as exc:
         _LOGGER.error("%s", exc)
