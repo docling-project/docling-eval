@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import PIL
 from datasets import Features
@@ -11,6 +11,7 @@ from datasets import Image as Features_Image
 from datasets import Sequence, Value
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types import DoclingDocument
+from docling_core.types.doc import CoordOrigin
 from docling_core.types.doc.page import SegmentedPage
 from docling_core.types.io import DocumentStream
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
@@ -279,7 +280,138 @@ class DatasetRecord(
 
         return data
 
+class DatasetRecordWithBBox(DatasetRecord):
+    """Add extra column (named GroundTruthBboxOnPageImages) to DatasetRecord that contains
+    
+     GroundTruthBboxOnPageImages: JSON dict: page_number (zero based) to a list of box objects, each with:
+        - label: string class name (e.g. "table")
+        - category_id: integer category ID
+        - bbox: [x, y, width, height] in COCO format
+        - ltrb: [left, top, right, bottom]
 
+    Note: the page_number is the index in the array of the GroundTruthPageImages.
+    """
+    ground_truth_bbox_on_page_images: Dict[int, List[Dict]] = Field(
+        alias="GroundTruthBboxOnPageImages", default_factory=dict
+    )
+
+    @classmethod
+    def _get_field_definitions(cls) -> Dict[str, FieldType]:
+        base_definitions = super()._get_field_definitions()
+        return {
+            **base_definitions,
+            cls.get_field_alias("ground_truth_bbox_on_page_images"): FieldType.STRING,
+        }
+
+    def as_record_dict(self):
+        record = super().as_record_dict()
+        record.update(
+            {
+                self.get_field_alias("ground_truth_bbox_on_page_images"): json.dumps(
+                    self.ground_truth_bbox_on_page_images
+                )
+            }
+        )
+        return record
+
+    def get_page_images_with_bboxes(self) -> List[Tuple[PIL.Image.Image, List[Dict]]]:
+        """Pair each ground-truth page image with its zero-based page bbox payload."""
+        return [
+            (page_image, self.ground_truth_bbox_on_page_images.get(page_index, []))
+            for page_index, page_image in enumerate(self.ground_truth_page_images)
+        ]
+
+    @staticmethod
+    def _validate_coco_bbox(
+        bbox: List[Union[int, float]],
+        page_width: int,
+        page_height: int,
+        page_index: int,
+        box_index: int,
+    ) -> None:
+        if len(bbox) != 4:
+            raise ValueError(
+                f"Page {page_index} bbox #{box_index} has invalid COCO bbox length; expected 4 values."
+            )
+        x, y, width, height = bbox
+        if x < 0 or y < 0 or width < 0 or height < 0:
+            raise ValueError(
+                f"Page {page_index} bbox #{box_index} must be non-negative."
+            )
+        if x + width > page_width or y + height > page_height:
+            raise ValueError(
+                f"Page {page_index} bbox #{box_index} exceeds page image bounds "
+                f"{page_width}x{page_height}."
+            )
+
+    @staticmethod
+    def _validate_ltrb_bbox(
+        ltrb: List[Union[int, float]],
+        page_width: int,
+        page_height: int,
+        page_index: int,
+        box_index: int,
+    ) -> None:
+        if len(ltrb) != 4:
+            raise ValueError(
+                f"Page {page_index} bbox #{box_index} has invalid ltrb length; expected 4 values."
+            )
+        left, top, right, bottom = ltrb
+        if left < 0 or top < 0 or right < left or bottom < top:
+            raise ValueError(
+                f"Page {page_index} bbox #{box_index} has invalid ltrb coordinates."
+            )
+        if right > page_width or bottom > page_height:
+            raise ValueError(
+                f"Page {page_index} bbox #{box_index} exceeds page image bounds "
+                f"{page_width}x{page_height}."
+            )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_bbox_record_dict(cls, data: dict):
+        bbox_alias = cls.get_field_alias("ground_truth_bbox_on_page_images")
+        if bbox_alias in data and isinstance(data[bbox_alias], str):
+            data[bbox_alias] = json.loads(data[bbox_alias])
+
+        if bbox_alias not in data or data[bbox_alias] is None:
+            data[bbox_alias] = {}
+        else:
+            data[bbox_alias] = {int(k): v for k, v in data[bbox_alias].items()}
+
+        return data
+
+    @model_validator(mode="after")
+    def validate_bboxes(self) -> "DatasetRecordWithBBox":
+        for page_index, boxes in self.ground_truth_bbox_on_page_images.items():
+            if page_index < 0 or page_index >= len(self.ground_truth_page_images):
+                raise ValueError(
+                    f"Bounding boxes reference missing page image index {page_index}."
+                )
+
+            page_image = self.ground_truth_page_images[page_index]
+            page_width, page_height = page_image.size
+
+            for box_index, box in enumerate(boxes):
+                coord_origin = box.get("coord_origin", CoordOrigin.TOPLEFT.value)
+                if coord_origin != CoordOrigin.TOPLEFT.value:
+                    raise ValueError(
+                        f"Page {page_index} bbox #{box_index} must use TOPLEFT coordinates."
+                    )
+
+                if "bbox" in box and box["bbox"] is not None:
+                    self._validate_coco_bbox(
+                        box["bbox"], page_width, page_height, page_index, box_index
+                    )
+
+                if "ltrb" in box and box["ltrb"] is not None:
+                    self._validate_ltrb_bbox(
+                        box["ltrb"], page_width, page_height, page_index, box_index
+                    )
+
+        return self
+
+    
 class DatasetRecordWithPrediction(DatasetRecord):
     predictor_info: Dict = Field(alias="predictor_info", default={})
     status: ConversionStatus = Field(alias="status", default=ConversionStatus.PENDING)
