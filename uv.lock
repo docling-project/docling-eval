@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <4.0"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -394,6 +394,7 @@ dependencies = [
     { name = "types-s3transfer" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/ca/32/a4c0ffc850ca94bb0e6a0f9c6fa7d10a6b4000b18603008047c6805bc836/boto3_stubs-1.42.79.tar.gz", hash = "sha256:5f1fbe16f98293a67ce59769e670938605d59e444221c1b08a3a0d78c395077b", size = 101797, upload-time = "2026-03-30T19:50:11.107Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/44/59/27b488c9eb868ad8be153d2a8509d456c4831108c9b8d566aece816f76a1/boto3_stubs-1.42.79-py3-none-any.whl", hash = "sha256:785a745a8ada037eb34c42f885217b786e8015bb241db4bff71d806093934433", size = 70246, upload-time = "2026-03-30T19:50:02.306Z" },
 ]
@@ -1279,7 +1280,7 @@ wheels = [
 
 [[package]]
 name = "docling-eval"
-version = "1.0.1"
+version = "1.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "apted" },
