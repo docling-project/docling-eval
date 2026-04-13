@@ -1,6 +1,6 @@
 import pytest
-from PIL import Image
 from docling_core.types.doc.document import DoclingDocument
+from PIL import Image
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithBBox
 

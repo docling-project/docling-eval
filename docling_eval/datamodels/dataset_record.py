@@ -280,9 +280,10 @@ class DatasetRecord(
 
         return data
 
+
 class DatasetRecordWithBBox(DatasetRecord):
     """Add extra column (named GroundTruthBboxOnPageImages) to DatasetRecord that contains
-    
+
      GroundTruthBboxOnPageImages: JSON dict: page_number (zero based) to a list of box objects, each with:
         - label: string class name (e.g. "table")
         - category_id: integer category ID
@@ -291,6 +292,7 @@ class DatasetRecordWithBBox(DatasetRecord):
 
     Note: the page_number is the index in the array of the GroundTruthPageImages.
     """
+
     ground_truth_bbox_on_page_images: Dict[int, List[Dict]] = Field(
         alias="GroundTruthBboxOnPageImages", default_factory=dict
     )
@@ -411,7 +413,7 @@ class DatasetRecordWithBBox(DatasetRecord):
 
         return self
 
-    
+
 class DatasetRecordWithPrediction(DatasetRecord):
     predictor_info: Dict = Field(alias="predictor_info", default={})
     status: ConversionStatus = Field(alias="status", default=ConversionStatus.PENDING)
