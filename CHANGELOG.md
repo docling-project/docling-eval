@@ -1,3 +1,9 @@
+## [v1.1.1](https://github.com/docling-project/docling-eval/releases/tag/v1.1.1) - 2026-04-14
+
+### Fix
+
+* Bump pillow version ([#209](https://github.com/docling-project/docling-eval/issues/209)) ([`cb00729`](https://github.com/docling-project/docling-eval/commit/cb0072967a90b4d9f2c7ea3b367e8846081e9829))
+
 ## [v1.1.0](https://github.com/docling-project/docling-eval/releases/tag/v1.1.0) - 2026-04-13
 
 ### Feature
