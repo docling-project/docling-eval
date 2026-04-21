@@ -4,7 +4,7 @@ import os
 import sys
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
 from docling.utils.utils import chunkify
 from docling_core.types.doc.document import ImageRefMode
@@ -280,6 +280,14 @@ class BaseEvaluationDatasetBuilder:
         """
         pass
 
+    def get_record_type(self) -> Type[DatasetRecord]:
+        """
+        Return the record type used to derive parquet schema and dataset features.
+
+        Builders can override this to use DatasetRecord subclasses.
+        """
+        return DatasetRecord
+
     def save_to_disk(
         self,
         chunk_size: int = 80,
@@ -310,6 +318,8 @@ class BaseEvaluationDatasetBuilder:
         written_shard_count = 0
         next_shard_id = 0
 
+        record_type = self.get_record_type()
+
         for record_chunk in chunkify(self.iterate(), chunk_size):
             record_list = []
             for r in record_chunk:
@@ -335,7 +345,7 @@ class BaseEvaluationDatasetBuilder:
             save_result = save_shard_to_disk(
                 items=record_list,
                 dataset_path=test_dir,
-                schema=DatasetRecord.pyarrow_schema(),
+                schema=record_type.pyarrow_schema(),
                 shard_id=next_shard_id,
             )
             count += save_result.written_record_count
@@ -357,5 +367,5 @@ class BaseEvaluationDatasetBuilder:
             output_dir=self.target,
             num_train_rows=0,
             num_test_rows=count,
-            features=DatasetRecord.features(),
+            features=record_type.features(),
         )

@@ -5,13 +5,20 @@ from pathlib import Path
 from typing import Dict, Iterable, List
 
 from docling_core.types import DoclingDocument
-from docling_core.types.doc import ImageRef, PageItem, Size
+from docling_core.types.doc import (
+    CoordOrigin,
+    DocItem,
+    DocItemLabel,
+    ImageRef,
+    PageItem,
+    Size,
+)
 from docling_core.types.io import DocumentStream
 from PIL import Image
 from pydantic import ValidationError
 from tqdm import tqdm
 
-from docling_eval.datamodels.dataset_record import DatasetRecord
+from docling_eval.datamodels.dataset_record import DatasetRecord, DatasetRecordWithBBox
 from docling_eval.datamodels.types import BenchMarkColumns
 from docling_eval.dataset_builders.dataset_builder import BaseEvaluationDatasetBuilder
 from docling_eval.utils.utils import (
@@ -195,7 +202,73 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         return pdf_buffer.getvalue()
 
-    def iterate(self) -> Iterable[DatasetRecord]:
+    @staticmethod
+    def _label_to_category_id(label: DocItemLabel) -> int:
+        """Stable integer category id based on DocItemLabel enum order."""
+        return list(DocItemLabel).index(label) + 1
+
+    def _extract_top_level_bboxes(
+        self,
+        document: DoclingDocument,
+        page_no_to_index: Dict[int, int],
+        page_images: List[Image.Image],
+    ) -> Dict[int, List[Dict]]:
+        """
+        Extract top-level layout item bboxes preserving document iteration order.
+
+        The returned mapping uses zero-based page indices as required by
+        DatasetRecordWithBBox.
+        """
+        bboxes_by_page: Dict[int, List[Dict]] = {}
+
+        for item, level in document.iterate_items():
+            if level != 1 or not isinstance(item, DocItem):
+                continue
+
+            if not item.prov:
+                continue
+
+            prov = item.prov[0]
+            page_no = prov.page_no
+            page_index = page_no_to_index.get(page_no)
+            if page_index is None or page_index >= len(page_images):
+                continue
+
+            page_image = page_images[page_index]
+            page_width, page_height = page_image.size
+
+            page = document.pages.get(page_no)
+            if page is None:
+                continue
+
+            page_size = page.size
+            bbox = prov.bbox.to_top_left_origin(page_height=page_size.height)
+
+            # Clamp to image bounds to satisfy DatasetRecordWithBBox validation.
+            left = max(0.0, min(float(bbox.l), float(page_width)))
+            top = max(0.0, min(float(bbox.t), float(page_height)))
+            right = max(left, min(float(bbox.r), float(page_width)))
+            bottom = max(top, min(float(bbox.b), float(page_height)))
+
+            width = max(0.0, right - left)
+            height = max(0.0, bottom - top)
+
+            bboxes_by_page.setdefault(page_index, []).append(
+                {
+                    "label": item.label.value,
+                    "category_id": self._label_to_category_id(item.label),
+                    "bbox": [left, top, width, height],
+                    "ltrb": [left, top, right, bottom],
+                    "coord_origin": CoordOrigin.TOPLEFT.value,
+                }
+            )
+
+        return bboxes_by_page
+
+    def get_record_type(self) -> type[DatasetRecord]:
+        return DatasetRecordWithBBox
+
+    def iterate(self) -> Iterable[DatasetRecordWithBBox]:
         assert isinstance(self.dataset_source, Path)
 
         json_files = self._find_json_files()
@@ -248,6 +321,11 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
                 continue
 
+            page_no_to_index = {
+                page_no: idx
+                for idx, page_no in enumerate(sorted(document.pages.keys()))
+            }
+
             self._attach_page_images(document, page_images)
             document, pictures, extracted_page_images = extract_images(
                 document=document,
@@ -257,6 +335,12 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
 
             if len(extracted_page_images) == 0:
                 extracted_page_images = page_images
+
+            ground_truth_bboxes = self._extract_top_level_bboxes(
+                document=document,
+                page_no_to_index=page_no_to_index,
+                page_images=extracted_page_images,
+            )
 
             if len(png_files) == 1:
                 original_bytes = get_binary(png_files[0])
@@ -273,13 +357,14 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                 )
                 mime_type = "application/pdf"
 
-            yield DatasetRecord(
+            yield DatasetRecordWithBBox(
                 doc_id=doc_id,
                 doc_path=json_path,
                 doc_hash=get_binhash(original_bytes),
                 ground_truth_doc=document,
                 ground_truth_pictures=pictures,
                 ground_truth_page_images=extracted_page_images,
+                GroundTruthBboxOnPageImages=ground_truth_bboxes,
                 original=original_stream,
                 mime_type=mime_type,
             )
