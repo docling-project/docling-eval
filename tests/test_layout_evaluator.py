@@ -2,9 +2,62 @@ from pathlib import Path
 
 import pytest
 from docling.datamodel.base_models import ConversionStatus
+from docling_core.types import DoclingDocument
+from docling_core.types.doc import (
+    BoundingBox,
+    CoordOrigin,
+    DocItemLabel,
+    PageItem,
+    ProvenanceItem,
+    Size,
+    TableCell,
+    TableData,
+)
 
 from docling_eval.datamodels.types import PredictionFormats
 from docling_eval.evaluators.layout_evaluator import LayoutEvaluator
+
+
+def test_layout_item_counts_are_page_level() -> None:
+    document = DoclingDocument(name="multi-page")
+    document.pages[1] = PageItem(page_no=1, size=Size(width=100, height=100))
+    document.pages[2] = PageItem(page_no=2, size=Size(width=100, height=100))
+
+    bbox = BoundingBox(l=0, t=0, r=10, b=10, coord_origin=CoordOrigin.TOPLEFT)
+    page_1_prov = ProvenanceItem(page_no=1, bbox=bbox, charspan=(0, 4))
+    page_2_prov = ProvenanceItem(page_no=2, bbox=bbox, charspan=(0, 4))
+
+    document.add_text(
+        label=DocItemLabel.TEXT,
+        text="text",
+        orig="text",
+        prov=page_1_prov,
+    )
+    document.add_table(
+        data=TableData(
+            table_cells=[
+                TableCell(
+                    start_row_offset_idx=0,
+                    end_row_offset_idx=0,
+                    start_col_offset_idx=0,
+                    end_col_offset_idx=0,
+                    text="cell",
+                )
+            ]
+        ),
+        caption=None,
+        prov=page_2_prov,
+    )
+    document.add_picture(prov=page_2_prov)
+
+    counts_by_page = LayoutEvaluator()._count_layout_items_by_page(document)
+
+    assert counts_by_page[1].element_count == 1
+    assert counts_by_page[1].table_count == 0
+    assert counts_by_page[1].picture_count == 0
+    assert counts_by_page[2].element_count == 2
+    assert counts_by_page[2].table_count == 1
+    assert counts_by_page[2].picture_count == 1
 
 
 @pytest.mark.dependency(
