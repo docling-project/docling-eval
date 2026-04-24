@@ -1287,7 +1287,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "datasets" },
     { name = "distance" },
-    { name = "docling", extra = ["vlm"] },
+    { name = "docling" },
     { name = "docling-core" },
     { name = "edit-distance" },
     { name = "editdistance" },
@@ -1329,6 +1329,9 @@ hyperscalers = [
     { name = "google-oauth" },
     { name = "ibm-cos-sdk" },
 ]
+vlm = [
+    { name = "docling", extra = ["vlm"] },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1364,7 +1367,8 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'hyperscalers'", specifier = ">=1.37.8,<2.0.0" },
     { name = "datasets", specifier = ">=3.2.0,<5.0.0" },
     { name = "distance", specifier = ">=0.1.3,<0.2.0" },
-    { name = "docling", extras = ["vlm"], specifier = ">=2.56.1,<3.0.0" },
+    { name = "docling", specifier = ">=2.56.1,<3.0.0" },
+    { name = "docling", extras = ["vlm"], marker = "extra == 'vlm'", specifier = ">=2.56.1,<3.0.0" },
     { name = "docling-core", specifier = ">=2.48.0,<3.0.0" },
     { name = "docling-cvat-tools", marker = "extra == 'cvat-tools'", specifier = ">=0.1.0" },
     { name = "edit-distance", specifier = ">=1.0.6,<2.0.0" },
@@ -1394,7 +1398,7 @@ requires-dist = [
     { name = "typer", specifier = ">=0.16.0" },
     { name = "xmltodict", specifier = ">=0.14.2,<0.15.0" },
 ]
-provides-extras = ["hyperscalers", "cvat-tools"]
+provides-extras = ["vlm", "hyperscalers", "cvat-tools"]
 
 [package.metadata.requires-dev]
 dev = [
