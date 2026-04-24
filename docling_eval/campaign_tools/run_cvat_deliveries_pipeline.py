@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import logging
 from collections import OrderedDict
-from dataclasses import dataclass
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Sequence
 
@@ -228,6 +230,46 @@ class SubmissionSubsetJob:
         return f"{self.submission_name}/{self.subset_name}"
 
 
+@dataclass(frozen=True)
+class JobExecutionResult:
+    """Outcome of executing one subset job."""
+
+    subset_df: Optional[pd.DataFrame]
+    partial_reasons: List[str] = field(default_factory=list)
+
+
+def _detect_subset_partial_reasons(output_dir: Path) -> List[str]:
+    """Return human-readable reasons when a subset completed only partially."""
+
+    reasons: List[str] = []
+    for set_label in ("set_A", "set_B"):
+        report_path = output_dir / f"validation_report_{set_label}.json"
+        if not report_path.exists():
+            continue
+
+        try:
+            report = CVATValidationRunReport.model_validate_json(
+                report_path.read_text(encoding="utf-8")
+            )
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.warning(
+                "Failed to inspect validation report %s for partial status: %s",
+                report_path,
+                exc,
+            )
+            continue
+
+        fatal_samples = report.statistics.samples_with_fatal
+        if fatal_samples <= 0:
+            continue
+
+        reasons.append(
+            f"{set_label}: {fatal_samples} sample(s) with fatal validation/conversion errors"
+        )
+
+    return reasons
+
+
 def _execute_job(
     job: SubmissionSubsetJob,
     plan: ExecutionPlan,
@@ -243,7 +285,7 @@ def _execute_job(
     gt_json_dirname: str,
     pred_json_dirname: str,
     do_visualization: bool = True,
-) -> Optional[pd.DataFrame]:
+) -> JobExecutionResult:
     """Execute pipeline stages for a single job according to the execution plan.
 
     Args:
@@ -259,7 +301,7 @@ def _execute_job(
         do_visualization: Whether to generate comparison HTML visualizations
 
     Returns:
-        DataFrame with evaluation results, or None if no evaluation was run
+        JobExecutionResult containing evaluation output and partial status
     """
     pipeline = CVATEvaluationPipeline(
         cvat_root=job.base_cvat_root,
@@ -281,13 +323,19 @@ def _execute_job(
 
         # If only merging, return early
         if not (plan.run_dataset_creation or plan.run_evaluation):
-            return None
+            return JobExecutionResult(
+                subset_df=None,
+                partial_reasons=_detect_subset_partial_reasons(job.output_dir),
+            )
 
     if plan.run_validation_reports:
         pipeline.regenerate_validation_reports_from_merged(
             merged_dir=job.get_merged_xml_dir(),
         )
-        return None
+        return JobExecutionResult(
+            subset_df=None,
+            partial_reasons=_detect_subset_partial_reasons(job.output_dir),
+        )
 
     # Stage 2: Create datasets
     if plan.run_dataset_creation:
@@ -303,7 +351,10 @@ def _execute_job(
             _LOGGER.info(
                 "  ↳ Stop-after-json requested; skipping dataset join and evaluation."
             )
-            return None
+            return JobExecutionResult(
+                subset_df=None,
+                partial_reasons=_detect_subset_partial_reasons(job.output_dir),
+            )
 
         pipeline.create_eval_dataset_from_json(
             reuse_existing=reuse_eval_dataset and not plan.force_rerun,
@@ -316,13 +367,19 @@ def _execute_job(
     # Stage 3: Run evaluations
     if plan.run_evaluation and not stop_after_json:
         pipeline.run_table_evaluation(reuse_existing=not plan.force_rerun)
-        return pipeline.run_evaluation(
-            modalities=plan.modalities,
-            user_csv=user_csv,
-            subset_label=job.subset_name,
+        return JobExecutionResult(
+            subset_df=pipeline.run_evaluation(
+                modalities=plan.modalities,
+                user_csv=user_csv,
+                subset_label=job.subset_name,
+            ),
+            partial_reasons=_detect_subset_partial_reasons(job.output_dir),
         )
 
-    return None
+    return JobExecutionResult(
+        subset_df=None,
+        partial_reasons=_detect_subset_partial_reasons(job.output_dir),
+    )
 
 
 def discover_jobs(
@@ -453,6 +510,202 @@ def aggregate_validation_reports(
     )
 
 
+def _process_submission(
+    submission_name: str,
+    submission_jobs: List[SubmissionSubsetJob],
+    plan: ExecutionPlan,
+    *,
+    strict: bool,
+    dry_run: bool,
+    user_csv: Optional[Path],
+    force_ocr: bool,
+    ocr_scale: float,
+    storage_scale: float,
+    stop_after_json: bool,
+    resume_from_json: bool,
+    reuse_eval_dataset: bool,
+    gt_json_dirname: str,
+    pred_json_dirname: str,
+    do_visualization: bool,
+) -> dict:
+    """Process all subsets for a single submission; returns per-submission stats."""
+    submission_dir = submission_jobs[0].output_dir.parent
+    submission_dir.mkdir(parents=True, exist_ok=True)
+    submission_dfs: List[pd.DataFrame] = []
+    completed_jobs: List[SubmissionSubsetJob] = []
+    partial_jobs: List[tuple[SubmissionSubsetJob, List[str]]] = []
+    failed_jobs: List[tuple[str, str]] = []
+    skipped_jobs: List[tuple[str, str]] = []
+
+    _LOGGER.info("")
+    _LOGGER.info("╔" + "=" * 78 + "╗")
+    _LOGGER.info("║" + f" SUBMISSION: {submission_name} ".center(78) + "║")
+    _LOGGER.info("╚" + "=" * 78 + "╝")
+
+    for job in submission_jobs:
+        job_id = job.format_job_id()
+        _LOGGER.info("→ Processing %s", job_id)
+
+        should_skip, skip_reason = plan.should_skip_job(
+            job,
+            resume_from_json=resume_from_json,
+            stop_after_json=stop_after_json,
+            gt_json_dirname=gt_json_dirname,
+            pred_json_dirname=pred_json_dirname,
+        )
+        if should_skip:
+            _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
+            skipped_jobs.append((job_id, skip_reason))
+            continue
+
+        if dry_run:
+            _LOGGER.info(
+                "  [DRY-RUN] Would %s with base=%s tasks=%s output=%s",
+                plan.get_description(),
+                job.base_cvat_root,
+                job.tasks_root,
+                job.output_dir,
+            )
+            continue
+
+        try:
+            execution_result = _execute_job(
+                job,
+                plan,
+                strict=strict,
+                user_csv=user_csv,
+                force_ocr=force_ocr,
+                ocr_scale=ocr_scale,
+                storage_scale=storage_scale,
+                stop_after_json=stop_after_json,
+                resume_from_json=resume_from_json,
+                reuse_eval_dataset=reuse_eval_dataset,
+                gt_json_dirname=gt_json_dirname,
+                pred_json_dirname=pred_json_dirname,
+                do_visualization=do_visualization,
+            )
+            subset_df = execution_result.subset_df
+
+            if subset_df is not None and not subset_df.empty:
+                if "subset" not in subset_df.columns:
+                    subset_df = subset_df.copy()
+                    subset_df.insert(0, "subset", job.subset_name)
+                submission_dfs.append(subset_df)
+
+            if execution_result.partial_reasons:
+                partial_jobs.append((job, execution_result.partial_reasons))
+                _LOGGER.warning(
+                    "  ⚠ Completed partially: %s",
+                    "; ".join(execution_result.partial_reasons),
+                )
+            else:
+                completed_jobs.append(job)
+                _LOGGER.info("  ✓ Completed successfully")
+
+        except Exception as exc:  # noqa: BLE001
+            error_msg = str(exc)
+            failed_jobs.append((job_id, error_msg))
+            _LOGGER.error("  ✗ FAILED: %s", error_msg)
+            _LOGGER.debug("Subset failure details", exc_info=True)
+
+    # Aggregate validation reports
+    if plan.should_aggregate_validation() and not stop_after_json:
+        successful_jobs = completed_jobs + [job for job, _ in partial_jobs]
+        if successful_jobs:
+            _LOGGER.info(
+                "Aggregating validation reports for submission %s (%d/%d subsets completed or partial)",
+                submission_name,
+                len(successful_jobs),
+                len(submission_jobs),
+            )
+            for set_pattern, set_label in [
+                (GROUND_TRUTH_PATTERN, "set_A"),
+                (PREDICTION_PATTERN, "set_B"),
+            ]:
+                aggregated_report = aggregate_validation_reports(
+                    successful_jobs, set_pattern
+                )
+                submission_validation_path = (
+                    submission_dir / f"validation_report_{set_label}.json"
+                )
+                submission_validation_path.write_text(
+                    aggregated_report.model_dump_json(indent=2),
+                    encoding="utf-8",
+                )
+                _LOGGER.info(
+                    "✓ Submission-level %s validation report: %s (%d samples)",
+                    set_label,
+                    submission_validation_path,
+                    len(aggregated_report.samples),
+                )
+        else:
+            _LOGGER.warning(
+                "No subsets completed successfully for submission %s - skipping validation report aggregation",
+                submission_name,
+            )
+
+    # Print submission summary
+    _LOGGER.info("")
+    _LOGGER.info("=" * 80)
+    _LOGGER.info(f"SUBMISSION SUMMARY: {submission_name}")
+    _LOGGER.info("=" * 80)
+    _LOGGER.info(f"  Total subsets:     {len(submission_jobs)}")
+    _LOGGER.info(f"  ✓ Completed:       {len(completed_jobs)}")
+    _LOGGER.info(f"  ⚠ Partial:         {len(partial_jobs)}")
+    _LOGGER.info(f"  ✗ Failed:          {len(failed_jobs)}")
+    _LOGGER.info(f"  ⊘ Skipped:         {len(skipped_jobs)}")
+
+    if partial_jobs:
+        _LOGGER.warning("  Partial subsets:")
+        for partial_job, reasons in partial_jobs:
+            _LOGGER.warning(
+                "    • %s: %s",
+                partial_job.format_job_id(),
+                "; ".join(reasons),
+            )
+
+    if failed_jobs:
+        _LOGGER.error("  Failed subsets:")
+        for job_id, error_msg in failed_jobs:
+            _LOGGER.error(f"    • {job_id}: {error_msg}")
+
+    if submission_dfs:
+        combined_df = pd.concat(submission_dfs, ignore_index=True)
+        combined_out = submission_dir / "combined_evaluation.xlsx"
+        if "subset" not in combined_df.columns:
+            combined_df.insert(0, "subset", submission_name)
+        _write_as_excel_table(combined_df, combined_out)
+        _LOGGER.info(f"  Combined evaluation: {combined_out}")
+
+    status = (
+        "✓ SUCCESS"
+        if not failed_jobs and not partial_jobs
+        else ("⚠ PARTIAL" if (completed_jobs or partial_jobs) else "✗ FAILED")
+    )
+    _LOGGER.info(f"  Status: {status}")
+    _LOGGER.info("=" * 80)
+
+    # Clean up per-subset artifacts (they're aggregated at submission level)
+    for job in submission_jobs:
+        _cleanup_path(
+            job.output_dir / "combined_evaluation.xlsx",
+            "subset combined evaluation",
+        )
+        _cleanup_path(job.output_dir / "intermediate", "intermediate directory")
+
+    return {
+        "total_subsets": len(submission_jobs),
+        "completed_subsets": len(completed_jobs),
+        "partial_subsets": len(partial_jobs),
+        "failed_subsets": len(failed_jobs),
+        "skipped_subsets": len(skipped_jobs),
+        "successful": not failed_jobs and not partial_jobs,
+        "partial": bool(
+            partial_jobs or (failed_jobs and (completed_jobs or partial_jobs))
+        ),
+    }
+
+
 def run_jobs(
     jobs: Sequence[SubmissionSubsetJob],
     *,
@@ -473,13 +726,13 @@ def run_jobs(
     gt_json_dirname: str = "ground_truth_json",
     pred_json_dirname: str = "predictions_json",
     do_visualization: bool = True,
+    num_jobs: int = 1,
 ) -> None:
     """Execute the CVAT evaluation pipeline for each prepared job."""
     if not jobs:
         _LOGGER.info("No jobs discovered; nothing to do.")
         return
 
-    # Create execution plan from arguments
     plan = ExecutionPlan.from_args(
         merge_only=merge_only,
         eval_only=eval_only,
@@ -492,185 +745,55 @@ def run_jobs(
     for job in jobs:
         jobs_by_submission.setdefault(job.submission_name, []).append(job)
 
-    # Track overall statistics
     overall_stats = {
-        "total_submissions": 0,
+        "total_submissions": len(jobs_by_submission),
         "successful_submissions": 0,
         "partial_submissions": 0,
         "failed_submissions": 0,
         "total_subsets": 0,
         "completed_subsets": 0,
+        "partial_subsets": 0,
         "failed_subsets": 0,
         "skipped_subsets": 0,
     }
 
-    for submission_name, submission_jobs in jobs_by_submission.items():
-        if not submission_jobs:
-            continue
+    kwargs = dict(
+        plan=plan,
+        strict=strict,
+        dry_run=dry_run,
+        user_csv=user_csv,
+        force_ocr=force_ocr,
+        ocr_scale=ocr_scale,
+        storage_scale=storage_scale,
+        stop_after_json=stop_after_json,
+        resume_from_json=resume_from_json,
+        reuse_eval_dataset=reuse_eval_dataset,
+        gt_json_dirname=gt_json_dirname,
+        pred_json_dirname=pred_json_dirname,
+        do_visualization=do_visualization,
+    )
 
-        overall_stats["total_submissions"] += 1
-        submission_dir = submission_jobs[0].output_dir.parent
-        submission_dir.mkdir(parents=True, exist_ok=True)
-        submission_dfs: List[pd.DataFrame] = []
-        completed_jobs: List[SubmissionSubsetJob] = []
-        failed_jobs: List[tuple[str, str]] = []  # (job_id, error_message)
-        skipped_jobs: List[tuple[str, str]] = []  # (job_id, reason)
+    _submit = functools.partial(_process_submission, **kwargs)  # type: ignore[arg-type]
 
-        _LOGGER.info("")
-        _LOGGER.info("╔" + "=" * 78 + "╗")
-        _LOGGER.info("║" + f" SUBMISSION: {submission_name} ".center(78) + "║")
-        _LOGGER.info("╚" + "=" * 78 + "╝")
-
-        for job in submission_jobs:
-            job_id = job.format_job_id()
-            _LOGGER.info("→ Processing %s", job_id)
-
-            # Check if job should be skipped
-            should_skip, skip_reason = plan.should_skip_job(
-                job,
-                resume_from_json=resume_from_json,
-                stop_after_json=stop_after_json,
-                gt_json_dirname=gt_json_dirname,
-                pred_json_dirname=pred_json_dirname,
-            )
-            if should_skip:
-                _LOGGER.info("  ⊘ Skipped: %s", skip_reason)
-                skipped_jobs.append((job_id, skip_reason))
-                continue
-
-            # Handle dry-run mode
-            if dry_run:
-                _LOGGER.info(
-                    "  [DRY-RUN] Would %s with base=%s tasks=%s output=%s",
-                    plan.get_description(),
-                    job.base_cvat_root,
-                    job.tasks_root,
-                    job.output_dir,
-                )
-                continue
-
-            # Execute the pipeline stages
-            try:
-                subset_df = _execute_job(
-                    job,
-                    plan,
-                    strict=strict,
-                    user_csv=user_csv,
-                    force_ocr=force_ocr,
-                    ocr_scale=ocr_scale,
-                    storage_scale=storage_scale,
-                    stop_after_json=stop_after_json,
-                    resume_from_json=resume_from_json,
-                    reuse_eval_dataset=reuse_eval_dataset,
-                    gt_json_dirname=gt_json_dirname,
-                    pred_json_dirname=pred_json_dirname,
-                    do_visualization=do_visualization,
-                )
-
-                if subset_df is not None and not subset_df.empty:
-                    if "subset" not in subset_df.columns:
-                        subset_df = subset_df.copy()
-                        subset_df.insert(0, "subset", job.subset_name)
-                    submission_dfs.append(subset_df)
-
-                # Track successfully completed jobs for validation report aggregation
-                completed_jobs.append(job)
-                _LOGGER.info("  ✓ Completed successfully")
-
-            except (
-                Exception
-            ) as exc:  # noqa: BLE001 - we want to capture all failures per subset
-                error_msg = str(exc)
-                failed_jobs.append((job_id, error_msg))
-                _LOGGER.error("  ✗ FAILED: %s", error_msg)
-                _LOGGER.debug("Subset failure details", exc_info=True)
-
-        # Aggregate validation reports across successfully completed subsets only
-        if plan.should_aggregate_validation() and not stop_after_json:
-            if completed_jobs:
-                _LOGGER.info(
-                    "Aggregating validation reports for submission %s (%d/%d subsets completed)",
-                    submission_name,
-                    len(completed_jobs),
-                    len(submission_jobs),
-                )
-                for set_pattern, set_label in [
-                    (GROUND_TRUTH_PATTERN, "set_A"),
-                    (PREDICTION_PATTERN, "set_B"),
-                ]:
-                    aggregated_report = aggregate_validation_reports(
-                        completed_jobs, set_pattern
-                    )
-                    submission_validation_path = (
-                        submission_dir / f"validation_report_{set_label}.json"
-                    )
-                    submission_validation_path.write_text(
-                        aggregated_report.model_dump_json(indent=2),
-                        encoding="utf-8",
-                    )
-                    _LOGGER.info(
-                        "✓ Submission-level %s validation report: %s (%d samples)",
-                        set_label,
-                        submission_validation_path,
-                        len(aggregated_report.samples),
-                    )
+    with ProcessPoolExecutor(max_workers=max(1, num_jobs)) as executor:
+        futures = {
+            executor.submit(_submit, name, sub_jobs): name
+            for name, sub_jobs in jobs_by_submission.items()
+            if sub_jobs
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            overall_stats["total_subsets"] += result["total_subsets"]
+            overall_stats["completed_subsets"] += result["completed_subsets"]
+            overall_stats["partial_subsets"] += result["partial_subsets"]
+            overall_stats["failed_subsets"] += result["failed_subsets"]
+            overall_stats["skipped_subsets"] += result["skipped_subsets"]
+            if result["successful"]:
+                overall_stats["successful_submissions"] += 1
+            elif result["partial"]:
+                overall_stats["partial_submissions"] += 1
             else:
-                _LOGGER.warning(
-                    "No subsets completed successfully for submission %s - skipping validation report aggregation",
-                    submission_name,
-                )
-
-        # Print submission summary
-        _LOGGER.info("")
-        _LOGGER.info("=" * 80)
-        _LOGGER.info(f"SUBMISSION SUMMARY: {submission_name}")
-        _LOGGER.info("=" * 80)
-        _LOGGER.info(f"  Total subsets:     {len(submission_jobs)}")
-        _LOGGER.info(f"  ✓ Completed:       {len(completed_jobs)}")
-        _LOGGER.info(f"  ✗ Failed:          {len(failed_jobs)}")
-        _LOGGER.info(f"  ⊘ Skipped:         {len(skipped_jobs)}")
-
-        if failed_jobs:
-            _LOGGER.error("  Failed subsets:")
-            for job_id, error_msg in failed_jobs:
-                _LOGGER.error(f"    • {job_id}: {error_msg}")
-
-        if submission_dfs:
-            combined_df = pd.concat(submission_dfs, ignore_index=True)
-            combined_out = submission_dir / "combined_evaluation.xlsx"
-            if "subset" not in combined_df.columns:
-                combined_df.insert(0, "subset", submission_name)
-            _write_as_excel_table(combined_df, combined_out)
-            _LOGGER.info(f"  Combined evaluation: {combined_out}")
-
-        status = (
-            "✓ SUCCESS"
-            if not failed_jobs
-            else ("⚠ PARTIAL" if completed_jobs else "✗ FAILED")
-        )
-        _LOGGER.info(f"  Status: {status}")
-        _LOGGER.info("=" * 80)
-
-        # Update overall statistics
-        overall_stats["total_subsets"] += len(submission_jobs)
-        overall_stats["completed_subsets"] += len(completed_jobs)
-        overall_stats["failed_subsets"] += len(failed_jobs)
-        overall_stats["skipped_subsets"] += len(skipped_jobs)
-
-        if not failed_jobs:
-            overall_stats["successful_submissions"] += 1
-        elif completed_jobs:
-            overall_stats["partial_submissions"] += 1
-        else:
-            overall_stats["failed_submissions"] += 1
-
-        # Clean up per-subset artifacts (they're aggregated at submission level)
-        for job in submission_jobs:
-            _cleanup_path(
-                job.output_dir / "combined_evaluation.xlsx",
-                "subset combined evaluation",
-            )
-            _cleanup_path(job.output_dir / "intermediate", "intermediate directory")
+                overall_stats["failed_submissions"] += 1
 
     # Print overall summary
     _LOGGER.info("")
@@ -685,11 +808,11 @@ def run_jobs(
     _LOGGER.info("")
     _LOGGER.info(f"  Subsets: {overall_stats['total_subsets']} total")
     _LOGGER.info(f"    ✓ Completed:   {overall_stats['completed_subsets']}")
+    _LOGGER.info(f"    ⚠ Partial:     {overall_stats['partial_subsets']}")
     _LOGGER.info(f"    ✗ Failed:      {overall_stats['failed_subsets']}")
     _LOGGER.info(f"    ⊘ Skipped:     {overall_stats['skipped_subsets']}")
     _LOGGER.info("=" * 80)
 
-    # Exit with error if any failures occurred
     if overall_stats["failed_subsets"] > 0:
         _LOGGER.error(
             "Pipeline completed with %d failed subset(s). Review error messages above.",
@@ -808,6 +931,13 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Skip generating comparison HTML visualizations (significantly faster).",
     )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of submissions to process in parallel (default: 1).",
+    )
 
     return parser.parse_args(argv)
 
@@ -843,6 +973,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             gt_json_dirname=args.gt_json_dirname,
             pred_json_dirname=args.pred_json_dirname,
             do_visualization=not args.no_visualization,
+            num_jobs=args.jobs,
         )
     except ValueError as exc:
         _LOGGER.error("%s", exc)
