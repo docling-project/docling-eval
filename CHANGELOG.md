@@ -1,3 +1,9 @@
+## [v1.2.0](https://github.com/docling-project/docling-eval/releases/tag/v1.2.0) - 2026-04-24
+
+### Feature
+
+* CVAT submission delivery improvements ([#211](https://github.com/docling-project/docling-eval/issues/211)) ([`356c8df`](https://github.com/docling-project/docling-eval/commit/356c8df4d60a42c0a6683a18b035504cb3d48215))
+
 ## [v1.1.1](https://github.com/docling-project/docling-eval/releases/tag/v1.1.1) - 2026-04-14
 
 ### Fix
