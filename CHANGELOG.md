@@ -1,3 +1,21 @@
+## [v1.1.1](https://github.com/docling-project/docling-eval/releases/tag/v1.1.1) - 2026-04-14
+
+### Fix
+
+* Bump pillow version ([#209](https://github.com/docling-project/docling-eval/issues/209)) ([`cb00729`](https://github.com/docling-project/docling-eval/commit/cb0072967a90b4d9f2c7ea3b367e8846081e9829))
+
+## [v1.1.0](https://github.com/docling-project/docling-eval/releases/tag/v1.1.0) - 2026-04-13
+
+### Feature
+
+* Dev/add datasetrecord ([#207](https://github.com/docling-project/docling-eval/issues/207)) ([`412c43a`](https://github.com/docling-project/docling-eval/commit/412c43aa962065989d08591b8267bc939e78579f))
+* Flat-layout CVAT campaign tools and resilient shard writing ([#206](https://github.com/docling-project/docling-eval/issues/206)) ([`5c9f3fa`](https://github.com/docling-project/docling-eval/commit/5c9f3fadf24224dba6a6061844bcb7099baaf6e8))
+* New dataset builder - DoclingSDGDatasetBuilder ([#205](https://github.com/docling-project/docling-eval/issues/205)) ([`e761bcc`](https://github.com/docling-project/docling-eval/commit/e761bcc9ddfb71bb3c8208cd0071c06f50939b65))
+
+### Fix
+
+* PIL Image Memory Leaks in Dataset Builders ([#194](https://github.com/docling-project/docling-eval/issues/194)) ([`55fd3eb`](https://github.com/docling-project/docling-eval/commit/55fd3eb60474618c4ffad2cefbac3c9a3694d44f))
+
 ## [v1.0.1](https://github.com/docling-project/docling-eval/releases/tag/v1.0.1) - 2026-03-11
 
 ### Fix

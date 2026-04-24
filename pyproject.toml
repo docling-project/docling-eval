@@ -1,6 +1,6 @@
 [project]
 name = "docling-eval"
-version = "1.0.1" # DO NOT EDIT, updated automatically
+version = "1.1.1" # DO NOT EDIT, updated automatically
 description = "Evaluation of Docling"
 license = "MIT"
 keywords= ["docling", "evaluation", "convert", "document", "pdf", "docx", "html", "markdown", "layout model", "segmentation", "table structure", "table former"]
@@ -38,7 +38,7 @@ dependencies = [
     'pycocotools (>=2.0.8,<3.0.0)',
     'tabulate (>=0.9.0,<0.10.0)',
     'tqdm (>=4.67.1,<5.0.0)',
-    'pillow (>=10.3.0,<12.0.0)',
+    'pillow (>=10.3.0,<13.0.0)',
     'evaluate (>=0.4.3,<0.5.0)',
     'nltk (>=3.9.1,<4.0.0)',
     'beautifulsoup4 (>=4.12.3,<5.0.0)',
