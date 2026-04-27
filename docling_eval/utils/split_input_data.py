@@ -1,7 +1,34 @@
 #!/usr/bin/env python3
 """
-Split paired (name.json, name.png) files from an input directory into train/test/val
-output directories by moving the files.
+Split paired (name.json, name.png) files from an input directory tree into
+train/test/val output directories by moving the files.
+Output split directories are kept flat. If multiple pairs would collide on the
+same output basename, the script appends numeric suffixes (`_01`, `_02`, ...)
+to both files in a pair.
+
+Example:
+    python docling_eval/utils/split_input_data.py \
+        /path/to/input_root \
+        /path/to/output/train \
+        /path/to/output/test \
+        /path/to/output/val
+
+The input root can contain nested folders, for example:
+    /path/to/input_root/batch_a/doc_001.json + doc_001.png
+    /path/to/input_root/batch_b/doc_002.json + doc_002.png
+
+If the same basename appears in multiple subfolders, output remains flat and
+later collisions are renamed as a pair, for example:
+    doc_001.json + doc_001.png
+    doc_001_01.json + doc_001_01.png
+
+Dry-run example:
+    python docling_eval/utils/split_input_data.py \
+        /path/to/input_root \
+        /path/to/output/train \
+        /path/to/output/test \
+        /path/to/output/val \
+        --dry-run
 """
 
 from __future__ import annotations
@@ -22,8 +49,8 @@ class FilePair:
 
 
 def _collect_pairs(input_dir: Path) -> tuple[list[FilePair], list[str], list[str]]:
-    json_candidates = list(input_dir.glob("*.json"))
-    json_candidates.extend(input_dir.glob("*.JSON"))
+    json_candidates = list(input_dir.rglob("*.json"))
+    json_candidates.extend(input_dir.rglob("*.JSON"))
 
     # Dedupe in case of case-insensitive overlap
     json_files = sorted({p.resolve(): p for p in json_candidates}.values())
@@ -32,28 +59,34 @@ def _collect_pairs(input_dir: Path) -> tuple[list[FilePair], list[str], list[str
     missing_png: list[str] = []
 
     for json_path in json_files:
-        stem = json_path.stem
-        png_lower = input_dir / f"{stem}.png"
-        png_upper = input_dir / f"{stem}.PNG"
+        rel_stem = str(json_path.relative_to(input_dir).with_suffix(""))
+        png_lower = json_path.with_suffix(".png")
+        png_upper = json_path.with_suffix(".PNG")
 
         if png_lower.exists():
             png_path = png_lower
         elif png_upper.exists():
             png_path = png_upper
         else:
-            missing_png.append(stem)
+            missing_png.append(rel_stem)
             continue
 
-        pairs.append(FilePair(stem=stem, json_path=json_path, png_path=png_path))
+        pairs.append(
+            FilePair(
+                stem=rel_stem,
+                json_path=json_path,
+                png_path=png_path,
+            )
+        )
 
     paired_stems = {p.stem for p in pairs}
-    png_candidates = list(input_dir.glob("*.png"))
-    png_candidates.extend(input_dir.glob("*.PNG"))
+    png_candidates = list(input_dir.rglob("*.png"))
+    png_candidates.extend(input_dir.rglob("*.PNG"))
     orphan_png = sorted(
         {
-            png_path.stem
+            str(png_path.relative_to(input_dir).with_suffix(""))
             for png_path in png_candidates
-            if png_path.stem not in paired_stems
+            if str(png_path.relative_to(input_dir).with_suffix("")) not in paired_stems
         }
     )
 
@@ -96,35 +129,56 @@ def _ensure_targets(*dirs: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
 
-def _assert_no_collisions(target_dir: Path, pair: FilePair) -> None:
-    json_target = target_dir / pair.json_path.name
-    png_target = target_dir / pair.png_path.name
-
-    if json_target.exists() or png_target.exists():
-        raise FileExistsError(
-            f"Target collision in '{target_dir}': "
-            f"{json_target.name if json_target.exists() else ''} "
-            f"{png_target.name if png_target.exists() else ''}".strip()
-        )
+def _init_reserved_names(target_dir: Path) -> set[str]:
+    return {p.name for p in target_dir.iterdir() if p.is_file()}
 
 
-def _move_pair(pair: FilePair, target_dir: Path, dry_run: bool) -> None:
-    _assert_no_collisions(target_dir, pair)
+def _resolve_pair_targets(
+    pair: FilePair, target_dir: Path, reserved_names: set[str]
+) -> tuple[Path, Path]:
+    base_stem = pair.json_path.stem
+    json_ext = pair.json_path.suffix
+    png_ext = pair.png_path.suffix
+
+    index = 0
+    while True:
+        suffix = "" if index == 0 else f"_{index:02d}"
+        candidate_stem = f"{base_stem}{suffix}"
+        json_name = f"{candidate_stem}{json_ext}"
+        png_name = f"{candidate_stem}{png_ext}"
+
+        json_target = target_dir / json_name
+        png_target = target_dir / png_name
+
+        name_taken = json_name in reserved_names or png_name in reserved_names
+        file_taken = json_target.exists() or png_target.exists()
+        if not name_taken and not file_taken:
+            reserved_names.add(json_name)
+            reserved_names.add(png_name)
+            return json_target, png_target
+
+        index += 1
+
+
+def _move_pair(
+    pair: FilePair, target_dir: Path, dry_run: bool, reserved_names: set[str]
+) -> None:
+    json_target, png_target = _resolve_pair_targets(pair, target_dir, reserved_names)
 
     if dry_run:
-        print(f"[DRY-RUN] {pair.json_path} -> {target_dir / pair.json_path.name}")
-        print(f"[DRY-RUN] {pair.png_path} -> {target_dir / pair.png_path.name}")
+        print(f"[DRY-RUN] {pair.json_path} -> {json_target}")
+        print(f"[DRY-RUN] {pair.png_path} -> {png_target}")
         return
 
-    shutil.move(str(pair.json_path), str(target_dir / pair.json_path.name))
-    shutil.move(str(pair.png_path), str(target_dir / pair.png_path.name))
+    shutil.move(str(pair.json_path), str(json_target))
+    shutil.move(str(pair.png_path), str(png_target))
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Move paired (name.json, name.png) files from input directory into "
-            "train/test/val directories according to split ratios."
+            "Move paired (name.json, name.png) files from input directory and its "
+            "subdirectories into train/test/val directories according to split ratios."
         )
     )
 
@@ -218,12 +272,16 @@ def main() -> int:
 
     assert len(train_pairs) + len(test_pairs) + len(val_pairs) == len(pairs)
 
+    train_reserved = _init_reserved_names(train_out)
+    test_reserved = _init_reserved_names(test_out)
+    val_reserved = _init_reserved_names(val_out)
+
     for pair in train_pairs:
-        _move_pair(pair, train_out, args.dry_run)
+        _move_pair(pair, train_out, args.dry_run, train_reserved)
     for pair in test_pairs:
-        _move_pair(pair, test_out, args.dry_run)
+        _move_pair(pair, test_out, args.dry_run, test_reserved)
     for pair in val_pairs:
-        _move_pair(pair, val_out, args.dry_run)
+        _move_pair(pair, val_out, args.dry_run, val_reserved)
 
     print(
         "Done. "

@@ -39,6 +39,7 @@ class BenchMarkColumns(str, Enum):
 class EvaluationModality(str, Enum):
     END2END = "end-to-end"
     LAYOUT = "layout"  # To compute maP on page-segmentation
+    TABLE_REGIONS = "table_regions"  # table boxes for rows/cols/cells
     TABLE_STRUCTURE = "table_structure"  # to compute TEDS for tables
     DOCUMENT_STRUCTURE = (
         "document_structure"  # to compute edit distance between document structures

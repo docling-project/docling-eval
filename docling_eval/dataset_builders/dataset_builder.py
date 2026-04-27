@@ -4,7 +4,7 @@ import os
 import sys
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
 from docling.utils.utils import chunkify
 from huggingface_hub import snapshot_download
@@ -273,6 +273,32 @@ class BaseEvaluationDatasetBuilder:
         """
         pass
 
+    def get_record_type(self) -> Type[DatasetRecord]:
+        """
+        Return the record type used to derive parquet schema and dataset features.
+
+        Builders can override this to use DatasetRecord subclasses.
+        """
+        return DatasetRecord
+
+    def save_ground_truth_visualization(
+        self,
+        record: DatasetRecord,
+        viz_path_split: Path,
+    ) -> None:
+        """Save a single GT visualization artifact for one record."""
+        tmp = insert_images_from_pil(
+            document=copy.deepcopy(record.ground_truth_doc),
+            pictures=record.ground_truth_pictures,
+            page_images=record.ground_truth_page_images,
+        )
+
+        save_single_document_html(
+            filename=viz_path_split,
+            doc=tmp,
+            draw_reading_order=True,
+        )
+
     def save_to_disk(
         self,
         chunk_size: int = 80,
@@ -302,38 +328,30 @@ class BaseEvaluationDatasetBuilder:
         count = 0
         written_shard_count = 0
         next_shard_id = 0
+        skipped_record_count = 0
+        skipped_doc_ids = []
+
+        record_type = self.get_record_type()
 
         for record_chunk in chunkify(self.iterate(), chunk_size):
             record_list = []
             for r in record_chunk:
                 if do_visualization:
                     viz_path_split = self.target / "visualizations" / f"{r.doc_id}.html"
-
-                    # Create a visualization using the same approach as BasePredictionProvider
-                    # but only for the ground truth document
-                    tmp = insert_images_from_pil(
-                        document=copy.deepcopy(r.ground_truth_doc),
-                        pictures=r.ground_truth_pictures,
-                        page_images=r.ground_truth_page_images,
-                    )
-
-                    # Save visualization using the single document template
-                    save_single_document_html(
-                        filename=viz_path_split,
-                        doc=tmp,
-                        draw_reading_order=True,
-                    )
+                    self.save_ground_truth_visualization(r, viz_path_split)
                 record_list.append(r.as_record_dict())
 
             save_result = save_shard_to_disk(
                 items=record_list,
                 dataset_path=test_dir,
-                schema=DatasetRecord.pyarrow_schema(),
+                schema=record_type.pyarrow_schema(),
                 shard_id=next_shard_id,
             )
             count += save_result.written_record_count
             written_shard_count += save_result.written_shard_count
             next_shard_id = save_result.next_shard_id
+            skipped_record_count += save_result.skipped_record_count
+            skipped_doc_ids.extend(save_result.skipped_doc_ids)
 
             if written_shard_count >= max_num_chunks:
                 _log.info(
@@ -344,11 +362,21 @@ class BaseEvaluationDatasetBuilder:
         _log.info(
             f"Saved {count} records in {written_shard_count} chunks to {test_dir}"
         )
+        if skipped_record_count > 0:
+            _log.warning(
+                (
+                    "Skipped %d records while writing parquet shards for '%s'. "
+                    "First skipped doc_ids: %s"
+                ),
+                skipped_record_count,
+                self.name,
+                skipped_doc_ids[:10],
+            )
 
         write_datasets_info(
             name=self.name,
             output_dir=self.target,
             num_train_rows=0,
             num_test_rows=count,
-            features=DatasetRecord.features(),
+            features=record_type.features(),
         )
