@@ -7,17 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
 
 from docling.utils.utils import chunkify
-from docling_core.types.doc.document import ImageRefMode
 from huggingface_hub import snapshot_download
 from pydantic import BaseModel
 
-from docling_eval.datamodels.dataset_record import (
-    DatasetRecord,
-    DatasetRecordWithPrediction,
-)
-from docling_eval.prediction_providers.base_prediction_provider import (
-    TRUE_HTML_EXPORT_LABELS,
-)
+from docling_eval.datamodels.dataset_record import DatasetRecord
 from docling_eval.utils.utils import (
     insert_images_from_pil,
     save_shard_to_disk,
