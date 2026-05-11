@@ -1,3 +1,9 @@
+## [v1.3.0](https://github.com/docling-project/docling-eval/releases/tag/v1.3.0) - 2026-05-11
+
+### Feature
+
+* Dummy release trigger ([#214](https://github.com/docling-project/docling-eval/issues/214)) ([`c1745a0`](https://github.com/docling-project/docling-eval/commit/c1745a06f96ca3a6db77b4209eb59c9409aece87))
+
 ## [v1.2.0](https://github.com/docling-project/docling-eval/releases/tag/v1.2.0) - 2026-04-24
 
 ### Feature
