@@ -3,7 +3,14 @@ import json
 import logging
 import math
 from collections import defaultdict
-from concurrent.futures import Executor, Future, ProcessPoolExecutor, as_completed
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    Executor,
+    Future,
+    ProcessPoolExecutor,
+    as_completed,
+    wait,
+)
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -276,10 +283,13 @@ class PixelLayoutEvaluator(BaseEvaluator):
             []
         )  # Gather f1 score/image when evaluated on collapsed classes
 
-        with ProcessPoolExecutor(max_workers=self._concurrency) as executor:
-            futures: list[Future] = []
+        # Keep at most 2× workers in-flight: enough to saturate the pool while
+        # preventing unbounded accumulation of large uint64 page arrays in memory.
+        max_pending = self._concurrency * 2
 
-            # Submit pages for execution
+        with ProcessPoolExecutor(max_workers=self._concurrency) as executor:
+            pending: set[Future] = set()
+
             _log.info("Submitting the documents for evaluation...")
             for data in ds_selection:
                 data_record = DatasetRecordWithPrediction.model_validate(data)
@@ -320,43 +330,37 @@ class PixelLayoutEvaluator(BaseEvaluator):
                     continue
 
                 evaluated_samples += 1
-                futures.extend(
+                pending.update(
                     self._submit_document_evaluation(
                         executor, doc_id, true_doc, pred_doc
                     )
                 )
 
-            # Collect the futures
-            _log.info("Collecting the documents for evaluations...")
+                # Drain completed futures whenever the window is full
+                while len(pending) >= max_pending:
+                    done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                    for f in done:
+                        ds_num_pixels += self._collect_page_result(
+                            f,
+                            ds_confusion_matrix,
+                            all_pages_evaluations,
+                            pages_detailed_f1,
+                            pages_collapsed_f1,
+                        )
+
+            _log.info("Collecting %d remaining page evaluations...", len(pending))
             for future in tqdm(
-                as_completed(futures),
+                as_completed(pending),
                 desc="Multi-label Matrix Layout evaluations",
                 ncols=120,
-                total=len(futures),
+                total=len(pending),
             ):
-                page_metrics: MultiLabelMatrixEvaluation
-                doc_id, page_no, page_pixels, page_metrics = future.result()
-
-                page_confusion_matrix: np.ndarray = (
-                    page_metrics.detailed.confusion_matrix
-                )
-                ds_num_pixels += page_pixels
-                ds_confusion_matrix += page_confusion_matrix
-                doc_page_id = f"{doc_id}-{page_no}"
-                page_evaluation = PagePixelLayoutEvaluation(
-                    doc_id=doc_id,
-                    page_no=page_no,
-                    num_pixels=page_pixels,
-                    matrix_evaluation=page_metrics,
-                )
-                all_pages_evaluations[doc_page_id] = page_evaluation
-
-                # Update f1 lists
-                pages_detailed_f1.append(
-                    page_metrics.detailed.agg_metrics.classes_f1_mean
-                )
-                pages_collapsed_f1.append(
-                    page_metrics.collapsed.agg_metrics.classes_f1_mean
+                ds_num_pixels += self._collect_page_result(
+                    future,
+                    ds_confusion_matrix,
+                    all_pages_evaluations,
+                    pages_detailed_f1,
+                    pages_collapsed_f1,
                 )
 
         # Compute metrics for the dataset
@@ -378,6 +382,31 @@ class PixelLayoutEvaluator(BaseEvaluator):
         )
 
         return ds_evaluation
+
+    @staticmethod
+    def _collect_page_result(
+        future: Future,
+        ds_confusion_matrix: np.ndarray,
+        all_pages_evaluations: Dict[str, "PagePixelLayoutEvaluation"],
+        pages_detailed_f1: List[float],
+        pages_collapsed_f1: List[float],
+    ) -> int:
+        """Unpack one completed page future into the shared accumulators.
+
+        Returns the number of pixels in the page so the caller can accumulate
+        ``ds_num_pixels`` without needing access to the internal state.
+        """
+        doc_id, page_no, page_pixels, page_metrics = future.result()
+        ds_confusion_matrix[:] += page_metrics.detailed.confusion_matrix
+        all_pages_evaluations[f"{doc_id}-{page_no}"] = PagePixelLayoutEvaluation(
+            doc_id=doc_id,
+            page_no=page_no,
+            num_pixels=page_pixels,
+            matrix_evaluation=page_metrics,
+        )
+        pages_detailed_f1.append(page_metrics.detailed.agg_metrics.classes_f1_mean)
+        pages_collapsed_f1.append(page_metrics.collapsed.agg_metrics.classes_f1_mean)
+        return page_pixels
 
     def save_evaluations(
         self,
