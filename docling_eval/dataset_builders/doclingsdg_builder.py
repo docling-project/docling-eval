@@ -64,6 +64,14 @@ _TABLE_REGION_CATEGORY_IDS: Dict[str, int] = {
     "cell_merged": 8,
 }
 
+_TABLE_REGION_EXPORT_LABELS: Tuple[str, ...] = (
+    "table",
+    "row",
+    "column",
+    "cell_merged",
+)
+_TABLE_REGION_EXPORT_LABELS_SET = set(_TABLE_REGION_EXPORT_LABELS)
+
 _TABLE_REGIONS_VIZ_SOURCE_DOCLING = "docling"
 _TABLE_REGIONS_VIZ_SOURCE_REGIONS = "regions"
 _TABLE_REGIONS_VIZ_SOURCES = {
@@ -123,6 +131,23 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
 
         self.modality = parsed_modality
         self.must_retrieve = False
+
+        if len(_TABLE_REGION_EXPORT_LABELS_SET) != len(_TABLE_REGION_EXPORT_LABELS):
+            raise ValueError(
+                "Duplicate labels detected in _TABLE_REGION_EXPORT_LABELS."
+            )
+        unknown_export_labels = sorted(
+            label
+            for label in _TABLE_REGION_EXPORT_LABELS
+            if label not in _TABLE_REGION_CATEGORY_IDS
+        )
+        if unknown_export_labels:
+            raise ValueError(
+                "Unknown labels in _TABLE_REGION_EXPORT_LABELS: "
+                f"{unknown_export_labels}. Expected subset of "
+                f"{sorted(_TABLE_REGION_CATEGORY_IDS.keys())}"
+            )
+
         source = str(table_regions_visualization_source).strip().lower()
         if source not in _TABLE_REGIONS_VIZ_SOURCES:
             raise ValueError(
@@ -345,6 +370,10 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
         return _TABLE_REGION_CATEGORY_IDS[label]
 
     @staticmethod
+    def _should_export_table_region_label(label: str) -> bool:
+        return label in _TABLE_REGION_EXPORT_LABELS_SET
+
+    @staticmethod
     def _safe_page_height(page: Optional[PageItem], page_image: Image.Image) -> float:
         if (
             page is not None
@@ -481,6 +510,17 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                         f"Overlapping {region_name} regions with IoU>{threshold:.2f} "
                         f"(ids={region_id_a},{region_id_b}, iou={iou:.4f})."
                     )
+        return None
+
+    @staticmethod
+    def _overlap_region_type_from_reason(reason: str) -> Optional[str]:
+        normalized = reason
+        if normalized.startswith("fallback::"):
+            normalized = normalized[len("fallback::") :]
+        if normalized.startswith("Overlapping row regions with IoU>"):
+            return "row"
+        if normalized.startswith("Overlapping column regions with IoU>"):
+            return "column"
         return None
 
     @staticmethod
@@ -1151,37 +1191,40 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                 active_cells.append(entry)
 
             page_boxes = bboxes_by_page.setdefault(page_index, [])
-            page_boxes.append(
-                self._bbox_payload(
-                    label="table",
-                    category_id=self._table_region_category_id("table"),
-                    rect=table_rect,
+            if self._should_export_table_region_label("table"):
+                page_boxes.append(
+                    self._bbox_payload(
+                        label="table",
+                        category_id=self._table_region_category_id("table"),
+                        rect=table_rect,
+                    )
                 )
-            )
 
             row_rects: List[Tuple[float, float, float, float]] = []
             for row_id, row_rect in row_regions:
                 row_rects.append(row_rect)
-                page_boxes.append(
-                    self._bbox_payload(
-                        label="row",
-                        category_id=self._table_region_category_id("row"),
-                        rect=row_rect,
-                        extras={"row_id": row_id},
+                if self._should_export_table_region_label("row"):
+                    page_boxes.append(
+                        self._bbox_payload(
+                            label="row",
+                            category_id=self._table_region_category_id("row"),
+                            rect=row_rect,
+                            extras={"row_id": row_id},
+                        )
                     )
-                )
 
             col_rects: List[Tuple[float, float, float, float]] = []
             for col_id, col_rect in col_regions:
                 col_rects.append(col_rect)
-                page_boxes.append(
-                    self._bbox_payload(
-                        label="column",
-                        category_id=self._table_region_category_id("column"),
-                        rect=col_rect,
-                        extras={"col_id": col_id},
+                if self._should_export_table_region_label("column"):
+                    page_boxes.append(
+                        self._bbox_payload(
+                            label="column",
+                            category_id=self._table_region_category_id("column"),
+                            rect=col_rect,
+                            extras={"col_id": col_id},
+                        )
                     )
-                )
 
             if self._is_table_rotated_90(row_rects=row_rects, col_rects=col_rects):
                 has_rotated_90 = True
@@ -1191,10 +1234,13 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                     return {}, has_rotated_90, row_left_issue
 
             for entry in cell_entries:
+                cell_label = str(entry["label"])
+                if not self._should_export_table_region_label(cell_label):
+                    continue
                 page_boxes.append(
                     self._bbox_payload(
-                        label=str(entry["label"]),
-                        category_id=self._table_region_category_id(str(entry["label"])),
+                        label=cell_label,
+                        category_id=self._table_region_category_id(cell_label),
                         rect=entry["rect"],
                         extras={
                             "text": entry["text"] if entry["text"] is not None else "",
@@ -1471,6 +1517,8 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
         skipped_malformed = 0
         skipped_no_table = 0
         skipped_filtered = 0
+        skipped_row_overlap = 0
+        skipped_col_overlap = 0
         filter_reason_counts: Dict[str, int] = defaultdict(int)
         malformed_reason_counts: Dict[str, int] = defaultdict(int)
 
@@ -1584,6 +1632,13 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                         malformed_reason,
                     )
                     skipped_malformed += 1
+                    overlap_region_type = self._overlap_region_type_from_reason(
+                        malformed_reason
+                    )
+                    if overlap_region_type == "row":
+                        skipped_row_overlap += 1
+                    elif overlap_region_type == "column":
+                        skipped_col_overlap += 1
                     if malformed_reason == "Document has no table items.":
                         skipped_no_table += 1
                     malformed_reason_counts[malformed_reason] = (
@@ -1659,6 +1714,13 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                             fallback_reason,
                         )
                         skipped_malformed += 1
+                        overlap_region_type = self._overlap_region_type_from_reason(
+                            fallback_reason
+                        )
+                        if overlap_region_type == "row":
+                            skipped_row_overlap += 1
+                        elif overlap_region_type == "column":
+                            skipped_col_overlap += 1
                         malformed_reason_counts[f"fallback::{fallback_reason}"] = (
                             malformed_reason_counts.get(
                                 f"fallback::{fallback_reason}", 0
@@ -1786,3 +1848,10 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                 "DoclingSDG filtered reason counts: %s",
                 dict(sorted(filter_reason_counts.items())),
             )
+        skipped_region_overlap = skipped_row_overlap + skipped_col_overlap
+        _log.info(
+            "DoclingSDG row/column-overlap skips: total=%d (row=%d, column=%d)",
+            skipped_region_overlap,
+            skipped_row_overlap,
+            skipped_col_overlap,
+        )

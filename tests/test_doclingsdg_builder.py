@@ -9,7 +9,10 @@ from PIL import Image
 
 from docling_eval.datamodels.dataset_record import DatasetRecordWithBBox
 from docling_eval.datamodels.types import BenchMarkNames
-from docling_eval.dataset_builders.doclingsdg_builder import DoclingSDGDatasetBuilder
+from docling_eval.dataset_builders.doclingsdg_builder import (
+    _TABLE_REGION_EXPORT_LABELS,
+    DoclingSDGDatasetBuilder,
+)
 
 
 def _copy_json_png_pair(source_json: Path, target_dir: Path) -> None:
@@ -183,11 +186,12 @@ def test_doclingsdg_builder_table_regions_bbox_labels(tmp_path: Path):
 
     restored = DatasetRecordWithBBox.model_validate(row)
     labels = {box["label"] for box in restored.ground_truth_bbox_on_page_images[0]}
+    assert labels.issubset(set(_TABLE_REGION_EXPORT_LABELS))
     assert "table" in labels
     assert "row" in labels
     assert "column" in labels
-    assert "cell_single" in labels
-    assert "cell_merged" in labels
+    if "cell_merged" in _TABLE_REGION_EXPORT_LABELS:
+        assert "cell_merged" in labels
 
 
 def test_doclingsdg_builder_table_regions_adds_90_degree_tag(tmp_path: Path):
