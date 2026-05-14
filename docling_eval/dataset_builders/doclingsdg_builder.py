@@ -52,6 +52,7 @@ _MAX_GRID_COLS = 20
 _MIN_PAGE_IMAGE_DIM = 32
 _MAX_PAGE_IMAGE_DIM = 4096
 _REGION_OVERLAP_IOU_THRESHOLD = 0.99
+_SKIP_ROTATED_90_TABLES = True
 
 _TABLE_REGION_CATEGORY_IDS: Dict[str, int] = {
     "table": 1,
@@ -1736,6 +1737,16 @@ class DoclingSDGDatasetBuilder(BaseEvaluationDatasetBuilder):
                     )
 
                 if has_rotated_90:
+                    if _SKIP_ROTATED_90_TABLES:
+                        skipped_filtered += 1
+                        filter_reason_counts["rotated_90_table"] = (
+                            filter_reason_counts.get("rotated_90_table", 0) + 1
+                        )
+                        _log.warning(
+                            "Skipping table sample %s: 90-degree rotated table detected.",
+                            doc_id,
+                        )
+                        continue
                     tags.append("90_degree")
             else:
                 ground_truth_bboxes = self._extract_top_level_bboxes(
