@@ -1,3 +1,9 @@
+## [v1.4.0](https://github.com/docling-project/docling-eval/releases/tag/v1.4.0) - 2026-05-15
+
+### Feature
+
+* Improved region extraction and filtering for doclingsdg_builder.py ([#217](https://github.com/docling-project/docling-eval/issues/217)) ([`6efbb3f`](https://github.com/docling-project/docling-eval/commit/6efbb3f21498382ed37171c667638d5b6abb0ba7))
+
 ## [v1.3.0](https://github.com/docling-project/docling-eval/releases/tag/v1.3.0) - 2026-05-11
 
 ### Feature
