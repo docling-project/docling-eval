@@ -1,3 +1,10 @@
+## [v1.4.1](https://github.com/docling-project/docling-eval/releases/tag/v1.4.1) - 2026-05-28
+
+### Fix
+
+* **pixel-layout:** Bound in-flight futures to prevent OOM on large datasets ([#216](https://github.com/docling-project/docling-eval/issues/216)) ([`835a73d`](https://github.com/docling-project/docling-eval/commit/835a73d208e85acf5c05a79c42579239875513a7))
+* **dpbench:** Normalize coordinates for upstream breaking change ([#215](https://github.com/docling-project/docling-eval/issues/215)) ([`b40605e`](https://github.com/docling-project/docling-eval/commit/b40605e13737e7443cfbe2f40dacfe20fe7cd378))
+
 ## [v1.4.0](https://github.com/docling-project/docling-eval/releases/tag/v1.4.0) - 2026-05-15
 
 ### Feature
