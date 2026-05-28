@@ -236,7 +236,7 @@ class OCREvaluator(BaseEvaluator):
                 metadata_path = (
                     evaluation_metadata_output_path / f"{document_id}_metadata.json"
                 )
-                with open(metadata_path, "w") as f:
+                with open(metadata_path, "w", encoding="utf-8") as f:
                     f.write(metadata.model_dump_json(indent=2))
             processed_item_count += 1
 
