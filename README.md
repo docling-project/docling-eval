@@ -70,6 +70,10 @@ On our list for next benchmarks:
 Please read [Contributing to Docling](https://github.com/docling-project/docling/blob/main/CONTRIBUTING.md) for details.
 
 
+## Documentation
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/docling-project/docling-eval)
+
 ## License
 
 The Docling codebase is under MIT license.
