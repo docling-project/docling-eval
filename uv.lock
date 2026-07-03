@@ -1378,7 +1378,7 @@ requires-dist = [
     { name = "google-oauth", marker = "extra == 'hyperscalers'", specifier = ">=1.0.1,<2.0.0" },
     { name = "ibm-cos-sdk", marker = "extra == 'hyperscalers'", specifier = ">=2.1.40,<3.0.0" },
     { name = "jiwer", specifier = ">=3.1.0,<4.0.0" },
-    { name = "lxml", specifier = ">=5.3.0,<6.0.0" },
+    { name = "lxml", specifier = ">=5.3.0,<7.0.0" },
     { name = "matplotlib", specifier = ">=3.10.0,<4.0.0" },
     { name = "nltk", specifier = ">=3.9.1,<4.0.0" },
     { name = "openpyxl", specifier = ">=3.1.5,<4.0.0" },
