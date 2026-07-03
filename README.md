@@ -17,7 +17,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![License MIT](https://img.shields.io/github/license/docling-project/docling-eval)](https://opensource.org/licenses/MIT)
 
-Evaluate [Docling](https://github.com/docling-project/docling) on various datasets.
+Evaluate [Docling](https://github.com/docling-project/docling) on variety of datasets.
 
 ## Features
 

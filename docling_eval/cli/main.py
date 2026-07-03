@@ -309,6 +309,7 @@ def get_dataset_builder(
     begin_index: int = 0,
     end_index: int = -1,
     dataset_source: Optional[Path] = None,
+    doclingsdg_modality: str = EvaluationModality.LAYOUT.value,
 ):
     """Get the appropriate dataset builder for the given benchmark."""
     common_params = {
@@ -327,7 +328,14 @@ def get_dataset_builder(
     elif benchmark == BenchMarkNames.DOCLING_SDG:
         if dataset_source is None:
             raise ValueError("dataset_source is required for DOCLING_SDG")
-        return DoclingSDGDatasetBuilder(dataset_source=dataset_source, **common_params)  # type: ignore
+        return DoclingSDGDatasetBuilder(
+            dataset_source=dataset_source,
+            target=target,
+            split=split,
+            begin_index=begin_index,
+            end_index=end_index,
+            modality=doclingsdg_modality,
+        )
 
     elif benchmark == BenchMarkNames.DOCLAYNETV1:
         return DocLayNetV1DatasetBuilder(**common_params)  # type: ignore
@@ -1309,6 +1317,15 @@ def create_gt(
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
     chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
+    doclingsdg_modality: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "DoclingSDG bbox modality. Supported values: "
+                "'layout', 'table_regions'."
+            )
+        ),
+    ] = EvaluationModality.LAYOUT.value,
     do_visualization: Annotated[
         bool, typer.Option(help="visualize the predictions")
     ] = True,
@@ -1324,6 +1341,7 @@ def create_gt(
             begin_index=begin_index,
             end_index=end_index,
             dataset_source=dataset_source,
+            doclingsdg_modality=doclingsdg_modality,
         )
 
         # Retrieve and save the dataset
@@ -1526,6 +1544,15 @@ def create(
         int, typer.Option(help="End index (exclusive), -1 for all")
     ] = -1,
     chunk_size: Annotated[int, typer.Option(help="chunk size")] = 80,
+    doclingsdg_modality: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "DoclingSDG bbox modality. Supported values: "
+                "'layout', 'table_regions'."
+            )
+        ),
+    ] = EvaluationModality.LAYOUT.value,
     prediction_provider: Annotated[
         Optional[PredictionProviderType],
         typer.Option(help="Type of prediction provider to use"),
@@ -1570,6 +1597,7 @@ def create(
         begin_index=begin_index,
         end_index=end_index,
         chunk_size=chunk_size,
+        doclingsdg_modality=doclingsdg_modality,
         do_visualization=do_visualization,
     )
 

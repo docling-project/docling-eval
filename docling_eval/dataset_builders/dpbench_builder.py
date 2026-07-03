@@ -151,6 +151,17 @@ class DPBenchDatasetBuilder(BaseEvaluationDatasetBuilder):
             min_y = min(min_y, coor["y"])
             max_y = max(max_y, coor["y"])
 
+        # upstage/dp-bench commit 24702c6 changed reference.json coords from
+        # normalized [0,1] to absolute image pixels. Detect and normalize so
+        # crop_bounding_box receives consistent [0,1]-scaled page units.
+        if max_x > 1.0 or max_y > 1.0:
+            img_w = float(page_image.width)
+            img_h = float(page_image.height)
+            min_x = min_x / img_w
+            max_x = max_x / img_w
+            min_y = min_y / img_h
+            max_y = max_y / img_h
+
         text = annots["content"]["text"].replace("\n", " ")
         html = annots["content"]["html"]
 

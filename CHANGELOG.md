@@ -1,3 +1,34 @@
+## [v1.4.1](https://github.com/docling-project/docling-eval/releases/tag/v1.4.1) - 2026-05-28
+
+### Fix
+
+* **pixel-layout:** Bound in-flight futures to prevent OOM on large datasets ([#216](https://github.com/docling-project/docling-eval/issues/216)) ([`835a73d`](https://github.com/docling-project/docling-eval/commit/835a73d208e85acf5c05a79c42579239875513a7))
+* **dpbench:** Normalize coordinates for upstream breaking change ([#215](https://github.com/docling-project/docling-eval/issues/215)) ([`b40605e`](https://github.com/docling-project/docling-eval/commit/b40605e13737e7443cfbe2f40dacfe20fe7cd378))
+
+## [v1.4.0](https://github.com/docling-project/docling-eval/releases/tag/v1.4.0) - 2026-05-15
+
+### Feature
+
+* Improved region extraction and filtering for doclingsdg_builder.py ([#217](https://github.com/docling-project/docling-eval/issues/217)) ([`6efbb3f`](https://github.com/docling-project/docling-eval/commit/6efbb3f21498382ed37171c667638d5b6abb0ba7))
+
+## [v1.3.0](https://github.com/docling-project/docling-eval/releases/tag/v1.3.0) - 2026-05-11
+
+### Feature
+
+* Dummy release trigger ([#214](https://github.com/docling-project/docling-eval/issues/214)) ([`c1745a0`](https://github.com/docling-project/docling-eval/commit/c1745a06f96ca3a6db77b4209eb59c9409aece87))
+
+## [v1.2.0](https://github.com/docling-project/docling-eval/releases/tag/v1.2.0) - 2026-04-24
+
+### Feature
+
+* CVAT submission delivery improvements ([#211](https://github.com/docling-project/docling-eval/issues/211)) ([`356c8df`](https://github.com/docling-project/docling-eval/commit/356c8df4d60a42c0a6683a18b035504cb3d48215))
+
+## [v1.1.1](https://github.com/docling-project/docling-eval/releases/tag/v1.1.1) - 2026-04-14
+
+### Fix
+
+* Bump pillow version ([#209](https://github.com/docling-project/docling-eval/issues/209)) ([`cb00729`](https://github.com/docling-project/docling-eval/commit/cb0072967a90b4d9f2c7ea3b367e8846081e9829))
+
 ## [v1.1.0](https://github.com/docling-project/docling-eval/releases/tag/v1.1.0) - 2026-04-13
 
 ### Feature

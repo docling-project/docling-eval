@@ -2,6 +2,7 @@ import glob
 import logging
 import re
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -52,6 +53,13 @@ class LabelFilteringStrategy(Enum):
         "intersection"  # Only evaluate labels present in both GT and predictions
     )
     UNION = "union"  # Evaluate all labels present in the label mapping
+
+
+@dataclass
+class LayoutItemCounts:
+    element_count: int = 0
+    table_count: int = 0
+    picture_count: int = 0
 
 
 class ClassLayoutEvaluation(BaseModel):
@@ -267,13 +275,12 @@ class LayoutEvaluator(BaseEvaluator):
         ground_truths = []
         predictions = []
         per_page_meta: List[Tuple[str, str, str, int]] = []
+        per_page_counts: List[Tuple[LayoutItemCounts, LayoutItemCounts]] = []
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
             EvaluationRejectionType.MISSING_PREDICTION: 0,
             EvaluationRejectionType.MISMATHCED_DOCUMENT: 0,
         }
-
-        doc_stats: Dict[str, Dict[str, int]] = {}
 
         for i, data in tqdm(
             enumerate(ds_selection),
@@ -303,18 +310,8 @@ class LayoutEvaluator(BaseEvaluator):
                 rejected_samples[EvaluationRejectionType.MISSING_PREDICTION] += 1
                 continue
 
-            doc_stats[doc_id] = {
-                "true_element_count": len(true_doc.texts)
-                + len(true_doc.tables)
-                + len(true_doc.pictures),
-                "pred_element_count": len(pred_doc.texts)
-                + len(pred_doc.tables)
-                + len(pred_doc.pictures),
-                "true_table_count": len(true_doc.tables),
-                "pred_table_count": len(pred_doc.tables),
-                "true_picture_count": len(true_doc.pictures),
-                "pred_picture_count": len(pred_doc.pictures),
-            }
+            true_counts_by_page = self._count_layout_items_by_page(true_doc)
+            pred_counts_by_page = self._count_layout_items_by_page(pred_doc)
 
             gts, preds = self._extract_layout_data(
                 true_doc=true_doc,
@@ -371,6 +368,12 @@ class LayoutEvaluator(BaseEvaluator):
                     per_page_meta.append(
                         (data_record.doc_id, doc_name, image_name, page_no)
                     )
+                    per_page_counts.append(
+                        (
+                            true_counts_by_page.get(page_no, LayoutItemCounts()),
+                            pred_counts_by_page.get(page_no, LayoutItemCounts()),
+                        )
+                    )
                     ground_truths.append(gt_tensor)
                     predictions.append(pred_tensor)
 
@@ -380,6 +383,7 @@ class LayoutEvaluator(BaseEvaluator):
         assert len(doc_ids) == len(ground_truths), "doc_ids==len(ground_truths)"
         assert len(doc_ids) == len(predictions), "doc_ids==len(predictions)"
         assert len(doc_ids) == len(per_page_meta), "metadata alignment failure"
+        assert len(doc_ids) == len(per_page_counts), "count alignment failure"
 
         # Initialize metric for the bboxes of the entire document
         metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
@@ -414,24 +418,14 @@ class LayoutEvaluator(BaseEvaluator):
         weighted_map_95_values = []
 
         evaluations_per_image: List[ImageLayoutEvaluation] = []
-        for i, (doc_id_page, meta, pred, gt) in enumerate(
-            zip(doc_ids, per_page_meta, predictions, ground_truths)
+        for i, (doc_id_page, meta, counts, pred, gt) in enumerate(
+            zip(doc_ids, per_page_meta, per_page_counts, predictions, ground_truths)
         ):
             # logging.info(f"gt: {gt}")
             # logging.info(f"pred: {pred}")
 
-            base_doc_id, doc_name, image_name, page_no = meta
-            statistics = doc_stats.get(
-                base_doc_id,
-                {
-                    "true_element_count": 0,
-                    "pred_element_count": 0,
-                    "true_table_count": 0,
-                    "pred_table_count": 0,
-                    "true_picture_count": 0,
-                    "pred_picture_count": 0,
-                },
-            )
+            _, doc_name, image_name, page_no = meta
+            true_counts, pred_counts = counts
 
             precision, recall, f1 = self._compute_area_level_metrics_for_tensors(
                 gt_boxes=gt["boxes"],
@@ -504,12 +498,12 @@ class LayoutEvaluator(BaseEvaluator):
                 f1_no_pics,
             )
 
-            true_element_count = int(statistics["true_element_count"])
-            pred_element_count = int(statistics["pred_element_count"])
-            true_table_count = int(statistics["true_table_count"])
-            pred_table_count = int(statistics["pred_table_count"])
-            true_picture_count = int(statistics["true_picture_count"])
-            pred_picture_count = int(statistics["pred_picture_count"])
+            true_element_count = true_counts.element_count
+            pred_element_count = pred_counts.element_count
+            true_table_count = true_counts.table_count
+            pred_table_count = pred_counts.table_count
+            true_picture_count = true_counts.picture_count
+            pred_picture_count = pred_counts.picture_count
 
             image_evaluation = ImageLayoutEvaluation(
                 name=doc_id_page,
@@ -909,6 +903,39 @@ class LayoutEvaluator(BaseEvaluator):
                     union_labels.append(label_enum)
 
         return true_labels, pred_labels, intersection_labels, union_labels
+
+    @staticmethod
+    def _page_nos_for_item(item: DocItem) -> set[int]:
+        page_nos: set[int] = set()
+        for prov in item.prov:
+            page_nos.add(prov.page_no)
+        return page_nos
+
+    def _count_layout_items_by_page(
+        self,
+        doc: DoclingDocument,
+    ) -> Dict[int, LayoutItemCounts]:
+        counts_by_page: Dict[int, LayoutItemCounts] = {}
+
+        for item in doc.texts:
+            for page_no in self._page_nos_for_item(item):
+                counts_by_page.setdefault(
+                    page_no, LayoutItemCounts()
+                ).element_count += 1
+
+        for item in doc.tables:
+            for page_no in self._page_nos_for_item(item):
+                counts = counts_by_page.setdefault(page_no, LayoutItemCounts())
+                counts.element_count += 1
+                counts.table_count += 1
+
+        for item in doc.pictures:
+            for page_no in self._page_nos_for_item(item):
+                counts = counts_by_page.setdefault(page_no, LayoutItemCounts())
+                counts.element_count += 1
+                counts.picture_count += 1
+
+        return counts_by_page
 
     def _collect_items_by_page(
         self,

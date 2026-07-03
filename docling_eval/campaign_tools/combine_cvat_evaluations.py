@@ -41,6 +41,16 @@ from xlsxwriter.utility import xl_range
 
 from docling_eval.datamodels.cvat_page_mapping import CvatPageMapping
 
+_PAGE_LEVEL_COLUMN_PROMOTIONS: Final[dict[str, str]] = {
+    "edit_distance_struct_page": "edit_distance_struct",
+    "entity_f1_page": "entity_f1",
+    "relation_f1_page": "relation_f1",
+    "num_entity_diff_page": "num_entity_diff",
+    "num_entity_diff_normalized_page": "num_entity_diff_normalized",
+    "num_link_diff_page": "num_link_diff",
+    "num_link_diff_normalized_page": "num_link_diff_normalized",
+}
+
 
 def _to_doc_id(path_like: str) -> str:
     basename = os.path.basename(path_like)
@@ -296,6 +306,22 @@ def load_user_table(
     return df
 
 
+def _promote_page_level_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    promoted = df.copy()
+    for page_column, legacy_column in _PAGE_LEVEL_COLUMN_PROMOTIONS.items():
+        if page_column not in promoted.columns:
+            continue
+
+        if legacy_column in promoted.columns:
+            promoted[legacy_column] = promoted[page_column].combine_first(
+                promoted[legacy_column]
+            )
+        else:
+            promoted[legacy_column] = promoted[page_column]
+
+    return promoted
+
+
 def merge_tables(
     layout_df: pd.DataFrame,
     doc_df: pd.DataFrame,
@@ -406,6 +432,8 @@ def merge_tables(
         df["diff_self_confidence"] = df.groupby("doc_name")[
             "self_confidence"
         ].transform(lambda x: x.max() - x.min())
+
+    df = _promote_page_level_metrics(df)
 
     preferred_order = [
         "doc_name",
