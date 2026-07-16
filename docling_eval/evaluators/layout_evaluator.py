@@ -398,7 +398,11 @@ class LayoutEvaluator(BaseEvaluator):
 
         total_mAP = result["map"]
         if "map_per_class" in result:
-            for label_idx, class_map in enumerate(result["map_per_class"]):
+            # torchmetrics returns a 0-d (scalar) tensor instead of a 1-element
+            # tensor when only one class is present across predictions/targets.
+            for label_idx, class_map in enumerate(
+                torch.atleast_1d(result["map_per_class"])
+            ):
                 label = filter_labels[label_idx].value
                 evaluations_per_class.append(
                     ClassLayoutEvaluation(
