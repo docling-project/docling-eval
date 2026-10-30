@@ -84,6 +84,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetReadingOrderEvaluation:
         r""" """
         if external_document_loader is not None:
@@ -100,7 +101,7 @@ class ReadingOrderEvaluator(BaseEvaluator):
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"oveview of dataset: {ds}")
         if ds is not None:
-            ds_selection = ds[split]
+            ds_selection = self._select_samples(ds[split], num_samples)
 
         evaluations: list[PageReadingOrderEvaluation] = []
         rejected_samples: Dict[EvaluationRejectionType, int] = defaultdict(int)

@@ -197,6 +197,7 @@ class TableEvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetTableEvaluation:
         r"""
         Load a dataset in HF format. Expected columns with DoclingDocuments
@@ -219,7 +220,7 @@ class TableEvaluator(BaseEvaluator):
         _log.info("Overview of dataset: %s", ds)
 
         # Select the split
-        ds_selection: Dataset = ds[split]
+        ds_selection: Dataset = self._select_samples(ds[split], num_samples)
 
         table_evaluations = []
         table_struct_evaluations = []

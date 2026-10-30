@@ -202,6 +202,7 @@ class LayoutEvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetLayoutEvaluation:
         r""" """
         self._begin_message(ds_path, split, external_document_loader)
@@ -219,7 +220,7 @@ class LayoutEvaluator(BaseEvaluator):
         logging.info("Overview of dataset: %s", ds)
 
         # Select the split
-        ds_selection: Dataset = ds[split]
+        ds_selection: Dataset = self._select_samples(ds[split], num_samples)
 
         (
             true_labels,

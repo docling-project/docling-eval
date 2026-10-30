@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from docling_core.types.doc.document import DoclingDocument, KeyValueItem
 from editdistance import eval as _edit_distance_eval
 from pydantic import Field
@@ -423,6 +423,7 @@ class KeyValueEvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetKeyValueEvaluation:
         r""" """
         self._begin_message(ds_path, split, external_document_loader)
@@ -430,6 +431,7 @@ class KeyValueEvaluator(BaseEvaluator):
         split_glob = str(ds_path / split / "*.parquet")
         ds = load_dataset("parquet", data_files={split: split_glob})
         _log.info("Loaded split '%s' – %d samples", split, len(ds[split]))
+        ds_selection: Dataset = self._select_samples(ds[split], num_samples)
 
         rejected_samples: Dict[EvaluationRejectionType, int] = {
             EvaluationRejectionType.INVALID_CONVERSION_STATUS: 0,
@@ -463,8 +465,8 @@ class KeyValueEvaluator(BaseEvaluator):
         page_evaluations: List[KeyValuePageEvaluation] = []
 
         for i, data in tqdm(
-            enumerate(ds[split]),
-            total=len(ds[split]),
+            enumerate(ds_selection),
+            total=len(ds_selection),
             ncols=120,
             desc="Key-Value evaluations",
         ):

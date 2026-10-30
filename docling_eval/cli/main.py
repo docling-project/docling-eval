@@ -698,6 +698,7 @@ def evaluate(
     external_predictions_path: Optional[Path] = None,
     concurrency: int = 4,
     modality_out_subdir: bool = False,
+    num_samples: Optional[int] = None,
 ) -> Optional[List[DatasetEvaluation]]:
     """
     Evaluate predictions against ground truth for multiple modalities.
@@ -717,6 +718,8 @@ def evaluate(
                                predictions from file serializations of DoclingDocument objects.
                                The loaded files are shared among the evaluators.
     concurrency: Control the multiprocessing for each evaluator
+    num_samples: If set, evaluate only the first `num_samples` records of the split.
+                 If None (default), the whole split is evaluated.
 
     Returns
     -------
@@ -762,6 +765,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
 
             with open(save_fn, "w") as fd:
@@ -778,6 +782,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
             with open(save_fn, "w") as fd:
                 json.dump(layout_evaluation.model_dump(), fd, indent=2, sort_keys=True)
@@ -789,6 +794,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
             pixel_save_root: Path = save_fn.parent
             pixel_layout_evaluator.save_evaluations(
@@ -805,6 +811,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
 
             with open(save_fn, "w") as fd:
@@ -819,6 +826,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
 
             with open(save_fn, "w") as fd:
@@ -844,6 +852,7 @@ def evaluate(
                     idir,
                     split=split,
                     external_document_loader=external_document_loader,
+                    num_samples=num_samples,
                 )
 
                 with open(save_fn, "w") as fd:
@@ -860,6 +869,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
 
             with open(save_fn, "w") as fd:
@@ -878,6 +888,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
 
             with open(save_fn, "w") as fd:
@@ -896,6 +907,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
             with open(save_fn, "w") as fd:
                 json.dump(
@@ -913,6 +925,7 @@ def evaluate(
                 idir,
                 split=split,
                 external_document_loader=external_document_loader,
+                num_samples=num_samples,
             )
             with open(save_fn, "w") as fd:
                 json.dump(
@@ -1661,6 +1674,13 @@ def evaluate_cmd(
     concurrency: Annotated[
         int, typer.Option(help="Concurrency for the computation of each metric")
     ] = 4,
+    num_samples: Annotated[
+        Optional[int],
+        typer.Option(
+            min=1,
+            help="Evaluate only the first N samples of the split. If not provided, all samples are evaluated.",
+        ),
+    ] = None,
 ):
     """Evaluate predictions against ground truth."""
     input_dir, output_dir = derive_input_output_dirs(
@@ -1680,6 +1700,7 @@ def evaluate_cmd(
         external_predictions_path=external_predictions_path,
         concurrency=concurrency,
         modality_out_subdir=True,
+        num_samples=num_samples,
     )
 
 

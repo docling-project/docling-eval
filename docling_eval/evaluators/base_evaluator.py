@@ -4,6 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
+from datasets import Dataset
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.document import (
     DoclingDocument,
@@ -106,11 +107,36 @@ class BaseEvaluator(Generic[UnitEvaluationType, DatasetEvaluationType]):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetEvaluationType:
         r"""
         Perform the evaluation
+
+        Parameters
+        ----------
+        num_samples: If set, only the first `num_samples` records of the split are evaluated.
+                     If None (default), the whole split is evaluated.
         """
         return None  # type: ignore
+
+    @staticmethod
+    def _select_samples(ds: Dataset, num_samples: Optional[int]) -> Dataset:
+        r"""
+        Limit the dataset to its first `num_samples` records.
+
+        Return the dataset unchanged if `num_samples` is None or not smaller than the
+        dataset size. Raise ValueError if `num_samples` is not a positive integer.
+        """
+        if num_samples is None:
+            return ds
+        if num_samples < 1:
+            raise ValueError(
+                f"num_samples must be a positive integer, got {num_samples}"
+            )
+        if num_samples >= len(ds):
+            return ds
+        _log.info("Evaluating the first %d of %d samples", num_samples, len(ds))
+        return ds.select(range(num_samples))
 
     def supported_prediction_formats(self) -> List[PredictionFormats]:
         r"""

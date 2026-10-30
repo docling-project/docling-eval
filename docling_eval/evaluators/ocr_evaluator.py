@@ -66,6 +66,7 @@ class OCREvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> OcrDatasetEvaluationResult:
         r""" """
         if external_document_loader is not None:
@@ -114,7 +115,9 @@ class OCREvaluator(BaseEvaluator):
         )
         _log.info("Dataset overview: %s", hf_dataset)
 
-        selected_dataset_split: Dataset = hf_dataset[data_split_name]
+        selected_dataset_split: Dataset = self._select_samples(
+            hf_dataset[data_split_name], num_samples
+        )
         processed_item_count = 0
 
         empty_bounding_rect = BoundingRectangle(

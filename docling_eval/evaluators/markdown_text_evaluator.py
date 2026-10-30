@@ -169,6 +169,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetMarkdownEvaluation:
         r"""
         Parameters
@@ -182,7 +183,7 @@ class MarkdownTextEvaluator(BaseEvaluator):
         ds = load_dataset("parquet", data_files={split: parquet_files})
         _log.info(f"Overview of the dataset: {ds}")
         if ds is not None:
-            ds_selection = ds[split]
+            ds_selection = self._select_samples(ds[split], num_samples)
 
         evaluations: list[PageMarkdownEvaluation] = []
         rejected_samples: Dict[EvaluationRejectionType, int] = {

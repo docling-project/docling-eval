@@ -54,6 +54,7 @@ class TimingsEvaluator(BaseEvaluator):
         ds_path: Path,
         split: str = "test",
         external_document_loader: Optional[ExternalDoclingDocumentLoader] = None,
+        num_samples: Optional[int] = None,
     ) -> DatasetTimingsEvaluation:
         if external_document_loader is not None:
             raise ValueError(
@@ -78,7 +79,7 @@ class TimingsEvaluator(BaseEvaluator):
         logging.info("Overview of dataset: %s", ds)
 
         # Select the split
-        ds_selection: Dataset = ds[split]
+        ds_selection: Dataset = self._select_samples(ds[split], num_samples)
 
         timings = []
         for i, data in tqdm(
